@@ -56,6 +56,11 @@ data PolyType
 data Kind
 type Type = Value
 
+{-
+Writing all of the code in the most generic way with the correct abstractions appears (at least in a Hindley-Millner system)
+to require all kinds of data to just be in a single giant sum type.
+Maybe we can at least recover some dynamic type-checking by for example checking the Sort of things with pattern matching?
+-}
 data Label
     -- Terms
     = Var TermVarID
@@ -114,8 +119,8 @@ typingRules = [
     TypingRule [
         -- The type annotation - Same context as parent, and totally different Sort, hence Replace
         TypingRuleEntry (Map.empty) (Replace (ExprWM STerm [EMetaVar a , EMetaVar b]) (ExprWM SType [])),
-        -- The body - Context adds a relative to parent, and the change is + A -> B (going from bottom to top)
-        TypingRuleEntry (Map.insert x (MCPlus (EMetaVar a)) Map.empty) (ChangeExpr STerm [Plus Arrow [MetaVar a] (MetaVar b) []])
+        -- The body - Context adds `a` relative to parent, and the change is `+ A -> B` (going from bottom to top)
+        TypingRuleEntry (Map.insert x (MCPlus (EMetaVar a)) Map.empty) (ChangeExpr STerm [Plus Arrow [EMetaVar a] (MetaVar b) []])
         ]
 ]
 
