@@ -1,0 +1,62 @@
+Here is my plan for designing this repository:
+
+- Generic concept of a grammar - Tree where each node has a Label
+    - A grammar has a type of Labels and a type of Sorts
+- Generic concept of Changes - Can be derived generically from the Labels as well!
+- From any grammar, can derive a grammar with Holes - that is, a grammar with metavariables in it!
+- Generic concept of Typing Rules - For each term, we need to relate the Sort and Context of each child to the parent
+    - You could do this using holes and unification. For example, consider a Lambda. A Lambda has two children,
+        The type annotation and the body. You can describe the typing of a lambda with the following rule (where every
+        capital letter represents a metavariable):
+
+        This is the traditional typing rule for lambda:
+        G |- A : Type                    G , X : A |- E : Term B
+        ------------------------------------------------
+        G |- lam X . E : A -> B
+
+        We can write this rule in an intrinsic style.
+        Each piece, (the parent on the bottom and the children on the top), has a context and a sort
+        (`Term T` is the sort of a term of type T)
+
+        G |- Type                    G , X : A |- Term B
+        ------------------------------------------------
+        G |- Term (A -> B)
+
+        We can then distill this rule down to a pair of an entry for the term overall, and a list for the children:
+
+        (G |- Term (A -> B), [G |- Type,      G , X : A |- Term B])
+
+        We can generically derive a type-checking algorithm for any grammar from rules like this -
+        - If we want to check a Term going from top to bottom, we unify the sort of the term with the left part of the pair, to
+          get the sorts of it's children
+        - If we want to check a Path going up from bottom to top, we first unify the contexts and sorts of each child with the corresponding
+          context and sort in the list on the right, and then we can get the resulting context and sort of the parent from the left.
+
+
+
+        This all works - we can input the rules of our grammar and derive most of the pieces of a structure editor.
+        However! This is not enough for our purposes - we also need to know about typechanges!
+        For example, we need to know that the path `lam x : A . []` can be given the context change `?, +x : A`
+        and the TypeChange `+ A -> B`.
+
+        So, instead we can give Lambda the following rule using Changes (from which the rule above can be derived). We have one entry for
+        each child, and no entries for the parent. Each child entry is a CHANGE between that child and the parent!
+        This means that we can derive the typing entries for the parent and children that I wrote above by getting the
+        change endpoints of these changes - they all have the same left endpoint, namely the context and type of the parent.
+
+        [G |- (Replace (Term (A -> B)) Type),     G, + X : A  |-  Term (+A -> B)]
+                 ^
+                 | (this means that the parent sort is a Term of type A -> B, while the child sort is Type)
+
+
+        Using a grammar of one of these rules for each Label, we can not only derive a typechecker automatically, but
+        we can also derive various typechange things - for example, we can derive that the change describing
+        `lam x : A . []` is `+ A -> B`.
+
+        I have encoded this rule as an example in Grammar.purs
+
+
+- Final question to which I don't yet know the answer - using rules like the above for each Label, can we derive
+    chTerm and chTermPath?
+    - If yes, then this seems like a great design with as little repetition as possible
+    - If no, then the whole excersize seems pointless

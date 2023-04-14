@@ -1,0 +1,14 @@
+Here is my (Jacob's) opinions about design from my experience designing the first version of Pantograph:
+
+-- The answer to the question "what is the right abstraction to use here" is not type-system dependent - the correct solution
+   is the same in an untyped language as it is in dependent type theory.
+   -- Never bend your design to fit the type system - instead, accept that the code is (partially) untyped if necessary.
+
+   EXAMPLE: just because Hindley-Millner can't type generic trees doesn't mean generic trees aren't the right design
+
+
+
+-- Knowledge should be stored in values, not types, so that you can operate on it programmatically.
+
+   EXAMPLE: the knowledge of what kinds of sorts exist in your grammar should be stored in values, not in types. That way,
+    for example calculating what selections are allowed can be done over this information (instead of having code repetition)
