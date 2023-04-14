@@ -25,8 +25,10 @@ data GChange label = ChangeExpr label (Array (GChange label))
 
 data ExprWithMetavars label = ExprWM label (Array (ExprWithMetavars label)) | EMetaVar Int
 
-data GTypingRuleEntry change id = TypingRuleEntry (Map id change) change
-data GTypingRule change id = TypingRule (Array (GTypingRuleEntry change id))
+data MapChange label = MCPlus (ExprWithMetavars label) | MCMinus (ExprWithMetavars label) | MCChange (GChange label)
+
+data GTypingRuleEntry label id = TypingRuleEntry (Map id (MapChange label)) (GChange label)
+data GTypingRule label id = TypingRule (Array (GTypingRuleEntry label id))
 
 
 {-

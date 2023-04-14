@@ -100,8 +100,8 @@ type ProgramPath = Path Label WrapMetadata
 type Change = GChange Label
 
 
-type TypingRuleEntry = GTypingRuleEntry Change UUID
-type TypingRule = GTypingRule Change UUID
+type TypingRuleEntry = GTypingRuleEntry Label UUID
+type TypingRule = GTypingRule Label UUID
 
 
 --        [G |- (Replace (Term (A -> B)) Type),     G, + X : A  |-  Term (+A -> B)]
@@ -112,8 +112,10 @@ typingRules = [
     let a = 1 in
     let b = 2 in
     TypingRule [
+        -- The type annotation - Same context as parent, and totally different Sort, hence Replace
         TypingRuleEntry (Map.empty) (Replace (ExprWM STerm [EMetaVar a , EMetaVar b]) (ExprWM SType [])),
-        TypingRuleEntry (Map.insert x (MetaVar a) Map.empty) (ChangeExpr STerm [Plus Arrow [MetaVar a] (MetaVar b) []])
+        -- The body - Context adds a relative to parent, and the change is + A -> B (going from bottom to top)
+        TypingRuleEntry (Map.insert x (MCPlus (EMetaVar a)) Map.empty) (ChangeExpr STerm [Plus Arrow [MetaVar a] (MetaVar b) []])
         ]
 ]
 
