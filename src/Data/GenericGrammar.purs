@@ -90,11 +90,6 @@ derive instance Functor ann => Functor (Expr ann) -- over pre
 derive instance Foldable ann => Foldable (Expr ann) -- over pre
 derive instance Traversable ann => Traversable (Expr ann) -- over pre
 
-matchExpr :: forall ann pre x. Functor ann => 
-  ({ pre :: pre, kids :: List (ann (Expr ann pre)) } -> x) -> 
-  Expr ann pre -> x
-matchExpr f (Expr {pre, right}) = f {pre, kids: right}
-
 -- | The type of changes is a fixpoint over a sum of expression tooth, two
 -- | polarities of path tooth, and a meta case.
 data Change ann pre meta
@@ -111,18 +106,6 @@ derive instance Functor ann => Bifunctor (Change ann) -- over pre and meta
 derive instance Foldable ann => Bifoldable (Change ann) -- over pre and meta
 derive instance Traversable ann => Bitraversable (Change ann) -- over pre and meta
 
-matchChange :: forall x ann meta pre.
-  { expr :: { pre :: pre, right :: List (ann (Change ann pre meta)) } -> x
-  , minus :: { left :: ReversedList (ann (Expr ann pre)), pre :: pre, right :: List (ann (Expr ann pre)), tan :: Change ann pre meta } -> x
-  , plus :: { left :: ReversedList (ann (Expr ann pre)), pre :: pre, right :: List (ann (Expr ann pre)), tan :: Change ann pre meta } -> x
-  , meta :: meta -> x
-  }
-  -> Change ann pre meta -> x
-matchChange f (ExprChange {pre, right}) = f.expr {pre, right}
-matchChange f (PlusChange {pre, tan, left, right}) = f.plus {pre, tan, left, right}
-matchChange f (MinusChange {pre, tan, left, right}) = f.minus {pre, tan, left, right}
-matchChange f (MetaChange meta) = f.meta meta
-
 -- | The types of paths, up and down, are fixpoints over `PathTooth`, which is
 -- | an `PathToothCleat` with trivial tangent.
 data Path :: Symbol -> (Type -> Type) -> Type -> Type
@@ -137,6 +120,3 @@ derive instance Traversable ann => Traversable (Path dir ann) -- over meta
 
 type UpPath = Path "up"
 type DownPath = Path "down"
-
--- matchPath f (ConsPath th) = ?a 
--- matchPath f NilPath = ?a
