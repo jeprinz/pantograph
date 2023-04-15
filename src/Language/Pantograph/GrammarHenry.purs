@@ -1,4 +1,4 @@
-module Language.Pantograph.Grammar where
+module Language.Pantograph.GrammarHenry where
 
 import Prelude
 
