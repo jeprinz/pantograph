@@ -13,7 +13,9 @@ to generate this file without the comments in this block.
 { name = "my-project"
 , dependencies =
   [ "arrays"
+  , "bifunctors"
   , "console"
+  , "const"
   , "effect"
   , "either"
   , "exceptions"

@@ -1,17 +1,18 @@
-module Data.GenericGrammar where
+module Data.Cleat where
 
 import Prelude
 
+import Control.Monad.Reader (Reader)
 import Data.Bifoldable (class Bifoldable)
 import Data.Bifunctor (class Bifunctor)
 import Data.Bitraversable (class Bitraversable)
-import Data.Const (Const)
+import Data.Const (Const(..))
 import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.List.Reversed (ReversedList)
 import Data.Newtype (class Newtype)
-import Data.Traversable (class Traversable)
+import Data.Traversable (class Traversable, traverse)
 
 {-
 
@@ -89,6 +90,16 @@ derive instance Newtype (Expr ann pre) _
 derive instance Functor ann => Functor (Expr ann) -- over pre
 derive instance Foldable ann => Foldable (Expr ann) -- over pre
 derive instance Traversable ann => Traversable (Expr ann) -- over pre
+
+traverseReaderExprPre :: forall ann pre pre' ctx. 
+  Traversable ann => 
+  (pre -> Reader ctx pre') -> 
+  Expr ann pre -> 
+  Reader ctx (Expr ann pre')
+traverseReaderExprPre f (Expr {pre, tan, right: kids}) = do
+  pre' <- f pre
+  kids' <- (traverseReaderExprPre f `traverse` _) `traverse` kids
+  pure $ Expr {pre: pre', tan, left: Const unit, right: kids'} 
 
 -- | The type of changes is a fixpoint over a sum of expression tooth, two
 -- | polarities of path tooth, and a meta case.
