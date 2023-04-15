@@ -11,6 +11,7 @@ import Data.Either (Either(..))
 import Effect.Exception.Unsafe (unsafeThrow)
 
 type WrappedChild label wrap = wrap /\ (Expr label wrap)
+-- TODO: I think that maybe wrapping with sorts should be here, instead of only in Grammar?
 data Expr label wrap = Expr label (Array (WrappedChild label wrap))
 
 data Tooth label wrap = Tooth label (Array (WrappedChild label wrap)) (Array (WrappedChild label wrap))
@@ -30,6 +31,18 @@ data MapChange label = MCPlus (ExprWithMetavars label) | MCMinus (ExprWithMetava
 
 data GTypingRuleEntry label id = TypingRuleEntry (Map id (MapChange label)) (GChange label)
 data GTypingRule label id = TypingRule (Array (GTypingRuleEntry label id))
+
+{-
+While this isn't dependent type theory so we can't ensure that Exprs, GChanges etc. satisfy typing rules
+intrinsically, we can write checking functions:
+-}
+exprIsTyped :: forall label wrap id .
+    Array (GTypingRule label id) -- The typing rules
+    -> Expr label wrap -- The sort (which contains the type)
+    -> Map id (Expr label wrap) -- The context - a mapping from ids to sorts
+    -> Expr label wrap -- The expression to be type-checked
+    -> Boolean
+exprIsTyped = unsafeThrow "todo"
 
 instance Eq label => Eq (ExprWithMetavars label) where
     eq (ExprWM l1 kids1) (ExprWM l2 kids2) = l1 == l2 && (Array.all identity (eq <$> kids1 <*> kids2))

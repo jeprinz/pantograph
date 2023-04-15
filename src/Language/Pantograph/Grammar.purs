@@ -100,7 +100,7 @@ data Tuple a b = Tuple a b
 
 newtype WrapMetadata = WrapMetadata {indented:: Boolean, sort:: Value}
 type Value = Expr Label WrapMetadata
-type ProgramPath = Path Label WrapMetadata
+type ValuePath = Path Label WrapMetadata
 
 type Change = GChange Label
 
