@@ -1,5 +1,5 @@
 install:
-	# !TODO npm install
+	npm install
 
 build: install
 	spago build

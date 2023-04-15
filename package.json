@@ -1,0 +1,29 @@
+{
+  "name": "pantograph",
+  "version": "1.0.0",
+  "description": "A typed zipped structure editor.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeprinz/pantograph.git"
+  },
+  "keywords": [
+    "programm-language",
+    "type-theory"
+  ],
+  "author": "Jacob Prinz, Henry Blanchette",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jeprinz/pantograph/issues"
+  },
+  "homepage": "https://github.com/jeprinz/pantograph#readme"
+}
