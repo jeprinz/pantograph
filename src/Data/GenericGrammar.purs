@@ -12,7 +12,6 @@ import Data.List (List)
 import Data.List.Reversed (ReversedList)
 import Data.Newtype (class Newtype)
 import Data.Traversable (class Traversable)
-import Type.Proxy (Proxy(..))
 
 {-
 
