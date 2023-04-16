@@ -57,29 +57,3 @@ data PathCleat path = PathCons path | PathNil
 -- example
 
 data Proto x = Var x | Lam x | App 
-
--- renameExpr :: 
-
-
--- runReader (traverseGram visit ft) Map.empty
---   where visit t = local (intro rho t) $ bitraverse ?a identity t
-
--- example: renaming with bindings
-
--- data Pre x = Mention x | Lam x | App
--- data ExprF x t = ExprF (Pre x) (List t)
--- type Expr x = Gram ExprF x
-
--- derive instance Functor Pre
--- derive instance Foldable Pre
--- derive instance Traversable Pre
--- derive instance Bifunctor ExprF
--- derive instance Bifoldable ExprF
--- derive instance Bitraversable ExprF
-
--- introExprF :: forall t x y. Ord x => (x -> y) -> ExprF x t -> Map.Map x y -> Map.Map x y
--- introExprF rho (ExprF (Lam x) _) = Map.insert x (rho x)
--- introExprF _ _ = identity
-
--- renameExpr :: forall x. Ord x => (x -> y) -> Expr x -> Expr (Identity x)
--- renameExpr rho = rename introExprF ?a
