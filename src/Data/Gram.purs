@@ -85,7 +85,7 @@ instance Pretty var => Pretty (Proto var) where
   pretty (Lam v) = "λ" <+> pretty v
   pretty App = ""
 
-data Link a = IndentedLink a | PureLink a
+data Link a = IndentedLink (Link a) | PureLink a
 derive instance Generic (Link a) _
 instance Show a => Show (Link a) where show x = genericShow x
 derive instance Functor Link
