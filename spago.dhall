@@ -14,18 +14,25 @@ to generate this file without the comments in this block.
 , dependencies =
   [ "arrays"
   , "console"
+  , "const"
+  , "control"
   , "effect"
   , "either"
   , "exceptions"
   , "foldable-traversable"
+  , "functors"
+  , "identity"
   , "lists"
   , "maybe"
+  , "newtype"
   , "ordered-collections"
   , "partial"
   , "prelude"
+  , "strings"
   , "transformers"
   , "tuples"
   , "uuid"
+  , "variant"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
