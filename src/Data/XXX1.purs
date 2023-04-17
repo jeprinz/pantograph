@@ -3,12 +3,17 @@ module Data.XXX1 where
 import Prelude
 
 import Control.Monad.Reader (Reader, runReader)
+import Data.Array as Array
 import Data.Foldable (class Foldable)
 import Data.List (List)
+import Data.List as List
 import Data.List.Reversed (ReversedList)
 import Data.Map as Map
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import Data.Traversable (class Traversable, traverse)
+import Data.Traversable (class Traversable)
+import Text.Pretty (class Pretty, class Pretty', pretty, pretty', (<+>))
+import Type.Proxy (Proxy)
 
 -- | The generic type of grammatical structures.
 newtype Gram proto (joint :: Type -> Type) (link :: Type -> Type) (var :: Type) = Gram (Gram' proto joint link var) -- fixpoint of GramFix
@@ -16,6 +21,15 @@ type Gram' proto joint link var = GramFix proto joint link var (Gram proto joint
 type GramFix proto joint (link :: Type -> Type) (var :: Type) (rec :: Type) = {proto :: proto var , joint :: joint (link rec)} -- base function of fixpoint Gram
 
 derive instance Newtype (Gram proto join link var) _
+
+instance 
+    ( Pretty var
+    , Pretty (proto String), Functor proto
+    , Pretty (joint String), Functor joint
+    , Pretty (link String), Functor link
+    ) => Pretty (Gram proto joint link var)
+  where
+  pretty (Gram gf) = "(" <> pretty (pretty <$> (pretty <$> gf.proto)) <+> pretty (pretty <<< (pretty <$> _) <$> gf.joint) <> ")"
 
 -- -- !TODO though its possible to derive this, shouldn't because we want to map
 -- -- over variables while being aware of their bindings, not just blindly map every location a-locally
@@ -69,14 +83,28 @@ derive instance Functor ExprJoint
 derive instance Foldable ExprJoint
 derive instance Traversable ExprJoint
 
+instance Pretty (ExprJoint String) where pretty (ExprJoint strs) = Array.intercalate " " strs 
+
 -- | The generic type of paths, defined in terms of `Gram`.
-type Path proto link var = Gram proto (PathJoint proto link var) link var
-data PathJoint proto link var (path :: Type) = PathJoint (List (Tooth proto link var))
+type Path (dir :: Symbol) proto link var = Gram proto (PathJoint dir proto link var) link var
+data PathJoint (dir :: Symbol) proto link var (path :: Type)
+  = NilPathJoint (Proxy dir)
+  | ConsPathJoint (Proxy dir) (Tooth proto link var) path
+
 type Tooth proto link var = {lefts :: ReversedList (Expr proto link var), rights :: List (Expr proto link var)}
 
-derive instance Functor (PathJoint proto link var)
-derive instance Foldable (PathJoint proto link var)
-derive instance Traversable (PathJoint proto link var)
+derive instance Functor (PathJoint dir proto link var)
+derive instance Foldable (PathJoint dir proto link var)
+derive instance Traversable (PathJoint dir proto link var)
+
+instance 
+    ( Pretty var
+    , Pretty (proto String), Functor proto
+    , Pretty (link String), Functor link
+    ) => Pretty' (PathJoint "up" proto link var (String -> String)) String
+  where 
+  pretty' down (NilPathJoint _) = down
+  pretty' down (ConsPathJoint _ th up) = up (pretty' " " th.lefts <+> down <+> pretty' " " th.rights)
 
 -- -- The generic type of changes, defined in terms of `Gram`.
 type Change proto link var metavar = Gram proto (ChangeJoint proto link var metavar) link var
