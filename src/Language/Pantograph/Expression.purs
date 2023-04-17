@@ -11,7 +11,7 @@ import Data.Either (Either(..))
 import Effect.Exception.Unsafe (unsafeThrow)
 
 --type WrappedChild label wrap = wrap /\ (Expr label wrap)
--- TODO: I think that maybe wrapping with sorts should be here, instead of only in Grammar?
+-- TODO: Do we ever need Expr or just ExprWithMetavars?
 data Expr label = Expr label (Array (Expr label))
 
 data Tooth label = Tooth label (Array (Expr label)) (Array (Expr label))
