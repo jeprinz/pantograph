@@ -65,8 +65,8 @@ data Label
     -- Terms
     = Var TermVarID
     | App {-Term-} {-Term-}
-    | Lambda TermVarID {-Term-}
-    | Let TermVarID (List TypeVarID) {-TermBind-} {-Term-} {-Type-} {-Term-}
+    | Lambda {-TermVarID-} {-Term-}
+    | Let String {-TermBind-} {-List TypeVarID-} {-TermBind-} {-Term-} {-Type-} {-Term-}
     | TypeBoundary Change {-Term-}
     | ContextBoundary {-Some kind of change TBD-} {-Term-}
     | Hole
@@ -93,20 +93,35 @@ data Label
     | SInnerTermHole
     | SInnerTypeHole
 
+{-
+G |- E : S
+---------------------------------------
+G |- Newline E : S
+
+-}
+
 data Tuple a b = Tuple a b
 
 --data ExprWrap = ExprWrap Boolean Expr Expr
 --data Tooth f = Tooth Label (Array (f (Expr f))) (Array (f (Expr f)))
 
-newtype WrapMetadata = WrapMetadata {indented:: Boolean, sort:: Value}
-type Value = Expr Label WrapMetadata
-type ValuePath = Path Label WrapMetadata
+--newtype WrapMetadata = WrapMetadata {indented:: Boolean, sort:: Value}
+type Value = Expr Label
+type ValuePath = Path Label
 
 type Change = GChange Label
 
 
 type TypingRuleEntry = GTypingRuleEntry Label UUID
 type TypingRule = GTypingRule Label UUID
+
+{-
+
+G, X : A |- E : B
+--------------------------------------
+G |- lam X : A . E : A -> B
+
+-}
 
 
 --        [G |- (Replace (Term (A -> B)) Type),     G, + X : A  |-  Term (+A -> B)]

@@ -10,13 +10,13 @@ import Data.Map (Map)
 import Data.Either (Either(..))
 import Effect.Exception.Unsafe (unsafeThrow)
 
-type WrappedChild label wrap = wrap /\ (Expr label wrap)
+--type WrappedChild label wrap = wrap /\ (Expr label wrap)
 -- TODO: I think that maybe wrapping with sorts should be here, instead of only in Grammar?
-data Expr label wrap = Expr label (Array (WrappedChild label wrap))
+data Expr label = Expr label (Array (Expr label))
 
-data Tooth label wrap = Tooth label (Array (WrappedChild label wrap)) (Array (WrappedChild label wrap))
+data Tooth label = Tooth label (Array (Expr label)) (Array (Expr label))
 
-type Path label wrap = List (wrap /\ Tooth label wrap)
+type Path label = List (Tooth label)
 
 -- Changes, generically over any grammar!
 data GChange label = ChangeExpr label (Array (GChange label))
@@ -38,9 +38,9 @@ intrinsically, we can write checking functions:
 -}
 exprIsTyped :: forall label wrap id .
     Array (GTypingRule label id) -- The typing rules
-    -> Expr label wrap -- The sort (which contains the type)
-    -> Map id (Expr label wrap) -- The context - a mapping from ids to sorts
-    -> Expr label wrap -- The expression to be type-checked
+    -> Expr label -- The sort (which contains the type)
+    -> Map id (Expr label) -- The context - a mapping from ids to sorts
+    -> Expr label -- The expression to be type-checked
     -> Boolean
 exprIsTyped = unsafeThrow "todo"
 
@@ -105,20 +105,20 @@ Generic function map over expressions.
 At each node, the function can choose if it should pass through to the child nodes, or if it should
 replace that node with something else.
 -}
-type LabelMap l w env = (env -> l -> Array (WrappedChild l w) -> Either (Expr l w) (Array env))
+type LabelMap l env = (env -> l -> Array (Expr l) -> Either (Expr l) (Array env))
 
 -- PROBLEM: LabelMap doesn't really work going UP paths!
-exprMap :: forall l w env . LabelMap l w env -> env -> Expr l w -> Expr l w
+exprMap :: forall l env . LabelMap l env -> env -> Expr l -> Expr l
 exprMap f env (Expr label children) =
     case f env label children of
         Left expr' -> expr'
         Right childEnvs ->
-            let children' = map (\(env' /\ wrap /\ child) -> wrap /\ exprMap f env' child) (Array.zip childEnvs children) in
+            let children' = map (\(env' /\ child) -> exprMap f env' child) (Array.zip childEnvs children) in
             Expr label children'
 
 data LabelInfo id = IsVar id | Binds (Set id) -- for each child that is bound, update the environment
 
-expMapFreeVars :: forall l w id . Ord id => (l -> LabelInfo id) -> (id -> Expr l w) -> Expr l w -> Expr l w
+expMapFreeVars :: forall l id . Ord id => (l -> LabelInfo id) -> (id -> Expr l) -> Expr l -> Expr l
 expMapFreeVars labelInfo atVar expr =
     let mapper bound label children = case labelInfo label of
             IsVar id -> if Set.member id bound
