@@ -94,7 +94,7 @@ derive instance Traversable Link
 instance Pointed Link where point = PureLink
 
 instance Pretty a => Pretty (Link a) where 
-  pretty (IndentedLink a) = indent (pretty a)
+  pretty (IndentedLink a) = indent ("\n" <> pretty a)
   pretty (PureLink a) = pretty a
 
 data Var = Var String
