@@ -14,7 +14,10 @@ import Data.UUID (UUID)
 --type WrappedChild label wrap = wrap /\ (Expr label wrap)
 -- TODO: Do we ever need Expr or just ExprWithMetavars?
 
-data Expr label = Expr label (List (Expr label)) | EMetaVar UUID
+data Expr label = Expr label (List (Expr label))
+
+data ExprWMLabel label = ExprWM label | EMetaVar UUID
+type ExprWM label = Expr (ExprWMLabel label)
 
 data Tooth label = Tooth label (List (Expr label)) (List (Expr label))
 
@@ -33,16 +36,18 @@ data ChangeLabel label
 instance Functor Expr where
     map :: forall label1 label2 . (label1 -> label2) -> Expr label1 -> Expr label2
     map f (Expr label kids) = Expr (f label) (map (map f) kids)
-    map _f (EMetaVar x) = EMetaVar x
 
+derive instance functorExprWMLabel :: Functor ExprWMLabel
 
 data TypingRule label = TypingRule
-    (Expr label) -- The sort of the expression overall
-    (List (Expr label)) -- The sort of each child
+    (ExprWM label) -- The sort of the expression overall
+    (List (ExprWM label)) -- The sort of each child
 
 type Language label = label -> TypingRule label
 
 data MapChange label = MCPlus (Expr label) | MCMinus (Expr label) | MCChange (GChange label)
+
+derive instance eqExprWMLabel :: Eq label => Eq (ExprWMLabel label)
 
 --data GTypingRuleEntry label id = TypingRuleEntry (Map id (MapChange label)) (GChange label)
 --data GTypingRule label id = TypingRule (List (GTypingRuleEntry label id))
