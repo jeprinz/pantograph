@@ -13,3 +13,7 @@ Here is my (Jacob's) opinions about design from my experience designing the firs
    EXAMPLE: Suppose you have an ADT for a grammar with `let : ID -> Term -> Term -> Term`. Here, the knowledge that
    let has two Term children is encoded in a type, so that knowledge is inaccessible to the program.
    While this might work fine in simple programs, it will cause code duplication eventually.
+
+
+-- Insofar as code repetition is an indication of bad design, using automation to sweep code repetition under the rug
+    doesn't change this indication. A good design wouldn't have required automation to avoid repetition.

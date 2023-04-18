@@ -19,12 +19,14 @@ data Expr label = Expr label (List (Expr label))
 data ExprWMLabel label = ExprWM label | EMetaVar UUID
 type ExprWM label = Expr (ExprWMLabel label)
 
-data Tooth label = Tooth label (List (Expr label)) (List (Expr label))
+data ToothLabel label = Tooth label {-List (Expr label)-} {-List (Expr label)-}
+type Tooth label = Expr (Either (ToothLabel label) label)
 
-type Path label = List (Tooth label)
+data ListLabel label = ConsLabel {-x-} {-xs-} | NilLabel
+type Path label = Expr (Either (ListLabel label) (Either (ToothLabel label) label))
 
 -- A Change is just an expression with a few extra possible labels: namely, Replace, Plus, and Minus.
-type GChange label = Expr (ChangeLabel label)
+type GChange label = ExprWM (ChangeLabel label)
 
 data ChangeLabel label
     = ChangeExpr label {-whatever kids that label had-}
@@ -32,22 +34,48 @@ data ChangeLabel label
     | Minus label Int {- same as Plus -}
     | Replace {-Expr label-} {-Expr label-}
 
--- Typechange injection is just being a functor!
-instance Functor Expr where
-    map :: forall label1 label2 . (label1 -> label2) -> Expr label1 -> Expr label2
-    map f (Expr label kids) = Expr (f label) (map (map f) kids)
 
-derive instance functorExprWMLabel :: Functor ExprWMLabel
+--data TypingRule label = TypingRule
+--    (ExprWM label) -- The sort of the expression overall
+--    (List (ExprWM label)) -- The sort of each child
 
-data TypingRule label = TypingRule
-    (ExprWM label) -- The sort of the expression overall
-    (List (ExprWM label)) -- The sort of each child
+--data
+
+-- TypingRuleLabel
+data AnnotatedLabel label = OfSort {-sort-} {-term-} | ALOther label
+type Annotated label = ExprWM (AnnotatedLabel label)
+
+shouldntBeAnnotations :: forall label. AnnotatedLabel label -> label
+shouldntBeAnnotations (ALOther l) = l
+shouldntBeAnnotations _ = unsafeThrow "assumption violated: there was an annotation"
+
+--data TypingRulesLabel label = TypingRule {-parent sort-} {-list of children sorts-} | TRCons {-sort-} {-sorts-} | TRNil | TROther label
+--type TypingRule label = Expr (TypingRulesLabel label)
+
+-- TODO: design decision: should these be working with annotated terms?
+data TypingRule label =
+    TypingRule
+    (ExprWM label) -- The parent's sort
+    (List (ExprWM label)) -- The children node's sorts
 
 type Language label = label -> TypingRule label
 
 data MapChange label = MCPlus (Expr label) | MCMinus (Expr label) | MCChange (GChange label)
 
+--------------------------------------------------------------------------------
+
+-- Typechange injection is just being a functor!
+instance Functor Expr where
+    map :: forall label1 label2 . (label1 -> label2) -> Expr label1 -> Expr label2
+    map f (Expr label kids) = Expr (f label) (map (map f) kids)
+
+derive instance eqAnnotatedLabel :: Eq label => Eq (AnnotatedLabel label)
 derive instance eqExprWMLabel :: Eq label => Eq (ExprWMLabel label)
+--derive instance eqTypingRulesLabel :: Eq label => Eq (TypingRulesLabel label)
+
+derive instance functorExprWMLabel :: Functor ExprWMLabel
+derive instance functorExprAnnotatedLabel :: Functor AnnotatedLabel
+--derive instance functorTypingRuleLabel :: Functor TypingRulesLabel
 
 --data GTypingRuleEntry label id = TypingRuleEntry (Map id (MapChange label)) (GChange label)
 --data GTypingRule label id = TypingRule (List (GTypingRuleEntry label id))

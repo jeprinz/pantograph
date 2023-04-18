@@ -28,18 +28,18 @@ mapSub :: forall label1 label2 . (label1 -> label2) -> Sub label1 -> Sub label2
 mapSub f s = map (map (map f)) s -- truly one of the lines of code of all time
 
 --data Expr label = ExprWM label (Array (Expr label)) | EMetaVar UUID
-unifyExpr :: forall l . Ord l => ExprWM l -> ExprWM l -> Maybe (ExprWM l /\ Sub l)
-unifyExpr (Expr (EMetaVar x) Nil) e = Just $ e /\ Map.insert x e Map.empty
-unifyExpr e1 e2@(Expr (EMetaVar x) Nil) = unifyExpr e2 e1
-unifyExpr (Expr label1 kids1) (Expr label2 kids2) =
+unify :: forall l . Eq l => ExprWM l -> ExprWM l -> Maybe (ExprWM l /\ Sub l)
+unify (Expr (EMetaVar x) Nil) e = Just $ e /\ Map.insert x e Map.empty
+unify e1 e2@(Expr (EMetaVar x) Nil) = unify e2 e1
+unify (Expr label1 kids1) (Expr label2 kids2) =
     if not (label1 == label2) then Nothing else do
     kids /\ sub <- unifyExprs kids1 kids2
     pure $ Expr label1 kids /\ sub
 
-unifyExprs :: forall l . Ord l => List (ExprWM l) -> List (ExprWM l) -> Maybe (List (ExprWM l) /\ Sub l)
+unifyExprs :: forall l . Eq l => List (ExprWM l) -> List (ExprWM l) -> Maybe (List (ExprWM l) /\ Sub l)
 unifyExprs Nil Nil = Just $ Nil /\ Map.empty
 unifyExprs (e1 : es1) (e2 : es2) = do
-    e' /\ sub1 <- unifyExpr e1 e2
+    e' /\ sub1 <- unify e1 e2
     let es1' = map (subExpr sub1) es1
     let es2' = map (subExpr sub1) es2
     es' /\ sub2 <- unifyExprs es1' es2'
