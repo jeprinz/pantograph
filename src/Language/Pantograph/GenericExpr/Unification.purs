@@ -43,5 +43,5 @@ unifyExprs (e1 : es1) (e2 : es2) = do
     let es1' = map (subExpr sub1) es1
     let es2' = map (subExpr sub1) es2
     es' /\ sub2 <- unifyExprs es1' es2'
-    pure $ (e' : es') /\ (union' sub1 sub2)
+    pure $ ((subExpr sub2 e') : es') /\ (union' sub1 sub2)
 unifyExprs _ _ = unsafeThrow "kids had different lengths even though label was the same in unifyExprs"
