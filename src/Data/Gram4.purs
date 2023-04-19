@@ -60,6 +60,9 @@ type Tooth l = Zip.Path (Expr l) /\ l
 endPath :: forall dir l. Path dir l
 endPath = wrap (Nothing /\ Nothing)
 
+stepPath :: forall dir l. Tooth l -> Path dir l -> Path dir l
+stepPath th p = wrap (Just th /\ Just p)
+
 matchPath :: forall dir l a.
   { end :: a
   , step :: Tooth l /\ Path dir l -> a
@@ -76,7 +79,7 @@ matchPath f = unwrap >>> case _ of
 appendPath :: forall dir l. Path dir l -> Path dir l -> Path dir l
 appendPath p1 = matchPath
   { end: p1
-  , step: \(th /\ p2) -> wrap (Just th /\ Just (appendPath p1 p2))
+  , step: \(th /\ p2) -> stepPath th (appendPath p1 p2)
   }
 
 reverse :: forall dir dir' l. Dir.Rev dir dir' => Path dir l -> Path dir' l
