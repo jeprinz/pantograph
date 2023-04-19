@@ -2,6 +2,7 @@ module Data.Gram4 where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Const (Const(..))
 import Data.Either.Nested (type (\/))
 import Data.Foldable (class Foldable, intercalate)
@@ -107,5 +108,9 @@ derive instance Traversable ChangeLabel
 -- utilities
 --
 
-showGram show_l = foldMapGram \(l /\ j) -> "(" <> show l <> " " <> intercalate " " j <> ")"
-
+showGram show_l = foldMapGram \(l /\ j) -> 
+  let kids = Array.fromFoldable j
+      kids_str = if Array.null kids then "" else " " <> intercalate " " kids
+  in
+  "(" <> show l <> kids_str <> ")"
+    

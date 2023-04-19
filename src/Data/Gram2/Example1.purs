@@ -5,7 +5,7 @@ import Prelude
 
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
-import Data.Gram2 (Gram(..), showMetaVar)
+-- import Data.Gram2 (Gram(..), showMetaVar)
 import Data.Gram2 as Gram
 import Data.Newtype (unwrap, wrap)
 import Data.Show.Generic (genericShow)
