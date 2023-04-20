@@ -41,6 +41,8 @@ data ChangeLabel label
 
 --data
 
+--- below this line is garbage
+
 -- TypingRuleLabel
 data AnnotatedLabel label = OfSort {-sort-} {-term-} | ALOther label
 type Annotated label = ExprWM (AnnotatedLabel label)

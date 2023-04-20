@@ -7,6 +7,8 @@
     "test": "test"
   },
   "dependencies": {
+    "purescript": "^0.15.8",
+    "spago": "^0.20.9",
     "uuid": "^9.0.0"
   },
   "scripts": {

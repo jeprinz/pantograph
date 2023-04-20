@@ -1,0 +1,18 @@
+A programming language is defined by some inference rules that create some judgements
+- Inductive rules, which reference:
+- Expressions = the parameters for the inference rules = indices of a deep embedding
+
+The programs themselves are derivations of these inductive rules.
+The user never sees the expressions, they are only for metatheory/computation purposes
+
+- Expressions
+    - They are tree structured
+    - We need to be able to make expr-with-metavars and do unification on them
+    - There need to be Changes for them (which are also expressions)
+    - We don't need zippers on these
+
+- Derivations
+    - We need zippers on these
+        - both paths and terms
+    - We don't need unification or metavariables on these
+    - Each node within a derivation has a Judgement, which is just an expression

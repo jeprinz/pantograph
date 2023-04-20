@@ -80,7 +80,7 @@ instance FoldableWithIndex Int Path where
   foldMapWithIndex f = foldMapWithIndex f <<< unpath
   foldrWithIndex f b = foldrWithIndex f b <<< unpath
   foldlWithIndex f b = foldlWithIndex f b <<< unpath
-instance TraversableWithIndex Int Path where 
+instance TraversableWithIndex Int Path where
   traverseWithIndex f (Path d) =
     let l = Rev.length d.left in
     (\left right -> Path d {left = left, right = right})
