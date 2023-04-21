@@ -39,7 +39,7 @@ type Meta l = MetaVar \/ l
 
 -- | A `Gram` is a generalization of a tree (and a specialization of a
 -- | fixpoint), where each node of the `Gram` has a label of type `l`, and the kids are 
-newtype Gram j l = Gram (NodeG j l (Gram j l))
+data Gram j l = Gram (NodeG j l (Gram j l))
 
 derive instance Functor j => Functor (Gram j)
 
