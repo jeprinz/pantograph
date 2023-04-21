@@ -68,10 +68,10 @@ type Tooth l = Zip.Path (Expr l) /\ l
 -- | Change
 type Change l = Expr (ChangeLabel l)
 data ChangeLabel l
-  = Plus (Tooth l)
-  | Minus (Tooth l)
-  | Expr l
-  | Replace (Expr l) (Expr l)
+  = Plus (Tooth l) {-one kid - whatever fits inside the tooth-}
+  | Minus (Tooth l) {-one kid - whatever fits inside the tooth-}
+  | Expr l {-same number of kids that l has-}
+  | Replace (Expr l) (Expr l) {-zero kids?-}
 
 --endPath :: forall dir l. Path dir l
 --endPath = wrap (Nothing /\ Nothing)
