@@ -3,9 +3,6 @@ module Data.Gram where
 import Prelude
 
 import Data.Array as Array
-import Data.Bifoldable (class Bifoldable)
-import Data.Bifunctor (class Bifunctor, rmap)
-import Data.Bitraversable (class Bitraversable)
 import Data.Const (Const(..))
 import Data.Either.Nested (type (\/))
 import Data.Foldable (class Foldable, intercalate)
@@ -14,12 +11,10 @@ import Data.List.Zip as Zip
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Newtype as Newtype
-import Data.Traversable (class Traversable, sequence, traverse)
-import Data.Tuple.Nested (type (/\), (/\))
+import Data.Traversable (class Traversable, sequence)
+import Data.Tuple (fst)
 import Data.UUID (UUID)
-import Partial.Unsafe (unsafeCrashWith)
 import Type.Direction as Dir
-import Utility (map2)
 
 -- | MetaVar
 
@@ -72,7 +67,7 @@ mapGram f = Newtype.unwrap <<< traverseGram (Identity <<< f <<< mapNodeG_g Newty
 -- | This is implemented by `traverseGram`ing via the applicative `Const m`,
 -- | where `m` is the monoid we are fold-mapping into, which just accumulates
 -- | the monoid value and discards the `Gram`-value of the children.
-foldMapGram :: forall j l m. Functor j => Monoid m => (NodeG j l m -> m) -> Gram j l -> m
+foldMapGram :: forall j l m. Functor j => (NodeG j l m -> m) -> Gram j l -> m
 foldMapGram f = Newtype.unwrap <<< traverseGram (Const <<< f <<< mapNodeG_g Newtype.unwrap)
 
 -- | Traverse a function `f` over the labels of a `Gram`, taking into account
@@ -87,7 +82,7 @@ foldMapGram f = Newtype.unwrap <<< traverseGram (Const <<< f <<< mapNodeG_g Newt
 -- | data the children can use, and `f` should use `Reader.local` in order to
 -- | provide that data. See (!TODO link to example here) for an example of this
 -- | pattern.
-traverseGram :: forall j l l' m. Functor j => Applicative m => (NodeM j m l l' -> m (Node j l' l')) -> Gram j l -> m (Gram j l')
+traverseGram :: forall j l l' m. Functor j => Functor m => (NodeM j m l l' -> m (Node j l' l')) -> Gram j l -> m (Gram j l')
 traverseGram f = overMGram \{l, j} -> f {l, j: traverseGram f <$> j}
 
 -- | Expr
