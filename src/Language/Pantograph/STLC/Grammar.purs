@@ -1,10 +1,6 @@
 module Language.Pantograph.STLC.Grammar where
 
-import Prelude
 import Language.Pantograph.Generic.Grammar as G
-import Data.Set (Set)
-import Data.Set as Set
---import Data.Gram
 
 data Label
 
