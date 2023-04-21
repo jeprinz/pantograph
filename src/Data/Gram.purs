@@ -6,11 +6,12 @@ import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
 import Data.Either.Nested (type (\/))
-import Data.Foldable (class Foldable, foldMap, foldl, foldlDefault, foldr, foldrDefault, intercalate)
+import Data.Foldable (class Foldable, foldMap, foldl, foldlDefault, foldr, foldrDefault, intercalate, sequence_)
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
 import Data.List.Zip as ListZip
 import Data.List.Zip as Zip
+import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Newtype as Newtype
@@ -19,6 +20,9 @@ import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
+import Effect (Effect)
+import Effect.Class (class MonadEffect)
+import Effect.Class.Console (log)
 import Partial.Unsafe (unsafeCrashWith)
 import Type.Direction as Dir
 
@@ -39,16 +43,11 @@ newtype Gram j l = Gram (NodeG j l (Gram j l))
 
 derive instance Functor j => Functor (Gram j)
 
--- derive instance Foldable j => Foldable (Gram j)
 instance Foldable j => Foldable (Gram j) where
   foldMap f (Gram (l /\ j)) = f l <> foldMap (foldMap f) j
-  -- foldr f b (Gram (l /\ j)) = foldr (\g b' -> foldr f b g) (f l b) j
-  -- foldl f b (Gram (l /\ j)) = foldl (\b' g -> foldl f b g) (f b l) j
-  foldr = foldrDefault
-  foldl = foldlDefault
+  foldr f b (Gram (l /\ j)) = foldr (\g  b' -> foldr f b' g) (f l b) j
+  foldl f b (Gram (l /\ j)) = foldl (\b' g  -> foldl f b' g) (f b l) j
 
--- derive instance Traversable j => Traversable (Gram j)
--- !TODO not sure why it can't generically derive this...
 instance (Functor j, Traversable j) => Traversable (Gram j) where
   traverse f (Gram (l /\ j)) = Gram <$> (Tuple <$> f l <*> traverse (traverse f) j)
   sequence fa = sequenceDefault fa
@@ -61,11 +60,11 @@ instance (Show l, Functor j, Foldable j) => Show (Gram j l) where
 -- | This will only show the structure of the `Gram` and nothing about the
 -- | labels -- useful for debug in the generic code. (Alternatively, could
 -- | include `Show l` typeclass constraint everywhere, but that's annoying).
-showGramUnit :: forall j l. Functor j => Foldable j => Gram j l -> String
-showGramUnit = show <<< map (const unit)
+showGramStructure :: forall j l. Functor j => Foldable j => Gram j l -> String
+showGramStructure = foldMapGram \(_ /\ j) -> "(" <> intercalate " " j <> ")"
 
-showGramGeneric :: forall j l l_rep. Functor j => Foldable j => GenericShow l_rep => Generic l l_rep => Gram j l -> String
-showGramGeneric = show <<< map (\x -> genericShow x)
+-- showGramGeneric :: forall j l l_rep. Functor j => Foldable j => GenericShow l_rep => Generic l l_rep => Gram j l -> String
+-- showGramGeneric = show <<< map (\x -> genericShow x)
 
 -- | `Node` of `Gram` parametrized by type of kids.
 -- type NodeG j l g = {l :: l, j :: j g}
@@ -75,6 +74,8 @@ type NodeG j l g = l /\ j g
 type Node j l l' = NodeG j l (Gram j l')
 -- | Alias for `NodeG` with `m (Gram j l')` kids.
 type NodeM j m l l' = NodeG j l (m (Gram j l'))
+
+type NodeMG j m l g = NodeG j l (m g)
 
 showNodeUnit :: forall j l g. Functor j => Foldable j => NodeG j l g -> String
 showNodeUnit (_l /\ j) = "(" <> show unit <> " /\\ " <> "[" <> intercalate ", " (show <<< const unit <$> j) <> "]" <> ")"
@@ -123,7 +124,15 @@ foldMapGram f = Newtype.unwrap <<< traverseGram (Const <<< f <<< mapNodeG_g Newt
 -- | provide that data. See (!TODO link to example here) for an example of this
 -- | pattern.
 traverseGram :: forall j l l' m. Functor j => Functor m => (NodeM j m l l' -> m (Node j l' l')) -> Gram j l -> m (Gram j l')
-traverseGram f = overMGram \(l /\ j) -> f (l /\ (traverseGram f <$> j))
+traverseGram f (Gram (l /\ j)) = Gram <$> f (l /\ (traverseGram f <$> j))
+
+traverseGram_ :: forall j l m a. Functor j => Functor m => (NodeMG j m l a -> m a) -> Gram j l -> m a
+traverseGram_ f (Gram (l /\ j)) = f (l /\ (traverseGram_ f <$> j))
+
+logGramString :: forall j. Functor j => Traversable j => Gram j String -> Effect Unit
+logGramString = traverseGram_ \(l /\ j) -> do
+  log l 
+  sequence_ j
 
 -- | Expr
 type Expr = Gram Array
@@ -144,9 +153,14 @@ type Path1NodeM m l l' = NodeM Maybe m (Tooth l) (Tooth l')
 
 type Tooth l = l /\ ListZip.Path (Expr l)
 
-
 foldMapTooth :: forall l m. Monoid m => (l -> m) -> Tooth l -> m
 foldMapTooth f (l /\ p) = f l <> foldMap (foldMap f) p
+
+foldlTooth :: forall l a b. (b -> a -> b) -> b -> Tooth a -> b
+foldlTooth f b (l /\ p) = ZipList.foldlAround (foldl f) b (flip f l) p
+
+foldrTooth :: forall l a b. (a -> b -> b) -> b -> Tooth a -> b
+foldrTooth f b (l /\ p) = ZipList.foldrAround (flip (foldr f)) b (f l) p
 
 traverseTooth :: forall l l' m. Applicative m => (l -> m l') -> Tooth l -> m (Tooth l')
 traverseTooth f (l /\ p) = Tuple <$> f l <*> traverse (traverse f) p
@@ -205,7 +219,7 @@ data ChangeLabel l
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
 derive instance Generic (ChangeLabel l) _
-instance Show l => Show (ChangeLabel l) where show x = genericShow x
+instance Show (ChangeLabel String) where show x = genericShow x
 derive instance Functor ChangeLabel
 
 instance Foldable ChangeLabel where
@@ -214,8 +228,16 @@ instance Foldable ChangeLabel where
     Minus th -> foldMapTooth f th
     Expr l -> f l
     Replace e1 e2 -> foldMap f e1 <> foldMap f e2
-  foldl f b fa = foldlDefault f b fa
-  foldr f b fa = foldrDefault f b fa
+  foldl f b = case _ of
+    Plus th -> foldlTooth f b th
+    Minus th -> foldlTooth f b th
+    Expr l -> f b l
+    Replace e1 e2 -> foldl f (foldl f b e1) e2
+  foldr f b = case _ of 
+    Plus th -> foldrTooth f b th
+    Minus th -> foldrTooth f b th
+    Expr l -> f l b
+    Replace e1 e2 -> foldr f (foldr f b e2) e1
 
 instance Traversable ChangeLabel where
   traverse f = case _ of
@@ -225,10 +247,17 @@ instance Traversable ChangeLabel where
     Replace e1 e2 -> Replace <$> traverse f e1 <*> traverse f e2
   sequence fa = sequenceDefault fa
 
-plusChange th g = Gram (Plus th /\ g)
-minusChange th g = Gram (Minus th /\ g)
+plusChange :: forall l. Tooth l -> Change l -> Change l
+plusChange th g = Gram (Plus th /\ [g])
+
+minusChange :: forall l. Tooth l -> Change l -> Change l
+minusChange th g = Gram (Minus th /\ [g])
+
+exprChange :: forall l. l -> Array (Change l) -> Change l
 exprChange l g = Gram (Expr l /\ g)
-replaceChange e1 e2 g = Gram (Replace e1 e2 /\ g)
+
+replaceChange :: forall l. Expr l -> Expr l -> Change l
+replaceChange e1 e2 = Gram (Replace e1 e2 /\ [])
 
 matchChangeNode :: forall l g a.
   NodeG Array (ChangeLabel l) g ->

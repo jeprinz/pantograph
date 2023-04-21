@@ -1,6 +1,7 @@
 module Data.List.Zip where
 
 import Prelude
+
 import Data.Foldable (class Foldable, foldMap, foldl, foldr, intercalate)
 import Data.FoldableWithIndex (class FoldableWithIndex, foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
@@ -10,6 +11,7 @@ import Data.List as List
 import Data.List.Rev ((:*))
 import Data.List.Rev as Rev
 import Data.Maybe (Maybe)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable, traverse)
 import Data.TraversableWithIndex (class TraversableWithIndex, traverseWithIndex)
@@ -36,6 +38,7 @@ unzip (Zip z) = unpathAroundList (pure z.focus) z.path
 -- | The type of a paths into lists.
 newtype Path a = Path {left :: Rev.List a, right :: List.List a}
 
+derive instance Newtype (Path a) _
 derive instance Generic (Path a) _
 instance Show a => Show (Path a) where show x = genericShow x
 derive instance Eq a => Eq (Path a)
@@ -68,6 +71,12 @@ appendLeft a (Path d) = Path d {left = d.left :* a}
 appendRight :: forall a. a -> Path a -> Path a
 appendRight a (Path d) = Path d {right = a : d.right}
 
+left :: forall a. Path a -> Rev.List a
+left = unwrap >>> _.left
+
+right :: forall a. Path a -> List.List a
+right = unwrap >>> _.right
+
 unpath :: forall a. Path a -> List.List a
 unpath (Path d) = Rev.unreverse d.left <> d.right
 
@@ -90,3 +99,11 @@ unconsRight (Path d) = List.uncons d.right <#> \{head, tail} -> {head, tail: Pat
 
 showPath :: Path String -> String -> String
 showPath (Path d) str = intercalate " " d.left <+> str <+> intercalate " " d.right
+
+-- left inside, right outside 
+foldrAround :: forall a b. (a -> b -> b) -> b -> (b -> b) -> Path a -> b
+foldrAround f b mid (Path d) = foldr f (mid (foldr f b d.left)) d.right
+
+-- left outside, right inside
+foldlAround :: forall a b. (b -> a -> b) -> b -> (b -> b) -> Path a -> b
+foldlAround f b mid (Path d) = foldl f (mid (foldl f b d.right)) d.left
