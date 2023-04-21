@@ -1,23 +1,27 @@
 module Language.Pantograph.Generic.ChangeAlgebra where
 
 import Prelude
-import Data.Tuple.Nested (type (/\), (/\))
-
---import Language.Pantograph.Generic.Grammar
-import Data.Gram
 import Data.Array (unzip)
-import Effect.Exception.Unsafe (unsafeThrow)
+import Data.Gram
 import Data.List.Zip (Path(..))
 import Data.Newtype (unwrap)
+import Data.Tuple.Nested (type (/\), (/\))
+import Effect.Exception.Unsafe (unsafeThrow)
 
--- invert :: forall l. Change l -> Change l
--- invert (Gram (l /\ kids)) =
---     let l_inverted = case l of
---             Plus tooth -> Minus tooth
---             Minus tooth -> Plus tooth
---             Expr le -> Expr le
---             Replace e1 e2 -> Replace e2 e1
---     in Gram (l_inverted /\ map invert kids)
+-- HENRY: due to generic fixpoint form of `Gram`, don't need to manually recurse
+invert :: forall l. Change l -> Change l
+invert = map case _ of
+  Plus th -> Minus th
+  Minus th -> Plus th
+  Expr l -> Expr l
+  Replace e1 e2 -> Replace e2 e1
+
+-- endpoints :: forall l. Change l -> Expr l /\ Expr l
+-- endpoints = foldMapGram \ch ->
+--   let kids1 /\ kids2 = unzip $ ?joint ?ch in
+--   matchChange ch
+--     ?a
+
 
 -- endpoints :: forall l. Change l -> Expr l /\ Expr l
 -- endpoints (Gram (l /\ kids)) =
