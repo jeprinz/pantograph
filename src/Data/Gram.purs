@@ -68,6 +68,8 @@ showGramStructure = foldMapGram \(_ /\ j) -> "(" <> intercalate " " j <> ")"
 
 -- | `Node` of `Gram` parametrized by type of kids.
 -- type NodeG j l g = {l :: l, j :: j g}
+
+type NodeG :: forall k. (k -> Type) -> Type -> k -> Type
 type NodeG j l g = l /\ j g
 
 -- | Alias for `NodeG` with `Gram j l'` kids.
@@ -75,6 +77,7 @@ type Node j l l' = NodeG j l (Gram j l')
 -- | Alias for `NodeG` with `m (Gram j l')` kids.
 type NodeM j m l l' = NodeG j l (m (Gram j l'))
 
+type NodeMG :: forall k1 k2. (k1 -> Type) -> (k2 -> k1) -> Type -> k2 -> Type
 type NodeMG j m l g = NodeG j l (m g)
 
 showNodeUnit :: forall j l g. Functor j => Foldable j => NodeG j l g -> String
