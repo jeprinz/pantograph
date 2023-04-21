@@ -272,3 +272,12 @@ matchChangeNode = flip \f -> case _ of
   (Expr l /\ kids) -> f.expr l kids
   (Replace e1 e2 /\ []) -> f.replace e1 e2
   g -> unsafeCrashWith $ "invalid change: " <> showNodeUnit g
+
+ex_ch1 :: Change String
+ex_ch1 = exprChange "A" [ exprChange "B" [], exprChange "C" [] ]
+
+ex_ex2 :: Expr String
+ex_ex2 = expr "A" []
+
+ex_ex1 :: Expr String
+ex_ex1 = expr "A" [ expr "B" [], expr "C" [] ]
