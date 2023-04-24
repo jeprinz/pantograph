@@ -2,6 +2,7 @@ module Data.List.Zip where
 
 import Prelude
 
+import Control.Plus (class Plus)
 import Data.Foldable (class Foldable, foldMap, foldl, foldr, intercalate)
 import Data.FoldableWithIndex (class FoldableWithIndex, foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
@@ -15,6 +16,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable, traverse)
 import Data.TraversableWithIndex (class TraversableWithIndex, traverseWithIndex)
+import Data.Unify (class Unify, unify)
 import Text.Pretty ((<+>))
 
 newtype Tooth a = Zip {path :: Path a, focus :: a}
@@ -47,20 +49,22 @@ derive instance Foldable Path
 derive instance Traversable Path
 instance Semigroup (Path a) where append (Path d1) (Path d2) = Path {left: d1.left <> d2.left, right: d1.right <> d2.right}
 instance Monoid (Path a) where mempty = Path {left: mempty, right: mempty}
+instance (Applicative m, Plus m, Unify m a) => Unify m (Path a) where unify (Path {left: l1, right: r1}) (Path {left: l2, right: r2}) = (\left right -> Path {left, right}) <$> unify l1 l2 <*> unify r1 r2
 
-instance FunctorWithIndex Int Path where 
-  mapWithIndex f (Path d) = Path d {left = mapWithIndex f d.left, right = mapWithIndex (\i -> f (i + l)) d.right}
-    where l = Rev.length d.left
-instance FoldableWithIndex Int Path where
-  foldMapWithIndex f = foldMapWithIndex f <<< unpath
-  foldrWithIndex f b = foldrWithIndex f b <<< unpath
-  foldlWithIndex f b = foldlWithIndex f b <<< unpath
-instance TraversableWithIndex Int Path where
-  traverseWithIndex f (Path d) =
-    let l = Rev.length d.left in
-    (\left right -> Path d {left = left, right = right})
-      <$> traverseWithIndex f d.left
-      <*> traverseWithIndex (\i -> f (i + l)) d.right
+-- !TODO is this used anywhere?
+-- instance FunctorWithIndex Int Path where 
+--   mapWithIndex f (Path d) = Path d {left = mapWithIndex f d.left, right = mapWithIndex (\i -> f (i + l)) d.right}
+--     where l = Rev.length d.left
+-- instance FoldableWithIndex Int Path where
+--   foldMapWithIndex f = foldMapWithIndex f <<< unpath
+--   foldrWithIndex f b = foldrWithIndex f b <<< unpath
+--   foldlWithIndex f b = foldlWithIndex f b <<< unpath
+-- instance TraversableWithIndex Int Path where
+--   traverseWithIndex f (Path d) =
+--     let l = Rev.length d.left in
+--     (\left right -> Path d {left = left, right = right})
+--       <$> traverseWithIndex f d.left
+--       <*> traverseWithIndex (\i -> f (i + l)) d.right
 
 lengthLeft (Path p) = Rev.length p.left
 lengthRight (Path p) = List.length p.right
@@ -95,6 +99,12 @@ singletonRight a = appendRight a mempty
 unsnocLeft :: forall a. Path a -> Maybe {init :: Path a , last :: a}
 unsnocLeft (Path d) = Rev.unsnoc d.left <#> \{init, last} -> {init: Path d {left = init}, last}
 
+unconsRight :: forall a429.
+  Path a429
+  -> Maybe
+       { head :: a429
+       , tail :: Path a429
+       }
 unconsRight (Path d) = List.uncons d.right <#> \{head, tail} -> {head, tail: Path d {right = tail}}
 
 showPath :: Path String -> String -> String

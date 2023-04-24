@@ -2,6 +2,7 @@ module Data.Gram where
 
 import Prelude
 
+import Control.Plus as Plus
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
@@ -17,9 +18,12 @@ import Data.Newtype (class Newtype)
 import Data.Newtype as Newtype
 import Data.Show.Generic (class GenericShow, genericShow)
 import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), curry, fst, snd, uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
+import Data.Unfoldable (class Unfoldable)
+import Data.Unify (class Unify, unify)
+import Data.Unify.Generic (genericUnify)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Effect.Class.Console (log)
@@ -31,17 +35,28 @@ import Type.Direction as Dir
 newtype MetaVar = MetaVar UUID
 
 derive newtype instance Show MetaVar
+derive newtype instance Eq MetaVar
+derive newtype instance Ord MetaVar
 
 showMetaVar :: MetaVar -> String
 showMetaVar (MetaVar str) = show str
 
-type Meta l = MetaVar \/ l
+newtype Meta l = Meta (MetaVar \/ l)
+
+derive newtype instance Show l => Show (Meta l)
+derive newtype instance Eq l => Eq (Meta l)
 
 -- | A `Gram` is a generalization of a tree (and a specialization of a
 -- | fixpoint), where each node of the `Gram` has a label of type `l`, and the kids are 
 data Gram j l = Gram (NodeG j l (Gram j l))
 
+derive instance Generic (Gram j l) _
 derive instance Functor j => Functor (Gram j)
+instance (Applicative m, Plus.Plus m, Unify m l, Functor j, Foldable j, Unfoldable j, Traversable j) => Unify m (Gram j l) where
+  unify (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) = 
+    curry Gram
+      <$> (unify l1 l2)
+      <*> (Array.toUnfoldable <$> traverse (uncurry unify) (Array.zip (Array.fromFoldable j1) (Array.fromFoldable j2)))
 
 instance Foldable j => Foldable (Gram j) where
   foldMap f (Gram (l /\ j)) = f l <> foldMap (foldMap f) j
@@ -54,7 +69,7 @@ instance (Functor j, Traversable j) => Traversable (Gram j) where
 
 instance (Show l, Functor j, Foldable j) => Show (Gram j l) where
   show = foldMapGram \(l /\ j) ->
-    "(Gram (" <> show l <> " /\\ " <> "[" <> intercalate ", " j <> "]" <> "))"
+    "(Gram ((" <> show l <> ") /\\ " <> "[" <> intercalate ", " j <> "]" <> "))"
 
 -- | In order to show any `Gram`, first map each label to `unit`, and then show.
 -- | This will only show the structure of the `Gram` and nothing about the
@@ -145,8 +160,8 @@ expr l kids = Gram (l /\ kids)
 -- | MetaExpr
 type MetaExpr l = Gram Array (Meta l)
 
--- | Each node of a path is labeled. `Path1` is populated. Use `Path` for a path
--- | that could be empty.
+-- | Each node of a path is labeled. `Path1` is populated (has at least one
+-- | element). Use `Path` for a path that could be empty.
 type Path1 :: Type -> Type
 type Path1 l = Gram Maybe (Tooth l)
 
@@ -180,7 +195,6 @@ lastPath :: forall dir l. Tooth l -> Path dir l
 lastPath th = Newtype.wrap <<< Just $ lastPath1 th
 
 stepPath1 :: forall l. Tooth l -> Maybe (Path1 l) -> Path1 l
--- stepPath1 th p = wrapGram (p /\ th)
 stepPath1 th p = Gram (th /\ p)
 
 stepPath :: forall dir l. Tooth l -> Path dir l -> Path dir l
@@ -207,8 +221,8 @@ appendPath p1 = Newtype.unwrap >>> case _ of
   Nothing -> p1
   Just p2 -> stepPath (labelGram p2) (appendPath p1 (Newtype.wrap (jointGram p2)))
 
-reverse :: forall dir dir' l. Dir.Rev dir dir' => Path dir l -> Path dir' l
-reverse = Newtype.over Path (go Nothing)
+reversePath :: forall dir dir' l. Dir.Rev dir dir' => Path dir l -> Path dir' l
+reversePath = Newtype.over Path (go Nothing)
   where
   go p' Nothing = p'
   go p' (Just p) = go (Just (stepPath1 (labelGram p) p')) (jointGram p)
@@ -222,8 +236,9 @@ data ChangeLabel l
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
 derive instance Generic (ChangeLabel l) _
-instance Show (ChangeLabel String) where show x = genericShow x
+instance Show l => Show (ChangeLabel l) where show x = genericShow x
 derive instance Functor ChangeLabel
+instance (Applicative m, Plus.Plus m, Unify m l) => Unify m (ChangeLabel l) where unify x y = genericUnify x y
 
 instance Foldable ChangeLabel where
   foldMap f = case _ of
@@ -275,12 +290,3 @@ matchChangeNode = flip \f -> case _ of
   (Expr l /\ kids) -> f.expr l kids
   (Replace e1 e2 /\ []) -> f.replace e1 e2
   g -> unsafeCrashWith $ "invalid change: " <> showNodeUnit g
-
-ex_ch1 :: Change String
-ex_ch1 = exprChange "A" [ exprChange "B" [], exprChange "C" [] ]
-
-ex_ex2 :: Expr String
-ex_ex2 = expr "A" []
-
-ex_ex1 :: Expr String
-ex_ex1 = expr "A" [ expr "B" [], expr "C" [] ]
