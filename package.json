@@ -7,12 +7,17 @@
     "test": "test"
   },
   "dependencies": {
-    "purescript": "^0.15.8",
-    "spago": "^0.20.9",
     "uuid": "^9.0.0"
   },
+  "devDependencies": {
+    "purescript": "^0.15.8",
+    "spago": "^0.20.9"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rm -rf node_modules output .spago *.lock .cache",
+    "postinstall": "spago install",
+    "build": "npx spago build",
+    "test": "npx spago test"
   },
   "repository": {
     "type": "git",
