@@ -15,8 +15,6 @@ import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable, traverse)
-import Data.TraversableWithIndex (class TraversableWithIndex, traverseWithIndex)
-import Data.Unify (class Unify, unify)
 import Text.Pretty ((<+>))
 
 newtype Tooth a = Zip {path :: Path a, focus :: a}
@@ -49,7 +47,7 @@ derive instance Foldable Path
 derive instance Traversable Path
 instance Semigroup (Path a) where append (Path d1) (Path d2) = Path {left: d1.left <> d2.left, right: d1.right <> d2.right}
 instance Monoid (Path a) where mempty = Path {left: mempty, right: mempty}
-instance (Applicative m, Plus m, Unify m a) => Unify m (Path a) where unify (Path {left: l1, right: r1}) (Path {left: l2, right: r2}) = (\left right -> Path {left, right}) <$> unify l1 l2 <*> unify r1 r2
+-- instance (Applicative m, Plus m, Unify m a) => Unify m (Path a) where unify (Path {left: l1, right: r1}) (Path {left: l2, right: r2}) = (\left right -> Path {left, right}) <$> unify l1 l2 <*> unify r1 r2
 
 -- !TODO is this used anywhere?
 -- instance FunctorWithIndex Int Path where 

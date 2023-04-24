@@ -12,14 +12,9 @@ module Data.List.Rev
 
 import Prelude
 
-import Control.Plus (class Plus)
 import Data.Foldable (class Foldable, foldMap, foldl, foldr)
-import Data.FoldableWithIndex (class FoldableWithIndex, foldMapWithIndex, foldlWithIndex, foldrWithIndex)
-import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
 import Data.List as List
 import Data.Traversable (class Traversable, sequence, traverse)
-import Data.TraversableWithIndex (class TraversableWithIndex, traverseWithIndex)
-import Data.Unify (class Unify)
 
 newtype List a = Rev (List.List a)
 
@@ -47,7 +42,7 @@ instance Traversable List where
 
 derive newtype instance Semigroup (List a)
 derive newtype instance Monoid (List a)
-derive newtype instance (Applicative m, Plus m, Unify m a) => Unify m (List a)
+-- derive newtype instance (Applicative m, Plus m, Unify m a) => Unify m (List a)
 
 -- !TODO is this used anywhere?
 -- instance FunctorWithIndex Int List where mapWithIndex f = unreversed $ mapWithIndex f

@@ -1,46 +1,26 @@
 module Data.Gram where
 
 import Prelude
-
-import Control.Monad.Maybe.Trans (class MonadTrans, MaybeT, lift)
-import Control.Monad.State (class MonadState, StateT, modify, modify_)
-import Control.Plus (empty)
-import Control.Plus as Plus
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
-import Data.Either (Either(..), either)
-import Data.Either.Nested (type (\/))
-import Data.Foldable (class Foldable, foldMap, foldl, foldlDefault, foldr, foldrDefault, intercalate, sequence_)
+import Data.Foldable (class Foldable, foldMap, foldl, foldr, intercalate, sequence_)
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
 import Data.List.Zip as ListZip
-import Data.List.Zip as Zip
 import Data.List.Zip as ZipList
-import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (class Newtype)
 import Data.Newtype as Newtype
-import Data.Show.Generic (class GenericShow, genericShow)
-import Data.String as String
 import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
-import Data.Tuple (Tuple(..), curry, fst, snd, uncurry)
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.UUID (UUID)
-import Data.UUID as UUID
-import Data.Unfoldable (class Unfoldable)
-import Data.Unify (class Unify, unify)
-import Data.Unify.Generic (genericUnify)
+import Data.Unify (Meta)
 import Effect (Effect)
-import Effect.Class (class MonadEffect)
 import Effect.Class.Console (log)
-import Effect.Exception.Unsafe (unsafeThrow)
-import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
-import Record as Record
 import Type.Direction as Dir
-import Type.Proxy (Proxy(..))
 
 -- | A `Gram` is a generalization of a tree (and a specialization of a
 -- | fixpoint), where each node of the `Gram` has a label of type `l`, and the kids are 
@@ -71,26 +51,7 @@ instance (Show l, Functor j, Foldable j) => Show (Gram j l) where
 showGramStructure :: forall j l. Functor j => Foldable j => Gram j l -> String
 showGramStructure = foldMapGram \(_ /\ j) -> "(" <> intercalate " " j <> ")"
 
--- | MetaVar
-
-newtype MetaVar = MetaVar UUID
-
-instance Show MetaVar where show (MetaVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
-derive newtype instance Eq MetaVar
-derive newtype instance Ord MetaVar
-
-showMetaVar :: MetaVar -> String
-showMetaVar (MetaVar str) = show str
-
-freshMetaVar :: Unit -> MetaVar
-freshMetaVar _ = MetaVar $ unsafePerformEffect (UUID.genUUID)
-
-newtype Meta l = Meta (MetaVar \/ l)
-
-derive instance Newtype (Meta l) _
-instance Show l => Show (Meta l) where show = unwrap >>> either show show
-derive newtype instance Eq l => Eq (Meta l)
-
+{-
 class IsMeta meta concrete | meta -> concrete where
   fromMetaVar :: MetaVar -> meta
   fromConcrete :: concrete -> meta
@@ -102,55 +63,61 @@ instance IsMeta (Meta l) l where
   matchMeta (Meta (Left mv)) f = f.meta mv
   matchMeta (Meta (Right l)) f = f.concrete l
 
--- instance (IsMeta ml l, Foldable j, Plus.Plus j) => IsMeta (Gram j ml) (Node j l ml) where
---   fromMetaVar mv = ?a -- Gram (fromMetaVar mv /\ empty)
---   fromConcrete = ?a -- map fromConcrete
---   matchMeta = ?a
---   -- matchMeta (l /\ j) f = matchMeta l 
---   --   { meta: \mv -> if Foldable.null j
---   --       then f.meta mv
---   --       else unsafeThrow "metavariable case of a Gram should not have any children"
---   --   , concrete: \l -> f.concrete (Gram (l /\ (?a <$> j)))
---   --   }
+instance (IsMeta ml l, Foldable j, Plus.Plus j) => IsMeta (Gram j ml) (Node j l ml) where
+  fromMetaVar mv = Gram (fromMetaVar mv /\ empty)
+  fromConcrete (l /\ j) = Gram (fromConcrete l /\ j)
+  matchMeta (Gram (ml /\ j)) f = matchMeta ml
+    { meta: \mv -> 
+        if Foldable.null j 
+          then f.meta mv
+          else unsafeThrow "metavariable case of Gram should not have any kids"
+    , concrete: \l -> f.concrete (l /\ j)
+    }
 
-_unifySub = Proxy :: Proxy "unifySub"
-newtype UnifyT meta m a = UnifyT (StateT (UnifySt meta m) (MaybeT m) a)
-type UnifySt meta m = {unifySub :: Map.Map MetaVar (UnifyT meta m meta)}
+newtype UnifyT meta m a = UnifyT (UnifyT' meta m a)
+type UnifyT' meta m a = StateT (UnifySt meta m) (MaybeT m) a
+type UnifySt meta m = Map.Map MetaVar (UnifyT meta m meta)
 
-unUnifyT (UnifyT m) = m
+runUnifyT (UnifyT m) = m
 
 instance MonadTrans (UnifyT meta) where lift = UnifyT <<< lift <<< lift
 instance Functor m => Functor (UnifyT meta m) where map f (UnifyT ma) = UnifyT (f <$> ma)
 instance Monad m => Apply (UnifyT meta m) where apply (UnifyT mf) (UnifyT ma) = UnifyT (mf <*> ma)
-instance Monad m => Bind (UnifyT meta m) where bind (UnifyT ma) k = UnifyT (ma >>= k >>> unUnifyT)
+instance Monad m => Bind (UnifyT meta m) where bind (UnifyT ma) k = UnifyT (ma >>= k >>> runUnifyT)
 instance Monad m => Applicative (UnifyT meta m) where pure a = UnifyT (pure a)
 
 -- ml is meta label
 -- cl is concrete label
-instance (Monad m, IsMeta ml l) => Unify (UnifyT (Gram j ml) m) (Gram j ml) where
-  -- unify = unsafeThrow "TODO"
-  unify (Gram (ml1 /\ j1)) g2@(Gram (ml2 /\ j2)) = matchMeta ml1
-    { meta: \mv1 -> do
-        lift (modify_ (Record.modify _unifySub (Map.insert mv1 ?g2)))
-        pure ?a
-      -- modify_ (Record.modify _unifySub (Map.insert mv1 ?g2)) >>= \_ -> pure ?g2
-    , concrete: \l1 -> matchMeta ml2 
-      { meta: ?a 
-      , concrete: ?a
+instance (Monad m, IsMeta ml l, Eq l, Foldable j, Unfoldable j, Traversable j, Plus.Plus j) => Unify (UnifyT (Gram j ml) m) (UnifyT (Gram j ml) m (Gram j ml)) where
+  unify m_g1 m_g2 = do
+    m_g1 >>= \g1 -> matchMeta g1 
+      { meta: \mv1 -> do
+          UnifyT $ modify_ $ Map.insert mv1 $ m_g2
+          pure m_g2
+      , concrete: \(l1 /\ j1) -> m_g2 >>= \g2 -> matchMeta g2 
+        { meta: \mv2 -> do
+            UnifyT $ modify_ $ Map.insert mv2 $ m_g1
+            pure m_g1
+        , concrete: \(l2 /\ j2) -> do
+            -- equate labels
+            unless (l1 == l2) do UnifyT empty
+            -- unify kids
+            j' <- 
+              (Array.toUnfoldable :: Array _ -> j _) <$>
+              flip traverse (Array.zip (Array.fromFoldable j1) (Array.fromFoldable j2)) \(g1' /\ g2') -> do
+                unify 
+                  (substUnifyM g1' :: UnifyT (Gram j ml) m (Gram j ml)) 
+                  (substUnifyM g2' :: UnifyT (Gram j ml) m (Gram j ml))
+
+            substUnifyM <<< Gram <<< (fromConcrete l1 /\ _) <$> sequence j'
+        }
       }
-    }
-
--- instance (Unify m l, MonadState {unifySub :: Map.Map MetaVar (Meta l) | r} m) => Unify m (Meta l) where
---   unify (Meta (Left mv1)) m2 = modify_ (Record.modify _unifySub (Map.insert mv1 m2)) >>= \_ -> pure m2
---   unify m1 (Meta (Left mv2)) = modify_ (Record.modify _unifySub (Map.insert mv2 m1)) >>= \_ -> pure m1
---   unify (Meta (Right l1)) (Meta (Right l2)) = Meta <<< Right <$> unify l1 l2
-
-{-
-instance (Applicative m, Plus.Plus m, Unify m l, Functor j, Foldable j, Unfoldable j, Traversable j) => Unify m (Gram j l) where
-  unify (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) = 
-    curry Gram
-      <$> (unify l1 l2)
-      <*> (Array.toUnfoldable <$> traverse (uncurry unify) (Array.zip (Array.fromFoldable j1) (Array.fromFoldable j2)))
+      where
+      substUnifyM :: Gram j ml -> UnifyT (Gram j ml) m (Gram j ml)
+      substUnifyM g = matchMeta g
+        { meta: \mv -> UnifyT (gets (Map.lookup mv)) >>= maybe (pure g) identity
+        , concrete: \(l /\ j) -> fromConcrete <<< (l /\ _) <$> substUnifyM `traverse` j
+        }
 -}
 
 -- | `Node` of `Gram` parametrized by type of kids.
@@ -316,12 +283,6 @@ instance Show l => Show (ChangeLabel l) where
   show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
 
 derive instance Functor ChangeLabel
-
--- -- instance (Applicative m, Plus.Plus m, Unify m l) => Unify m (ChangeLabel l) where unify x y = genericUnify x y
--- instance IsMeta ml l => IsMeta (ChangeLabel ml) (ChangeLabel l) where
---   fromMetaVar = ?a 
---   fromConcrete = ?a 
---   matchMeta = ?a 
 
 instance Foldable ChangeLabel where
   foldMap f = case _ of
