@@ -2,49 +2,45 @@ module Data.Gram where
 
 import Prelude
 
+import Control.Monad.Maybe.Trans (class MonadTrans, MaybeT, lift)
+import Control.Monad.State (class MonadState, StateT, modify, modify_)
+import Control.Plus (empty)
 import Control.Plus as Plus
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
+import Data.Either (Either(..), either)
 import Data.Either.Nested (type (\/))
 import Data.Foldable (class Foldable, foldMap, foldl, foldlDefault, foldr, foldrDefault, intercalate, sequence_)
+import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
 import Data.List.Zip as ListZip
 import Data.List.Zip as Zip
 import Data.List.Zip as ZipList
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Newtype as Newtype
 import Data.Show.Generic (class GenericShow, genericShow)
+import Data.String as String
 import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
 import Data.Tuple (Tuple(..), curry, fst, snd, uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
+import Data.UUID as UUID
 import Data.Unfoldable (class Unfoldable)
 import Data.Unify (class Unify, unify)
 import Data.Unify.Generic (genericUnify)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Effect.Class.Console (log)
+import Effect.Exception.Unsafe (unsafeThrow)
+import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith)
+import Record as Record
 import Type.Direction as Dir
-
--- | MetaVar
-
-newtype MetaVar = MetaVar UUID
-
-derive newtype instance Show MetaVar
-derive newtype instance Eq MetaVar
-derive newtype instance Ord MetaVar
-
-showMetaVar :: MetaVar -> String
-showMetaVar (MetaVar str) = show str
-
-newtype Meta l = Meta (MetaVar \/ l)
-
-derive newtype instance Show l => Show (Meta l)
-derive newtype instance Eq l => Eq (Meta l)
+import Type.Proxy (Proxy(..))
 
 -- | A `Gram` is a generalization of a tree (and a specialization of a
 -- | fixpoint), where each node of the `Gram` has a label of type `l`, and the kids are 
@@ -52,11 +48,6 @@ data Gram j l = Gram (NodeG j l (Gram j l))
 
 derive instance Generic (Gram j l) _
 derive instance Functor j => Functor (Gram j)
-instance (Applicative m, Plus.Plus m, Unify m l, Functor j, Foldable j, Unfoldable j, Traversable j) => Unify m (Gram j l) where
-  unify (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) = 
-    curry Gram
-      <$> (unify l1 l2)
-      <*> (Array.toUnfoldable <$> traverse (uncurry unify) (Array.zip (Array.fromFoldable j1) (Array.fromFoldable j2)))
 
 instance Foldable j => Foldable (Gram j) where
   foldMap f (Gram (l /\ j)) = f l <> foldMap (foldMap f) j
@@ -69,7 +60,9 @@ instance (Functor j, Traversable j) => Traversable (Gram j) where
 
 instance (Show l, Functor j, Foldable j) => Show (Gram j l) where
   show = foldMapGram \(l /\ j) ->
-    "(Gram ((" <> show l <> ") /\\ " <> "[" <> intercalate ", " j <> "]" <> "))"
+    if Foldable.null j 
+      then show l
+      else "(" <> show l <> " " <> intercalate " " j <> ")"
 
 -- | In order to show any `Gram`, first map each label to `unit`, and then show.
 -- | This will only show the structure of the `Gram` and nothing about the
@@ -78,12 +71,89 @@ instance (Show l, Functor j, Foldable j) => Show (Gram j l) where
 showGramStructure :: forall j l. Functor j => Foldable j => Gram j l -> String
 showGramStructure = foldMapGram \(_ /\ j) -> "(" <> intercalate " " j <> ")"
 
--- showGramGeneric :: forall j l l_rep. Functor j => Foldable j => GenericShow l_rep => Generic l l_rep => Gram j l -> String
--- showGramGeneric = show <<< map (\x -> genericShow x)
+-- | MetaVar
+
+newtype MetaVar = MetaVar UUID
+
+instance Show MetaVar where show (MetaVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
+derive newtype instance Eq MetaVar
+derive newtype instance Ord MetaVar
+
+showMetaVar :: MetaVar -> String
+showMetaVar (MetaVar str) = show str
+
+freshMetaVar :: Unit -> MetaVar
+freshMetaVar _ = MetaVar $ unsafePerformEffect (UUID.genUUID)
+
+newtype Meta l = Meta (MetaVar \/ l)
+
+derive instance Newtype (Meta l) _
+instance Show l => Show (Meta l) where show = unwrap >>> either show show
+derive newtype instance Eq l => Eq (Meta l)
+
+class IsMeta meta concrete | meta -> concrete where
+  fromMetaVar :: MetaVar -> meta
+  fromConcrete :: concrete -> meta
+  matchMeta :: forall a. meta -> {meta :: MetaVar -> a, concrete :: concrete -> a} -> a
+
+instance IsMeta (Meta l) l where
+  fromMetaVar = Meta <<< Left
+  fromConcrete = Meta <<< Right
+  matchMeta (Meta (Left mv)) f = f.meta mv
+  matchMeta (Meta (Right l)) f = f.concrete l
+
+-- instance (IsMeta ml l, Foldable j, Plus.Plus j) => IsMeta (Gram j ml) (Node j l ml) where
+--   fromMetaVar mv = ?a -- Gram (fromMetaVar mv /\ empty)
+--   fromConcrete = ?a -- map fromConcrete
+--   matchMeta = ?a
+--   -- matchMeta (l /\ j) f = matchMeta l 
+--   --   { meta: \mv -> if Foldable.null j
+--   --       then f.meta mv
+--   --       else unsafeThrow "metavariable case of a Gram should not have any children"
+--   --   , concrete: \l -> f.concrete (Gram (l /\ (?a <$> j)))
+--   --   }
+
+_unifySub = Proxy :: Proxy "unifySub"
+newtype UnifyT meta m a = UnifyT (StateT (UnifySt meta m) (MaybeT m) a)
+type UnifySt meta m = {unifySub :: Map.Map MetaVar (UnifyT meta m meta)}
+
+unUnifyT (UnifyT m) = m
+
+instance MonadTrans (UnifyT meta) where lift = UnifyT <<< lift <<< lift
+instance Functor m => Functor (UnifyT meta m) where map f (UnifyT ma) = UnifyT (f <$> ma)
+instance Monad m => Apply (UnifyT meta m) where apply (UnifyT mf) (UnifyT ma) = UnifyT (mf <*> ma)
+instance Monad m => Bind (UnifyT meta m) where bind (UnifyT ma) k = UnifyT (ma >>= k >>> unUnifyT)
+instance Monad m => Applicative (UnifyT meta m) where pure a = UnifyT (pure a)
+
+-- ml is meta label
+-- cl is concrete label
+instance (Monad m, IsMeta ml l) => Unify (UnifyT (Gram j ml) m) (Gram j ml) where
+  -- unify = unsafeThrow "TODO"
+  unify (Gram (ml1 /\ j1)) g2@(Gram (ml2 /\ j2)) = matchMeta ml1
+    { meta: \mv1 -> do
+        lift (modify_ (Record.modify _unifySub (Map.insert mv1 ?g2)))
+        pure ?a
+      -- modify_ (Record.modify _unifySub (Map.insert mv1 ?g2)) >>= \_ -> pure ?g2
+    , concrete: \l1 -> matchMeta ml2 
+      { meta: ?a 
+      , concrete: ?a
+      }
+    }
+
+-- instance (Unify m l, MonadState {unifySub :: Map.Map MetaVar (Meta l) | r} m) => Unify m (Meta l) where
+--   unify (Meta (Left mv1)) m2 = modify_ (Record.modify _unifySub (Map.insert mv1 m2)) >>= \_ -> pure m2
+--   unify m1 (Meta (Left mv2)) = modify_ (Record.modify _unifySub (Map.insert mv2 m1)) >>= \_ -> pure m1
+--   unify (Meta (Right l1)) (Meta (Right l2)) = Meta <<< Right <$> unify l1 l2
+
+{-
+instance (Applicative m, Plus.Plus m, Unify m l, Functor j, Foldable j, Unfoldable j, Traversable j) => Unify m (Gram j l) where
+  unify (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) = 
+    curry Gram
+      <$> (unify l1 l2)
+      <*> (Array.toUnfoldable <$> traverse (uncurry unify) (Array.zip (Array.fromFoldable j1) (Array.fromFoldable j2)))
+-}
 
 -- | `Node` of `Gram` parametrized by type of kids.
--- type NodeG j l g = {l :: l, j :: j g}
-
 type NodeG :: forall k. (k -> Type) -> Type -> k -> Type
 type NodeG j l g = l /\ j g
 
@@ -185,6 +255,8 @@ traverseTooth f (l /\ p) = Tuple <$> f l <*> traverse (traverse f) p
 
 unTooth (l /\ p) g = expr l (Array.fromFoldable (ListZip.unpathAround g p))
 
+showTooth (l /\ p) = show l <> " " <> intercalate " " (ListZip.unpathAround "{}" (show <$> p))
+
 newtype Path (dir :: Symbol) l = Path (Maybe (Path1 l))
 derive instance Newtype (Path dir l) _
 
@@ -236,9 +308,20 @@ data ChangeLabel l
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
 derive instance Generic (ChangeLabel l) _
-instance Show l => Show (ChangeLabel l) where show x = genericShow x
+
+instance Show l => Show (ChangeLabel l) where
+  show (Plus th) = "(+ " <> showTooth th <> ")"
+  show (Minus th) = "(- " <> showTooth th <> ")"
+  show (Expr e) = show e
+  show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
+
 derive instance Functor ChangeLabel
-instance (Applicative m, Plus.Plus m, Unify m l) => Unify m (ChangeLabel l) where unify x y = genericUnify x y
+
+-- -- instance (Applicative m, Plus.Plus m, Unify m l) => Unify m (ChangeLabel l) where unify x y = genericUnify x y
+-- instance IsMeta ml l => IsMeta (ChangeLabel ml) (ChangeLabel l) where
+--   fromMetaVar = ?a 
+--   fromConcrete = ?a 
+--   matchMeta = ?a 
 
 instance Foldable ChangeLabel where
   foldMap f = case _ of
@@ -265,6 +348,8 @@ instance Traversable ChangeLabel where
     Replace e1 e2 -> Replace <$> traverse f e1 <*> traverse f e2
   sequence fa = sequenceDefault fa
 
+type MetaChange l = Change (Meta l)
+
 plusChange :: forall l. Tooth l -> Change l -> Change l
 plusChange th g = Gram (Plus th /\ [g])
 
@@ -290,3 +375,15 @@ matchChangeNode = flip \f -> case _ of
   (Expr l /\ kids) -> f.expr l kids
   (Replace e1 e2 /\ []) -> f.replace e1 e2
   g -> unsafeCrashWith $ "invalid change: " <> showNodeUnit g
+
+matchChange (Gram n) = matchChangeNode n
+
+-- Name (placeholder)
+
+newtype Name = Name String
+
+derive instance Generic Name _
+derive newtype instance Eq Name
+derive newtype instance Ord Name
+instance Show Name where show (Name str) = str
+-- instance (Functor m, Plus.Plus m, Applicative m) => Unify m Name where unify x y = genericUnify x y

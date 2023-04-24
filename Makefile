@@ -14,7 +14,5 @@ build: install
 
 test: build
 	npm run test
-	# !TODO test frontend
 
-run:
-	# !TODO run frontend
+# !TODO run:

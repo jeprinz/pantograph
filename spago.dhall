@@ -30,9 +30,11 @@ to generate this file without the comments in this block.
   , "ordered-collections"
   , "partial"
   , "prelude"
+  , "record"
   , "strings"
   , "transformers"
   , "tuples"
+  , "unfoldable"
   , "uuid"
   , "variant"
   ]
