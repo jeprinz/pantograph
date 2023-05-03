@@ -7,12 +7,11 @@ import Language.Pantograph.Generic.Grammar
 import Data.Maybe (Maybe)
 import Data.Map (Map)
 import Data.UUID (UUID)
-import Data.Gram (Meta)
 import Data.Gram (Gram(..))
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.Gram (MetaVar)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Data.Unify (Meta, MetaVar)
 
 {-
 

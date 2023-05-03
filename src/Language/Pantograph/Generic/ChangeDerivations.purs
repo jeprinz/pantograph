@@ -26,6 +26,8 @@ This function implements generic typechanging on derivations, using the rules fr
 It doesn't yet have the ability to input special cases implemented.
 -}
 
+{-
+
 chDeriv :: forall l r . Ord l => Ord r => Language l r -> Change l -> DerivTerm l r -> DerivTerm l r
 chDeriv lang ch (Gram ((DerivLabel l _) /\ kids)) =
 --data Rule l r = Rule (Set Gram.MetaVar) (Array (MetaExpr l)) (MetaExpr l)
@@ -46,3 +48,4 @@ chDeriv lang ch (Gram ((DerivLabel l _) /\ kids)) =
 --            let perKid = ?h in
             Gram ((DerivLabel l (snd (endpoints ?h))) /\ (perKid <$> kids <*> kidSorts))
         Nothing -> ?h
+-}

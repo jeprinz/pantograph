@@ -12,12 +12,9 @@ module Data.List.Rev
 
 import Prelude
 
-import Data.Foldable (class Foldable)
-import Data.FoldableWithIndex (class FoldableWithIndex, foldMapWithIndex, foldlWithIndex, foldrWithIndex)
-import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
+import Data.Foldable (class Foldable, foldMap, foldl, foldr)
 import Data.List as List
-import Data.Traversable (class Traversable)
-import Data.TraversableWithIndex (class TraversableWithIndex, traverseWithIndex)
+import Data.Traversable (class Traversable, sequence, traverse)
 
 newtype List a = Rev (List.List a)
 
@@ -33,17 +30,27 @@ derive newtype instance Apply List
 derive newtype instance Applicative List
 derive newtype instance Bind List
 derive newtype instance Monad List
-derive newtype instance Foldable List
-derive newtype instance Traversable List
+
+instance Foldable List where
+  foldr f b = foldr f b <<< unreverse
+  foldl f b = foldl f b <<< unreverse
+  foldMap f = foldMap f <<< unreverse
+
+instance Traversable List where
+  traverse f = map reverse <<< traverse f <<< unreverse
+  sequence = map reverse <<< sequence <<< unreverse
+
 derive newtype instance Semigroup (List a)
 derive newtype instance Monoid (List a)
+-- derive newtype instance (Applicative m, Plus m, Unify m a) => Unify m (List a)
 
-instance FunctorWithIndex Int List where mapWithIndex f = unreversed $ mapWithIndex f
-instance FoldableWithIndex Int List where
-  foldMapWithIndex f = unreverse >>> foldMapWithIndex f
-  foldrWithIndex f b = unreverse >>> foldrWithIndex f b
-  foldlWithIndex f b = unreverse >>> foldlWithIndex f b
-instance TraversableWithIndex Int List where traverseWithIndex f = unreverse >>> traverseWithIndex f >>> map reverse
+-- !TODO is this used anywhere?
+-- instance FunctorWithIndex Int List where mapWithIndex f = unreversed $ mapWithIndex f
+-- instance FoldableWithIndex Int List where
+--   foldMapWithIndex f = unreverse >>> foldMapWithIndex f
+--   foldrWithIndex f b = unreverse >>> foldrWithIndex f b
+--   foldlWithIndex f b = unreverse >>> foldlWithIndex f b
+-- instance TraversableWithIndex Int List where traverseWithIndex f = unreverse >>> traverseWithIndex f >>> map reverse
 
 reverse = Rev <<< List.reverse
 

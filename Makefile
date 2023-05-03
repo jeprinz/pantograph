@@ -1,12 +1,18 @@
+clean:
+	rm -rf node_modules
+	rm -rf output
+	rm -rf .spago
+	rm *.lock
+	rm .cache
+
 install:
 	npm install
+	npm run postinstall
 
 build: install
-	spago build
+	npm run build
 
 test: build
-	spago test
-	# !TODO test frontend
+	npm run test
 
-run:
-	# !TODO run frontend
+# !TODO run:
