@@ -284,3 +284,8 @@ ex_ex2 = expr "A" []
 
 ex_ex1 :: Expr String
 ex_ex1 = expr "A" [ expr "B" [], expr "C" [] ]
+
+derive instance Eq l => Eq (Expr l)
+derive instance Eq MetaVar
+derive instance Ord l => Ord (Expr l)
+derive instance Ord MetaVar

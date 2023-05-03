@@ -19,4 +19,15 @@ type Rule = G.Rule Label RuleName
 rules :: Array Rule
 rules = [
 
+{-
+
+Var G A
+---------------------- suc
+Var (G , T) A
+
+----------------------- zero
+Var (G , T) T
+
+-}
+
 ]

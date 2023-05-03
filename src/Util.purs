@@ -10,6 +10,7 @@ import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Exception.Unsafe (unsafeThrow)
 import Data.Maybe (maybe)
+import Data.Either (Either(..))
 
 -- hole :: forall a. a
 -- hole = unsafeThrow "hole"
@@ -34,6 +35,10 @@ fromJust Nothing = unsafeThrow "fromJust failed"
 fromJust' :: forall a . String -> Maybe a -> a
 fromJust' _ (Just x) = x
 fromJust' msg Nothing = unsafeThrow $ "fromJust failed: " <> msg
+
+fromRight :: forall a b. Either a b -> b
+fromRight (Right b) = b
+fromRight _ = unsafeThrow "error: fromRight failed"
 
 justWhen :: forall a. Boolean -> (Unit -> a) -> Maybe a
 justWhen false _ = Nothing
