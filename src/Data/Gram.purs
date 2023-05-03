@@ -275,6 +275,7 @@ data ChangeLabel l
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
 derive instance Generic (ChangeLabel l) _
+derive instance Eq l => Eq (ChangeLabel l)
 
 instance Show l => Show (ChangeLabel l) where
   show (Plus th) = "(+ " <> showTooth th <> ")"

@@ -15,6 +15,15 @@ import Partial.Unsafe (unsafeCrashWith)
 import Data.Maybe (Maybe)
 import Data.Traversable (sequence)
 import Data.List.Rev (unreverse)
+import Data.Array (all)
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Unify (MetaVar)
+import Data.Either (Either(..))
+import Data.Unify (Meta(..))
+import Data.Maybe (Maybe(..))
+import Data.Set (Set)
+import Data.Set as Set
 
 -- HENRY: due to generic fixpoint form of `Gram`, don't need to manually recurse
 invert :: forall l. Change l -> Change l
@@ -23,6 +32,21 @@ invert = map case _ of
   Minus th -> Plus th
   Expr l -> Expr l
   Replace e1 e2 -> Replace e2 e1
+
+-- NOTE: this is NOT the same as asking if the change has equal endpoints (a loop in the groupoid), it computes if its an identity under composition
+isId :: forall l. Change l -> Boolean
+isId (Gram (Expr _l /\ kids)) = all isId kids
+isId _ = false
+
+collectMatches :: forall l. Eq l => Change l -> MetaExpr l -> Maybe (Map MetaVar (Set (Change l)))
+collectMatches (Gram (Expr l1 /\ kids1)) (Gram (Meta (Right l2) /\ kids2)) | l1 == l2 =
+    let subs = collectMatches <$> kids1 <*> kids2 in
+--    let combine c1 c2 = if isId c1 then Just c2 else if isId c2 then Just c1 else if c1 == c2 then Just c1 else Nothing in
+--    let
+--    Array.fold subs
+    unsafeCrashWith "TODO"
+collectMatches c (Gram (Meta (Left x) /\ [])) = Just $ Map.insert x (Set.singleton c) Map.empty
+collectMatches _ _ = unsafeCrashWith "no"
 
 endpoints :: forall l. Change l -> Expr l /\ Expr l
 endpoints = foldMapGram $ flip matchChangeNode
