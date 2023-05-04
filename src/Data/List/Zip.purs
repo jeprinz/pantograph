@@ -9,7 +9,7 @@ import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
 import Data.Generic.Rep (class Generic)
 import Data.List ((:))
 import Data.List as List
-import Data.List.Rev ((:*))
+import Data.List.Rev (RevList, (:*))
 import Data.List.Rev as Rev
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
@@ -36,7 +36,7 @@ instance Traversable Tooth where
 unzip (Zip z) = unpathAroundList (pure z.focus) z.path
 
 -- | The type of a paths into lists.
-newtype Path a = Path {left :: Rev.List a, right :: List.List a}
+newtype Path a = Path {left :: RevList a, right :: List.List a}
 
 derive instance Newtype (Path a) _
 derive instance Generic (Path a) _
@@ -73,7 +73,7 @@ appendLeft a (Path d) = Path d {left = d.left :* a}
 appendRight :: forall a. a -> Path a -> Path a
 appendRight a (Path d) = Path d {right = a : d.right}
 
-left :: forall a. Path a -> Rev.List a
+left :: forall a. Path a -> RevList a
 left = unwrap >>> _.left
 
 right :: forall a. Path a -> List.List a

@@ -24,7 +24,7 @@ class Pretty' a b | a -> b where
   pretty' :: b -> a -> String
 
 instance Pretty a => Pretty' (List.List a) String where pretty' sep xs = "[" <> List.intercalate sep (pretty <$> xs) <> "]"
-instance Pretty a => Pretty' (Rev.List a) String where pretty' sep xs = "[" <> List.intercalate sep (pretty <$> Rev.unreverse xs) <> "]"
+instance Pretty a => Pretty' (Rev.RevList a) String where pretty' sep xs = "[" <> List.intercalate sep (pretty <$> Rev.unreverse xs) <> "]"
 instance Pretty a => Pretty' (Array a) String where pretty' sep xs = "[" <> intercalate sep (pretty <$> xs) <> "]"
 instance Pretty a => Pretty' (Maybe a) String where pretty' nothing = maybe nothing pretty
 

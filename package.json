@@ -10,13 +10,18 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "esbuild": "^0.17.18",
     "purescript": "^0.15.8",
+    "purs-backend-es": "^1.3.2",
     "spago": "^0.20.9"
   },
   "scripts": {
-    "clean": "rm -rf node_modules output .spago *.lock .cache",
     "postinstall": "spago install",
+    "clean": "rm -rf node_modules output .spago *.lock .cache",
     "build": "npx spago build",
+    "build-prod": "spago -x spago.production.dhall build --purs-args \"-o output-prod -g sourcemaps --json-errors\"",
+    "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/index.js",
+    "serve": "npm run build && esbuild index.js --bundle --outdir=dist --servedir=dist --watch",
     "test": "npx spago test"
   },
   "repository": {
