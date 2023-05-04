@@ -47,18 +47,18 @@ It seems wierd to have an change with both "change metavariables" and "expressio
 class Subbable a where
     sub :: (MetaVar -> a) -> a -> a
 
---class SubType a b where
---    inject :: a -> b
---    goback :: b -> Maybe a
---
---instance SubType a a where
---    inject x = x
---    goback = Just
---
---instance SubType MetaVar l => Subbable (Expr l) where
---    sub s (Gram (l /\ kids)) = case goback l of
---        Just mv -> s mv
---        Nothing -> Gram (l /\ map (sub s) kids)
+class SubType a b where
+    inject :: a -> b
+    goback :: b -> Maybe a
+
+instance SubType a a where
+    inject x = x
+    goback = Just
+
+instance SubType MetaVar l => Subbable (Expr l) where
+    sub s (Gram (l /\ kids)) = case goback l of
+        Just mv -> s mv
+        Nothing -> Gram (l /\ map (sub s) kids)
 
 type Sub outer label = Map UUID (Expr (outer (Meta label)))
 
@@ -78,3 +78,20 @@ unifyTemp2 = unsafeCrashWith "unimplemented"
 
 applySub2 :: forall l . Sub2 l -> MetaExpr l -> MetaExpr l
 applySub2 = unsafeCrashWith "unimplemented"
+
+{-
+unifyTemp :: forall l. (l -> Maybe MetaVar) -> Expr l -> Expr l -> Maybe (Sub l)
+
+-}
+
+
+
+
+
+
+
+
+
+
+
+

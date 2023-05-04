@@ -21,6 +21,11 @@ type MetaExpr l = Gram.MetaExpr l
 
 data DerivLabel l r = DerivLabel r (MetaExpr l)
 
+{-
+--DerivTerm needs built-in hole?
+--DerivTerm and DerivPath need boundaries?
+
+-}
 type DerivTerm l r = Gram.Expr (DerivLabel l r)
 type DerivPath l r = Gram.Path Dir.Up (DerivLabel l r)
 

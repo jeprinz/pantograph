@@ -70,6 +70,8 @@ endpoints = foldMapGram $ flip matchChangeNode
 
 -- least upper bound
 -- actually, I'm not sure we need this.
+-- LUB (+ X -> A) (+ Y -> A)
+-- If inputs are orthogonal, there is a unique limit in the category
 lub :: forall l. Eq l => Change l -> Change l -> Maybe (Change l)
 lub (Gram (Expr l1 /\ kids1)) (Gram (Expr l2 /\ kids2)) | l1 == l2
     = Gram <$> ((/\) <$> (pure $ Expr l1) <*> (sequence (lub <$> kids1 <*> kids2))) -- Oh no I've become a haskell programmer
