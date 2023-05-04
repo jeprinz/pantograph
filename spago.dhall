@@ -12,7 +12,8 @@ to generate this file without the comments in this block.
 -}
 { name = "my-project"
 , dependencies =
-  [ "arrays"
+  [ "aff"
+  , "arrays"
   , "bifunctors"
   , "console"
   , "const"
@@ -23,6 +24,8 @@ to generate this file without the comments in this block.
   , "exceptions"
   , "foldable-traversable"
   , "functors"
+  , "halogen"
+  , "halogen-hooks"
   , "identity"
   , "lists"
   , "maybe"
@@ -37,6 +40,10 @@ to generate this file without the comments in this block.
   , "unfoldable"
   , "uuid"
   , "variant"
+  , "web-dom"
+  , "web-events"
+  , "web-html"
+  , "web-uievents"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
