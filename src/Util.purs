@@ -2,7 +2,8 @@ module Util where
 import Data.Tuple.Nested
 import Prelude
 
-import Data.List (List, head)
+import Data.List (List)
+import Data.List as List
 import Data.Map (Map, toUnfoldable, fromFoldable, lookup, member, delete, unionWith, insert)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -11,6 +12,7 @@ import Data.UUID as UUID
 import Effect.Exception.Unsafe (unsafeThrow)
 import Data.Maybe (maybe)
 import Data.Either (Either(..))
+import Data.Foldable
 
 -- hole :: forall a. a
 -- hole = unsafeThrow "hole"
@@ -24,7 +26,7 @@ lookup' x m = case lookup x m of
   Nothing -> unsafeThrow "lookup failed"
 
 head' :: forall a . List a -> a
-head' l = case head l of
+head' l = case List.head l of
     Nothing -> unsafeThrow "head failed"
     Just a -> a
 
@@ -84,3 +86,16 @@ threeCaseUnionMaybe :: forall v1 v2 v3 k . Ord k =>
 threeCaseUnionMaybe join m1 m2 = Map.mapMaybe (\x -> x) $ threeCaseUnion (\x -> join (Just x) Nothing) (\y -> join Nothing (Just y))
     (\x y -> join (Just x) (Just y)) m1 m2
 
+
+findWithIndex :: forall l t out. Foldable l => (t -> Maybe out) -> l t -> Maybe (out /\ Int)
+findWithIndex f l =
+    foldl
+        (\acc x i ->
+            case f x of
+                Just y -> Just (y /\ i)
+                Nothing -> acc (i + 1))
+        (\_ -> Nothing) l 0
+
+assertSingleton :: forall t. Array t -> t
+assertSingleton [x] = x
+assertSingleton _ = unsafeThrow "assertion failed: was not a singleton"
