@@ -7,7 +7,7 @@ data Label
 type Expr = G.Expr Label
 type MetaExpr = G.MetaExpr Label
 
-data RuleName = Lam | App | Z | S
+data RuleName = Lam | App | Z | S | Var | Let
 
 type DerivLabel = G.DerivLabel Label RuleName
 
@@ -18,6 +18,8 @@ type Rule = G.Rule Label RuleName
 
 rules :: Array Rule
 rules = [
+
+
 
 {-
 

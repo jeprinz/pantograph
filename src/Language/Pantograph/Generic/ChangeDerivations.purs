@@ -90,7 +90,7 @@ smallStepTerm algorithm@(downRules /\ upRules) (Gram.Gram (l /\ kids)) =
                 Nothing -> do
                     kid' <- smallStepTerm algorithm kid
                     pure $ Gram.Gram (l /\ [kid'])
-        UpBoundary ch -> ?h
+        UpBoundary ch -> unsafeCrashWith "TODO" --?h
 
 {-
 
