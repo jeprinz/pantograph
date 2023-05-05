@@ -10,3 +10,4 @@
 /.spago
 /.idea
 /.vscode
+/dist/index.js

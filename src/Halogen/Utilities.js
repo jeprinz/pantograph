@@ -1,0 +1,1 @@
+export const fromInputEventToTargetValue = (event) => () => event.target.value

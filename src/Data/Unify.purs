@@ -1,22 +1,25 @@
 module Data.Unify where
 
 import Prelude
-import Data.Either (Either(..))
+
+import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype, unwrap)
 import Data.String as String
+import Data.Traversable (class Foldable, class Traversable)
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
+import Text.Pretty (class Pretty, pretty)
 
 -- | MetaVar
 
 newtype MetaVar = MetaVar UUID
 
-newtype Meta a = Meta (Either MetaVar a)
-
-instance Show MetaVar where show (MetaVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
+derive newtype instance Show MetaVar
 derive newtype instance Eq MetaVar
 derive newtype instance Ord MetaVar
+instance Pretty MetaVar where pretty (MetaVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
 
 showMetaVar :: MetaVar -> String
 showMetaVar (MetaVar str) = show str
@@ -24,6 +27,19 @@ showMetaVar (MetaVar str) = show str
 freshMetaVar :: Unit -> MetaVar
 freshMetaVar _ = MetaVar $ unsafePerformEffect (UUID.genUUID)
 
+newtype Meta a = Meta (Either MetaVar a)
+derive instance Newtype (Meta a) _
+derive newtype instance Show a => Show (Meta a)
+derive newtype instance Eq a => Eq (Meta a)
+derive newtype instance Ord a => Ord (Meta a)
+derive newtype instance Functor Meta
+derive newtype instance Apply Meta
+derive newtype instance Applicative Meta
+derive newtype instance Foldable Meta
+derive newtype instance Traversable Meta
+instance Pretty a => Pretty (Meta a) where pretty = unwrap >>> either pretty pretty
+
+{-
 -- | IsMeta
 
 class IsMeta :: Type -> Type -> Constraint
@@ -36,7 +52,7 @@ instance IsMeta (Meta a) a where
   fromMetaVar = Just (Meta <<< Left)
   fromConcrete = Meta <<< Right
   metaEither (Meta e) = e
-
+-}
 
 {-
 -- | UnifySt

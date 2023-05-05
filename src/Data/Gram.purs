@@ -1,26 +1,104 @@
 module Data.Gram where
 
+import Data.Either
+import Data.Either.Nested
 import Prelude
+
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
+import Data.Enum (enumFromTo)
+import Data.Eq (class Eq1, eq1)
 import Data.Foldable (class Foldable, foldMap, foldl, foldr, intercalate, sequence_)
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
-import Data.List.Zip as ListZip
+import Data.List (List(..))
+import Data.List as List
+import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe')
 import Data.Newtype (class Newtype)
 import Data.Newtype as Newtype
+import Data.Ord (class Ord1, compare1)
 import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.Unify (Meta)
+import Data.Unify (Meta(..))
+import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Partial.Unsafe (unsafeCrashWith)
+import Text.Pretty (braces, braces2, parens, pretty, quotes)
 import Type.Direction as Dir
+import Utility (assert)
+
+class (Eq l, Show l) <= GramLabel l where
+  prettyNodeG' :: NodeG Array l String -> Maybe String
+  expectedKidsCount :: l -> Int
+
+-- assert that `expectedKidsCount` matches the actual kids count
+assertWellformedNodeG :: forall l kid. GramLabel l => NodeG Array l kid -> String -> Unit
+assertWellformedNodeG (l /\ kids) tag = do
+  assert (Array.length kids == expectedKidsCount l) ("[" <> tag <> "] A gram node with label " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids.") \_ -> unit
+
+assertWellformedExpr (Gram node) = assertWellformedNodeG node
+
+unsafeCrashWithUnexpectedMalformedNodeG :: forall l kid a. GramLabel l => Show kid => NodeG Array l kid -> String -> a
+unsafeCrashWithUnexpectedMalformedNodeG node tag = unsafeCrashWith $ "[" <> tag <> "] Even though `assertWellformedNodeG` passed, still found malformed `NodeG`: " <> show node
+
+unsafeCrashWithUnexpectedMalformedExpr (Gram node) = unsafeCrashWithUnexpectedMalformedNodeG node
+
+-- checks `expectedKidsCount` before printing
+prettyNodeG :: forall l. GramLabel l => NodeG Array l String -> String
+prettyNodeG node = do
+  let _ = assertWellformedNodeG node "prettyNodeG"
+  fromMaybe' (\_ -> unsafeCrashWithUnexpectedMalformedNodeG node "prettyNodeG")
+  $ prettyNodeG' node
+
+instance GramLabel l => GramLabel (Meta l) where
+  prettyNodeG' ((Meta (Left x)) /\ _kids) = pure $ pretty x
+  prettyNodeG' ((Meta (Right l)) /\ kids) = pure $ prettyNodeG (l /\ kids)
+
+  expectedKidsCount (Meta (Left _)) = 0
+  expectedKidsCount (Meta (Right l)) = expectedKidsCount l
+
+instance GramLabel l => GramLabel (ChangeLabel l) where
+  prettyNodeG' (Plus th /\ kids) = pure $ prettyTooth th (intercalate "" kids)
+  prettyNodeG' (Minus th /\ kids) = pure $ prettyTooth th (intercalate "" kids)
+  prettyNodeG' (Expr l /\ kids) = pure $ prettyNodeG (l /\ kids)
+
+  prettyNodeG' (Replace e1 e2 /\ _) = pure $ parens (prettyExpr e1 <> " ~~> " <> prettyExpr e2)
+
+  expectedKidsCount (Plus _) = 1
+  expectedKidsCount (Minus _) = 1
+  expectedKidsCount (Expr l) = expectedKidsCount l
+  expectedKidsCount (Replace _ _) = 0
+
+prettyExpr :: forall l. GramLabel l => Expr l -> String
+prettyExpr (Gram (l /\ kids)) = prettyNodeG (l /\ (prettyExpr <$> kids))
+
+prettyTooth :: forall l. GramLabel l => Tooth l -> String -> String
+prettyTooth (l /\ zip) innerStr = prettyNodeG (l /\ Array.fromFoldable (ZipList.unpathAround innerStr (prettyExpr <$> zip)))
+
+prettyPath1Up :: forall l. GramLabel l => Path1 l -> String -> String
+prettyPath1Up (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
+prettyPath1Up (Gram (th /\ (Just path))) innerStr = prettyPath1Up path $ prettyTooth th innerStr
+
+prettyPathUp :: forall l. GramLabel l => Path Dir.Up l -> String -> String
+prettyPathUp (Path Nothing) innerStr = innerStr
+prettyPathUp (Path (Just path1)) innerStr = prettyPath1Up path1 innerStr
+
+prettyPath1Down :: forall l. GramLabel l => Path1 l -> String -> String
+prettyPath1Down (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
+prettyPath1Down (Gram (th /\ Just path)) innerStr = prettyTooth th (prettyPath1Down path innerStr)
+
+prettyPathDown :: forall l. GramLabel l => Path Dir.Down l -> String -> String
+prettyPathDown (Path Nothing) innerStr = innerStr
+prettyPathDown (Path (Just path1)) innerStr = prettyPath1Down path1 innerStr
+
+prettyZipper :: forall l. GramLabel l => Zipper l -> String
+prettyZipper zipper = prettyPathUp zipper.path (braces2 (prettyExpr zipper.expr))
 
 -- | A `Gram` is a generalization of a tree (and a specialization of a
 -- | fixpoint), where each node of the `Gram` has a label of type `l`, and the kids are 
@@ -28,6 +106,20 @@ data Gram j l = Gram (NodeG j l (Gram j l))
 
 derive instance Generic (Gram j l) _
 derive instance Functor j => Functor (Gram j)
+instance (Eq1 j, Eq l) => Eq (Gram j l) where 
+  eq (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) = l1 == l2 && eq1 j1 j2
+instance (Ord1 j, Ord l) => Ord (Gram j l) where
+  compare (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) =
+    case compare l1 l2 of
+      EQ -> compare1 j1 j2
+      ord -> ord
+instance Eq1 j => Eq1 (Gram j) where
+  eq1 (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) = l1 == l2 && eq1 j1 j2
+instance Ord1 j => Ord1 (Gram j) where
+  compare1 (Gram (l1 /\ j1)) (Gram (l2 /\ j2)) =
+    case compare l1 l2 of
+      EQ -> compare1 j1 j2
+      ord -> ord
 
 instance Foldable j => Foldable (Gram j) where
   foldMap f (Gram (l /\ j)) = f l <> foldMap (foldMap f) j
@@ -206,7 +298,7 @@ type Path1Node    l l' = Node  Maybe   (Tooth l) (Tooth l')
 type Path1NodeG   l l' = NodeG Maybe   (Tooth l) (Path1 l')
 type Path1NodeM m l l' = NodeM Maybe m (Tooth l) (Tooth l')
 
-type Tooth l = l /\ ListZip.Path (Expr l)
+type Tooth l = l /\ ZipList.Path (Expr l)
 
 foldMapTooth :: forall l m. Monoid m => (l -> m) -> Tooth l -> m
 foldMapTooth f (l /\ p) = f l <> foldMap (foldMap f) p
@@ -220,12 +312,15 @@ foldrTooth f b (l /\ p) = ZipList.foldrAround (flip (foldr f)) b (f l) p
 traverseTooth :: forall l l' m. Applicative m => (l -> m l') -> Tooth l -> m (Tooth l')
 traverseTooth f (l /\ p) = Tuple <$> f l <*> traverse (traverse f) p
 
-unTooth (l /\ p) g = expr l (Array.fromFoldable (ListZip.unpathAround g p))
+unTooth (l /\ p) g = expr l (Array.fromFoldable (ZipList.unpathAround g p))
 
-showTooth (l /\ p) = show l <> " " <> intercalate " " (ListZip.unpathAround "{}" (show <$> p))
+showTooth (l /\ p) = show l <> " " <> intercalate " " (ZipList.unpathAround "{}" (show <$> p))
 
 newtype Path (dir :: Symbol) l = Path (Maybe (Path1 l))
 derive instance Newtype (Path dir l) _
+derive newtype instance Show l => Show (Path dir l)
+derive newtype instance Eq l => Eq (Path dir l)
+derive newtype instance (Eq l, Ord l) => Ord (Path dir l)
 
 lastPath1 :: forall l. Tooth l -> Path1 l
 lastPath1 th = Gram (th /\ Nothing)
@@ -265,6 +360,89 @@ reversePath = Newtype.over Path (go Nothing)
   where
   go p' Nothing = p'
   go p' (Just p) = go (Just (stepPath1 (labelGram p) p')) (jointGram p)
+
+-- | Zipper
+type Zipper l = {path :: Path Dir.Up l, expr :: Expr l}
+
+zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
+zipUp zipper = case zipper.path of
+  Path Nothing -> Nothing
+  Path (Just (Gram (th /\ path'))) -> Just $ th /\ {path: Path path', expr: unTooth th zipper.expr}
+
+-- -- | Only zip down the kids in the tooth (not the interior of the tooth).
+-- zipDownsTooth :: forall l. Zipper l -> Tooth l -> ZipList.Path (Zipper l)
+-- zipDownsTooth {path, expr: Gram (l /\ kids0)} (_ /\ kidsListPath) = do
+--   let ixInterior = ZipList.leftLength kidsListPath
+--   let {before: leftKids0, after} = Array.splitAt ixInterior kids0
+--   case Array.uncons after of
+--     Nothing -> unsafeCrashWith $ "[zipDownsTooth] Mismatch between tooth's and zipper's expr's kids. The tooth has " <> show (ZipList.leftLength kidsListPath) <> " left kids and " <> show (ZipList.rightLength kidsListPath) <> " right kids, while the zipper has " <> show (Array.length kids0) <> " kids."
+--     Just {head: kid0, tail: rightKids0} -> do
+--       let th = l /\ ZipList.Path {left: RevList.reverseArray $ Array.reverse leftKids0, right: List.fromFoldable rightKids0}
+--       ZipList.Path
+--         -- { left: RevList.fromReversedList $ goLeft mempty th kid0
+--         { left: RevList.reverse $ goLeft mempty th kid0
+--         , right: List.reverse $ goRight mempty th kid0
+--         }
+--   where
+--     -- doesn't include first tooth in output
+--     goLeft :: List (Zipper l) -> Tooth l -> Expr l -> List (Zipper l)
+--     goLeft zs (_ /\ ZipList.Path {left, right}) kid = case RevList.unsnoc left of
+--       Nothing -> zs
+--       Just {init: left', last: kid'} -> do
+--         let th' = l /\ ZipList.Path {left: left', right: Cons kid right}
+--         let z' = {path: stepPath th' path, expr: kid'}
+--         goLeft (Cons z' zs) th' kid'
+    
+--     -- doesn't include first tooth in output
+--     goRight :: List.List (Zipper l) -> Tooth l -> Expr l -> List.List (Zipper l)
+--     goRight zs (_ /\ ZipList.Path {left, right}) kid = case List.uncons right of
+--       Nothing -> zs
+--       Just {head: kid', tail: right'} -> do
+--         let th' = l /\ ZipList.Path {left: RevList.snoc left kid, right: right'}
+--         let z' = {path: stepPath th' path, expr: kid'}
+--         goRight (Cons z' zs) th' kid'
+
+-- | Only zip down the kids in the tooth (not the interior of the tooth).
+zipDownsTooth :: forall l. GramLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
+zipDownsTooth zipper (_ /\ kidsPath) = do
+  let ix = ZipList.leftLength kidsPath
+  let zs = zipDowns zipper
+  case ZipList.zipAt ix (List.fromFoldable zs) of
+    Nothing -> unsafeCrashWith "[zipDownsTooth] bad index"
+    Just (zipsPath /\ _kidZip) -> zipsPath
+
+zipDowns :: forall l. Zipper l -> Array (Zipper l)
+zipDowns {path, expr: Gram (l /\ kids0)} = 
+  case Array.uncons kids0 of
+    Nothing -> []
+    Just {head: kid0, tail: kids1} ->
+      go
+        []
+        (l /\ ZipList.Path {left: mempty, right: List.fromFoldable kids1})
+        kid0
+  where
+  go :: Array (Zipper l) -> Tooth l -> Expr l -> Array (Zipper l)
+  go zippers th@(_ /\ ZipList.Path {right: Nil}) kid =
+    Array.reverse $ Array.cons {path: stepPath th path, expr: kid} zippers
+  go zippers th@(l' /\ ZipList.Path {left, right: Cons kid' kids'}) kid =
+    go
+      (Array.cons {path: stepPath th path, expr: kid} zippers)
+      (l' /\ ZipList.Path {left: RevList.snoc left kid, right: kids'})
+      kid'
+
+zipLeft :: forall l. Zipper l -> Maybe (Zipper l)
+zipLeft zipper = case zipper.path of
+  Path Nothing -> Nothing
+  Path (Just (Gram ((l /\ kidsPath) /\ path'))) -> do
+    expr' /\ kidsPath' <- ZipList.zipLeft (zipper.expr /\ kidsPath)
+    Just $ {path: Path (Just (Gram ((l /\ kidsPath') /\ path'))), expr: expr'}
+
+zipRight :: forall l. Zipper l -> Maybe (Zipper l)
+zipRight zipper = case zipper.path of
+  Path Nothing -> Nothing
+  Path (Just (Gram ((l /\ kidsPath) /\ path'))) -> do
+    expr' /\ kidsPath' <- ZipList.zipRight (zipper.expr /\ kidsPath)
+    Just $ {path: Path (Just (Gram ((l /\ kidsPath') /\ path'))), expr: expr'}
 
 -- | Change
 type Change l = Expr (ChangeLabel l)
@@ -340,17 +518,17 @@ matchChangeNode = flip \f -> case _ of
 
 matchChange (Gram n) = matchChangeNode n
 
--- Name (placeholder)
+-- -- Name (placeholder)
 
-newtype Name = Name String
+-- newtype Name = Name String
 
-ex_ex1 :: Expr String
-ex_ex1 = expr "A" [ expr "B" [], expr "C" [] ]
+-- ex_ex1 :: Expr String
+-- ex_ex1 = expr "A" [ expr "B" [], expr "C" [] ]
 
-derive instance Eq l => Eq (Expr l)
-derive instance Ord l => Ord (Expr l)
-derive instance Generic Name _
-derive newtype instance Eq Name
-derive newtype instance Ord Name
-instance Show Name where show (Name str) = str
--- instance (Functor m, Plus.Plus m, Applicative m) => Unify m Name where unify x y = genericUnify x y
+-- derive instance Eq l => Eq (Expr l)
+-- derive instance Ord l => Ord (Expr l)
+-- derive instance Generic Name _
+-- derive newtype instance Eq Name
+-- derive newtype instance Ord Name
+-- instance Show Name where show (Name str) = str
+-- -- instance (Functor m, Plus.Plus m, Applicative m) => Unify m Name where unify x y = genericUnify x y

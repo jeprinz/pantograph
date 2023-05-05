@@ -1,0 +1,126 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.editor {
+  padding: 1rem;
+}
+
+.program {
+  font-family: monospace;
+}
+
+/* 
+  .node
+*/
+
+.node {
+  display: inline;
+  cursor: pointer;
+}
+
+.node.zero {}
+
+.node.suc {}
+
+.node.lam {}
+
+.node.app {}
+
+.node.ref {}
+
+.node.hole {
+  padding: 0 0.2rem;
+  /* box-shadow: 0 0 0 1px purple; */
+  background-color: rgb(255, 165, 63);
+}
+
+.node.hole-interior {
+  padding: 0 0.2rem;
+  background-color: rgb(255, 0, 0);
+}
+
+.node.hole-interior>.subnode.holeInterior {
+  color: white;
+}
+
+.node.highlight {
+  box-shadow: 0 0 0 2px rgba(0, 0, 255, 0.5);
+}
+
+.node.cursor {
+  /* background-color: rgba(68, 68, 255, 0.5); */
+  box-shadow: 0 0 0 2px blue;
+}
+
+/*
+  .subnode
+*/
+
+.subnode.s-pred {}
+
+.subnode.lam-bind {}
+
+.subnode.app-apl {}
+
+.subnode.ref-var {}
+
+.subnode.hole-interior {
+}
+
+/* 
+  .subnode.punctuation
+*/
+
+.subnode {
+  display: inline;
+}
+
+.subnode.punctuation {}
+
+.subnode.punctuation.lambda {}
+
+.subnode.punctuation.mapsto {
+  padding: 0 0.5rem;
+}
+
+.subnode.punctuation.space {}
+
+.subnode.punctuation.zeroVar {}
+
+.subnode.punctuation.sucVar {}
+
+.subnode.punctuation.holeInterior {}
+
+.subnode.punctuation.colon {
+  margin: 0 0.2rem;
+}
+
+/* 
+  .subnode.buffer
+*/
+
+.subnode.buffer {
+  display: inline;
+  position: relative;
+}
+
+.subnode.buffer>.inner {
+  position: absolute;
+  left: 0;
+  top: 2rem;
+
+  box-shadow: 0 0 0 1px black;
+}
+
+.subnode.buffer>.inner>.buffer-results {}
+
+.subnode.buffer>.inner>.buffer-results>.buffer-result {
+  padding: 0.2rem;
+}
+
+.subnode.buffer>.inner>.buffer-results>.buffer-result.buffer-focus {
+  background-color: rgb(98, 98, 245, 0.5);
+}
