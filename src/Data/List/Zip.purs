@@ -1,5 +1,7 @@
 module Data.List.Zip where
 
+import Data.Tuple
+import Data.Tuple.Nested
 import Prelude
 
 import Control.Plus (class Plus)
@@ -7,11 +9,11 @@ import Data.Foldable (class Foldable, foldMap, foldl, foldr, intercalate)
 import Data.FoldableWithIndex (class FoldableWithIndex, foldMapWithIndex, foldlWithIndex, foldrWithIndex)
 import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
 import Data.Generic.Rep (class Generic)
-import Data.List ((:))
+import Data.List (List(..), (:))
 import Data.List as List
 import Data.List.Rev (RevList, (:*))
 import Data.List.Rev as Rev
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable, traverse)
@@ -42,6 +44,7 @@ derive instance Newtype (Path a) _
 derive instance Generic (Path a) _
 instance Show a => Show (Path a) where show x = genericShow x
 derive instance Eq a => Eq (Path a)
+derive instance Ord a => Ord (Path a)
 derive instance Functor Path
 derive instance Foldable Path
 derive instance Traversable Path
@@ -64,8 +67,8 @@ instance Monoid (Path a) where mempty = Path {left: mempty, right: mempty}
 --       <$> traverseWithIndex f d.left
 --       <*> traverseWithIndex (\i -> f (i + l)) d.right
 
-lengthLeft (Path p) = Rev.length p.left
-lengthRight (Path p) = List.length p.right
+leftLength (Path p) = Rev.length p.left
+rightLength (Path p) = List.length p.right
 
 appendLeft :: forall a. a -> Path a -> Path a
 appendLeft a (Path d) = Path d {left = d.left :* a}
@@ -73,11 +76,11 @@ appendLeft a (Path d) = Path d {left = d.left :* a}
 appendRight :: forall a. a -> Path a -> Path a
 appendRight a (Path d) = Path d {right = a : d.right}
 
-left :: forall a. Path a -> RevList a
-left = unwrap >>> _.left
+-- left :: forall a. Path a -> RevList a
+-- left = unwrap >>> _.left
 
-right :: forall a. Path a -> List.List a
-right = unwrap >>> _.right
+-- right :: forall a. Path a -> List.List a
+-- right = unwrap >>> _.right
 
 unpath :: forall a. Path a -> List.List a
 unpath (Path d) = Rev.unreverse d.left <> d.right
@@ -87,6 +90,13 @@ unpathAround x = unpathAroundList (List.singleton x)
 
 unpathAroundList :: forall a. List.List a -> Path a -> List.List a
 unpathAroundList xs (Path d) = Rev.unreverse d.left <> xs <> d.right
+
+zipAt :: forall a. Int -> List.List a -> Maybe (Path a /\ a)
+zipAt = go mempty
+  where
+  go _ _ Nil = Nothing
+  go left 0 (Cons x right) = Just (Path {left, right} /\ x)
+  go left n (Cons x right) = go (Rev.snoc left x) (n - 1) right
 
 singletonLeft :: forall a. a -> Path a
 singletonLeft a = appendLeft a mempty
@@ -104,6 +114,16 @@ unconsRight :: forall a429.
        , tail :: Path a429
        }
 unconsRight (Path d) = List.uncons d.right <#> \{head, tail} -> {head, tail: Path d {right = tail}}
+
+zipLeft :: forall a. (a /\ Path a) -> Maybe (a /\ Path a)
+zipLeft (a /\ Path p) = do
+  {init: left', last: a'} <- Rev.unsnoc p.left
+  Just $ a' /\ Path {left: left', right: Cons a p.right}
+
+zipRight :: forall a. (a /\ Path a) -> Maybe (a /\ Path a)
+zipRight (a /\ Path p) = do
+  {head: a', tail: right'} <- List.uncons p.right
+  Just $ a' /\ Path {left: Rev.snoc p.left a, right: right'}
 
 showPath :: Path String -> String -> String
 showPath (Path d) str = intercalate " " d.left <+> str <+> intercalate " " d.right

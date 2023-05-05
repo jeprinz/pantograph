@@ -1,6 +1,9 @@
 module Data.List.Rev
   ( RevList
+  , toReversedList
+  , fromReversedList
   , reverse
+  , reverseArray
   , unreverse
   , snoc, (:*)
   , unsnoc
@@ -8,10 +11,12 @@ module Data.List.Rev
   , reversed
   , unreversed
   , length
+  , null
   ) where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Foldable (class Foldable, foldMap, foldl, foldr)
 import Data.List as List
 import Data.Traversable (class Traversable, sequence, traverse)
@@ -25,6 +30,7 @@ over f = unwrap >>> f >>> wrap
 
 derive newtype instance Show a => Show (RevList a)
 derive newtype instance Eq a => Eq (RevList a)
+derive newtype instance Ord a => Ord (RevList a)
 derive newtype instance Functor RevList
 derive newtype instance Apply RevList
 derive newtype instance Applicative RevList
@@ -52,7 +58,12 @@ derive newtype instance Monoid (RevList a)
 --   foldlWithIndex f b = unreverse >>> foldlWithIndex f b
 -- instance TraversableWithIndex Int RevList where traverseWithIndex f = unreverse >>> traverseWithIndex f >>> map reverse
 
+toReversedList = unwrap
+fromReversedList = wrap
+
 reverse = Rev <<< List.reverse
+
+reverseArray = Rev <<< List.fromFoldable <<< Array.reverse
 
 unreverse = List.reverse <<< unwrap
 
@@ -69,3 +80,5 @@ infixl 6 snoc as :*
 singleton = reverse <<< List.singleton
 
 length = unwrap >>> List.length
+
+null = unwrap >>> List.null
