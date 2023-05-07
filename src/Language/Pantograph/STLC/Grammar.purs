@@ -107,7 +107,13 @@ rules = [
         [exp SVar [var g, var a]]
         (exp SVar [exp CCons [var g, var b], var a])
 
-    --------------------------- Metadata -------------------------------------------
+    --------------------------- Other ----------------------------------------------
+    ,
+    -- hole
+    let s = freshMetaVar unit in
+    G.Rule (Set.fromFoldable [s])
+        []
+        (var s)
     ,
     -- newline
     let s = freshMetaVar unit in
