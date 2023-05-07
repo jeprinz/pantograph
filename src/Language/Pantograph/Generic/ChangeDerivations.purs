@@ -23,6 +23,8 @@ import Data.List (List)
 import Data.List as List
 import Type.Direction as Dir
 import Util as Util
+import Data.Unify (Meta)
+import Data.Unify (Meta(..))
 
 {-
 Issue:
@@ -46,8 +48,39 @@ For example, the rule:
 Is encoded as the DownRule:
 \(C1 -> C2) (lam x : A . e) down = Just $ (lam x : down C1 A . down C2 B)
 
+↑{e1}c e2  ~~>  	↑{e1 ↓{e2}c}c
+
+[] e2
+
+
+OPTION 1: ALL UNIFICATION
+Rule = VeryMetaDeriv x VeryMetaDeriv
+>>>> Doesn't work because can't handle inverses and composition
+
+OPTION 1.5: MOSTLY UNIFICATION
+Rule = VeryMetaDeriv x (Map UUID (Either Deriv Path Change) -> Deriv)
+
+OPTION 2: SOME UNIFICATION
+DownRule = MetaDeriv x (Change -> Map UUID Deriv -> Deriv x Change)
+UpRule = MetaPath x (Change -> Map UUID Deriv -> Path x Change)
+
+OPTION 3: Pretend that paths are terms
+step 1: convert paths to terms
+step 2: do smallstep with (Deriv -> Maybe Deriv)
+step 3: if it was a path, convert back to a term
+
+OPTION 4: forget cursor position until later
+step 1: the program is a term paths don't exist
+step 2: do smallstep with (Deriv -> Maybe Deriv)
+step 3: figure out where the cursor was?
+
+PROBLEM: what if the "cursor was here" node got in the middle of a rule working?
+
+
+
 Thus, we can use purescript pattern matching to implement the rules! No need to implement our own pattern matching and
 unification over boundaries, changes, and terms.
+
 -}
 type DownRule l r = Change l -> DerivTermWithBoundaries l r
     -> (Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r)
@@ -61,36 +94,36 @@ type ChangeAlgorithm l r = List (DownRule l r) /\ List (UpRule l r)
 --getApplicableRule :: forall l r. ChangeAlgorithm l r -> DerivTerm l r -> Maybe (DownRule)
 
 
-data DerivWithBoundariesLabel l r = DerivWithBoundariesLabel r (MetaExpr l) | DownBoundary (Change l) | UpBoundary (Change l)
+data DerivWithBoundariesLabel l r = DerivWithBoundariesLabel r (MetaExpr l) | DownBoundary (Change (Meta l)) | UpBoundary (Change (Meta l))
 
 type DerivTermWithBoundaries l r = Gram.Expr (DerivWithBoundariesLabel l r)
 type DerivPathWithBoundaries l r = Gram.Path Dir.Up (DerivWithBoundariesLabel l r)
 
 downBoundary :: forall l r . Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
-downBoundary ch term = Gram.Gram (DownBoundary ch /\ [term])
+downBoundary ch term = Gram.Gram (DownBoundary (map (map (Meta <<< Right)) ch) /\ [term])
 
 upBoundary :: forall l r . Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
-upBoundary ch term = Gram.Gram (UpBoundary ch /\ [term])
+upBoundary ch term = Gram.Gram (UpBoundary (map (map (Meta <<< Right)) ch) /\ [term])
 
 --updateAt :: forall a. Int -> a -> Array a -> Maybe (Array a)
 
 -- returns nothing if there are no more boundaries
-smallStepTerm :: forall l r. ChangeAlgorithm l r -> DerivTermWithBoundaries l r -> Maybe (DerivTermWithBoundaries l r)
-smallStepTerm algorithm@(downRules /\ upRules) (Gram.Gram (l /\ kids)) =
-    case l of
-        DerivWithBoundariesLabel rule sort ->
-            case Util.findWithIndex (smallStepTerm algorithm) kids of
-                Nothing -> Nothing
-                Just (kid /\ i) -> Just $ Gram.Gram (l /\
-                    fromJust' "smallStepTerm" (Array.updateAt i kid kids))
-        DownBoundary ch ->
-            let kid = Util.assertSingleton kids in
-            case Util.findWithIndex (\downRule -> downRule ch kid downBoundary) downRules of
-                Just ((kid' /\ chUp) /\ _) -> Just if isId chUp then kid' else upBoundary chUp kid'
-                Nothing -> do
-                    kid' <- smallStepTerm algorithm kid
-                    pure $ Gram.Gram (l /\ [kid'])
-        UpBoundary ch -> unsafeCrashWith "TODO" --?h
+--smallStepTerm :: forall l r. ChangeAlgorithm l r -> DerivTermWithBoundaries l r -> Maybe (DerivTermWithBoundaries l r)
+--smallStepTerm algorithm@(downRules /\ upRules) (Gram.Gram (l /\ kids)) =
+--    case l of
+--        DerivWithBoundariesLabel rule sort ->
+--            case Util.findWithIndex (smallStepTerm algorithm) kids of
+--                Nothing -> Nothing
+--                Just (kid /\ i) -> Just $ Gram.Gram (l /\
+--                    fromJust' "smallStepTerm" (Array.updateAt i kid kids))
+--        DownBoundary ch ->
+--            let kid = Util.assertSingleton kids in
+--            case Util.findWithIndex (\downRule -> downRule ch kid downBoundary) downRules of
+--                Just ((kid' /\ chUp) /\ _) -> Just if isId chUp then kid' else upBoundary chUp kid'
+--                Nothing -> do
+--                    kid' <- smallStepTerm algorithm kid
+--                    pure $ Gram.Gram (l /\ [kid'])
+--        UpBoundary ch -> unsafeCrashWith "TODO" --?h
 
 {-
 

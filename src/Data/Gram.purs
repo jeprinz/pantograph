@@ -54,7 +54,7 @@ prettyNodeG :: forall l. GramLabel l => NodeG Array l String -> String
 prettyNodeG node = do
   let _ = assertWellformedNodeG node "prettyNodeG"
   fromMaybe' (\_ -> unsafeCrashWithUnexpectedMalformedNodeG node "prettyNodeG")
-  $ prettyNodeG' node
+      $ prettyNodeG' node
 
 instance GramLabel l => GramLabel (Meta l) where
   prettyNodeG' ((Meta (Left x)) /\ _kids) = pure $ pretty x
