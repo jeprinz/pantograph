@@ -18,7 +18,7 @@ import Partial.Unsafe (unsafeCrashWith)
 import Data.Either (Either(..))
 import Util (lookup')
 import Language.Pantograph.Generic.Unification
-import Data.Tuple (snd)
+import Data.Tuple (snd, fst)
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar (MetaChange)
 import Language.Pantograph.Generic.ChangeAlgebra (mEndpoints)
@@ -57,7 +57,7 @@ assertNoneOfList (x : xs) f = case f x of
     Nothing -> unsafeCrashWith "assertNoneOfList: assertion failed"
     Just y -> y : assertNoneOfList xs f
 
--- assert that exactly one of the children will return a
+-- assert that one or zero of the children will return a
 oneOrNone :: forall t a b. List t -> (t -> Either a b) -> Either (List b) (List b /\ a /\ List b)
 oneOrNone Nil _f = Left Nil
 oneOrNone (x : xs) f = case f x of
@@ -138,6 +138,8 @@ defaultDown lang (Gram.Gram (Boundary Down ch /\
     let freshener = genFreshener metaVars in
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
+    -- TODO: is this the right check?
+    if not (fst (mEndpoints ch) == sort) then unsafeCrashWith "assertion failed: ch boundary didn't match sort in defaultDown" else
     do
         ch' /\ sub <- unify ch parentGSort
         let kidGSorts' = map (subMetaExpr sub) kidGSorts
@@ -146,8 +148,39 @@ defaultDown lang (Gram.Gram (Boundary Down ch /\
         pure $ Gram.Gram ((Inject (Grammar.DerivLabel ruleName newSort)) /\ kidsWithBoundaries)
 defaultDown _ _ = Nothing
 
+-- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
+getFirst :: forall t a b. List t -> (t -> Maybe a) -> Maybe (List t /\ a /\ List t)
+getFirst Nil _f = Nothing
+getFirst (x : xs) f = case f x of
+    Nothing ->
+        do ts1 /\ a /\ ts2 <- getFirst xs f
+           pure $ ((x : ts1) /\ a /\ ts1)
+    Just a -> Just (Nil /\ a /\ xs)
+
+defaultUp :: forall l r. Eq l => Ord r => ChLanguage l r -> Rule l r
+defaultUp lang (Gram.Gram (Inject (Grammar.DerivLabel ruleName sort) /\ kids)) =
+    let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = lookup' ruleName lang in
+    let freshener = genFreshener metaVars in
+    let kidGSorts = map (freshen freshener) crustyKidGSorts in
+    let parentGSort = freshen freshener crustyParentGSort in
+    let findUpBoundary = case _ of
+            Gram.Gram (Boundary Up ch /\ [kid]) /\ sort -> Just (ch /\ kid /\ sort)
+            kid /\ _ -> Nothing
+    in
+    do
+        (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
+            <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
+        ch' /\ sub <- unify ch gSort
+        let wrapKid (kid /\ gSort) = Gram.Gram (Boundary Down (subMetaExpr sub gSort) /\ [kid])
+        let leftKids = map wrapKid leftKidsAndSorts
+        let rightKids = map wrapKid rightKidsAndSorts
+        let parentBoundary node = Gram.Gram (Boundary Up (subMetaExpr sub parentGSort) /\ [node])
+        pure $ parentBoundary (Gram.Gram (Inject (Grammar.DerivLabel ruleName (snd (mEndpoints ch'))) /\
+            (Array.fromFoldable leftKids <> [kid] <> Array.fromFoldable rightKids)))
+defaultUp _ _ = Nothing
 
 
+--oneOrNone :: forall t a b. List t -> (t -> Either a b) -> Either (List b) (List b /\ a /\ List b)
 
 
 
