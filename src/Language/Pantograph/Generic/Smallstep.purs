@@ -11,35 +11,45 @@ import Data.List.Rev as Rev
 import Data.List as List
 import Data.List (List(..), (:))
 import Data.Foldable
+import Language.Pantograph.Generic.Grammar as Grammar
 
 import Data.Gram as Gram
 import Partial.Unsafe (unsafeCrashWith)
 import Data.Either (Either(..))
+import Util (lookup')
+import Language.Pantograph.Generic.Unification
+import Data.Tuple (snd)
+import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
+import Language.Pantograph.Generic.Grammar (MetaChange)
+import Language.Pantograph.Generic.ChangeAlgebra (mEndpoints)
 
-data StepLabel l = Inject l | Cursor
-type Term l = Gram.Expr (StepLabel l)
+data Direction = Up | Down
 
-type Rule l = Term l -> Maybe (Term l)
+
+data StepLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (MetaChange l)
+type Term l r = Gram.Expr (StepLabel l r)
+
+type Rule l r = Term l r -> Maybe (Term l r)
 
 -- later Henry can tell me how his definition of path works
 type SanePath l = List (Gram.Tooth l)
 
 ---------- Code for converting zippers to terms and back ------------------------------------------
 
-addToothToTerm :: forall l. Gram.Tooth l -> Term l -> Term l
+addToothToTerm :: forall l r. Gram.Tooth (Grammar.DerivLabel l r) -> Term l r -> Term l r
 addToothToTerm (l /\ ZipList.Path {left, right}) t =
     Gram.Gram (Inject l /\
         ((Array.fromFoldable (map (map Inject) (Rev.unreverse left)))
             <> [t]
             <> (Array.fromFoldable (map (map Inject) right))))
 
-zipperToTerm :: forall l. SanePath l -> Gram.Expr l -> Term l
+zipperToTerm :: forall l r. SanePath (Grammar.DerivLabel l r) -> Grammar.DerivTerm l r -> Term l r
 zipperToTerm Nil exp = Gram.Gram (Cursor /\ [map Inject exp])
 zipperToTerm (th : path) exp = addToothToTerm th (zipperToTerm path exp)
 
-assertNoCursor :: forall l. Term l -> Gram.Expr l
-assertNoCursor (Gram.Gram (Cursor /\ _)) = unsafeCrashWith "Error: assertNoCursor assertion failed"
-assertNoCursor (Gram.Gram (Inject l /\ kids)) = Gram.Gram (l /\ map assertNoCursor kids)
+assertJustExpr :: forall l r. Term l r -> Grammar.DerivTerm l r
+assertJustExpr _ = unsafeCrashWith "Error: assertJustExpr assertion failed"
+assertJustExpr (Gram.Gram (Inject l /\ kids)) = Gram.Gram (l /\ map assertJustExpr kids)
 
 assertNoneOfList :: forall t b. List t -> (t -> Maybe b) -> List b
 assertNoneOfList Nil _f = Nil
@@ -63,9 +73,9 @@ oneOrNone (x : xs) f = case f x of
         in
         Right (Nil /\ a /\ bs2)
 
-termToZipper :: forall l. Term l -> (SanePath l /\ Gram.Expr l)
+termToZipper :: forall l r. Term l r -> (SanePath (Grammar.DerivLabel l r) /\ Grammar.DerivTerm l r)
 termToZipper (Gram.Gram (Cursor /\ [kid])) =
-    Nil /\ (assertNoCursor kid)
+    Nil /\ (assertJustExpr kid)
 termToZipper (Gram.Gram ((Inject l) /\ kids)) =
     let kids' = List.fromFoldable $ map termToZipper kids in
     let isPath (p /\ e) = case p of
@@ -92,13 +102,13 @@ doAnyApply t (r : rs) = case r t of
     Just t' -> Just t'
     Nothing -> doAnyApply t rs
 
-stepSomebody :: forall l. List (Term l) -> List (Rule l) -> Maybe (List (Term l))
+stepSomebody :: forall l r. List (Term l r) -> List (Rule l r) -> Maybe (List (Term l r))
 stepSomebody Nil _ = Nothing
 stepSomebody (t : ts) rules = case step t rules of
     Just t' -> Just (t' : ts)
     Nothing -> (:) <$> pure t <*> stepSomebody ts rules
 
-step :: forall l. Term l -> List (Rule l) -> Maybe (Term l)
+step :: forall l r. Term l r -> List (Rule l r) -> Maybe (Term l r)
 step t@(Gram.Gram (l /\ kids)) rules =
     case doAnyApply t rules of
         Nothing -> do
@@ -106,6 +116,35 @@ step t@(Gram.Gram (l /\ kids)) rules =
             pure $ Gram.Gram (l /\ Array.fromFoldable kids')
         Just t' -> Just t'
 
+
+-------------- Default rules --------------------------------------------
+--type Language l r = Map r (Rule l r)
+--data Rule l r = Rule (Set MetaVar) (Array (MetaExpr l)) (MetaExpr l)
+
+type ChLanguage l r = Grammar.Language (Gram.ChangeLabel l) r
+
+metaInject :: forall l. Gram.MetaExpr l -> MetaChange l
+metaInject e = map (map Gram.Expr) e
+
+langToChLang :: forall l r. Grammar.Language l r -> ChLanguage l r
+langToChLang lang = map (\(Grammar.Rule vars kids parent)
+        -> Grammar.Rule vars (map metaInject kids) (metaInject parent)) lang
+
+-- Down rule that steps boundary through form - defined generically for every typing rule!
+defaultDown :: forall l r. Eq l => Ord r => ChLanguage l r -> Rule l r
+defaultDown lang (Gram.Gram (Boundary Down ch /\
+    [Gram.Gram ((Inject (Grammar.DerivLabel ruleName sort)) /\ kids)])) =
+    let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = lookup' ruleName lang in
+    let freshener = genFreshener metaVars in
+    let kidGSorts = map (freshen freshener) crustyKidGSorts in
+    let parentGSort = freshen freshener crustyParentGSort in
+    do
+        ch' /\ sub <- unify ch parentGSort
+        let kidGSorts' = map (subMetaExpr sub) kidGSorts
+        let kidsWithBoundaries = (\ch kid -> Gram.Gram (Boundary Down ch /\ [kid])) <$> kidGSorts' <*> kids
+        let newSort = snd (mEndpoints ch')
+        pure $ Gram.Gram ((Inject (Grammar.DerivLabel ruleName newSort)) /\ kidsWithBoundaries)
+defaultDown _ _ = Nothing
 
 
 

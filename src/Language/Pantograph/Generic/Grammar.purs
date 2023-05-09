@@ -22,6 +22,7 @@ import Type.Direction as Dir
 type Expr l = Gram.Expr l
 type Change l = Gram.Change l
 type MetaExpr l = Gram.MetaExpr l
+type MetaChange l = Gram.MetaExpr (Gram.ChangeLabel l) -- notice that this is different than the definition of MetaChange in Gram. I think that this is the one we need
 
 --data RuleName = Lam | App | Z | S
 
