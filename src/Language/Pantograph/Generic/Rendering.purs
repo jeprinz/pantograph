@@ -10,7 +10,7 @@ import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.Gram (class GramLabel, Expr, Gram(..), MetaExpr, Path(..), Path1, Zipper, prettyPathUp, prettyZipper, unTooth, zipDowns, zipDownsTooth, zipUp)
+import Data.Gram (class GramLabel, Expr, Gram(..), MetaExpr, Path(..), Path1, Zipper, Zipper', prettyPathUp, prettyZipper, unTooth, zipDowns, zipDownsTooth, zipUp)
 import Data.Lazy (Lazy, defer, force)
 import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
@@ -111,10 +111,7 @@ type Cursor l =
   }
 
 type Select l = 
-  { dir :: Dir.Dir
-  , pathAbove :: Path1 l
-  , pathBelow :: Path1 l
-  , expr :: Expr l 
+  { zipper' :: Zipper' l
   }
 
 type Top l =
@@ -224,7 +221,7 @@ editorComponent = HK.component \tokens input -> HK.do
             liftEffect $ setClassName elem' highlightClassName true
 
     unsetFacadeElements :: HK.HookM Aff Unit
-    unsetFacadeElements = liftEffect (Ref.read facade_ref) >>= case _ of
+    unsetFacadeElements = getFacade >>= case _ of
       BufferState _st -> do
         setHighlightElement Nothing
         setCursorElement Nothing
@@ -274,7 +271,7 @@ editorComponent = HK.component \tokens input -> HK.do
           Nothing -> pure unit
           Just zipper -> setState $ CursorState {zipper}
 
-    moveCursor dir = liftEffect (Ref.read facade_ref) >>= case _ of
+    moveCursor dir = getFacade >>= case _ of
       CursorState st -> do
         -- Debug.traceM $ "[moveCursor] st = " <> prettyZipper st.zipper
         case moveZipper dir st.zipper of
@@ -284,11 +281,17 @@ editorComponent = HK.component \tokens input -> HK.do
       SelectState _st -> unsafeCrashWith "!TODO escape select then move cursor"
       TopState _st -> unsafeCrashWith "!TODO move to first top cursor position, then move"
 
+    moveSelect dir = getFacade >>= case _ of
+      CursorState cursor -> unsafeCrashWith "!TODO turn into selection with direction determined by dir"
+      BufferState _ -> unsafeCrashWith "!TODO escape to cursor first"
+      SelectState _ -> unsafeCrashWith "!TODO impl select movement"
+      TopState _ -> unsafeCrashWith "!TODO move to first top cursor position, then move"
+
     handleKeyboardEvent :: KeyboardEvent.KeyboardEvent -> HK.HookM Aff Unit
     handleKeyboardEvent event = do
       -- Console.log $ "[event.key] " <> KeyboardEvent.key event
       let key = KeyboardEvent.key event
-      liftEffect (Ref.read facade_ref) >>= case _ of
+      getFacade >>= case _ of
         BufferState st -> do
           if key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event

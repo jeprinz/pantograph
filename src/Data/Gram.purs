@@ -331,8 +331,17 @@ lastPath th = Newtype.wrap <<< Just $ lastPath1 th
 stepPath1 :: forall l. Tooth l -> Maybe (Path1 l) -> Path1 l
 stepPath1 th p = Gram (th /\ p)
 
+unstepPath1 :: forall l. Path1 l -> Tooth l /\ Maybe (Path1 l)
+unstepPath1 (Gram (th /\ p)) = th /\ p
+
 stepPath :: forall dir l. Tooth l -> Path dir l -> Path dir l
 stepPath th p = Newtype.wrap <<< Just $ stepPath1 th (Newtype.unwrap p)
+
+unstepPath :: forall dir l. Path dir l -> Maybe (Tooth l /\ Path dir l)
+unstepPath (Path p) = do
+  p1 <- p
+  let th /\ p' = unstepPath1 p1
+  Just $ th /\ Path p'
 
 traverseDownPath :: forall dir l l' m. Applicative m => (Path1NodeM m l l' -> m (Path1Node l' l')) -> Path dir l -> m (Path dir l')
 traverseDownPath f = Newtype.unwrap >>> case _ of 
@@ -443,6 +452,14 @@ zipRight zipper = case zipper.path of
   Path (Just (Gram ((l /\ kidsPath) /\ path'))) -> do
     expr' /\ kidsPath' <- ZipList.zipRight (zipper.expr /\ kidsPath)
     Just $ {path: Path (Just (Gram ((l /\ kidsPath') /\ path'))), expr: expr'}
+
+-- | Zipper' i.e. the first derivative of a zipper (a zipper selection)
+type Zipper' l = 
+  { path :: Path Dir.Up l
+  , dir :: Dir.Dir
+  , path1 :: Path1 l
+  , expr :: Expr l
+  }
 
 -- | Change
 type Change l = Expr (ChangeLabel l)
