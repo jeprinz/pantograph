@@ -73,6 +73,7 @@ data Action l
 data Mode
   = BufferMode
   | CursorMode
+  -- | SelectMode
 
 editorComponent :: forall q l.
   Eq l => Ord l => GramLabel l =>
@@ -107,7 +108,6 @@ editorComponent = HK.component \tokens input -> HK.do
     getElementByPath path = do
       doc <- liftEffect $ HTML.window >>= Window.document
       elemId <- getElementIdByPath path
-      pathElementIds <- liftEffect $ Ref.read pathElementIds_ref
       liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
         Nothing -> unsafeCrashWith $ "could not find element by id: " <> elemId
         Just elem -> pure elem
