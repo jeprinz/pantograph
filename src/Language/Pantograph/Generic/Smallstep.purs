@@ -22,6 +22,8 @@ import Data.Tuple (snd, fst)
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar (MetaChange)
 import Language.Pantograph.Generic.ChangeAlgebra (mEndpoints)
+import Data.Unify (Meta(..))
+import Language.Pantograph.Generic.ChangeAlgebra
 
 data Direction = Up | Down
 
@@ -121,10 +123,13 @@ step t@(Gram.Gram (l /\ kids)) rules =
 --type Language l r = Map r (Rule l r)
 --data Rule l r = Rule (Set MetaVar) (Array (MetaExpr l)) (MetaExpr l)
 
-type ChLanguage l r = Grammar.Language (Gram.ChangeLabel l) r
+-- The sorts in these are Expr (Meta (ChangeLabel (Meta l)).
+-- the out Meta is the one that comes from the normal rules. The (ChangeLabel (Meta l))
+-- corresponds with the changes in the boundaries, which are Expr (ChangeLabel (Meta l))
+type ChLanguage l r = Grammar.Language (Gram.ChangeLabel (Meta l)) r
 
-metaInject :: forall l. Gram.MetaExpr l -> MetaChange l
-metaInject e = map (map Gram.Expr) e
+metaInject :: forall l. Gram.MetaExpr l -> Gram.MetaExpr (Gram.ChangeLabel (Meta l))
+metaInject e = map (map (Gram.Expr <<< Meta <<< Right)) e
 
 langToChLang :: forall l r. Grammar.Language l r -> ChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
@@ -133,8 +138,12 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 -- TODO: everywhere that a boundary is introduced, I should have a function which does that, and only introduces it
 -- if the change is not the identity.
 
+-- wraps a boundary unless the change is the identity, in which case so is this function
+wrapBoundary :: forall l r. Direction -> MetaChange l -> Term l r -> Term l r
+wrapBoundary dir ch t = if isId ch then t else Gram.Gram (Boundary dir ch /\ [t])
+
 -- Down rule that steps boundary through form - defined generically for every typing rule!
-defaultDown :: forall l r. Eq l => Ord r => ChLanguage l r -> Rule l r
+defaultDown :: forall l r. Eq l => Ord r => Ord l => ChLanguage l r -> Rule l r
 defaultDown lang (Gram.Gram (Boundary Down ch /\
     [Gram.Gram ((Inject (Grammar.DerivLabel ruleName sort)) /\ kids)])) =
     let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = lookup' ruleName lang in
@@ -142,13 +151,13 @@ defaultDown lang (Gram.Gram (Boundary Down ch /\
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
     -- TODO: is this the right check?
-    if not (fst (mEndpoints ch) == sort) then unsafeCrashWith "assertion failed: ch boundary didn't match sort in defaultDown" else
+    if not (fst (endpoints ch) == sort) then unsafeCrashWith "assertion failed: ch boundary didn't match sort in defaultDown" else
     do
-        ch' /\ sub <- unify ch parentGSort
-        let kidGSorts' = map (subMetaExpr sub) kidGSorts
-        let kidsWithBoundaries = (\ch kid -> Gram.Gram (Boundary Down ch /\ [kid])) <$> kidGSorts' <*> kids
-        let newSort = snd (mEndpoints ch')
-        pure $ Gram.Gram ((Inject (Grammar.DerivLabel ruleName newSort)) /\ kidsWithBoundaries)
+        sub /\ chBackUp <- doOperation ch parentGSort
+        let kidGSorts' = map (fullySubMetaExpr sub) kidGSorts
+        let kidsWithBoundaries = (\ch kid -> wrapBoundary Down ch kid) <$> kidGSorts' <*> kids
+        let newSort = fst (endpoints chBackUp)
+        pure $ wrapBoundary Up chBackUp $ Gram.Gram ((Inject (Grammar.DerivLabel ruleName newSort)) /\ kidsWithBoundaries)
 defaultDown _ _ = Nothing
 
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
@@ -160,7 +169,7 @@ getFirst (x : xs) f = case f x of
            pure $ ((x : ts1) /\ a /\ ts1)
     Just a -> Just (Nil /\ a /\ xs)
 
-defaultUp :: forall l r. Eq l => Ord r => ChLanguage l r -> Rule l r
+defaultUp :: forall l r. Eq l => Ord r => Ord l => ChLanguage l r -> Rule l r
 defaultUp lang (Gram.Gram (Inject (Grammar.DerivLabel ruleName sort) /\ kids)) =
     let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = lookup' ruleName lang in
     let freshener = genFreshener metaVars in
@@ -173,49 +182,14 @@ defaultUp lang (Gram.Gram (Inject (Grammar.DerivLabel ruleName sort) /\ kids)) =
     do
         (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
             <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
-        ch' /\ sub <- unify ch gSort
-        let wrapKid (kid /\ gSort) = Gram.Gram (Boundary Down (subMetaExpr sub gSort) /\ [kid])
+--        ch' /\ sub <- unify ch gSort
+        sub /\ chBackDown <- doOperation ch gSort
+--        let wrapKid (kid /\ gSort) = Gram.Gram (Boundary Down (subMetaExpr sub gSort) /\ [kid])
+        let wrapKid (kid /\ gSort) = wrapBoundary Down (fullySubMetaExpr sub gSort) kid
         let leftKids = map wrapKid leftKidsAndSorts
         let rightKids = map wrapKid rightKidsAndSorts
-        let parentBoundary node = Gram.Gram (Boundary Up (subMetaExpr sub parentGSort) /\ [node])
-        pure $ parentBoundary (Gram.Gram (Inject (Grammar.DerivLabel ruleName (snd (mEndpoints ch'))) /\
-            (Array.fromFoldable leftKids <> [kid] <> Array.fromFoldable rightKids)))
+--        let parentBoundary node = Gram.Gram (Boundary Up (subMetaExpr sub parentGSort) /\ [node])
+        let parentBoundary node = wrapBoundary Up (fullySubMetaExpr sub parentGSort) node
+        pure $ parentBoundary (Gram.Gram (Inject (Grammar.DerivLabel ruleName (fst (endpoints chBackDown))) /\
+            (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids)))
 defaultUp _ _ = Nothing
-
-
-{-
-Question: if the Change in a boundary has metavars that are changes and not metavars that are expressions, then how
-can I do a typechange like +? -> A
-I suppose the answer is that I can't, and that I need to have metavariables in the expressions.
-
-So the question is: where should the metavars be in the various parts of the grammar?
-
-Hypothesis 1:
-The boundaries should have metavariables in the expressions but not the changes.
-Unification should actually work between an Expr and a MetaExpr, and when we do unification in the defaultDown and defaultUp
-rules, only the expressions which came from the typing rules should actually have metavariables in them with respect to that algorithm
-- in other words, the expression metavariables in the changes in the boundaries are not used here.
-The changes in the boundaries only need expression metavariables so that they can deal with metavariables in the sorts in the
-program itself. For example, an enlambda action will cause a change (+? -> A).
-
--}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

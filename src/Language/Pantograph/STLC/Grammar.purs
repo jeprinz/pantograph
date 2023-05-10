@@ -12,10 +12,13 @@ import Data.Either (Either(..))
 data Label =
     -- sorts
     STerm {-context-} {-type-} | SVar {-context-} {-type-} | SType {-type-}
+    -- TODO: add a sort for names, and place an element of SName as a child of let and lambda, and make a Name rule
     -- contexts
-    | CCons {-context-} {-type-} | CNil
+    | CCons {-context-} {-name-} {-type-} | CNil
     -- types
     | TBase | TArrow {-type-} {-type-}
+    -- metadata
+    | Name String
 
 type Expr = G.Expr Label
 type MetaExpr = G.MetaExpr Label
@@ -51,10 +54,11 @@ rules = [
     let g = freshMetaVar unit in
     let a = freshMetaVar unit in
     let b = freshMetaVar unit in
+    let n = freshMetaVar unit in
     G.Rule (Set.fromFoldable [g, a, b])
         [
             exp SType [var a], -- the type annotation (comment this line if we don't want annotations on lambdas)
-            exp STerm [exp CCons [var g, var a], var b] -- the body
+            exp STerm [exp CCons [var g, var n, var a], var b] -- the body
         ]
         (exp STerm [var g, exp TArrow [var a, var b]])
     ,
@@ -69,11 +73,12 @@ rules = [
     let g = freshMetaVar unit in
     let defTy = freshMetaVar unit in
     let bodyTy = freshMetaVar unit in
+    let n = freshMetaVar unit in
     G.Rule (Set.fromFoldable [g, defTy, bodyTy])
         [
             exp SType [var defTy], -- type
-            exp STerm [exp CCons [var g, var defTy], var defTy], -- definition
-            exp STerm [exp CCons [var g, var defTy], var bodyTy]] --body
+            exp STerm [exp CCons [var g, var n, var defTy], var defTy], -- definition
+            exp STerm [exp CCons [var g, var n, var defTy], var bodyTy]] --body
         (exp STerm [var g, var bodyTy])
 
     --------------------------- Types ----------------------------------------------
