@@ -99,3 +99,14 @@ findWithIndex f l =
 assertSingleton :: forall t. Array t -> t
 assertSingleton [x] = x
 assertSingleton _ = unsafeThrow "assertion failed: was not a singleton"
+
+--  foldl :: forall a b. (b -> a -> b) -> b -> f a -> b
+-- assumes that the thing is nonempty
+foldNonempty :: forall a f. Foldable f => (a -> a -> a) -> f a -> a
+foldNonempty f l = case foldl (\acc el ->
+        case acc of
+            Just a -> Just (f a el)
+            Nothing -> Just el
+        ) Nothing l of
+    Nothing -> unsafeThrow "assumption violated in foldNonempty: was empty"
+    Just res -> res

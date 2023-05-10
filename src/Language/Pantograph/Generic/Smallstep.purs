@@ -130,6 +130,9 @@ langToChLang :: forall l r. Grammar.Language l r -> ChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
         -> Grammar.Rule vars (map metaInject kids) (metaInject parent)) lang
 
+-- TODO: everywhere that a boundary is introduced, I should have a function which does that, and only introduces it
+-- if the change is not the identity.
+
 -- Down rule that steps boundary through form - defined generically for every typing rule!
 defaultDown :: forall l r. Eq l => Ord r => ChLanguage l r -> Rule l r
 defaultDown lang (Gram.Gram (Boundary Down ch /\
@@ -180,7 +183,22 @@ defaultUp lang (Gram.Gram (Inject (Grammar.DerivLabel ruleName sort) /\ kids)) =
 defaultUp _ _ = Nothing
 
 
---oneOrNone :: forall t a b. List t -> (t -> Either a b) -> Either (List b) (List b /\ a /\ List b)
+{-
+Question: if the Change in a boundary has metavars that are changes and not metavars that are expressions, then how
+can I do a typechange like +? -> A
+I suppose the answer is that I can't, and that I need to have metavariables in the expressions.
+
+So the question is: where should the metavars be in the various parts of the grammar?
+
+Hypothesis 1:
+The boundaries should have metavariables in the expressions but not the changes.
+Unification should actually work between an Expr and a MetaExpr, and when we do unification in the defaultDown and defaultUp
+rules, only the expressions which came from the typing rules should actually have metavariables in them with respect to that algorithm
+- in other words, the expression metavariables in the changes in the boundaries are not used here.
+The changes in the boundaries only need expression metavariables so that they can deal with metavariables in the sorts in the
+program itself. For example, an enlambda action will cause a change (+? -> A).
+
+-}
 
 
 
