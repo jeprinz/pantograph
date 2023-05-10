@@ -9,7 +9,7 @@ import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.Gram (class GramLabel, Expr, Gram(..), MetaExpr, Path(..), Zipper, prettyPathUp, prettyZipper, unTooth, zipDowns, zipDownsTooth, zipUp)
+import Data.Gram (class GramLabel, Expr, Gram(..), MetaExpr, Path(..), Zipper, Path1, prettyPathUp, prettyZipper, unTooth, zipDowns, zipDownsTooth, zipUp)
 import Data.Lazy (Lazy, defer, force)
 import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
@@ -72,7 +72,25 @@ data Action l
 
 data Mode
   = BufferMode
-  | CursorMode
+  | CursorMode 
+  | SelectMode 
+
+data ModeState l
+  = BufferModeState (BufferModeState l)
+  | CursorModeState (CursorModeState l)
+  | SelectModeState (SelectModeState l)
+type BufferModeState l =
+  { zipper :: Zipper l
+  }
+type CursorModeState l =
+  { zipper :: Zipper l
+  }
+type SelectModeState l = 
+  { dir :: Dir.Dir
+  , pathAbove :: Path1 l
+  , pathBelow :: Path1 l
+  , expr :: Expr l 
+  }
 
 editorComponent :: forall q l.
   Eq l => Ord l => GramLabel l =>
@@ -88,6 +106,7 @@ editorComponent :: forall q l.
     Unit
     Aff
 editorComponent = HK.component \tokens input -> HK.do
+  
   zipper /\ zipper_id <- HK.useState input.zipper
   _ /\ maybeCursorZipper_ref <- HK.useRef (Just input.zipper)
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
@@ -107,7 +126,6 @@ editorComponent = HK.component \tokens input -> HK.do
     getElementByPath path = do
       doc <- liftEffect $ HTML.window >>= Window.document
       elemId <- getElementIdByPath path
-      pathElementIds <- liftEffect $ Ref.read pathElementIds_ref
       liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
         Nothing -> unsafeCrashWith $ "could not find element by id: " <> elemId
         Just elem -> pure elem
@@ -254,6 +272,8 @@ editorComponent = HK.component \tokens input -> HK.do
           else if key == "ArrowLeft" then moveCursor MoveLeft
           else if key == "ArrowRight" then moveCursor MoveRight
           else pure unit
+        SelectMode -> do
+          unsafeCrashWith "TODO"
 
   HK.useLifecycleEffect do
     -- initialize
@@ -271,7 +291,7 @@ editorComponent = HK.component \tokens input -> HK.do
   let 
     handleBufferOutput = case _ of
       ActionOutput act -> handleAction act
-
+  
   let 
     renderExpr isCursor zpr = do
       let elemId = unsafePerformEffect do
