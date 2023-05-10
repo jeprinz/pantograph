@@ -271,7 +271,7 @@ editorComponent = HK.component \tokens input -> HK.do
   let 
     handleBufferOutput = case _ of
       ActionOutput act -> handleAction act
-
+  
   let 
     renderExpr isCursor zpr = do
       let elemId = unsafePerformEffect do
