@@ -24,6 +24,8 @@ import Data.Unify (Meta(..))
 import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Set as Set
+import Language.Pantograph.Generic.Grammar as Grammar
+import Util (assertSingleton)
 
 -- HENRY: due to generic fixpoint form of `Gram`, don't need to manually recurse
 invert :: forall l. Change l -> Change l
@@ -47,6 +49,27 @@ collectMatches (Gram (Expr l1 /\ kids1)) (Gram (Meta (Right l2) /\ kids2)) | l1 
     unsafeCrashWith "TODO"
 collectMatches c (Gram (Meta (Left x) /\ [])) = Just $ Map.insert x (Set.singleton c) Map.empty
 collectMatches _ _ = unsafeCrashWith "no"
+
+--  = Plus (Tooth l) {-one kid - whatever fits inside the tooth-}
+--  | Minus (Tooth l) {-one kid - whatever fits inside the tooth-}
+--  | Expr l {-same number of kids that l has-}
+--  | Replace (Expr l) (Expr l) {-zero kids?-}
+-- not sure how to generalize this correctly, for now I'm writing this
+mEndpoints :: forall l. Grammar.MetaChange l -> MetaExpr l /\ MetaExpr l
+mEndpoints (Gram (Meta l /\ kids)) =
+    case l of
+        Left x -> let e = Gram (Meta (Left x) /\ []) in e /\ e
+        Right chL -> case chL of
+            Plus (l /\ th) ->
+                let leftEp /\ rightEp = mEndpoints (assertSingleton kids) in
+                unTooth (Meta (Right l) /\ (map (map (Meta <<< Right)) th)) leftEp /\ rightEp
+            Minus (l /\ th) ->
+                let leftEp /\ rightEp = mEndpoints (assertSingleton kids) in
+                leftEp /\ unTooth (Meta (Right l) /\ (map (map (Meta <<< Right)) th)) rightEp
+            Expr l ->
+                let leftKids /\ rightKids = unzip (map mEndpoints kids) in
+                expr (Meta (Right l)) leftKids /\ expr (Meta (Right l)) rightKids
+            Replace t1 t2 -> (map (\x -> Meta (Right x)) t1) /\ map (\x -> Meta (Right x)) t2
 
 endpoints :: forall l. Change l -> Expr l /\ Expr l
 endpoints = foldMapGram $ flip matchChangeNode

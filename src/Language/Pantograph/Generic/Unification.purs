@@ -5,13 +5,24 @@ import Prelude
 import Partial.Unsafe (unsafeCrashWith)
 import Language.Pantograph.Generic.Grammar
 import Data.Maybe (Maybe)
+import Data.List(List(..), (:))
+import Data.List as List
+import Data.Array as Array
 import Data.Map (Map)
+import Data.Map as Map
+import Data.Set (Set)
+import Data.Set as Set
 import Data.UUID (UUID)
 import Data.Gram (Gram(..))
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Unify (Meta, MetaVar)
+import Data.Foldable (foldl)
+import Data.Unify (freshMetaVar)
+import Data.Gram as Gram
+import Data.Unify (Meta(..))
+import Util (lookup', union')
 
 {-
 
@@ -43,48 +54,48 @@ It seems wierd to have an change with both "change metavariables" and "expressio
 
 -}
 
+type Ren = Map MetaVar MetaVar
 
-class Subbable a where
-    sub :: (MetaVar -> a) -> a -> a
+genFreshener :: Set MetaVar -> Ren
+genFreshener vars = foldl
+    (\acc x -> Map.insert x (freshMetaVar unit) acc)
+    Map.empty vars
 
-class SubType a b where
-    inject :: a -> b
-    goback :: b -> Maybe a
+class Freshenable t where
+    freshen :: Ren -> t -> t
 
-instance SubType a a where
-    inject x = x
-    goback = Just
+instance Freshenable (Gram.MetaExpr l) where
+    freshen sub (Gram.Gram ((Meta (Left x)) /\ [])) = Gram.Gram (Meta (Left (lookup' x sub)) /\ [])
+    freshen sub (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "wrong number of children on metavar label"
+    freshen sub (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram ((Meta (Right l)) /\ (map (freshen sub) kids))
 
-instance SubType MetaVar l => Subbable (Expr l) where
-    sub s (Gram (l /\ kids)) = case goback l of
-        Just mv -> s mv
-        Nothing -> Gram (l /\ map (sub s) kids)
+type Sub l = Map MetaVar (MetaExpr l)
 
-type Sub outer label = Map UUID (Expr (outer (Meta label)))
+subMetaExpr :: forall l. Sub l -> Gram.MetaExpr l -> Gram.MetaExpr l
+subMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ [])) = lookup' x sub
+subMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "wrong number of children on metavar label"
+subMetaExpr sub (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram ((Meta (Right l)) /\ (map (subMetaExpr sub) kids))
 
-applySub :: forall outer l. Functor outer => Sub outer l -> Expr (outer (Meta l)) -> Expr (outer (Meta l))
-applySub sub (Gram (l /\ kids)) =
+-- we may need a more general notion of unification later, but this is ok for now
+unify :: forall l. Eq l => Gram.MetaExpr l -> Gram.MetaExpr l -> Maybe (Gram.MetaExpr l /\ Sub l)
+unify e1@(Gram.Gram (Meta l1 /\ kids1)) e2@(Gram.Gram (Meta l2 /\ kids2)) =
+    case l1 /\ l2 of
+        Left x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
+        _ /\ Left x -> unify e2 e1
+        Right l /\ Right l' | l == l' -> do
+            kids' /\ sub <- unifyLists (List.fromFoldable kids1) (List.fromFoldable kids2)
+            pure (Gram.Gram (Meta (Right l) /\ Array.fromFoldable kids') /\ sub)
+        _ /\ _ -> Nothing
 
-    unsafeCrashWith "unimplemented"
-
--- just so I can reference this in other files for now
-unifyTemp :: forall outer l. Functor outer => Expr (outer (Meta l)) -> Expr (outer (Meta l)) -> Maybe (Sub outer l)
-unifyTemp = unsafeCrashWith "unimplemented"
-
-type Sub2 l = Map UUID (Expr (Meta l))
-
-unifyTemp2 :: forall l. Expr (Meta l) -> Expr (Meta l) -> Maybe (Sub2 l)
-unifyTemp2 = unsafeCrashWith "unimplemented"
-
-applySub2 :: forall l . Sub2 l -> MetaExpr l -> MetaExpr l
-applySub2 = unsafeCrashWith "unimplemented"
-
-{-
-unifyTemp :: forall l. (l -> Maybe MetaVar) -> Expr l -> Expr l -> Maybe (Sub l)
-
--}
-
-
+unifyLists :: forall l. Eq l => List (Gram.MetaExpr l) -> List (Gram.MetaExpr l) -> Maybe (List (Gram.MetaExpr l) /\ Sub l)
+unifyLists Nil Nil = Just (Nil /\ Map.empty)
+unifyLists (e1 : es1) (e2 : es2) = do
+    e /\ sub <- unify e1 e2
+    let es1' = map (subMetaExpr sub) es1
+    let es2' = map (subMetaExpr sub) es2
+    es /\ sub2 <- unifyLists es1' es2'
+    pure $ (e : es) /\ union' sub sub2
+unifyLists _ _ = unsafeCrashWith "shouldn't happen"
 
 
 
