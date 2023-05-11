@@ -5,21 +5,23 @@ import Data.Tuple.Nested
 import Prelude
 
 import Data.Eq.Generic (genericEq)
+import Data.Expr (class ExprLabel, Tooth(..))
+import Data.Expr as Expr
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
-import Data.Gram (class GramLabel, Gram(..), Path(..), assertWellformedExpr, expectedKidsCount, prettyExpr, prettyNodeG, prettyZipper, stepPath)
-import Data.Gram as Gram
 import Data.Lazy (Lazy, defer)
+import Data.List ((:))
 import Data.List as List
 import Data.List.Rev (RevList)
 import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
+import Data.Newtype (over, unwrap, wrap)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Language.Pantograph.Generic.Rendering (Action(..), Edit)
 import Partial.Unsafe (unsafeCrashWith)
-import Text.Pretty (class Pretty, parens, (<+>))
+import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Utility (assert)
 
 data Sort = VarSort | TermSort
@@ -51,20 +53,18 @@ instance Show Label where show x = genericShow x
 instance Eq Label where eq x = genericEq x
 instance Ord Label where compare x y = genericCompare x y
 
-instance GramLabel Label where
+instance ExprLabel Label where
   -- var
-  prettyNodeG' (Z /\ _) = pure $ "Z"
-  prettyNodeG' (S /\ [v]) = pure $ parens $ "S" <+> v
+  prettyExprF'_unsafe (Z /\ _) = "Z"
+  prettyExprF'_unsafe (S /\ [v]) = parens $ "S" <+> v
   -- term
-  prettyNodeG' (Lam /\ [v, b]) = pure $ parens $ "lam" <+> v <+> "=>" <+> b
-  prettyNodeG' (App /\ [f, a]) = pure $ parens $ f <+> a
-  prettyNodeG' (Ref /\ [v]) = pure $ "#" <> v
+  prettyExprF'_unsafe (Lam /\ [v, b]) = parens $ "lam" <+> v <+> "=>" <+> b
+  prettyExprF'_unsafe (App /\ [f, a]) = parens $ f <+> a
+  prettyExprF'_unsafe (Ref /\ [v]) = "#" <> v
   -- hole
-  prettyNodeG' (Hole _ /\ [hi]) = pure $ "Hole(" <> hi <> ")"
+  prettyExprF'_unsafe (Hole _ /\ [hi]) = "Hole(" <> hi <> ")"
   -- hole interior
-  prettyNodeG' (HoleInterior _ /\ []) = pure $ "?"
-  
-  prettyNodeG' _ = mempty
+  prettyExprF'_unsafe (HoleInterior _ /\ []) = "?"
 
   -- var
   expectedKidsCount Z = 0
@@ -78,36 +78,36 @@ instance GramLabel Label where
   -- hole interior
   expectedKidsCount (HoleInterior _) = 0
 
-type Expr = Gram.Expr Label
-type MetaExpr = Gram.MetaExpr Label
-type Zipper = Gram.Zipper Label
-type Tooth = Gram.Tooth Label
+type Expr = Expr.Expr Label
+type MetaExpr = Expr.MetaExpr Label
+type Zipper = Expr.Zipper Label
+type Tooth = Expr.Tooth Label
 
 --
 -- Expr
 --
 
 -- var
-varE 0 = Gram (Z /\ [])
-varE n = Gram (S /\ [varE (n - 1)])
+varE 0 = Expr.Expr Z []
+varE n = Expr.Expr S [varE (n - 1)]
 -- term
-lamE x b = Gram (Lam /\ [x, b])
-appE f a = Gram (App /\ [f, a])
-refE v = Gram (Ref /\ [v])
+lamE x b = Expr.Expr Lam [x, b]
+appE f a = Expr.Expr App [f, a]
+refE v = Expr.Expr Ref [v]
 -- hole
-hole sort = Gram (Hole sort /\ [holeInterior sort])
+hole sort = Expr.Expr (Hole sort) [holeInterior sort]
 -- hole interior
-holeInterior sort = Gram (HoleInterior sort /\ [])
+holeInterior sort = Expr.Expr (HoleInterior sort) []
 
 --
 -- Tooth
 --
 
-var_p = S /\ ZipList.Path {left: mempty, right: mempty}
+var_p = Tooth S (ZipList.Path {left: mempty, right: mempty})
 
-lam_bod = Lam /\ ZipList.Path {left: pure (hole VarSort), right: mempty}
-app_apl = App /\ ZipList.Path {left: pure (hole TermSort), right: mempty}
-app_arg = App /\ ZipList.Path {left: mempty, right: pure (hole TermSort)}
+lam_bod = Tooth Lam (ZipList.Path {left: pure (hole VarSort), right: mempty})
+app_apl = Tooth App (ZipList.Path {left: pure (hole TermSort), right: mempty})
+app_arg = Tooth App (ZipList.Path {left: mempty, right: pure (hole TermSort)})
 
 hole_interior sort = Hole sort /\ ZipList.Path {left: mempty, right: mempty}
 
@@ -117,34 +117,34 @@ hole_interior sort = Hole sort /\ ZipList.Path {left: mempty, right: mempty}
 
 getEdits :: Zipper -> Array (Edit Label)
 getEdits zipper = do
-  let _ = assertWellformedExpr zipper.expr "getEdits"
-  case zipper.expr of
-    (Gram (Z /\ [])) ->
+  let _ = Expr.assertWellformedExpr "getEdits" (unwrap zipper).expr
+  case (unwrap zipper).expr of
+    Expr.Expr Z [] ->
       [ deleteEdit VarSort
       , enS
       ]
-    (Gram (S /\ [_p])) ->
+    Expr.Expr S [_p] ->
       [ deleteEdit VarSort
       , enS
       ]
-    (Gram (Lam /\ [_v, _b])) ->
+    Expr.Expr Lam [_v, _b] ->
       [ deleteEdit TermSort
       , enLam
       , enArg
       ]
-    (Gram (App /\ [_f, _a])) ->
+    Expr.Expr App [_f, _a] ->
       [ deleteEdit TermSort
       , enLam
       , enApl
       , enArg
       ]
-    (Gram (Ref /\ [_v])) ->
+    Expr.Expr Ref [_v] ->
       [ deleteEdit TermSort
       , enLam
       , enApl
       , enArg
       ]
-    (Gram (Hole sort /\ [_])) ->
+    Expr.Expr (Hole sort) [_] ->
       case sort of
         VarSort -> 
           [ enS
@@ -154,7 +154,7 @@ getEdits zipper = do
           , enApl
           , enArg
           ]
-    Gram (HoleInterior sort /\ []) ->
+    Expr.Expr (HoleInterior sort) [] ->
       case sort of
         VarSort -> 
           [ inZ
@@ -164,22 +164,22 @@ getEdits zipper = do
           ]
     _ -> []
   where
-  deleteEdit sort = {label: "delete", preview: "?", action: SetZipperAction $ defer \_ -> pure $ zipper {expr = hole sort}}
-  enS = {label: "S", preview: "S {{ }}", action: SetZipperAction $ defer \_ -> pure $ zipper {path = stepPath var_p zipper.path}}
-  enLam = {label: "lam", preview: "lam _ ↦ {{ }}", action: SetZipperAction $ defer \_ -> pure $ zipper {path = stepPath lam_bod zipper.path}}
-  enApl = {label: "apl", preview: "_ {{ }}", action: SetZipperAction $ defer \_ -> pure $ zipper {path = stepPath app_apl zipper.path}}
-  enArg = {label: "arg", preview: "{{ }} _", action: SetZipperAction $ defer \_ -> pure $ zipper {path = stepPath app_arg zipper.path}}
+  deleteEdit sort = {label: "delete", preview: "?", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {expr = hole sort} zipper}
+  enS = {label: "S", preview: "S {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath var_p (unwrap zipper).path} zipper}
+  enLam = {label: "lam", preview: "lam _ ↦ {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath lam_bod (unwrap zipper).path} zipper}
+  enApl = {label: "apl", preview: "_ {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath app_apl (unwrap zipper).path} zipper}
+  enArg = {label: "arg", preview: "{{ }} _", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath app_arg (unwrap zipper).path} zipper}
 
-  inZ = {label: "Z", preview: "Z", action: SetZipperAction $ defer \_ -> pure
-    { path: case zipper.path of
-        Path (Just (Gram ((Hole VarSort /\ _) /\ path'))) -> Path path'
+  inZ = {label: "Z", preview: "Z", action: SetZipperAction $ defer \_ -> pure $ Expr.Zipper
+    { path: case (unwrap zipper).path of
+        Expr.Path (Tooth (Hole VarSort) _ : path') -> Expr.Path path'
         _ -> unsafeCrashWith "bad inZ"
     , expr: varE 0
     }}
-  inRef = {label: "ref", preview: "{{#_}}", action: SetZipperAction $ defer \_ -> pure
-    { path: case zipper.path of
-        Path (Just (Gram ((Hole TermSort /\ _) /\ path'))) -> Path path'
-        _ -> unsafeCrashWith $ "bad inRef: " <> prettyZipper zipper
+  inRef = {label: "ref", preview: "{{#_}}", action: SetZipperAction $ defer \_ -> pure $ Expr.Zipper
+    { path: case (unwrap zipper).path of
+        Expr.Path (Tooth (Hole TermSort) _ : path') -> Expr.Path path'
+        _ -> unsafeCrashWith $ "bad inRef: " <> pretty zipper
     , expr: refE (hole VarSort)
     }}
 

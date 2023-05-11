@@ -1,30 +1,29 @@
 module Language.Pantograph.Generic.ChangeDerivations where
 
+import Language.Pantograph.Generic.ChangeAlgebra
+import Language.Pantograph.Generic.Grammar
+import Language.Pantograph.Generic.Unification
 import Prelude
 
 import Data.Array (unzip)
 import Data.Array as Array
+import Data.Either (Either(..))
+import Data.Expr (Meta(..))
+import Data.Expr as Expr
 import Data.Foldable (intercalate)
+import Data.List (List)
+import Data.List as List
 import Data.List.Zip (Path(..))
 import Data.List.Zip as ListZip
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.Tuple (fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Exception.Unsafe (unsafeThrow)
 import Partial.Unsafe (unsafeCrashWith)
-import Language.Pantograph.Generic.Grammar
-import Util (lookup', fromJust', fromRight)
-import Data.Gram as Gram
-import Data.Either (Either(..))
-import Data.Tuple (fst, snd)
-import Language.Pantograph.Generic.ChangeAlgebra
-import Language.Pantograph.Generic.Unification
-import Data.Maybe (Maybe(..))
-import Data.List (List)
-import Data.List as List
 import Type.Direction as Dir
+import Util (lookup', fromJust', fromRight)
 import Util as Util
-import Data.Unify (Meta)
-import Data.Unify (Meta(..))
 
 {-
 Issue:
@@ -96,25 +95,25 @@ type ChangeAlgorithm l r = List (DownRule l r) /\ List (UpRule l r)
 
 data DerivWithBoundariesLabel l r = DerivWithBoundariesLabel r (MetaExpr l) | DownBoundary (Change (Meta l)) | UpBoundary (Change (Meta l))
 
-type DerivTermWithBoundaries l r = Gram.Expr (DerivWithBoundariesLabel l r)
-type DerivPathWithBoundaries l r = Gram.Path Dir.Up (DerivWithBoundariesLabel l r)
+type DerivTermWithBoundaries l r = Expr.Expr (DerivWithBoundariesLabel l r)
+type DerivPathWithBoundaries l r = Expr.Path Dir.Up (DerivWithBoundariesLabel l r)
 
 downBoundary :: forall l r . Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
-downBoundary ch term = Gram.Gram (DownBoundary (map (map (Meta <<< Right)) ch) /\ [term])
+downBoundary ch term = Expr.Expr (DownBoundary (map (map (Meta <<< Right)) ch)) [term]
 
 upBoundary :: forall l r . Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
-upBoundary ch term = Gram.Gram (UpBoundary (map (map (Meta <<< Right)) ch) /\ [term])
+upBoundary ch term = Expr.Expr (UpBoundary (map (map (Meta <<< Right)) ch)) [term]
 
 --updateAt :: forall a. Int -> a -> Array a -> Maybe (Array a)
 
 -- returns nothing if there are no more boundaries
 --smallStepTerm :: forall l r. ChangeAlgorithm l r -> DerivTermWithBoundaries l r -> Maybe (DerivTermWithBoundaries l r)
---smallStepTerm algorithm@(downRules /\ upRules) (Gram.Gram (l /\ kids)) =
+--smallStepTerm algorithm@(downRules /\ upRules) (Expr.Gram (l /\ kids)) =
 --    case l of
 --        DerivWithBoundariesLabel rule sort ->
 --            case Util.findWithIndex (smallStepTerm algorithm) kids of
 --                Nothing -> Nothing
---                Just (kid /\ i) -> Just $ Gram.Gram (l /\
+--                Just (kid /\ i) -> Just $ Expr.Gram (l /\
 --                    fromJust' "smallStepTerm" (Array.updateAt i kid kids))
 --        DownBoundary ch ->
 --            let kid = Util.assertSingleton kids in
@@ -122,7 +121,7 @@ upBoundary ch term = Gram.Gram (UpBoundary (map (map (Meta <<< Right)) ch) /\ [t
 --                Just ((kid' /\ chUp) /\ _) -> Just if isId chUp then kid' else upBoundary chUp kid'
 --                Nothing -> do
 --                    kid' <- smallStepTerm algorithm kid
---                    pure $ Gram.Gram (l /\ [kid'])
+--                    pure $ Expr.Gram (l /\ [kid'])
 --        UpBoundary ch -> unsafeCrashWith "TODO" --?h
 
 {-
@@ -133,7 +132,7 @@ upBoundary ch term = Gram.Gram (UpBoundary (map (map (Meta <<< Right)) ch) /\ [t
 ---}
 --chDeriv :: forall l r . Ord l => Ord r => Language l r -> Change l -> DerivTerm l r -> DerivTerm l r
 --chDeriv lang ch (Gram ((DerivLabel l _) /\ kids)) =
-----data Rule l r = Rule (Set Gram.MetaVar) (Array (MetaExpr l)) (MetaExpr l)
+----data Rule l r = Rule (Set Expr.MetaVar) (Array (MetaExpr l)) (MetaExpr l)
 --    let (Rule boundMetaVars kidSorts parentSort) = lookup' l lang in
 --    -- TODO: freshen the metavars in kidSorts and parentSort
 --    case unifyTemp2 (map Right ch) (map (map Expr) parentSort) of

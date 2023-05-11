@@ -1,33 +1,71 @@
 module Type.Direction where
 
-import Prelude
+import Prim.Row
+import Data.Variant (Variant, inj)
+import Type.Proxy (Proxy(..))
 
-import Data.Enum (class Enum)
-import Data.Enum.Generic (genericPred, genericSucc)
-import Data.Eq.Generic (genericEq)
-import Data.Generic.Rep (class Generic)
-import Data.Ord.Generic (genericCompare)
-import Data.Show.Generic (genericShow)
-import Type.Proxy (Proxy)
+-- proxies
+_up    = Proxy :: Proxy "up"
+_down  = Proxy :: Proxy "down"
+_left  = Proxy :: Proxy "left"
+_right = Proxy :: Proxy "right"
+_prev  = Proxy :: Proxy "prev"
+_next  = Proxy :: Proxy "next"
 
-data Dir = Down | Up
-derive instance Generic Dir _
-instance Eq Dir where eq x y = genericEq x y
-instance Ord Dir where compare x y = genericCompare x y
-instance Enum Dir where succ x = genericSucc x
-                        pred x = genericPred x
-instance Show Dir where show x = genericShow x
+-- symbols
+type Up    = "up"
+type Down  = "down"
+type Left  = "left"
+type Right = "right"
+type Prev  = "prev"
+type Next  = "next"
 
-type Down = "down"
-type Up = "up"
+-- atomic
+type UpDir    dirs = (up    :: Proxy Up    | dirs)
+type DownDir  dirs = (down  :: Proxy Down  | dirs)
+type LeftDir  dirs = (left  :: Proxy Left  | dirs)
+type RightDir dirs = (right :: Proxy Right | dirs)
+type PrevDir  dirs = (prev  :: Proxy Prev  | dirs)
+type NextDir  dirs = (next  :: Proxy Next  | dirs)
 
-class IsDir (d :: Symbol) where reflectDir :: Proxy d -> Dir
+-- up, down
+type VerticalDirs dirs = UpDir (DownDir dirs)
+-- left, right
+type HorizontalDirs dirs = LeftDir (RightDir dirs)
+-- prev, next
+type OrdinalDirs dirs = NextDir (PrevDir dirs)
+-- up, down, left, right
+type CompassDirs dirs = VerticalDirs (HorizontalDirs dirs)
+-- up, down, left, right, prev, next
+type MoveDirs dirs = OrdinalDirs (CompassDirs dirs)
 
-instance IsDir Down where reflectDir _ = Down
-instance IsDir Up where reflectDir _ = Up
+-- dir values
+type VerticalDir = Variant (VerticalDirs ())
+type HorizontalDir = Variant (HorizontalDirs ())
+type OrdinalDir = Variant (OrdinalDirs ())
+type CompassDir = Variant (CompassDirs ())
+type MoveDir = Variant (MoveDirs ())
 
--- utilities
+class Opposite (dir1 :: Symbol) (dir2 :: Symbol) | dir1 -> dir2
+instance Opposite Up Down
+instance Opposite Left Right
+instance Opposite Next Prev
 
-class (IsDir d, IsDir d') <= Rev d d' | d -> d'
-instance Rev Down Up
-instance Rev Up Down
+upDir :: forall dirs. Variant (UpDir dirs)
+upDir = inj _up (Proxy :: Proxy Up)
+
+downDir :: forall dirs. Variant (DownDir dirs)
+downDir = inj _down (Proxy :: Proxy Down)
+
+leftDir :: forall dirs. Variant (LeftDir dirs)
+leftDir = inj _left (Proxy :: Proxy Left)
+
+rightDir :: forall dirs. Variant (RightDir dirs)
+rightDir = inj _right (Proxy :: Proxy Right)
+
+prevDir :: forall dirs. Variant (PrevDir dirs)
+prevDir = inj _prev (Proxy :: Proxy Prev)
+
+nextDir :: forall dirs. Variant (NextDir dirs)
+nextDir = inj _next (Proxy :: Proxy Next)
+

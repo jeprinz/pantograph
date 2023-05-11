@@ -4,20 +4,22 @@ import Data.CodePoint.Unicode
 import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
+import Type.Direction
 
 import Bug (bug)
 import Data.Array as Array
+import Data.Expr (class ExprLabel, Expr(..), Path, Zipper(..), Zipper', prettyPath, unTooth, zipDowns, zipDownsTooth, zipUp)
 import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.Gram (class GramLabel, Expr, Gram(..), MetaExpr, Path(..), Path1, Zipper, Zipper', prettyPathUp, prettyZipper, unTooth, zipDowns, zipDownsTooth, zipUp)
 import Data.Lazy (Lazy, defer, force)
 import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
+import Data.Newtype (unwrap)
 import Data.Rational as Rational
 import Data.String as String
 import Data.UUID as UUID
@@ -34,10 +36,10 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName, setClassNameByElementId)
-import Language.Pantograph.Generic.ZipperMovement (MoveDir(..), moveZipper)
+import Language.Pantograph.Generic.ZipperMovement (moveZipper)
 import Partial.Unsafe (unsafeCrashWith)
+import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, pretty)
-import Type.Direction (Dir(..), Down, Up)
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
 import Web.DOM as DOM
@@ -62,7 +64,7 @@ data Output l
 data Query l a
   -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
   = SetBufferEnabledQuery Boolean a
-  | MoveBufferQuery Dir a
+  | MoveBufferQuery MoveDir a
   | SubmitBufferQuery a
 
 type Edit l =
@@ -80,15 +82,15 @@ data State l
   | SelectState (Select l)
   | TopState (Top l)
 
-instance GramLabel l => Pretty (State l) where
+instance ExprLabel l => Pretty (State l) where
   pretty = case _ of
     BufferState buffer -> Array.intercalate "\n"
       [ "buffer:"
-      , "  - zipper = " <> prettyZipper buffer.zipper
+      , "  - zipper = " <> pretty buffer.zipper
       ]
     CursorState cursor -> Array.intercalate "\n"
       [ "cursor:"
-      , "  - zipper = " <> prettyZipper cursor.zipper
+      , "  - zipper = " <> pretty cursor.zipper
       ]
     SelectState select -> Array.intercalate "\n"
       [ "select: !TODO"
@@ -121,7 +123,7 @@ type Top l =
   }
 
 editorComponent :: forall q l.
-  Eq l => Ord l => GramLabel l =>
+  Eq l => Ord l => ExprLabel l =>
   H.Component 
     q
     { zipper :: Zipper l
@@ -136,7 +138,7 @@ editorComponent :: forall q l.
     Aff
 editorComponent = HK.component \tokens input -> HK.do
 
-  let 
+  let
     initState = CursorState
       { zipper: input.zipper
       }
@@ -147,7 +149,7 @@ editorComponent = HK.component \tokens input -> HK.do
   let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
-  _ /\ maybeCursorPath_ref <- HK.useRef (Just input.zipper.path)
+  _ /\ maybeCursorPath_ref <- HK.useRef (Just (unwrap input.zipper).path)
   _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (Path Dir.Up l) String)
 
   let 
@@ -155,7 +157,7 @@ editorComponent = HK.component \tokens input -> HK.do
     getElementIdByPath path = do
       pathElementIds <- liftEffect $ Ref.read pathElementIds_ref
       case Map.lookup path pathElementIds of
-        Nothing -> bug $ "could not find element id for path: " <> prettyPathUp path "{}"
+        Nothing -> bug $ "could not find element id for path: " <> prettyPath path "{}"
         Just elemId -> pure elemId
 
     getElementByPath :: Path Dir.Up l -> HK.HookM Aff DOM.Element
@@ -219,9 +221,9 @@ editorComponent = HK.component \tokens input -> HK.do
     setFacade' st = do
       case st of
         CursorState cursor -> do
-          setCursorElement (Just cursor.zipper.path)
+          setCursorElement (Just (unwrap cursor.zipper).path)
         BufferState buffer -> do
-          setCursorElement (Just buffer.zipper.path)
+          setCursorElement (Just (unwrap buffer.zipper).path)
         SelectState select -> do
           unsafeCrashWith "!TODO setFacade SelectState"
         TopState top -> do
@@ -246,11 +248,11 @@ editorComponent = HK.component \tokens input -> HK.do
           Just zipper -> setState $ CursorState {zipper}
 
     moveCursor dir = getFacade >>= case _ of
-      CursorState st -> do
-        -- Debug.traceM $ "[moveCursor] st = " <> prettyZipper st.zipper
-        case moveZipper dir st.zipper of
+      CursorState cursor -> do
+        -- Debug.traceM $ "[moveCursor] st = " <> pretty st.zipper
+        case moveZipper dir cursor.zipper of
           Nothing -> pure unit
-          Just zipper -> setFacade $ CursorState st {zipper = zipper}
+          Just zipper -> setFacade $ CursorState cursor {zipper = zipper}
       BufferState _st -> pure unit
       SelectState _st -> unsafeCrashWith "!TODO escape select then move cursor"
       TopState _st -> unsafeCrashWith "!TODO move to first top cursor position, then move"
@@ -270,36 +272,36 @@ editorComponent = HK.component \tokens input -> HK.do
         BufferState buffer -> do
           if key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath buffer.zipper.path
+            elemId <- getElementIdByPath (unwrap buffer.zipper).path
             HK.tell tokens.slotToken bufferSlot elemId SubmitBufferQuery
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
-            elemId <- getElementIdByPath buffer.zipper.path
+            elemId <- getElementIdByPath (unwrap buffer.zipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false
             -- -- set facade to cursor
             -- setFacade $ CursorState {zipper: buffer.zipper}
           else if key == "ArrowUp" then do
             -- Debug.traceM $ "[moveBufferQuery Up]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath buffer.zipper.path
-            HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery Up
+            elemId <- getElementIdByPath (unwrap buffer.zipper).path
+            HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery upDir
           else if key == "ArrowDown" then do
             -- Debug.traceM $ "[moveBufferQuery Down]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath buffer.zipper.path
-            HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery Down
+            elemId <- getElementIdByPath (unwrap buffer.zipper).path
+            HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
         CursorState cursor -> do
           if  key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
-            elemId <- getElementIdByPath cursor.zipper.path
+            elemId <- getElementIdByPath (unwrap cursor.zipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
-          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) MoveUp
-          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) MoveDown
-          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) MoveLeft
-          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) MoveRight
+          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
+          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
+          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
+          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
           else pure unit
         SelectState select -> do
           if key == " " then do
@@ -307,10 +309,10 @@ editorComponent = HK.component \tokens input -> HK.do
             -- !TODO select --> cursor
             -- !TODO activate buffer
             pure unit
-          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) MoveUp
-          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) MoveDown
-          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) MoveLeft
-          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) MoveRight
+          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
+          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
+          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
+          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
           else pure unit
         TopState _ -> unsafeCrashWith "!TODO handle keyboard event in TopState"
 
@@ -323,10 +325,10 @@ editorComponent = HK.component \tokens input -> HK.do
         elemId = unsafePerformEffect do
           -- generate new elemId and add it to the map
           elemId_ <- UUID.toString <$> UUID.genUUID
-          Ref.modify_ (Map.insert zipper.path elemId_) pathElementIds_ref
+          Ref.modify_ (Map.insert (unwrap zipper).path elemId_) pathElementIds_ref
           pure elemId_
 
-        clsNames /\ kidElems = input.renderExprKids zipper.expr $ renderExpr false <$> zipDowns zipper
+        clsNames /\ kidElems = input.renderExprKids (unwrap zipper).expr $ renderExpr false <$> zipDowns zipper
       HH.div
         [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
         , HP.id elemId
@@ -335,7 +337,7 @@ editorComponent = HK.component \tokens input -> HK.do
             setFacade $ CursorState {zipper: zipper}
         , HE.onMouseOver \event -> do
             H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setHighlightElement (Just zipper.path)
+            setHighlightElement (Just (unwrap zipper).path)
             pure unit
         ] $
         Array.concat
@@ -355,10 +357,10 @@ editorComponent = HK.component \tokens input -> HK.do
           let elemId = unsafePerformEffect do
                 -- generate new elemId and add it to the map
                 elemId_ <- UUID.toString <$> UUID.genUUID
-                Ref.modify_ (Map.insert zipper2.path elemId_) pathElementIds_ref
+                Ref.modify_ (Map.insert (unwrap zipper2).path elemId_) pathElementIds_ref
                 pure elemId_
           let clsNames /\ kidElems = 
-                input.renderExprKids (unTooth th zipper1.expr) $
+                input.renderExprKids (unTooth th (unwrap zipper1).expr) $
                 Array.fromFoldable $
                 ZipList.unpathAround interior $ do
                   let kidZippers = zipDownsTooth zipper2 th
@@ -373,7 +375,7 @@ editorComponent = HK.component \tokens input -> HK.do
                   setFacade $ CursorState {zipper: zipper2}
               , HE.onMouseOver \event -> do
                   H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-                  setHighlightElement (Just zipper2.path)
+                  setHighlightElement (Just (unwrap zipper2).path)
                   pure unit
               ] $
               Array.concat
@@ -403,7 +405,7 @@ editorComponent = HK.component \tokens input -> HK.do
     -- Debug.trace 
     --   ("[editorComponent.render]" <> Array.foldMap ("\n" <> _)
     --     (map ("  - " <> _)
-    --       [ "zipper = " <> prettyZipper zipper
+    --       [ "zipper = " <> pretty zipper
     --       ]))
     --   \_ ->
       HH.div [classNames ["editor"]]
@@ -427,7 +429,7 @@ type BufferInput l =
   , edits :: Array (Edit l)
   }
 
-bufferComponent :: forall l. GramLabel l => H.Component (Query l) (BufferInput l) (Output l) Aff
+bufferComponent :: forall l. ExprLabel l => H.Component (Query l) (BufferInput l) (Output l) Aff
 bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""
@@ -468,9 +470,10 @@ bufferComponent = HK.component \tokens input -> HK.do
       pure (Just a)
     MoveBufferQuery qm a -> do
       if isEnabled then do
-        case qm of
-          Up -> HK.modify_ bufferFocus_id (_ - 1)
-          Down -> HK.modify_ bufferFocus_id (_ + 1)
+        -- case qm of
+        --   Up -> HK.modify_ bufferFocus_id (_ - 1)
+        --   Down -> HK.modify_ bufferFocus_id (_ + 1)
+        let _ = unsafeCrashWith "TODO"
         pure $ Just a
       else
         pure Nothing
@@ -492,7 +495,7 @@ bufferComponent = HK.component \tokens input -> HK.do
     -- Debug.trace 
     --   ("[bufferComponent.render]" <> Array.foldMap ("\n" <> _)
     --     (map ("  - " <> _)
-    --       [ "zipper = " <> prettyZipper input.zipper
+    --       [ "zipper = " <> pretty input.zipper
     --       , "isEnabled = " <> show isEnabled
     --       ]))
     --   \_ ->

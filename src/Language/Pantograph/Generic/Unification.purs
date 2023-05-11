@@ -1,31 +1,29 @@
 module Language.Pantograph.Generic.Unification where
 
+import Language.Pantograph.Generic.Grammar
 import Prelude
 
-import Partial.Unsafe (unsafeCrashWith)
-import Language.Pantograph.Generic.Grammar
-import Data.Maybe (Maybe)
-import Data.List(List(..), (:))
-import Data.List as List
+import Control.Apply (lift2)
 import Data.Array as Array
+import Data.Either (Either(..))
+import Data.Expr (class ExprLabel, assertWellformedExpr)
+import Data.Expr as Expr
+import Data.Foldable (foldl)
+import Data.List (List(..), (:))
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe)
+import Data.MultiMap (MultiMap)
+import Data.MultiMap as MultiMap
 import Data.Set (Set)
 import Data.Set as Set
-import Data.UUID (UUID)
-import Data.Gram (Gram(..))
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
-import Data.Unify (Meta, MetaVar)
-import Data.Foldable (foldl)
-import Data.Unify (freshMetaVar)
-import Data.Gram as Gram
-import Data.Unify (Meta(..))
+import Data.UUID (UUID)
+import Partial.Unsafe (unsafeCrashWith)
 import Util (lookup', union')
-import Data.MultiMap as MultiMap
-import Data.MultiMap (MultiMap)
-import Control.Apply (lift2)
+import Utility (assert)
 
 {-
 
@@ -57,51 +55,51 @@ It seems wierd to have an change with both "change metavariables" and "expressio
 
 -}
 
-type Ren = Map MetaVar MetaVar
+type Ren = Map Expr.MetaVar Expr.MetaVar
 
-genFreshener :: Set MetaVar -> Ren
+genFreshener :: Set Expr.MetaVar -> Ren
 genFreshener vars = foldl
-    (\acc x -> Map.insert x (freshMetaVar unit) acc)
+    (\acc x -> Map.insert x (Expr.freshMetaVar unit) acc)
     Map.empty vars
 
 class Freshenable t where
     freshen :: Ren -> t -> t
 
-instance Freshenable (Gram.MetaExpr l) where
-    freshen sub (Gram.Gram ((Meta (Left x)) /\ [])) = Gram.Gram (Meta (Left (lookup' x sub)) /\ [])
-    freshen sub (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "wrong number of children on metavar label"
-    freshen sub (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram ((Meta (Right l)) /\ (map (freshen sub) kids))
+instance ExprLabel l => Freshenable (Expr.MetaExpr l) where
+    freshen sub expr = assertWellformedExpr "freshen" expr \_ -> case expr of
+        (Expr.Expr (Expr.Meta (Left x)) []) -> Expr.Expr (Expr.Meta (Left (lookup' x sub))) []
+        (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr ((Expr.Meta (Right l))) (map (freshen sub) kids)
 
-type Sub l = Map MetaVar (MetaExpr l)
+type Sub l = Map Expr.MetaVar (MetaExpr l)
 
-subMetaExpr :: forall l. Sub l -> Gram.MetaExpr l -> Gram.MetaExpr l
-subMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ [])) = lookup' x sub
-subMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "wrong number of children on metavar label"
-subMetaExpr sub (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram ((Meta (Right l)) /\ (map (subMetaExpr sub) kids))
+subMetaExpr :: forall l. ExprLabel l => Sub l -> Expr.MetaExpr l -> Expr.MetaExpr l
+subMetaExpr sub expr = assertWellformedExpr "subMetaExpr" expr \_ -> case expr of
+    (Expr.Expr (Expr.Meta (Left x)) []) -> lookup' x sub
+    (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr (Expr.Meta (Right l)) (map (subMetaExpr sub) kids)
 
-assertNoMetavars :: forall l. Gram.MetaExpr l -> Gram.Expr l
-assertNoMetavars (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "has a metavar"
-assertNoMetavars (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram (l /\ (map assertNoMetavars kids))
+assertNoMetavars :: forall l. Expr.MetaExpr l -> Expr.Expr l
+assertNoMetavars (Expr.Expr (Expr.Meta (Left x)) _) = unsafeCrashWith "has a metavar"
+assertNoMetavars (Expr.Expr (Expr.Meta (Right l)) kids) = Expr.Expr l (map assertNoMetavars kids)
 
-fullySubMetaExpr :: forall l. Map MetaVar (Gram.Expr l) -> Gram.MetaExpr l -> Gram.Expr l
-fullySubMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ [])) = lookup' x sub
-fullySubMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "wrong number of children on metavar label"
-fullySubMetaExpr sub (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram (l /\ (map (fullySubMetaExpr sub) kids))
+fullySubMetaExpr :: forall l. Map Expr.MetaVar (Expr.Expr l) -> Expr.MetaExpr l -> Expr.Expr l
+fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Left x)) []) = lookup' x sub
+fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Left x)) _) = unsafeCrashWith "wrong number of children on metavar label"
+fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Right l)) kids) = Expr.Expr l (map (fullySubMetaExpr sub) kids)
 
 ------------- Unification ------------------------------------------------------
 
 -- we may need a more general notion of unification later, but this is ok for now
-unify :: forall l. Eq l => Gram.MetaExpr l -> Gram.MetaExpr l -> Maybe (Gram.MetaExpr l /\ Sub l)
-unify e1@(Gram.Gram (Meta l1 /\ kids1)) e2@(Gram.Gram (Meta l2 /\ kids2)) =
+unify :: forall l. ExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
+unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
     case l1 /\ l2 of
         Left x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
         _ /\ Left x -> unify e2 e1
         Right l /\ Right l' | l == l' -> do
             kids' /\ sub <- unifyLists (List.fromFoldable kids1) (List.fromFoldable kids2)
-            pure (Gram.Gram (Meta (Right l) /\ Array.fromFoldable kids') /\ sub)
+            pure (Expr.Expr (Expr.Meta (Right l)) (Array.fromFoldable kids') /\ sub)
         _ /\ _ -> Nothing
 
-unifyLists :: forall l. Eq l => List (Gram.MetaExpr l) -> List (Gram.MetaExpr l) -> Maybe (List (Gram.MetaExpr l) /\ Sub l)
+unifyLists :: forall l. ExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
 unifyLists Nil Nil = Just (Nil /\ Map.empty)
 unifyLists (e1 : es1) (e2 : es2) = do
     e /\ sub <- unify e1 e2
@@ -113,8 +111,8 @@ unifyLists _ _ = unsafeCrashWith "shouldn't happen"
 
 ------------- Another operation I need for typechanges stuff ------------------
 
-getMatches :: forall l. Eq l => Ord l => Gram.MetaExpr l -> Gram.Expr l -> Maybe (MultiMap MetaVar (Gram.Expr l))
-getMatches (Gram.Gram (Meta l1 /\ kids1)) e2@(Gram.Gram (l2 /\ kids2)) =
+getMatches :: forall l. Eq l => Ord l => Expr.MetaExpr l -> Expr.Expr l -> Maybe (MultiMap Expr.MetaVar (Expr.Expr l))
+getMatches (Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr l2 kids2) =
     case l1 of
         Left x -> Just $ MultiMap.insert x e2 (MultiMap.empty)
         Right l | l == l2 -> foldl (lift2 MultiMap.union) (Just MultiMap.empty) (getMatches <$> kids1 <*> kids2)

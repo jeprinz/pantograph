@@ -1,13 +1,13 @@
 module Language.Pantograph.STLC.Grammar where
 
-import Language.Pantograph.Generic.Grammar as G
-import Data.Unify (freshMetaVar)
-import Data.Unit (unit)
-import Data.Set as Set
-import Data.Gram as Gram
 import Data.Tuple.Nested
-import Data.Unify (MetaVar, Meta(..))
+
 import Data.Either (Either(..))
+import Data.Expr (Meta(..), MetaVar(..), freshMetaVar)
+import Data.Expr as Expr
+import Data.Set as Set
+import Data.Unit (unit)
+import Language.Pantograph.Generic.Grammar as G
 
 data Label =
     -- sorts
@@ -32,11 +32,11 @@ type DerivPath = G.DerivPath Label RuleName
 
 type Rule = G.Rule Label RuleName
 
-exp :: forall l. l -> Array (Gram.MetaExpr l) -> Gram.MetaExpr l
-exp l kids = Gram.Gram (Meta (Right l) /\ kids)
+exp :: forall l. l -> Array (Expr.MetaExpr l) -> Expr.MetaExpr l
+exp l kids = Expr.Expr (Meta (Right l)) kids
 
-var :: forall l. MetaVar -> Gram.MetaExpr l
-var x = Gram.Gram (Meta (Left x) /\ [])
+var :: forall l. MetaVar -> Expr.MetaExpr l
+var x = Expr.Expr (Meta (Left x)) []
 
 --data Rule l r = Rule (Set MetaVar) (Array (MetaExpr l)) (MetaExpr l)
 rules :: Array Rule

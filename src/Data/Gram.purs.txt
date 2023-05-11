@@ -13,7 +13,7 @@ import Data.Foldable (class Foldable, foldMap, foldl, foldr, intercalate, sequen
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
-import Data.List (List(..))
+import Data.List (List(..), (:))
 import Data.List as List
 import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
@@ -81,21 +81,24 @@ prettyExpr (Gram (l /\ kids)) = prettyNodeG (l /\ (prettyExpr <$> kids))
 prettyTooth :: forall l. GramLabel l => Tooth l -> String -> String
 prettyTooth (l /\ zip) innerStr = prettyNodeG (l /\ Array.fromFoldable (ZipList.unpathAround innerStr (prettyExpr <$> zip)))
 
-prettyPath1Up :: forall l. GramLabel l => Path1 l -> String -> String
-prettyPath1Up (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
-prettyPath1Up (Gram (th /\ (Just path))) innerStr = prettyPath1Up path $ prettyTooth th innerStr
+-- prettyPath1Up :: forall l. GramLabel l => Path1 l -> String -> String
+-- prettyPath1Up (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
+-- prettyPath1Up (Gram (th /\ (Just path))) innerStr = prettyPath1Up path $ prettyTooth th innerStr
 
 prettyPathUp :: forall l. GramLabel l => Path Dir.Up l -> String -> String
-prettyPathUp (Path Nothing) innerStr = innerStr
-prettyPathUp (Path (Just path1)) innerStr = prettyPath1Up path1 innerStr
+-- prettyPathUp (Path Nothing) innerStr = innerStr
+-- prettyPathUp (Path (Just path1)) innerStr = ?a -- prettyPath1Up path1 innerStr
+-- !TODO use generic traverse path
+prettyPathUp = ?a
 
-prettyPath1Down :: forall l. GramLabel l => Path1 l -> String -> String
-prettyPath1Down (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
-prettyPath1Down (Gram (th /\ Just path)) innerStr = prettyTooth th (prettyPath1Down path innerStr)
+-- prettyPath1Down :: forall l. GramLabel l => Path1 l -> String -> String
+-- prettyPath1Down (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
+-- prettyPath1Down (Gram (th /\ Just path)) innerStr = prettyTooth th (prettyPath1Down path innerStr)
 
 prettyPathDown :: forall l. GramLabel l => Path Dir.Down l -> String -> String
 prettyPathDown (Path Nothing) innerStr = innerStr
-prettyPathDown (Path (Just path1)) innerStr = prettyPath1Down path1 innerStr
+-- !TODO use generic traverse path
+prettyPathDown (Path (Just path1)) innerStr = ?a -- prettyPath1Down path1 innerStr
 
 prettyZipper :: forall l. GramLabel l => Zipper l -> String
 prettyZipper zipper = prettyPathUp zipper.path (braces2 (prettyExpr zipper.expr))
@@ -239,8 +242,11 @@ bimapNodeG f_l f_g = bimap f_l (map f_g)
 unwrapGram (Gram g) = g
 overGram f = unwrapGram >>> f >>> Gram
 overMGram k = unwrapGram >>> k >>> map Gram
-labelGram = unwrapGram >>> fst
-jointGram = unwrapGram >>> snd
+gramLabel = unwrapGram >>> fst
+gramJoint = unwrapGram >>> snd
+
+{-
+-- !TODO OLD
 
 -- | Map a function `f` over the labels in a `Gram`, taking into account `Node`
 -- | structure. This is implemented by `travereGram`ing via the trivial
@@ -280,6 +286,7 @@ logGramString :: forall j. Functor j => Traversable j => Gram j String -> Effect
 logGramString = traverseGram_ \(l /\ j) -> do
   log l 
   sequence_ j
+-}
 
 -- | Expr
 type Expr = Gram Array
@@ -289,15 +296,7 @@ expr l kids = Gram (l /\ kids)
 -- | MetaExpr
 type MetaExpr l = Gram Array (Meta l)
 
--- | Each node of a path is labeled. `Path1` is populated (has at least one
--- | element). Use `Path` for a path that could be empty.
-type Path1 :: Type -> Type
-type Path1 l = Gram Maybe (Tooth l)
-
-type Path1Node    l l' = Node  Maybe   (Tooth l) (Tooth l')
-type Path1NodeG   l l' = NodeG Maybe   (Tooth l) (Path1 l')
-type Path1NodeM m l l' = NodeM Maybe m (Tooth l) (Tooth l')
-
+-- | Tooth
 type Tooth l = l /\ ZipList.Path (Expr l)
 
 foldMapTooth :: forall l m. Monoid m => (l -> m) -> Tooth l -> m
@@ -316,67 +315,60 @@ unTooth (l /\ p) g = expr l (Array.fromFoldable (ZipList.unpathAround g p))
 
 showTooth (l /\ p) = show l <> " " <> intercalate " " (ZipList.unpathAround "{}" (show <$> p))
 
-newtype Path (dir :: Symbol) l = Path (Maybe (Path1 l))
+newtype Path (dir :: Symbol) l = Path (List (Tooth l))
 derive instance Newtype (Path dir l) _
 derive newtype instance Show l => Show (Path dir l)
 derive newtype instance Eq l => Eq (Path dir l)
 derive newtype instance (Eq l, Ord l) => Ord (Path dir l)
 
-lastPath1 :: forall l. Tooth l -> Path1 l
-lastPath1 th = Gram (th /\ Nothing)
+-- For getting the direction of a path as a value, without having to keep a
+-- value stored in the path that is maintained to correspond to the type's dir
+-- annotation
+class ReflectPathDir (dir :: Symbol) where reflectPathDir :: forall l. Path dir l -> Dir.Dir
+instance ReflectPathDir Dir.Down where reflectPathDir _ = Dir.Down
+instance ReflectPathDir Dir.Up where reflectPathDir _ = Dir.Up
 
-lastPath :: forall dir l. Tooth l -> Path dir l
-lastPath th = Newtype.wrap <<< Just $ lastPath1 th
-
-stepPath1 :: forall l. Tooth l -> Maybe (Path1 l) -> Path1 l
-stepPath1 th p = Gram (th /\ p)
-
-unstepPath1 :: forall l. Path1 l -> Tooth l /\ Maybe (Path1 l)
-unstepPath1 (Gram (th /\ p)) = th /\ p
+instance ReflectPathDir dir => Semigroup (Path dir l) where
+  append = ?a
 
 stepPath :: forall dir l. Tooth l -> Path dir l -> Path dir l
-stepPath th p = Newtype.wrap <<< Just $ stepPath1 th (Newtype.unwrap p)
+stepPath th (Path ths) = Path (th : ths)
 
 unstepPath :: forall dir l. Path dir l -> Maybe (Tooth l /\ Path dir l)
-unstepPath (Path p) = do
-  p1 <- p
-  let th /\ p' = unstepPath1 p1
-  Just $ th /\ Path p'
+unstepPath (Path Nil) = Nothing
+unstepPath (Path (th : ths)) = Just (th /\ Path ths)
 
-traverseDownPath :: forall dir l l' m. Applicative m => (Path1NodeM m l l' -> m (Path1Node l' l')) -> Path dir l -> m (Path dir l')
-traverseDownPath f = Newtype.unwrap >>> case _ of 
-  Nothing -> Newtype.wrap <$> pure Nothing
-  Just p -> Newtype.wrap <$> (Just <$> traverseGram f p)
+-- traverseDownPath :: forall dir l l' m. Applicative m => (Path1NodeM m l l' -> m (Path1Node l' l')) -> Path dir l -> m (Path dir l')
+-- traverseDownPath f = Newtype.unwrap >>> case _ of 
+--   Nothing -> Newtype.wrap <$> pure Nothing
+--   Just p -> Newtype.wrap <$> (Just <$> traverseGram f p)
 
--- | Basically, traverse the path in reverse. The implementation uses
--- | tail-recursion to be efficient.
-traverseUpPath :: forall dir l l' m. Applicative m => (Path1NodeM m l l' -> m (Path1Node l' l')) -> Path dir l -> m (Path dir l')
-traverseUpPath f = map Path <<< go Nothing <<< Newtype.unwrap
-  where
-  go :: Maybe (m (Path1 l')) -> Maybe (Path1 l) -> m (Maybe (Path1 l'))
-  go m_pBelow Nothing = sequence m_pBelow
-  go m_pBelow (Just p1Above) = go (Just $ Gram <$> f (labelGram p1Above /\ m_pBelow)) (jointGram p1Above)
+-- -- | Basically, traverse the path in reverse. The implementation uses
+-- -- | tail-recursion to be efficient.
+-- traverseUpPath :: forall dir l l' m. Applicative m => (Path1NodeM m l l' -> m (Path1Node l' l')) -> Path dir l -> m (Path dir l')
+-- traverseUpPath f = map Path <<< go Nothing <<< Newtype.unwrap
+--   where
+--   go :: Maybe (m (Path1 l')) -> Maybe (Path1 l) -> m (Maybe (Path1 l'))
+--   go m_pBelow Nothing = sequence m_pBelow
+--   go m_pBelow (Just p1Above) = go (Just $ Gram <$> f (gramLabel p1Above /\ m_pBelow)) (gramJoint p1Above)
 
 -- if = down, then p1 goes below
 -- if = up, then p1 goes above
 appendPath :: forall dir l. Path dir l -> Path dir l -> Path dir l
-appendPath p1 = Newtype.unwrap >>> case _ of
-  Nothing -> p1
-  Just p2 -> stepPath (labelGram p2) (appendPath p1 (Newtype.wrap (jointGram p2)))
+appendPath path1 (Path p2) = case p2 of
+  Nil -> path1
+  th : ths -> stepPath th (appendPath path1 (Path ths))
 
 reversePath :: forall dir dir' l. Dir.Rev dir dir' => Path dir l -> Path dir' l
-reversePath = Newtype.over Path (go Nothing)
-  where
-  go p' Nothing = p'
-  go p' (Just p) = go (Just (stepPath1 (labelGram p) p')) (jointGram p)
+reversePath (Path ths) = Path (List.reverse ths)
 
 -- | Zipper
 type Zipper l = {path :: Path Dir.Up l, expr :: Expr l}
 
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
 zipUp zipper = case zipper.path of
-  Path Nothing -> Nothing
-  Path (Just (Gram (th /\ path'))) -> Just $ th /\ {path: Path path', expr: unTooth th zipper.expr}
+  Path Nil -> Nothing
+  Path (th : ths) -> Just $ th /\ {path: Path ths, expr: unTooth th zipper.expr}
 
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
 zipDownsTooth :: forall l. GramLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
@@ -408,23 +400,23 @@ zipDowns {path, expr: Gram (l /\ kids0)} =
 
 zipLeft :: forall l. Zipper l -> Maybe (Zipper l)
 zipLeft zipper = case zipper.path of
-  Path Nothing -> Nothing
-  Path (Just (Gram ((l /\ kidsPath) /\ path'))) -> do
+  Path Nil -> Nothing
+  Path ((l /\ kidsPath) : ths) -> do
     expr' /\ kidsPath' <- ZipList.zipLeft (zipper.expr /\ kidsPath)
-    Just $ {path: Path (Just (Gram ((l /\ kidsPath') /\ path'))), expr: expr'}
+    Just $ {path: Path ((l /\ kidsPath') : ths), expr: expr'}
 
 zipRight :: forall l. Zipper l -> Maybe (Zipper l)
 zipRight zipper = case zipper.path of
-  Path Nothing -> Nothing
-  Path (Just (Gram ((l /\ kidsPath) /\ path'))) -> do
+  Path Nil -> Nothing
+  -- Path (Just (Gram ((l /\ kidsPath) /\ path'))) -> do
+  Path ((l /\ kidsPath) : ths) -> do
     expr' /\ kidsPath' <- ZipList.zipRight (zipper.expr /\ kidsPath)
-    Just $ {path: Path (Just (Gram ((l /\ kidsPath') /\ path'))), expr: expr'}
+    Just $ {path: Path ((l /\ kidsPath') : ths), expr: expr'}
 
--- | Zipper' i.e. the first derivative of a zipper (a zipper selection)
+-- | Zipper' is the first derivative of a zipper (a zipper selection)
 type Zipper' l = 
   { path :: Path Dir.Up l
-  , dir :: Dir.Dir
-  , path1 :: Path1 l
+  , selection :: forall dir. Path dir l
   , expr :: Expr l
   }
 

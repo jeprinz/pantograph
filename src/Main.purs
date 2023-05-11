@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Data.Gram (Path(..))
+import Data.Expr as Expr
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Class.Console as Console
@@ -20,8 +20,8 @@ main = HA.runHalogenAff do
   VDomDriver.runUI Rendering.editorComponent input body
   where
   input =
-    { zipper: 
-        { path: Path Nothing
+    { zipper: Expr.Zipper
+        { path: mempty
         , expr: ex_expr2
         }
     , getEdits
