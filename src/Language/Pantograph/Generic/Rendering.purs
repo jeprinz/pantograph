@@ -1,5 +1,6 @@
 module Language.Pantograph.Generic.Rendering where
 
+import Data.CodePoint.Unicode
 import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
@@ -18,6 +19,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Rational as Rational
+import Data.String as String
 import Data.UUID as UUID
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -163,62 +165,90 @@ editorComponent = HK.component \tokens input -> HK.do
         Nothing -> bug $ "could not find element by id: " <> elemId
         Just elem -> pure elem
 
-    setCursorElement :: Maybe (Path Dir.Up l) -> HK.HookM Aff Unit
-    setCursorElement mb_path = do
-      -- unset the current cursor
-      liftEffect (Ref.read maybeCursorPath_ref) >>= case _ of
+    setNodeElementStyle :: Ref.Ref (Maybe (Path Dir.Up l)) -> String -> Maybe (Path Dir.Up l) -> HK.HookM Aff Unit
+    setNodeElementStyle mb_path_ref className mb_path = do
+      -- unset the current node element
+      liftEffect (Ref.read mb_path_ref) >>= case _ of
         Nothing -> do
-          -- set the new cursor
+          -- set the new node element
           update
         Just path -> do
           -- ignore if the new cursor is the same as the old cursor
           if Just path == mb_path then do
-            -- Debug.traceM $ "[setCursorElement] no cursor update"
             pure unit
           else do
-            -- Debug.traceM $ "[setCursorElement] unset old cursor"
-            -- Debug.traceM $ "[setCursorElement] old path is path = " <> prettyPathUp path "{{}}"
             elem <- getElementByPath path
-            liftEffect $ setClassName elem cursorClassName false
-            -- set the new cursor
+            liftEffect $ setClassName elem className false
+            -- set the new node element
             update
       where
       update = do
-        liftEffect $ Ref.write mb_path maybeCursorPath_ref
+        liftEffect $ Ref.write mb_path mb_path_ref
         case mb_path of
           Nothing -> pure unit
           Just path -> do
-            -- Debug.traceM "[setCursorElement] set new cursor"
             elem' <- getElementByPath path
-            liftEffect $ setClassName elem' cursorClassName true
+            liftEffect $ setClassName elem' className true
 
-    setHighlightElement :: Maybe (Path Dir.Up l) -> HK.HookM Aff Unit
-    setHighlightElement maybePath' = do
-      -- unset the current highlight
-      liftEffect (Ref.read maybeHighlightPath_ref) >>= case _ of
-        Nothing -> 
-          -- set the new highlight
-          update
-        Just path -> do
-          -- ignore if new highlight is same as old highlight
-          if Just path == maybePath' then do
-            -- Debug.traceM "[setHighlightElement] no highlight update"
-            pure unit
-          else do
-            -- Debug.traceM "[setHighlightElement] unset old highlight"
-            elem <- getElementByPath path
-            liftEffect $ setClassName elem highlightClassName false
-            -- set the new highlight
-            update
-      where
-      update = do
-        liftEffect $ Ref.write maybePath' maybeHighlightPath_ref
-        case maybePath' of
-          Nothing -> pure unit
-          Just path' -> do
-            -- Debug.traceM "[setHighlightElement] set new highlight"
-            elem' <- getElementByPath path'
-            liftEffect $ setClassName elem' highlightClassName true
+    setCursorElement = setNodeElementStyle maybeCursorPath_ref cursorClassName
+    setHighlightElement = setNodeElementStyle maybeHighlightPath_ref highlightClassName
+
+    -- setCursorElement :: Maybe (Path Dir.Up l) -> HK.HookM Aff Unit
+    -- setCursorElement mb_path = do
+    --   -- unset the current cursor
+    --   liftEffect (Ref.read maybeCursorPath_ref) >>= case _ of
+    --     Nothing -> do
+    --       -- set the new cursor
+    --       update
+    --     Just path -> do
+    --       -- ignore if the new cursor is the same as the old cursor
+    --       if Just path == mb_path then do
+    --         -- Debug.traceM $ "[setCursorElement] no cursor update"
+    --         pure unit
+    --       else do
+    --         -- Debug.traceM $ "[setCursorElement] unset old cursor"
+    --         -- Debug.traceM $ "[setCursorElement] old path is path = " <> prettyPathUp path "{{}}"
+    --         elem <- getElementByPath path
+    --         liftEffect $ setClassName elem cursorClassName false
+    --         -- set the new cursor
+    --         update
+    --   where
+    --   update = do
+    --     liftEffect $ Ref.write mb_path maybeCursorPath_ref
+    --     case mb_path of
+    --       Nothing -> pure unit
+    --       Just path -> do
+    --         -- Debug.traceM "[setCursorElement] set new cursor"
+    --         elem' <- getElementByPath path
+    --         liftEffect $ setClassName elem' cursorClassName true
+
+    -- setHighlightElement :: Maybe (Path Dir.Up l) -> HK.HookM Aff Unit
+    -- setHighlightElement maybePath' = do
+    --   -- unset the current highlight
+    --   liftEffect (Ref.read maybeHighlightPath_ref) >>= case _ of
+    --     Nothing -> 
+    --       -- set the new highlight
+    --       update
+    --     Just path -> do
+    --       -- ignore if new highlight is same as old highlight
+    --       if Just path == maybePath' then do
+    --         -- Debug.traceM "[setHighlightElement] no highlight update"
+    --         pure unit
+    --       else do
+    --         -- Debug.traceM "[setHighlightElement] unset old highlight"
+    --         elem <- getElementByPath path
+    --         liftEffect $ setClassName elem highlightClassName false
+    --         -- set the new highlight
+    --         update
+    --   where
+    --   update = do
+    --     liftEffect $ Ref.write maybePath' maybeHighlightPath_ref
+    --     case maybePath' of
+    --       Nothing -> pure unit
+    --       Just path' -> do
+    --         -- Debug.traceM "[setHighlightElement] set new highlight"
+    --         elem' <- getElementByPath path'
+    --         liftEffect $ setClassName elem' highlightClassName true
 
     unsetFacadeElements :: HK.HookM Aff Unit
     unsetFacadeElements = getFacade >>= case _ of
@@ -291,42 +321,53 @@ editorComponent = HK.component \tokens input -> HK.do
     handleKeyboardEvent event = do
       -- Console.log $ "[event.key] " <> KeyboardEvent.key event
       let key = KeyboardEvent.key event
+      let shiftKey = KeyboardEvent.shiftKey event
       getFacade >>= case _ of
-        BufferState st -> do
+        BufferState buffer -> do
           if key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath st.zipper.path
+            elemId <- getElementIdByPath buffer.zipper.path
             HK.tell tokens.slotToken bufferSlot elemId SubmitBufferQuery
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
-            elemId <- getElementIdByPath st.zipper.path
+            elemId <- getElementIdByPath buffer.zipper.path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false
-            -- set facade to cursor
-            setFacade $ CursorState {zipper: st.zipper}
+            -- -- set facade to cursor
+            -- setFacade $ CursorState {zipper: buffer.zipper}
           else if key == "ArrowUp" then do
             -- Debug.traceM $ "[moveBufferQuery Up]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath st.zipper.path
+            elemId <- getElementIdByPath buffer.zipper.path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery Up
           else if key == "ArrowDown" then do
             -- Debug.traceM $ "[moveBufferQuery Down]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath st.zipper.path
+            elemId <- getElementIdByPath buffer.zipper.path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery Down
           else pure unit
-        CursorState st -> do
+        CursorState cursor -> do
+          if  key == " " then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            -- activate buffer
+            elemId <- getElementIdByPath cursor.zipper.path
+            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
+          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) MoveUp
+          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) MoveDown
+          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) MoveLeft
+          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) MoveRight
+          else pure unit
+        SelectState select -> do
           if key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            -- tell buffer to deactivate
-            elemId <- getElementIdByPath st.zipper.path
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
-          else if key == "ArrowUp" then moveCursor MoveUp
-          else if key == "ArrowDown" then moveCursor MoveDown
-          else if key == "ArrowLeft" then moveCursor MoveLeft
-          else if key == "ArrowRight" then moveCursor MoveRight
+            -- !TODO select --> cursor
+            -- !TODO activate buffer
+            pure unit
+          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) MoveUp
+          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) MoveDown
+          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) MoveLeft
+          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) MoveRight
           else pure unit
-        SelectState _ -> unsafeCrashWith "!TODO handle keyboard event in SelectState"
         TopState _ -> unsafeCrashWith "!TODO handle keyboard event in TopState"
 
     handleBufferOutput = case _ of

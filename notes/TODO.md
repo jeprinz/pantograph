@@ -5,10 +5,10 @@ Jaccob:
 - [ ] implemente the change algorithm
 
 Henry
-- [ ] REnder derivs and deriv paths
-- [ ] cursor
+- [x] REnder derivs and deriv paths
+- [x] cursor
 - [ ] select
-- [ ] inner holes exist
-- [ ] query
+- [x] inner holes exist
+- [x] query
 - [ ] cut and paste and copy
 
