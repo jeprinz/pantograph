@@ -164,7 +164,7 @@ getFirst Nil _f = Nothing
 getFirst (x : xs) f = case f x of
     Nothing ->
         do ts1 /\ a /\ ts2 <- getFirst xs f
-           pure $ ((x : ts1) /\ a /\ ts1)
+           pure $ ((x : ts1) /\ a /\ ts2)
     Just a -> Just (Nil /\ a /\ xs)
 
 defaultUp :: forall l r. Ord r => ExprLabel l => ChLanguage l r -> Rule l r
@@ -174,19 +174,16 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleName sort)) kids) =
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
     let findUpBoundary = case _ of
-            Expr.Expr (Boundary Up ch) [kid] /\ sort -> Just (ch /\ kid /\ sort)
-            kid /\ _ -> Nothing
+            Expr.Expr (Boundary Up ch) [kid] /\ sort1 -> Just (ch /\ kid /\ sort1)
+            _ /\ _ -> Nothing
     in
     do
         (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
             <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
---        ch' /\ sub <- unify ch gSort
         sub /\ chBackDown <- doOperation ch gSort
---        let wrapKid (kid /\ gSort) = Expr.Expr (Boundary Down (subMetaExpr sub gSort) /\ [kid])
-        let wrapKid (kid /\ gSort) = wrapBoundary Down (fullySubMetaExpr sub gSort) kid
+        let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (fullySubMetaExpr sub gSort1) kid1
         let leftKids = map wrapKid leftKidsAndSorts
         let rightKids = map wrapKid rightKidsAndSorts
---        let parentBoundary node = Expr.Expr (Boundary Up (subMetaExpr sub parentGSort) /\ [node])
         let parentBoundary node = wrapBoundary Up (fullySubMetaExpr sub parentGSort) node
         pure $ parentBoundary 
             (Expr.Expr
