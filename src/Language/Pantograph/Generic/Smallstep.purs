@@ -18,7 +18,6 @@ import Data.Maybe as Maybe
 import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
-import Language.Pantograph.Generic.Grammar (MetaChange)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Partial.Unsafe (unsafeCrashWith)
 import Type.Direction as Dir
@@ -27,7 +26,7 @@ import Util (lookup')
 data Direction = Up | Down -- TODO:
 
 
-data StepLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (MetaChange l)
+data StepLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Expr.MetaChange l)
 type Term l r = Expr.Expr (StepLabel l r)
 
 type Rule l r = Term l r -> Maybe (Term l r)
@@ -138,7 +137,7 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 -- if the change is not the identity.
 
 -- wraps a boundary unless the change is the identity, in which case so is this function
-wrapBoundary :: forall l r. Direction -> MetaChange l -> Term l r -> Term l r
+wrapBoundary :: forall l r. Direction -> Expr.MetaChange l -> Term l r -> Term l r
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!

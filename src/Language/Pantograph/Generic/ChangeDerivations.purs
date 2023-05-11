@@ -81,27 +81,27 @@ Thus, we can use purescript pattern matching to implement the rules! No need to 
 unification over boundaries, changes, and terms.
 
 -}
-type DownRule l r = Change l -> DerivTermWithBoundaries l r
-    -> (Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r)
-    -> Maybe (DerivTermWithBoundaries l r /\ Change l)
-type UpRule l r = Change l -> DerivPath l r
-    -> (Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r) -> (Change l -> DerivPathWithBoundaries l r -> DerivPathWithBoundaries l r)
-    -> Maybe (DerivPath l r /\ Change l)
+type DownRule l r = Expr.Change l -> DerivTermWithBoundaries l r
+    -> (Expr.Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r)
+    -> Maybe (DerivTermWithBoundaries l r /\ Expr.Change l)
+type UpRule l r = Expr.Change l -> DerivPath l r
+    -> (Expr.Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r) -> (Expr.Change l -> DerivPathWithBoundaries l r -> DerivPathWithBoundaries l r)
+    -> Maybe (DerivPath l r /\ Expr.Change l)
 
 type ChangeAlgorithm l r = List (DownRule l r) /\ List (UpRule l r)
 
 --getApplicableRule :: forall l r. ChangeAlgorithm l r -> DerivTerm l r -> Maybe (DownRule)
 
 
-data DerivWithBoundariesLabel l r = DerivWithBoundariesLabel r (MetaExpr l) | DownBoundary (Change (Meta l)) | UpBoundary (Change (Meta l))
+data DerivWithBoundariesLabel l r = DerivWithBoundariesLabel r (Expr.MetaExpr l) | DownBoundary (Expr.Change (Meta l)) | UpBoundary (Expr.Change (Meta l))
 
 type DerivTermWithBoundaries l r = Expr.Expr (DerivWithBoundariesLabel l r)
 type DerivPathWithBoundaries l r = Expr.Path Dir.Up (DerivWithBoundariesLabel l r)
 
-downBoundary :: forall l r . Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
+downBoundary :: forall l r . Expr.Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
 downBoundary ch term = Expr.Expr (DownBoundary (map (map (Meta <<< Right)) ch)) [term]
 
-upBoundary :: forall l r . Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
+upBoundary :: forall l r . Expr.Change l -> DerivTermWithBoundaries l r -> DerivTermWithBoundaries l r
 upBoundary ch term = Expr.Expr (UpBoundary (map (map (Meta <<< Right)) ch)) [term]
 
 --updateAt :: forall a. Int -> a -> Array a -> Maybe (Array a)

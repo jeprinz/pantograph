@@ -20,8 +20,8 @@ data Label =
     -- metadata
     | Name String
 
-type Expr = G.Expr Label
-type MetaExpr = G.MetaExpr Label
+type Expr = Expr.Expr Label
+type MetaExpr = Expr.MetaExpr Label
 
 data RuleName = Lam | App | Z | S | Var | Let | Base -- | TermBind
 
