@@ -378,39 +378,6 @@ zipUp zipper = case zipper.path of
   Path Nothing -> Nothing
   Path (Just (Gram (th /\ path'))) -> Just $ th /\ {path: Path path', expr: unTooth th zipper.expr}
 
--- -- | Only zip down the kids in the tooth (not the interior of the tooth).
--- zipDownsTooth :: forall l. Zipper l -> Tooth l -> ZipList.Path (Zipper l)
--- zipDownsTooth {path, expr: Gram (l /\ kids0)} (_ /\ kidsListPath) = do
---   let ixInterior = ZipList.leftLength kidsListPath
---   let {before: leftKids0, after} = Array.splitAt ixInterior kids0
---   case Array.uncons after of
---     Nothing -> unsafeCrashWith $ "[zipDownsTooth] Mismatch between tooth's and zipper's expr's kids. The tooth has " <> show (ZipList.leftLength kidsListPath) <> " left kids and " <> show (ZipList.rightLength kidsListPath) <> " right kids, while the zipper has " <> show (Array.length kids0) <> " kids."
---     Just {head: kid0, tail: rightKids0} -> do
---       let th = l /\ ZipList.Path {left: RevList.reverseArray $ Array.reverse leftKids0, right: List.fromFoldable rightKids0}
---       ZipList.Path
---         -- { left: RevList.fromReversedList $ goLeft mempty th kid0
---         { left: RevList.reverse $ goLeft mempty th kid0
---         , right: List.reverse $ goRight mempty th kid0
---         }
---   where
---     -- doesn't include first tooth in output
---     goLeft :: List (Zipper l) -> Tooth l -> Expr l -> List (Zipper l)
---     goLeft zs (_ /\ ZipList.Path {left, right}) kid = case RevList.unsnoc left of
---       Nothing -> zs
---       Just {init: left', last: kid'} -> do
---         let th' = l /\ ZipList.Path {left: left', right: Cons kid right}
---         let z' = {path: stepPath th' path, expr: kid'}
---         goLeft (Cons z' zs) th' kid'
-    
---     -- doesn't include first tooth in output
---     goRight :: List.List (Zipper l) -> Tooth l -> Expr l -> List.List (Zipper l)
---     goRight zs (_ /\ ZipList.Path {left, right}) kid = case List.uncons right of
---       Nothing -> zs
---       Just {head: kid', tail: right'} -> do
---         let th' = l /\ ZipList.Path {left: RevList.snoc left kid, right: right'}
---         let z' = {path: stepPath th' path, expr: kid'}
---         goRight (Cons z' zs) th' kid'
-
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
 zipDownsTooth :: forall l. GramLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
 zipDownsTooth zipper (_ /\ kidsPath) = do
