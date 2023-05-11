@@ -10,7 +10,7 @@ import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Foldable (intercalate)
-import Data.List.Rev (unreverse)
+import Data.List.Rev (unreverse, reverse)
 import Data.List.Zip (Path(..))
 import Data.List.Zip as ListZip
 import Data.Map (Map)
@@ -23,9 +23,10 @@ import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Exception.Unsafe (unsafeThrow)
-import Language.Pantograph.Generic.Grammar as Grammar
 import Partial.Unsafe (unsafeCrashWith)
 import Utility (Assertion, assert)
+import Data.Foldable (findMap)
+import Data.List as List
 
 -- HENRY: due to generic fixpoint form of `Gram`, don't need to manually recurse
 invert :: forall l. Change l -> Change l
@@ -136,3 +137,34 @@ doOperation c1 c2 = do
     sub2 <- sequence sub
     let subc2 = fullySubMetaExpr sub2 c2
     pure $ (sub2 /\ compose (invert c1) subc2)
+
+{-
+Implementing a real tree diff algorithm is hard, so instead I have one that makes some assumptions about the inputs.
+Its also dubious if the notion of "shortest edit sequence" is really what we want anyway. Would that really be the
+change that correctly preserves the semantic meaning?
+This diff algorithm tries to find an unambiguous diff, and if it doesn't exist just returns Replace.
+In other words, the set S of pairs of expressions (e1, e2) on which the algorithm deals doesn't just return Replace
+consists of pairs satisfying any of the following:
+- e1 = e2
+- e1 is a subexpression of e2
+- e2 is a subexpression of e1
+- e1 = Expr l1 [a1, ..., an], e2 = Expr l2 [b1, ..., bn], and for each i<=n, (ai, bi) in S.
+-}
+diff :: forall l. Eq l => Expr l -> Expr l -> Change l
+diff e1 e2 | e1 == e2 = map Inject e1
+diff e1@(Expr l1 kids1) e2@(Expr l2 kids2) =
+    case isPostfix e1 e2 of
+        Just ch -> ch
+        Nothing -> case isPostfix e2 e1 of
+                        Just ch -> invert ch
+                        Nothing -> if l1 == l2 then Expr (Inject l1) (diff <$> kids1 <*> kids2) else Expr (Replace e1 e2) []
+
+isPostfix :: forall l. Eq l => Expr l -> Expr l -> Maybe (Change l)
+isPostfix e1 e2 | e1 == e2 = Just $ map Inject e1
+isPostfix (Expr l kids) e2 =
+    let splits = Array.mapWithIndex (\index kid -> Array.take index kids /\ kid /\ Array.drop (Array.length kids - index + 1) kids) kids in
+    findMap (\(leftKids /\ kid /\ rightKids) ->
+        do
+            innerCh <- isPostfix kid e2
+            Just $ Expr (Minus (Tooth l (Path {left: reverse $ List.fromFoldable leftKids, right: List.fromFoldable rightKids}))) [innerCh]
+          ) splits

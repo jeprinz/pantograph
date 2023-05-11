@@ -14,6 +14,7 @@ import Data.Set (Set)
 import Data.Show.Generic (genericShow)
 import Text.Pretty (class Pretty, pretty)
 import Type.Direction as Dir
+import Language.Pantograph.Generic.ChangeAlgebra
 
 --data Label
 
@@ -41,9 +42,15 @@ type DerivPath l r = Expr.Path Dir.Up (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipper' l r = Expr.Zipper' (DerivLabel l r)
 
-data Rule l r = Rule (Set Expr.MetaVar) (Array (Expr.MetaExpr l)) (Expr.MetaExpr l)
+data Rule l = Rule (Set Expr.MetaVar) (Array (Expr.MetaExpr l)) (Expr.MetaExpr l)
 
-type Language l r = Map r (Rule l r)
+type Language l r = Map r (Rule l)
+
+data ChangeRule l = ChangeRule (Set Expr.MetaVar) (Array (Expr.MetaChange l)) -- changes go from parent to kid
+type LanguageChanges l r = Map r (ChangeRule l)
+
+autoDeriveLanguageChanges :: forall l r. Eq l => Language l r -> LanguageChanges l r
+autoDeriveLanguageChanges = map (\(Rule vars kids parent) -> ChangeRule vars (map (diff parent) kids))
 
 --derive instance (Eq l, Eq r) => Eq (DerivLabel l r)
 --derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
