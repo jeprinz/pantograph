@@ -21,11 +21,10 @@ import Language.Pantograph.Generic.Unification
 import Data.Tuple (snd, fst)
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar (MetaChange)
-import Language.Pantograph.Generic.ChangeAlgebra (mEndpoints)
 import Data.Unify (Meta(..))
 import Language.Pantograph.Generic.ChangeAlgebra
 
-data Direction = Up | Down
+data Direction = Up | Down -- TODO:
 
 
 data StepLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (MetaChange l)
@@ -50,8 +49,8 @@ zipperToTerm Nil exp = Gram.Gram (Cursor /\ [map Inject exp])
 zipperToTerm (th : path) exp = addToothToTerm th (zipperToTerm path exp)
 
 assertJustExpr :: forall l r. Term l r -> Grammar.DerivTerm l r
-assertJustExpr _ = unsafeCrashWith "Error: assertJustExpr assertion failed"
 assertJustExpr (Gram.Gram (Inject l /\ kids)) = Gram.Gram (l /\ map assertJustExpr kids)
+assertJustExpr _ = unsafeCrashWith "Error: assertJustExpr assertion failed"
 
 assertNoneOfList :: forall t b. List t -> (t -> Maybe b) -> List b
 assertNoneOfList Nil _f = Nil
@@ -161,7 +160,7 @@ defaultDown lang (Gram.Gram (Boundary Down ch /\
 defaultDown _ _ = Nothing
 
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
-getFirst :: forall t a b. List t -> (t -> Maybe a) -> Maybe (List t /\ a /\ List t)
+getFirst :: forall t a. List t -> (t -> Maybe a) -> Maybe (List t /\ a /\ List t)
 getFirst Nil _f = Nothing
 getFirst (x : xs) f = case f x of
     Nothing ->

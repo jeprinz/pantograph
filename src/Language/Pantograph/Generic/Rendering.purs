@@ -130,6 +130,7 @@ editorComponent :: forall q l.
         Expr l -> 
         Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l) (Output l) String) Aff) -> 
         Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l) (Output l) String) Aff)
+     -- TODO: factor out this type, and add: Grammar.Sorts, Grammar.Derivations, Grammar.Languaage, something for smallstep
     }
     Unit
     Aff

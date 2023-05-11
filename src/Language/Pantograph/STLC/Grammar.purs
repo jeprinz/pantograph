@@ -16,14 +16,14 @@ data Label =
     -- contexts
     | CCons {-context-} {-name-} {-type-} | CNil
     -- types
-    | TBase | TArrow {-type-} {-type-}
+    | TBase | TArrow {-type-} {-type-} | TBool
     -- metadata
     | Name String
 
 type Expr = G.Expr Label
 type MetaExpr = G.MetaExpr Label
 
-data RuleName = Lam | App | Z | S | Var | Let
+data RuleName = Lam | App | Z | S | Var | Let | Base -- | TermBind
 
 type DerivLabel = G.DerivLabel Label RuleName
 
@@ -81,6 +81,16 @@ rules = [
             exp STerm [exp CCons [var g, var n, var defTy], var bodyTy]] --body
         (exp STerm [var g, var bodyTy])
 
+    ,
+    -- if
+    let a = freshMetaVar unit in
+    let g = freshMetaVar unit in
+    G.Rule (Set.fromFoldable [a])
+        []
+        -- Bool -> a -> a -> a
+        (exp STerm [var g, exp TArrow [exp TBool [], exp TArrow [var a, exp TArrow [var a, var a]]]])
+
+
     --------------------------- Types ----------------------------------------------
     ,
     -- base
@@ -102,7 +112,7 @@ rules = [
     let t = freshMetaVar unit in
     G.Rule (Set.fromFoldable [g, t])
         []
-        (exp SVar [exp CCons [var g, var t], var t])
+        (exp SVar [exp CCons [var g,{-TODO: name-} var t], var t])
     ,
     -- suc
     let g = freshMetaVar unit in
@@ -110,7 +120,7 @@ rules = [
     let b = freshMetaVar unit in
     G.Rule (Set.fromFoldable [g, a, b])
         [exp SVar [var g, var a]]
-        (exp SVar [exp CCons [var g, var b], var a])
+        (exp SVar [exp CCons [var g, {-TODO-} var b], var a])
 
     --------------------------- Other ----------------------------------------------
     ,

@@ -57,21 +57,21 @@ collectMatches _ _ = unsafeCrashWith "no"
 --  | Expr l {-same number of kids that l has-}
 --  | Replace (Expr l) (Expr l) {-zero kids?-}
 -- not sure how to generalize this correctly, for now I'm writing this
-mEndpoints :: forall l. Grammar.MetaChange l -> MetaExpr l /\ MetaExpr l
-mEndpoints (Gram (Meta l /\ kids)) =
-    case l of
-        Left x -> let e = Gram (Meta (Left x) /\ []) in e /\ e
-        Right chL -> case chL of
-            Plus (l /\ th) ->
-                let leftEp /\ rightEp = mEndpoints (assertSingleton kids) in
-                unTooth (Meta (Right l) /\ (map (map (Meta <<< Right)) th)) leftEp /\ rightEp
-            Minus (l /\ th) ->
-                let leftEp /\ rightEp = mEndpoints (assertSingleton kids) in
-                leftEp /\ unTooth (Meta (Right l) /\ (map (map (Meta <<< Right)) th)) rightEp
-            Expr l ->
-                let leftKids /\ rightKids = unzip (map mEndpoints kids) in
-                expr (Meta (Right l)) leftKids /\ expr (Meta (Right l)) rightKids
-            Replace t1 t2 -> (map (\x -> Meta (Right x)) t1) /\ map (\x -> Meta (Right x)) t2
+--mEndpoints :: forall l. Grammar.MetaChange l -> MetaExpr l /\ MetaExpr l
+--mEndpoints (Gram (Meta l /\ kids)) =
+--    case l of
+--        Left x -> let e = Gram (Meta (Left x) /\ []) in e /\ e
+--        Right chL -> case chL of
+--            Plus (l /\ th) ->
+--                let leftEp /\ rightEp = mEndpoints (assertSingleton kids) in
+--                unTooth (Meta (Right l) /\ (map (map (Meta <<< Right)) th)) leftEp /\ rightEp
+--            Minus (l /\ th) ->
+--                let leftEp /\ rightEp = mEndpoints (assertSingleton kids) in
+--                leftEp /\ unTooth (Meta (Right l) /\ (map (map (Meta <<< Right)) th)) rightEp
+--            Expr l ->
+--                let leftKids /\ rightKids = unzip (map mEndpoints kids) in
+--                expr (Meta (Right l)) leftKids /\ expr (Meta (Right l)) rightKids
+--            Replace t1 t2 -> (map (\x -> Meta (Right x)) t1) /\ map (\x -> Meta (Right x)) t2
 
 endpoints :: forall l. Change l -> Expr l /\ Expr l
 endpoints = foldMapGram $ flip matchChangeNode
@@ -138,9 +138,10 @@ Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
 (Note that c2 has metavariables in the change positions, so its (Expr (Meta (ChangeLabel l))))
 -}
 
-doOperation :: forall l. Eq l => Ord l => Change l -> Grammar.MetaChange l -> Maybe (Map MetaVar (Change l) /\ Change l)
+doOperation :: forall l. Eq l => Ord l => Change l -> Expr (Meta (ChangeLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
 doOperation c1 c2 = do
     matches <- getMatches c2 c1
+    -- TODO: could this be written better
     let sub = map (foldNonempty (\c1 c2 -> do x <- c1
                                               y <- c2
                                               lub x y))
