@@ -70,7 +70,7 @@ instance ExprLabel l => Freshenable (Expr.MetaExpr l) where
         (Expr.Expr (Expr.Meta (Left x)) []) -> Expr.Expr (Expr.Meta (Left (lookup' x sub))) []
         (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr ((Expr.Meta (Right l))) (map (freshen sub) kids)
 
-type Sub l = Map Expr.MetaVar (MetaExpr l)
+type Sub l = Map Expr.MetaVar (Expr.MetaExpr l)
 
 subMetaExpr :: forall l. ExprLabel l => Sub l -> Expr.MetaExpr l -> Expr.MetaExpr l
 subMetaExpr sub expr = assertWellformedExpr "subMetaExpr" expr \_ -> case expr of

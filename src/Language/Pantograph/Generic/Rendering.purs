@@ -5,7 +5,6 @@ import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
 import Type.Direction
-
 import Bug (bug)
 import Data.Array as Array
 import Data.Expr (class ExprLabel, Expr(..), Path, Zipper(..), Zipper', prettyPath, unTooth, zipDowns, zipDownsTooth, zipUp)
