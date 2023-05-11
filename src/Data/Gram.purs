@@ -471,6 +471,7 @@ data ChangeLabel l
 
 derive instance Generic (ChangeLabel l) _
 derive instance Eq l => Eq (ChangeLabel l)
+derive instance Ord l => Ord (ChangeLabel l)
 
 instance Show l => Show (ChangeLabel l) where
   show (Plus th) = "(+ " <> showTooth th <> ")"

@@ -23,6 +23,9 @@ import Data.Unify (freshMetaVar)
 import Data.Gram as Gram
 import Data.Unify (Meta(..))
 import Util (lookup', union')
+import Data.MultiMap as MultiMap
+import Data.MultiMap (MultiMap)
+import Control.Apply (lift2)
 
 {-
 
@@ -76,6 +79,17 @@ subMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ [])) = lookup' x sub
 subMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "wrong number of children on metavar label"
 subMetaExpr sub (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram ((Meta (Right l)) /\ (map (subMetaExpr sub) kids))
 
+assertNoMetavars :: forall l. Gram.MetaExpr l -> Gram.Expr l
+assertNoMetavars (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "has a metavar"
+assertNoMetavars (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram (l /\ (map assertNoMetavars kids))
+
+fullySubMetaExpr :: forall l. Map MetaVar (Gram.Expr l) -> Gram.MetaExpr l -> Gram.Expr l
+fullySubMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ [])) = lookup' x sub
+fullySubMetaExpr sub (Gram.Gram ((Meta (Left x)) /\ _)) = unsafeCrashWith "wrong number of children on metavar label"
+fullySubMetaExpr sub (Gram.Gram ((Meta (Right l)) /\ kids)) = Gram.Gram (l /\ (map (fullySubMetaExpr sub) kids))
+
+------------- Unification ------------------------------------------------------
+
 -- we may need a more general notion of unification later, but this is ok for now
 unify :: forall l. Eq l => Gram.MetaExpr l -> Gram.MetaExpr l -> Maybe (Gram.MetaExpr l /\ Sub l)
 unify e1@(Gram.Gram (Meta l1 /\ kids1)) e2@(Gram.Gram (Meta l2 /\ kids2)) =
@@ -97,7 +111,14 @@ unifyLists (e1 : es1) (e2 : es2) = do
     pure $ (e : es) /\ union' sub sub2
 unifyLists _ _ = unsafeCrashWith "shouldn't happen"
 
+------------- Another operation I need for typechanges stuff ------------------
 
+getMatches :: forall l. Eq l => Ord l => Gram.MetaExpr l -> Gram.Expr l -> Maybe (MultiMap MetaVar (Gram.Expr l))
+getMatches (Gram.Gram (Meta l1 /\ kids1)) e2@(Gram.Gram (l2 /\ kids2)) =
+    case l1 of
+        Left x -> Just $ MultiMap.insert x e2 (MultiMap.empty)
+        Right l | l == l2 -> foldl (lift2 MultiMap.union) (Just MultiMap.empty) (getMatches <$> kids1 <*> kids2)
+        _ -> Nothing
 
 
 

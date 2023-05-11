@@ -25,7 +25,9 @@ import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Set as Set
 import Language.Pantograph.Generic.Grammar as Grammar
-import Util (assertSingleton)
+import Util
+import Language.Pantograph.Generic.Unification
+import Data.Foldable (foldl)
 
 -- HENRY: due to generic fixpoint form of `Gram`, don't need to manually recurse
 invert :: forall l. Change l -> Change l
@@ -93,11 +95,16 @@ endpoints = foldMapGram $ flip matchChangeNode
 
 -- least upper bound
 -- actually, I'm not sure we need this.
--- LUB (+ X -> A) (+ Y -> A)
--- If inputs are orthogonal, there is a unique limit in the category
+-- LUB (+ X -> A) (+ Y -> A) -- no unique solution!
+-- if you have changes where Plus and Minus DONT cancel each other out, then changes form a category without inverses.
+-- this function returns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
 lub :: forall l. Eq l => Change l -> Change l -> Maybe (Change l)
 lub (Gram (Expr l1 /\ kids1)) (Gram (Expr l2 /\ kids2)) | l1 == l2
     = Gram <$> ((/\) <$> (pure $ Expr l1) <*> (sequence (lub <$> kids1 <*> kids2))) -- Oh no I've become a haskell programmer
+lub (Gram (Plus _ /\ _)) (Gram (Plus _ /\ _)) = Nothing
+lub (Gram (Plus _ /\ _)) (Gram (Minus _ /\ _)) = Nothing
+lub (Gram (Minus _ /\ _)) (Gram (Plus _ /\ _)) = Nothing
+lub (Gram (Minus _ /\ _)) (Gram (Minus _ /\ _)) = Nothing
 lub _ _ = unsafeCrashWith "TODO"
 
 -- HENRY: Unfortunately, can't use `matchChangeNode` or `foldMapGram` since you
@@ -121,3 +128,23 @@ compose c1 c2 =
         "  ch2 = " <> showGramStructure c2
       ]
     else Gram (Replace left1 right2 /\ [])
+
+
+{-
+I don't have a good name for this operation, but what it does is:
+input Change c1 and MetaChange c2, and output sub and c3, such that:
+c1 o c3 = sub c2
+Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
+(Note that c2 has metavariables in the change positions, so its (Expr (Meta (ChangeLabel l))))
+-}
+
+doOperation :: forall l. Eq l => Ord l => Change l -> Grammar.MetaChange l -> Maybe (Map MetaVar (Change l) /\ Change l)
+doOperation c1 c2 = do
+    matches <- getMatches c2 c1
+    let sub = map (foldNonempty (\c1 c2 -> do x <- c1
+                                              y <- c2
+                                              lub x y))
+                (map (Set.map Just) matches)
+    sub2 <- sequence sub
+    let subc2 = fullySubMetaExpr sub2 c2
+    pure $ (sub2 /\ compose (invert c1) subc2)
