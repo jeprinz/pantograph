@@ -1,7 +1,6 @@
 module Utility where
 
 import Prelude
-
 import Partial.Unsafe (unsafeCrashWith)
 
 map2 f = map (map f)
