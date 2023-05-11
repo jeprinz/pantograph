@@ -16,7 +16,7 @@ renderExprKids :: forall w i. Expr -> Array (HH.HTML w i) -> Array String /\ Arr
 renderExprKids expr kidElems = do
   let _ = assertWellformedExpr expr
   fromMaybe' (\_ -> unsafeCrashWithUnexpectedMalformedExpr expr "renderExprKids") 
-  $ (renderExprKids' expr kidElems)
+    $ (renderExprKids' expr kidElems)
 
 renderExprKids' :: forall w i. Expr -> Array (HH.HTML w i) -> Maybe (Array String /\ Array (HH.HTML w i))
 -- var
