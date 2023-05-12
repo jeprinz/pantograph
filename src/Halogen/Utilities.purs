@@ -31,7 +31,7 @@ setClassNameByElementId elemId className classValue = do
   doc <- Window.document =<< HTML.window
   NonElementParentNode.getElementById elemId (Document.toNonElementParentNode $ HTMLDocument.toDocument doc) >>= case _ of
     Nothing -> do
-      -- unsafeCrashWith $ "couldn't find element ref label"
+      -- unsafeCrashWith $ "couldn't find element ref ExprLabel"
       log $ "[ClassList.setClassName] There is no element with this element id: " <> elemId
     Just elem -> setClassName elem className classValue
 

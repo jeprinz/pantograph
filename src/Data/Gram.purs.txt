@@ -33,37 +33,37 @@ import Text.Pretty (braces, braces2, parens, pretty, quotes)
 import Type.Direction as Dir
 import Utility (assert)
 
-class (Eq l, Show l) <= GramLabel l where
+class (Eq l, Show l) <= GramExprLabel l where
   prettyNodeG' :: NodeG Array l String -> Maybe String
   expectedKidsCount :: l -> Int
 
 -- assert that `expectedKidsCount` matches the actual kids count
-assertWellformedNodeG :: forall l kid. GramLabel l => NodeG Array l kid -> String -> Unit
+assertWellformedNodeG :: forall l kid. GramExprLabel l => NodeG Array l kid -> String -> Unit
 assertWellformedNodeG (l /\ kids) tag = do
-  assert (Array.length kids == expectedKidsCount l) ("[" <> tag <> "] A gram node with label " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids.") \_ -> unit
+  assert (Array.length kids == expectedKidsCount l) ("[" <> tag <> "] A gram node with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids.") \_ -> unit
 
 assertWellformedExpr (Gram node) = assertWellformedNodeG node
 
-unsafeCrashWithUnexpectedMalformedNodeG :: forall l kid a. GramLabel l => Show kid => NodeG Array l kid -> String -> a
+unsafeCrashWithUnexpectedMalformedNodeG :: forall l kid a. GramExprLabel l => Show kid => NodeG Array l kid -> String -> a
 unsafeCrashWithUnexpectedMalformedNodeG node tag = unsafeCrashWith $ "[" <> tag <> "] Even though `assertWellformedNodeG` passed, still found malformed `NodeG`: " <> show node
 
 unsafeCrashWithUnexpectedMalformedExpr (Gram node) = unsafeCrashWithUnexpectedMalformedNodeG node
 
 -- checks `expectedKidsCount` before printing
-prettyNodeG :: forall l. GramLabel l => NodeG Array l String -> String
+prettyNodeG :: forall l. GramExprLabel l => NodeG Array l String -> String
 prettyNodeG node = do
   let _ = assertWellformedNodeG node "prettyNodeG"
   fromMaybe' (\_ -> unsafeCrashWithUnexpectedMalformedNodeG node "prettyNodeG")
       $ prettyNodeG' node
 
-instance GramLabel l => GramLabel (Meta l) where
+instance GramExprLabel l => GramExprLabel (Meta l) where
   prettyNodeG' ((Meta (Left x)) /\ _kids) = pure $ pretty x
   prettyNodeG' ((Meta (Right l)) /\ kids) = pure $ prettyNodeG (l /\ kids)
 
   expectedKidsCount (Meta (Left _)) = 0
   expectedKidsCount (Meta (Right l)) = expectedKidsCount l
 
-instance GramLabel l => GramLabel (ChangeLabel l) where
+instance GramExprLabel l => GramExprLabel (ChangeExprLabel l) where
   prettyNodeG' (Plus th /\ kids) = pure $ prettyTooth th (intercalate "" kids)
   prettyNodeG' (Minus th /\ kids) = pure $ prettyTooth th (intercalate "" kids)
   prettyNodeG' (Expr l /\ kids) = pure $ prettyNodeG (l /\ kids)
@@ -75,36 +75,36 @@ instance GramLabel l => GramLabel (ChangeLabel l) where
   expectedKidsCount (Expr l) = expectedKidsCount l
   expectedKidsCount (Replace _ _) = 0
 
-prettyExpr :: forall l. GramLabel l => Expr l -> String
+prettyExpr :: forall l. GramExprLabel l => Expr l -> String
 prettyExpr (Gram (l /\ kids)) = prettyNodeG (l /\ (prettyExpr <$> kids))
 
-prettyTooth :: forall l. GramLabel l => Tooth l -> String -> String
+prettyTooth :: forall l. GramExprLabel l => Tooth l -> String -> String
 prettyTooth (l /\ zip) innerStr = prettyNodeG (l /\ Array.fromFoldable (ZipList.unpathAround innerStr (prettyExpr <$> zip)))
 
--- prettyPath1Up :: forall l. GramLabel l => Path1 l -> String -> String
+-- prettyPath1Up :: forall l. GramExprLabel l => Path1 l -> String -> String
 -- prettyPath1Up (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
 -- prettyPath1Up (Gram (th /\ (Just path))) innerStr = prettyPath1Up path $ prettyTooth th innerStr
 
-prettyPathUp :: forall l. GramLabel l => Path Dir.Up l -> String -> String
+prettyPathUp :: forall l. GramExprLabel l => Path Dir.Up l -> String -> String
 -- prettyPathUp (Path Nothing) innerStr = innerStr
 -- prettyPathUp (Path (Just path1)) innerStr = ?a -- prettyPath1Up path1 innerStr
 -- !TODO use generic traverse path
 prettyPathUp = ?a
 
--- prettyPath1Down :: forall l. GramLabel l => Path1 l -> String -> String
+-- prettyPath1Down :: forall l. GramExprLabel l => Path1 l -> String -> String
 -- prettyPath1Down (Gram (th /\ Nothing)) innerStr = prettyTooth th innerStr
 -- prettyPath1Down (Gram (th /\ Just path)) innerStr = prettyTooth th (prettyPath1Down path innerStr)
 
-prettyPathDown :: forall l. GramLabel l => Path Dir.Down l -> String -> String
+prettyPathDown :: forall l. GramExprLabel l => Path Dir.Down l -> String -> String
 prettyPathDown (Path Nothing) innerStr = innerStr
 -- !TODO use generic traverse path
 prettyPathDown (Path (Just path1)) innerStr = ?a -- prettyPath1Down path1 innerStr
 
-prettyZipper :: forall l. GramLabel l => Zipper l -> String
+prettyZipper :: forall l. GramExprLabel l => Zipper l -> String
 prettyZipper zipper = prettyPathUp zipper.path (braces2 (prettyExpr zipper.expr))
 
 -- | A `Gram` is a generalization of a tree (and a specialization of a
--- | fixpoint), where each node of the `Gram` has a label of type `l`, and the kids are 
+-- | fixpoint), where each node of the `Gram` has a ExprLabel of type `l`, and the kids are 
 data Gram j l = Gram (NodeG j l (Gram j l))
 
 derive instance Generic (Gram j l) _
@@ -139,9 +139,9 @@ instance (Show l, Functor j, Foldable j) => Show (Gram j l) where
       then show l
       else "(" <> show l <> " " <> intercalate " " j <> ")"
 
--- | In order to show any `Gram`, first map each label to `unit`, and then show.
+-- | In order to show any `Gram`, first map each ExprLabel to `unit`, and then show.
 -- | This will only show the structure of the `Gram` and nothing about the
--- | labels -- useful for debug in the generic code. (Alternatively, could
+-- | ExprLabels -- useful for debug in the generic code. (Alternatively, could
 -- | include `Show l` typeclass constraint everywhere, but that's annoying).
 showGramStructure :: forall j l. Functor j => Foldable j => Gram j l -> String
 showGramStructure = foldMapGram \(_ /\ j) -> "(" <> intercalate " " j <> ")"
@@ -181,8 +181,8 @@ instance Monad m => Apply (UnifyT meta m) where apply (UnifyT mf) (UnifyT ma) = 
 instance Monad m => Bind (UnifyT meta m) where bind (UnifyT ma) k = UnifyT (ma >>= k >>> runUnifyT)
 instance Monad m => Applicative (UnifyT meta m) where pure a = UnifyT (pure a)
 
--- ml is meta label
--- cl is concrete label
+-- ml is meta ExprLabel
+-- cl is concrete ExprLabel
 instance (Monad m, IsMeta ml l, Eq l, Foldable j, Unfoldable j, Traversable j, Plus.Plus j) => Unify (UnifyT (Gram j ml) m) (UnifyT (Gram j ml) m (Gram j ml)) where
   unify m_g1 m_g2 = do
     m_g1 >>= \g1 -> matchMeta g1 
@@ -194,7 +194,7 @@ instance (Monad m, IsMeta ml l, Eq l, Foldable j, Unfoldable j, Traversable j, P
             UnifyT $ modify_ $ Map.insert mv2 $ m_g1
             pure m_g1
         , concrete: \(l2 /\ j2) -> do
-            -- equate labels
+            -- equate ExprLabels
             unless (l1 == l2) do UnifyT empty
             -- unify kids
             j' <- 
@@ -242,13 +242,13 @@ bimapNodeG f_l f_g = bimap f_l (map f_g)
 unwrapGram (Gram g) = g
 overGram f = unwrapGram >>> f >>> Gram
 overMGram k = unwrapGram >>> k >>> map Gram
-gramLabel = unwrapGram >>> fst
+gramExprLabel = unwrapGram >>> fst
 gramJoint = unwrapGram >>> snd
 
 {-
 -- !TODO OLD
 
--- | Map a function `f` over the labels in a `Gram`, taking into account `Node`
+-- | Map a function `f` over the ExprLabels in a `Gram`, taking into account `Node`
 -- | structure. This is implemented by `travereGram`ing via the trivial
 -- | applicative `Identity`.
 -- |
@@ -264,7 +264,7 @@ mapGram f = Newtype.unwrap <<< traverseGram (Identity <<< f <<< mapNodeG_g Newty
 foldMapGram :: forall j l m. Functor j => (NodeG j l m -> m) -> Gram j l -> m
 foldMapGram f = Newtype.unwrap <<< traverseGram (Const <<< f <<< mapNodeG_g Newtype.unwrap)
 
--- | Traverse a function `f` over the labels of a `Gram`, taking into account
+-- | Traverse a function `f` over the ExprLabels of a `Gram`, taking into account
 -- | `Node` structure. This is the most general function over `Gram`, which
 -- | `mapGram`, `foldMapGram`, etc are built out of.
 -- |
@@ -350,7 +350,7 @@ unstepPath (Path (th : ths)) = Just (th /\ Path ths)
 --   where
 --   go :: Maybe (m (Path1 l')) -> Maybe (Path1 l) -> m (Maybe (Path1 l'))
 --   go m_pBelow Nothing = sequence m_pBelow
---   go m_pBelow (Just p1Above) = go (Just $ Gram <$> f (gramLabel p1Above /\ m_pBelow)) (gramJoint p1Above)
+--   go m_pBelow (Just p1Above) = go (Just $ Gram <$> f (gramExprLabel p1Above /\ m_pBelow)) (gramJoint p1Above)
 
 -- if = down, then p1 goes below
 -- if = up, then p1 goes above
@@ -371,7 +371,7 @@ zipUp zipper = case zipper.path of
   Path (th : ths) -> Just $ th /\ {path: Path ths, expr: unTooth th zipper.expr}
 
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
-zipDownsTooth :: forall l. GramLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
+zipDownsTooth :: forall l. GramExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
 zipDownsTooth zipper (_ /\ kidsPath) = do
   let ix = ZipList.leftLength kidsPath
   let zs = zipDowns zipper
@@ -421,26 +421,26 @@ type Zipper' l =
   }
 
 -- | Change
-type Change l = Expr (ChangeLabel l)
-data ChangeLabel l
+type Change l = Expr (ChangeExprLabel l)
+data ChangeExprLabel l
   = Plus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Minus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Expr l {-same number of kids that l has-}
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
-derive instance Generic (ChangeLabel l) _
-derive instance Eq l => Eq (ChangeLabel l)
-derive instance Ord l => Ord (ChangeLabel l)
+derive instance Generic (ChangeExprLabel l) _
+derive instance Eq l => Eq (ChangeExprLabel l)
+derive instance Ord l => Ord (ChangeExprLabel l)
 
-instance Show l => Show (ChangeLabel l) where
+instance Show l => Show (ChangeExprLabel l) where
   show (Plus th) = "(+ " <> showTooth th <> ")"
   show (Minus th) = "(- " <> showTooth th <> ")"
   show (Expr e) = show e
   show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
 
-derive instance Functor ChangeLabel
+derive instance Functor ChangeExprLabel
 
-instance Foldable ChangeLabel where
+instance Foldable ChangeExprLabel where
   foldMap f = case _ of
     Plus th -> foldMapTooth f th
     Minus th -> foldMapTooth f th
@@ -457,7 +457,7 @@ instance Foldable ChangeLabel where
     Expr l -> f l b
     Replace e1 e2 -> foldr f (foldr f b e2) e1
 
-instance Traversable ChangeLabel where
+instance Traversable ChangeExprLabel where
   traverse f = case _ of
     Plus th -> Plus <$> traverseTooth f th
     Minus th -> Minus <$> traverseTooth f th
@@ -480,7 +480,7 @@ replaceChange :: forall l. Expr l -> Expr l -> Change l
 replaceChange e1 e2 = Gram (Replace e1 e2 /\ [])
 
 matchChangeNode :: forall l g a.
-  NodeG Array (ChangeLabel l) g ->
+  NodeG Array (ChangeExprLabel l) g ->
   { plus :: Tooth l -> g -> a
   , minus :: Tooth l -> g -> a
   , expr :: l -> Array g -> a

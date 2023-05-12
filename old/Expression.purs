@@ -10,41 +10,41 @@ import Data.Map (Map)
 import Data.Either (Either(..))
 import Effect.Exception.Unsafe (unsafeThrow)
 
---type WrappedChild label wrap = wrap /\ (Expr label wrap)
+--type WrappedChild ExprLabel wrap = wrap /\ (Expr ExprLabel wrap)
 -- TODO: Do we ever need Expr or just ExprWithMetavars?
-data Expr label = Expr label (Array (Expr label))
+data Expr ExprLabel = Expr ExprLabel (Array (Expr ExprLabel))
 
-data Tooth label = Tooth label (Array (Expr label)) (Array (Expr label))
+data Tooth ExprLabel = Tooth ExprLabel (Array (Expr ExprLabel)) (Array (Expr ExprLabel))
 
-type Path label = List (Tooth label)
+type Path ExprLabel = List (Tooth ExprLabel)
 
 -- Changes, generically over any grammar!
-data GChange label = ChangeExpr label (Array (GChange label))
-    | Plus label (Array (ExprWithMetavars label)) (GChange label) (Array (ExprWithMetavars label))
-    | Minus label (Array (ExprWithMetavars label))  (GChange label) (Array (ExprWithMetavars label))
-    | Replace (ExprWithMetavars label) (ExprWithMetavars label)
+data GChange ExprLabel = ChangeExpr ExprLabel (Array (GChange ExprLabel))
+    | Plus ExprLabel (Array (ExprWithMetavars ExprLabel)) (GChange ExprLabel) (Array (ExprWithMetavars ExprLabel))
+    | Minus ExprLabel (Array (ExprWithMetavars ExprLabel))  (GChange ExprLabel) (Array (ExprWithMetavars ExprLabel))
+    | Replace (ExprWithMetavars ExprLabel) (ExprWithMetavars ExprLabel)
     | MetaVar Int {-figure out UUID or something - this is supposed to be a metavariable -}
 
-data ExprWithMetavars label = ExprWM label (Array (ExprWithMetavars label)) | EMetaVar Int
+data ExprWithMetavars ExprLabel = ExprWM ExprLabel (Array (ExprWithMetavars ExprLabel)) | EMetaVar Int
 
-data MapChange label = MCPlus (ExprWithMetavars label) | MCMinus (ExprWithMetavars label) | MCChange (GChange label)
+data MapChange ExprLabel = MCPlus (ExprWithMetavars ExprLabel) | MCMinus (ExprWithMetavars ExprLabel) | MCChange (GChange ExprLabel)
 
-data GTypingRuleEntry label id = TypingRuleEntry (Map id (MapChange label)) (GChange label)
-data GTypingRule label id = TypingRule (Array (GTypingRuleEntry label id))
+data GTypingRuleEntry ExprLabel id = TypingRuleEntry (Map id (MapChange ExprLabel)) (GChange ExprLabel)
+data GTypingRule ExprLabel id = TypingRule (Array (GTypingRuleEntry ExprLabel id))
 
 {-
 While this isn't dependent type theory so we can't ensure that Exprs, GChanges etc. satisfy typing rules
 intrinsically, we can write checking functions:
 -}
-exprIsTyped :: forall label wrap id .
-    Array (GTypingRule label id) -- The typing rules
-    -> Expr label -- The sort (which contains the type)
-    -> Map id (Expr label) -- The context - a mapping from ids to sorts
-    -> Expr label -- The expression to be type-checked
+exprIsTyped :: forall ExprLabel wrap id .
+    Array (GTypingRule ExprLabel id) -- The typing rules
+    -> Expr ExprLabel -- The sort (which contains the type)
+    -> Map id (Expr ExprLabel) -- The context - a mapping from ids to sorts
+    -> Expr ExprLabel -- The expression to be type-checked
     -> Boolean
 exprIsTyped = unsafeThrow "todo"
 
-instance Eq label => Eq (ExprWithMetavars label) where
+instance Eq ExprLabel => Eq (ExprWithMetavars ExprLabel) where
     eq (ExprWM l1 kids1) (ExprWM l2 kids2) = l1 == l2 && (Array.all identity (eq <$> kids1 <*> kids2))
     eq (EMetaVar x) (EMetaVar y) = x == y
     eq _ _ = false
@@ -53,7 +53,7 @@ inject :: forall a . ExprWithMetavars a -> GChange a
 inject (ExprWM l kids) = ChangeExpr l (map inject kids)
 inject (EMetaVar x) = MetaVar x
 
-composeChange :: forall label. Eq label => GChange label -> GChange label -> GChange label
+composeChange :: forall ExprLabel. Eq ExprLabel => GChange ExprLabel -> GChange ExprLabel -> GChange ExprLabel
 composeChange (ChangeExpr l1 kids1) (ChangeExpr l2 kids2) =
     if not (l1 == l2) then unsafeThrow "shouldn't happen: these changes don't line up" else
     if not (Array.length kids1 == Array.length kids2) then unsafeThrow "shouldn't happen: should have same number of kids" else
@@ -105,22 +105,22 @@ Generic function map over expressions.
 At each node, the function can choose if it should pass through to the child nodes, or if it should
 replace that node with something else.
 -}
-type LabelMap l env = (env -> l -> Array (Expr l) -> Either (Expr l) (Array env))
+type ExprLabelMap l env = (env -> l -> Array (Expr l) -> Either (Expr l) (Array env))
 
--- PROBLEM: LabelMap doesn't really work going UP paths!
-exprMap :: forall l env . LabelMap l env -> env -> Expr l -> Expr l
-exprMap f env (Expr label children) =
-    case f env label children of
+-- PROBLEM: ExprLabelMap doesn't really work going UP paths!
+exprMap :: forall l env . ExprLabelMap l env -> env -> Expr l -> Expr l
+exprMap f env (Expr ExprLabel children) =
+    case f env ExprLabel children of
         Left expr' -> expr'
         Right childEnvs ->
             let children' = map (\(env' /\ child) -> exprMap f env' child) (Array.zip childEnvs children) in
-            Expr label children'
+            Expr ExprLabel children'
 
-data LabelInfo id = IsVar id | Binds (Set id) -- for each child that is bound, update the environment
+data ExprLabelInfo id = IsVar id | Binds (Set id) -- for each child that is bound, update the environment
 
-expMapFreeVars :: forall l id . Ord id => (l -> LabelInfo id) -> (id -> Expr l) -> Expr l -> Expr l
-expMapFreeVars labelInfo atVar expr =
-    let mapper bound label children = case labelInfo label of
+expMapFreeVars :: forall l id . Ord id => (l -> ExprLabelInfo id) -> (id -> Expr l) -> Expr l -> Expr l
+expMapFreeVars ExprLabelInfo atVar expr =
+    let mapper bound ExprLabel children = case ExprLabelInfo ExprLabel of
             IsVar id -> if Set.member id bound
                 then (Right (Array.replicate (Array.length children) bound))
                 else (Left (atVar id))

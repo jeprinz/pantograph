@@ -3,9 +3,10 @@ module Language.Pantograph.ULC.Grammar where
 import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
+
 import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class ExprLabel, Meta(..), Tooth(..), expectedKidsCount)
+import Data.Expr (class IsExprExprLabel, Meta(..), Tooth(..), expectedKidsCount)
 import Data.Expr as Expr
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
@@ -20,13 +21,18 @@ import Data.Newtype (over, unwrap, wrap)
 import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Language.Pantograph.Generic.Grammar (class IsDerivRuleLabel)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (Action(..), Edit)
 import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Utility (assert)
 
-data Label
+--------------------------------------------------------------------------------
+-- ExprLabel
+--------------------------------------------------------------------------------
+
+data ExprLabel
   -- Var
   = Zero
   | Suc {-Var-}
@@ -43,12 +49,12 @@ data Label
   | TermSort
   | HoleInteriorSort
 
-derive instance Generic Label _
-instance Show Label where show x = genericShow x
-instance Eq Label where eq x = genericEq x
-instance Ord Label where compare x y = genericCompare x y
+derive instance Generic ExprLabel _
+instance Show ExprLabel where show x = genericShow x
+instance Eq ExprLabel where eq x = genericEq x
+instance Ord ExprLabel where compare x y = genericCompare x y
 
-instance ExprLabel Label where
+instance IsExprExprLabel ExprLabel where
   -- var
   prettyExprF'_unsafe (Zero /\ _) = "Z"
   prettyExprF'_unsafe (Suc /\ [v]) = parens $ "S" <+> v
@@ -81,10 +87,14 @@ instance ExprLabel Label where
   expectedKidsCount TermSort = 0
   expectedKidsCount HoleInteriorSort = 0
 
-type Expr = Expr.Expr Label
-type MetaExpr = Expr.MetaExpr Label
-type Zipper = Expr.Zipper Label
-type Tooth = Expr.Tooth Label
+type Expr = Expr.Expr ExprLabel
+type MetaExpr = Expr.MetaExpr ExprLabel
+type Zipper = Expr.Zipper ExprLabel
+type Tooth = Expr.Tooth ExprLabel
+
+--------------------------------------------------------------------------------
+-- Expr
+--------------------------------------------------------------------------------
 
 -- var
 zeroExpr = Expr.Expr Zero []
@@ -103,20 +113,49 @@ varSortExpr = Expr.Expr VarSort []
 termSortExpr = Expr.Expr TermSort []
 holeInteriorSort = Expr.Expr HoleInteriorSort []
 
---
+--------------------------------------------------------------------------------
+-- Tooth
+--------------------------------------------------------------------------------
+
+suc_pred = Tooth Suc (ZipList.Path {left: mempty, right: mempty})
+
+lam_bod = Tooth Lam (ZipList.Path {left: pure (holeExpr ), right: mempty})
+app_apl = Tooth App (ZipList.Path {left: pure holeExpr, right: mempty})
+app_arg = Tooth App (ZipList.Path {left: mempty, right: pure holeExpr})
+
+hole_interior = Hole /\ ZipList.Path {left: mempty, right: mempty}
+
+--------------------------------------------------------------------------------
+-- RuleLabel
+--------------------------------------------------------------------------------
+
+-- | Naming convention: <title>_<output sort>
+data RuleLabel
+  = Zero_Var
+  | Suc_Var
+  | Lam_Term
+  | App_Term 
+  | RefvTerm
+  | Hole_Any
+  | HoleInterior_HoleInterior
+
+derive instance Generic RuleLabel _
+derive instance Eq RuleLabel
+derive instance Ord RuleLabel
+derive instance Enum RuleLabel
+derive instance Bounded RuleLabel
+instance IsDerivRuleLabel RuleLabel
+
+type DerivExpr = Grammar.DerivExpr ExprLabel RuleLabel
+type DerivPath = Grammar.DerivPath ExprLabel RuleLabel
+type DerivZipper = Grammar.DerivZipper ExprLabel RuleLabel
+type DerivZipper' = Grammar.DerivZipper' ExprLabel RuleLabel
+
+--------------------------------------------------------------------------------
 -- Rule
---
+--------------------------------------------------------------------------------
 
-data RuleName
-  = ZeroVar 
-  | SucVar
-  | LamTerm
-  | AppTerm 
-  | RefTerm
-  | HoleAny
-  | HoleInteriorAny
-
-type Rule = Grammar.Rule Label
+type Rule = Grammar.Rule ExprLabel
 
 -- !TODO
 -- rules :: Array Rule
@@ -127,23 +166,15 @@ type Rule = Grammar.Rule Label
 --       ?a
 --   ]
 
---
--- Tooth
---
-
-var_p = Tooth Suc (ZipList.Path {left: mempty, right: mempty})
-
-lam_bod = Tooth Lam (ZipList.Path {left: pure (holeExpr ), right: mempty})
-app_apl = Tooth App (ZipList.Path {left: pure holeExpr, right: mempty})
-app_arg = Tooth App (ZipList.Path {left: mempty, right: pure holeExpr})
-
-hole_interior sort = Hole /\ ZipList.Path {left: mempty, right: mempty}
+--------------------------------------------------------------------------------
+-- DerivExpr
+--------------------------------------------------------------------------------
 
 -- --  
 -- -- Edit
 -- --
 
--- getEdits :: Zipper -> Array (Edit Label)
+-- getEdits :: Zipper -> Array (Edit ExprLabel)
 -- getEdits zipper = do
 --   let _ = Expr.assertWellformedExpr "getEdits" (unwrap zipper).expr
 --   case (unwrap zipper).expr of
@@ -192,19 +223,19 @@ hole_interior sort = Hole /\ ZipList.Path {left: mempty, right: mempty}
 --           ]
 --     _ -> []
 --   where
---   deleteEdit sort = {label: "delete", preview: "?", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {expr = holeExpr ?sort} zipper}
---   enS = {label: "S", preview: "S {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath var_p (unwrap zipper).path} zipper}
---   enLam = {label: "lam", preview: "lam _ ↦ {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath lam_bod (unwrap zipper).path} zipper}
---   enApl = {label: "apl", preview: "_ {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath app_apl (unwrap zipper).path} zipper}
---   enArg = {label: "arg", preview: "{{ }} _", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath app_arg (unwrap zipper).path} zipper}
+--   deleteEdit sort = {ExprLabel: "delete", preview: "?", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {expr = holeExpr ?sort} zipper}
+--   enS = {ExprLabel: "S", preview: "S {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath var_p (unwrap zipper).path} zipper}
+--   enLam = {ExprLabel: "lam", preview: "lam _ ↦ {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath lam_bod (unwrap zipper).path} zipper}
+--   enApl = {ExprLabel: "apl", preview: "_ {{ }}", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath app_apl (unwrap zipper).path} zipper}
+--   enArg = {ExprLabel: "arg", preview: "{{ }} _", action: SetZipperAction $ defer \_ -> pure $ over Expr.Zipper _ {path = Expr.stepPath app_arg (unwrap zipper).path} zipper}
 
---   inZ = {label: "Z", preview: "Z", action: SetZipperAction $ defer \_ -> pure $ Expr.Zipper
+--   inZ = {ExprLabel: "Z", preview: "Z", action: SetZipperAction $ defer \_ -> pure $ Expr.Zipper
 --     { path: case (unwrap zipper).path of
 --         Expr.Path (Tooth (Hole _VarSort) _ : path') -> Expr.Path path'
 --         _ -> unsafeCrashWith "bad inZ"
 --     , expr: varExpr 0
 --     }}
---   inRef = {label: "ref", preview: "{{#_}}", action: SetZipperAction $ defer \_ -> pure $ Expr.Zipper
+--   inRef = {ExprLabel: "ref", preview: "{{#_}}", action: SetZipperAction $ defer \_ -> pure $ Expr.Zipper
 --     { path: case (unwrap zipper).path of
 --         Expr.Path (Tooth (Hole _TermSort) _ : path') -> Expr.Path path'
 --         _ -> unsafeCrashWith $ "bad inRef: " <> pretty zipper

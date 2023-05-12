@@ -20,9 +20,9 @@ typecheck lang {-sort-} expr =
             case expr of
                 Expr (ExprWM OfSort)
                     (sort -- (Expr (ExprWM (ALOther s)) skids)
-                    : (Expr (ExprWM (ALOther label)) eKids)
+                    : (Expr (ExprWM (ALOther ExprLabel)) eKids)
                     : Nil) ->
-                    case lang label of
+                    case lang ExprLabel of
                         TypingRule parentSort kidSorts ->
                             do
     --                            (s' /\ sub1) <- unify parentSort (ExprWM <$> sort)
@@ -41,7 +41,7 @@ typecheck lang {-sort-} expr =
     in case go expr of
        Just _ -> true
        Nothing -> false
---data TRLabel label = OfSort label {-sort-} {-term-} | Other label
+--data TRExprLabel ExprLabel = OfSort ExprLabel {-sort-} {-term-} | Other ExprLabel
 
 {-
 
@@ -52,15 +52,15 @@ How do I carry through knowledge that I got from unification on the parent?
 A possible solution:
 1) the sort isn't (directly) part of the expr
 2) define:
-data ExprWithSortLabel label = ExprWithSortLabel label | OfSort
-type ExprWithSort label = Expr (ExprWithSortLabel label)
+data ExprWithSortExprLabel ExprLabel = ExprWithSortExprLabel ExprLabel | OfSort
+type ExprWithSort ExprLabel = Expr (ExprWithSortExprLabel ExprLabel)
 
 The idea is that here, a lambda can be represented by:
 
 (Expr OfSort [Term (A -> B), (Expr Lambda [OfSort [VarName, name], OfSort [Term A, body]])]
 
-3) typecheck requires it's input to be of the form (Expr OfSort [sort, (Expr label [... kids ...])])
-where it can then use `label` to find the corresponding typing rule
+3) typecheck requires it's input to be of the form (Expr OfSort [sort, (Expr ExprLabel [... kids ...])])
+where it can then use `ExprLabel` to find the corresponding typing rule
 
 QUESTION: Does this structure have to be an Expr, or can it just be something else?
 Answer: yes it has to be an expr so it can be recursive correctly.

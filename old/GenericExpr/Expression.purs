@@ -11,90 +11,90 @@ import Data.Either (Either(..))
 import Effect.Exception.Unsafe (unsafeThrow)
 import Data.UUID (UUID)
 
---type WrappedChild label wrap = wrap /\ (Expr label wrap)
+--type WrappedChild ExprLabel wrap = wrap /\ (Expr ExprLabel wrap)
 -- TODO: Do we ever need Expr or just ExprWithMetavars?
 
-data Expr label = Expr label (List (Expr label))
+data Expr ExprLabel = Expr ExprLabel (List (Expr ExprLabel))
 
-data ExprWMLabel label = ExprWM label | EMetaVar UUID
-type ExprWM label = Expr (ExprWMLabel label)
+data ExprWMExprLabel ExprLabel = ExprWM ExprLabel | EMetaVar UUID
+type ExprWM ExprLabel = Expr (ExprWMExprLabel ExprLabel)
 
-data ToothLabel label = Tooth label {-List (Expr label)-} {-List (Expr label)-}
-type Tooth label = Expr (Either (ToothLabel label) label)
+data ToothExprLabel ExprLabel = Tooth ExprLabel {-List (Expr ExprLabel)-} {-List (Expr ExprLabel)-}
+type Tooth ExprLabel = Expr (Either (ToothExprLabel ExprLabel) ExprLabel)
 
-data ListLabel label = ConsLabel {-x-} {-xs-} | NilLabel
-type Path label = Expr (Either (ListLabel label) (Either (ToothLabel label) label))
+data ListExprLabel ExprLabel = ConsExprLabel {-x-} {-xs-} | NilExprLabel
+type Path ExprLabel = Expr (Either (ListExprLabel ExprLabel) (Either (ToothExprLabel ExprLabel) ExprLabel))
 
--- A Change is just an expression with a few extra possible labels: namely, Replace, Plus, and Minus.
-type GChange label = ExprWM (ChangeLabel label)
+-- A Change is just an expression with a few extra possible ExprLabels: namely, Replace, Plus, and Minus.
+type GChange ExprLabel = ExprWM (ChangeExprLabel ExprLabel)
 
-data ChangeLabel label
-    = ChangeExpr label {-whatever kids that label had-}
-    | Plus label Int {- has whatever kids that label had except one, and the Int tells which one -}
-    | Minus label Int {- same as Plus -}
-    | Replace {-Expr label-} {-Expr label-}
+data ChangeExprLabel ExprLabel
+    = ChangeExpr ExprLabel {-whatever kids that ExprLabel had-}
+    | Plus ExprLabel Int {- has whatever kids that ExprLabel had except one, and the Int tells which one -}
+    | Minus ExprLabel Int {- same as Plus -}
+    | Replace {-Expr ExprLabel-} {-Expr ExprLabel-}
 
 
---data TypingRule label = TypingRule
---    (ExprWM label) -- The sort of the expression overall
---    (List (ExprWM label)) -- The sort of each child
+--data TypingRule ExprLabel = TypingRule
+--    (ExprWM ExprLabel) -- The sort of the expression overall
+--    (List (ExprWM ExprLabel)) -- The sort of each child
 
 --data
 
 --- below this line is garbage
 
--- TypingRuleLabel
-data AnnotatedLabel label = OfSort {-sort-} {-term-} | ALOther label
-type Annotated label = ExprWM (AnnotatedLabel label)
+-- TypingRuleExprLabel
+data AnnotatedExprLabel ExprLabel = OfSort {-sort-} {-term-} | ALOther ExprLabel
+type Annotated ExprLabel = ExprWM (AnnotatedExprLabel ExprLabel)
 
-shouldntBeAnnotations :: forall label. AnnotatedLabel label -> label
+shouldntBeAnnotations :: forall ExprLabel. AnnotatedExprLabel ExprLabel -> ExprLabel
 shouldntBeAnnotations (ALOther l) = l
 shouldntBeAnnotations _ = unsafeThrow "assumption violated: there was an annotation"
 
---data TypingRulesLabel label = TypingRule {-parent sort-} {-list of children sorts-} | TRCons {-sort-} {-sorts-} | TRNil | TROther label
---type TypingRule label = Expr (TypingRulesLabel label)
+--data TypingRulesExprLabel ExprLabel = TypingRule {-parent sort-} {-list of children sorts-} | TRCons {-sort-} {-sorts-} | TRNil | TROther ExprLabel
+--type TypingRule ExprLabel = Expr (TypingRulesExprLabel ExprLabel)
 
 -- TODO: design decision: should these be working with annotated terms?
-data TypingRule label =
+data TypingRule ExprLabel =
     TypingRule
-    (ExprWM label) -- The parent's sort
-    (List (ExprWM label)) -- The children node's sorts
+    (ExprWM ExprLabel) -- The parent's sort
+    (List (ExprWM ExprLabel)) -- The children node's sorts
 
-type Language label = label -> TypingRule label
+type Language ExprLabel = ExprLabel -> TypingRule ExprLabel
 
-data MapChange label = MCPlus (Expr label) | MCMinus (Expr label) | MCChange (GChange label)
+data MapChange ExprLabel = MCPlus (Expr ExprLabel) | MCMinus (Expr ExprLabel) | MCChange (GChange ExprLabel)
 
 --------------------------------------------------------------------------------
 
 -- Typechange injection is just being a functor!
 instance Functor Expr where
-    map :: forall label1 label2 . (label1 -> label2) -> Expr label1 -> Expr label2
-    map f (Expr label kids) = Expr (f label) (map (map f) kids)
+    map :: forall ExprLabel1 ExprLabel2 . (ExprLabel1 -> ExprLabel2) -> Expr ExprLabel1 -> Expr ExprLabel2
+    map f (Expr ExprLabel kids) = Expr (f ExprLabel) (map (map f) kids)
 
-derive instance eqAnnotatedLabel :: Eq label => Eq (AnnotatedLabel label)
-derive instance eqExprWMLabel :: Eq label => Eq (ExprWMLabel label)
---derive instance eqTypingRulesLabel :: Eq label => Eq (TypingRulesLabel label)
+derive instance eqAnnotatedExprLabel :: Eq ExprLabel => Eq (AnnotatedExprLabel ExprLabel)
+derive instance eqExprWMExprLabel :: Eq ExprLabel => Eq (ExprWMExprLabel ExprLabel)
+--derive instance eqTypingRulesExprLabel :: Eq ExprLabel => Eq (TypingRulesExprLabel ExprLabel)
 
-derive instance functorExprWMLabel :: Functor ExprWMLabel
-derive instance functorExprAnnotatedLabel :: Functor AnnotatedLabel
---derive instance functorTypingRuleLabel :: Functor TypingRulesLabel
+derive instance functorExprWMExprLabel :: Functor ExprWMExprLabel
+derive instance functorExprAnnotatedExprLabel :: Functor AnnotatedExprLabel
+--derive instance functorTypingRuleExprLabel :: Functor TypingRulesExprLabel
 
---data GTypingRuleEntry label id = TypingRuleEntry (Map id (MapChange label)) (GChange label)
---data GTypingRule label id = TypingRule (List (GTypingRuleEntry label id))
+--data GTypingRuleEntry ExprLabel id = TypingRuleEntry (Map id (MapChange ExprLabel)) (GChange ExprLabel)
+--data GTypingRule ExprLabel id = TypingRule (List (GTypingRuleEntry ExprLabel id))
 
 --{-
 --While this isn't dependent type theory so we can't ensure that Exprs, GChanges etc. satisfy typing rules
 --intrinsically, we can write checking functions:
 ---}
---exprIsTyped :: forall label wrap id .
---    List (GTypingRule label id) -- The typing rules
---    -> Expr label -- The sort (which contains the type)
---    -> Map id (Expr label) -- The context - a mapping from ids to sorts
---    -> Expr label -- The expression to be type-checked
+--exprIsTyped :: forall ExprLabel wrap id .
+--    List (GTypingRule ExprLabel id) -- The typing rules
+--    -> Expr ExprLabel -- The sort (which contains the type)
+--    -> Map id (Expr ExprLabel) -- The context - a mapping from ids to sorts
+--    -> Expr ExprLabel -- The expression to be type-checked
 --    -> Boolean
 --exprIsTyped = unsafeThrow "todo"
 --
---instance Eq label => Eq (Expr label) where
+--instance Eq ExprLabel => Eq (Expr ExprLabel) where
 --    eq (Expr l1 kids1) (Expr l2 kids2) = l1 == l2 && (List.all identity (eq <$> kids1 <*> kids2))
 --    eq (EMetaVar x) (EMetaVar y) = x == y
 --    eq _ _ = false

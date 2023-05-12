@@ -62,32 +62,32 @@ derive instance Functor Expr
 derive instance Foldable Expr
 derive instance Traversable Expr
 
-class (Eq l, Ord l, Show l) <= ExprLabel l where
+class (Eq l, Ord l, Show l) <= IsExprExprLabel l where
   prettyExprF'_unsafe :: Partial => ExprF l String -> String
   expectedKidsCount :: l -> Int
 
-wellformedExprF :: forall l kid. String -> ExprLabel l => ExprF l kid -> Assertion
+wellformedExprF :: forall l kid. String -> IsExprExprLabel l => ExprF l kid -> Assertion
 wellformedExprF source (l /\ kids) =
   { condition: expectedKidsCount l == Array.length kids
   , name: "wellformedExprF"
   , source
-  , message: "An expression with label " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids."
+  , message: "An expression with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids."
   }
 
-wellformedExpr :: forall l. String -> ExprLabel l => Expr l -> Assertion
+wellformedExpr :: forall l. String -> IsExprExprLabel l => Expr l -> Assertion
 wellformedExpr src = wellformedExprF src <<< toExprF
 
-assertWellformedExpr :: forall a l. ExprLabel l => String -> Expr l -> (Partial => Unit -> a) -> a
+assertWellformedExpr :: forall a l. IsExprExprLabel l => String -> Expr l -> (Partial => Unit -> a) -> a
 assertWellformedExpr src expr k = assert (wellformedExpr src expr) \_ -> unsafePartial (k unit)
 
-assertWellformedExprF :: forall a l kid. ExprLabel l => String -> ExprF l kid -> (Partial => Unit -> a) -> a
+assertWellformedExprF :: forall a l kid. IsExprExprLabel l => String -> ExprF l kid -> (Partial => Unit -> a) -> a
 assertWellformedExprF src e    k = assert (wellformedExprF src e) \_ -> unsafePartial (k unit)
 
-prettyExprF :: forall l. ExprLabel l => ExprF l String -> String
+prettyExprF :: forall l. IsExprExprLabel l => ExprF l String -> String
 prettyExprF e@(l /\ es) = assertWellformedExprF "prettyExprF" e \_ ->
   prettyExprF'_unsafe (l /\ (pretty <$> es))
 
-instance ExprLabel l => Pretty (Expr l) where
+instance IsExprExprLabel l => Pretty (Expr l) where
   pretty (Expr l es) = prettyExprF (l /\ (pretty <$> es))
 
 -- | MetaVar
@@ -117,7 +117,7 @@ derive newtype instance Foldable Meta
 derive newtype instance Traversable Meta
 instance Pretty a => Pretty (Meta a) where pretty = Newtype.unwrap >>> either pretty pretty
 
-instance ExprLabel l => ExprLabel (Meta l) where
+instance IsExprExprLabel l => IsExprExprLabel (Meta l) where
   prettyExprF'_unsafe ((Meta (Left x)) /\ _kids) = pretty x
   prettyExprF'_unsafe ((Meta (Right l)) /\ kids) = prettyExprF (l /\ kids)
 
@@ -227,7 +227,7 @@ derive instance Newtype (Zipper l) _
 derive newtype instance Show l => Show (Zipper l)
 derive newtype instance Eq l => Eq (Zipper l)
 
-instance ExprLabel l => Pretty (Zipper l) where
+instance IsExprExprLabel l => Pretty (Zipper l) where
   pretty (Zipper z) = prettyPath z.path $ pretty z.expr
 
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
@@ -236,7 +236,7 @@ zipUp (Zipper z) = case z.path of
   Path (th : ths) -> Just $ th /\ Zipper {path: Path ths, expr: unTooth th z.expr}
 
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
-zipDownsTooth :: forall l. ExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
+zipDownsTooth :: forall l. IsExprExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
 zipDownsTooth zipper (Tooth _ kidsPath) = do
   let ix = ZipList.leftLength kidsPath
   let zs = zipDowns zipper
@@ -286,29 +286,29 @@ data Zipper' l
 
 -- | Change
 
-type Change l = Expr (ChangeLabel l)
+type Change l = Expr (ChangeExprLabel l)
 
-data ChangeLabel l
+data ChangeExprLabel l
   = Plus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Minus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Inject l {-same number of kids that l has-}
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
-derive instance Generic (ChangeLabel l) _
-derive instance Eq l => Eq (ChangeLabel l)
-derive instance Ord l => Ord (ChangeLabel l)
+derive instance Generic (ChangeExprLabel l) _
+derive instance Eq l => Eq (ChangeExprLabel l)
+derive instance Ord l => Ord (ChangeExprLabel l)
 
-instance Show l => Show (ChangeLabel l) where
+instance Show l => Show (ChangeExprLabel l) where
   show (Plus th) = "(+ " <> showTooth th <> ")"
   show (Minus th) = "(- " <> showTooth th <> ")"
   show (Inject l) = show l
   show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
 
-derive instance Functor ChangeLabel
-derive instance Foldable ChangeLabel
-derive instance Traversable ChangeLabel
+derive instance Functor ChangeExprLabel
+derive instance Foldable ChangeExprLabel
+derive instance Traversable ChangeExprLabel
 
--- instance Foldable ChangeLabel where
+-- instance Foldable ChangeExprLabel where
 --   foldMap f = case _ of
 --     Plus th -> foldMapTooth f th
 --     Minus th -> foldMapTooth f th
@@ -325,7 +325,7 @@ derive instance Traversable ChangeLabel
 --     Inject l -> f l b
 --     Replace e1 e2 -> foldr f (foldr f b e2) e1
 
--- instance Traversable ChangeLabel where
+-- instance Traversable ChangeExprLabel where
 --   traverse f = case _ of
 --     Plus th -> Plus <$> traverseTooth f th
 --     Minus th -> Minus <$> traverseTooth f th
@@ -333,7 +333,7 @@ derive instance Traversable ChangeLabel
 --     Replace e1 e2 -> Replace <$> traverse f e1 <*> traverse f e2
 --   sequence fa = sequenceDefault fa
 
-instance ExprLabel l => ExprLabel (ChangeLabel l) where
+instance IsExprExprLabel l => IsExprExprLabel (ChangeExprLabel l) where
   prettyExprF'_unsafe (Plus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Minus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)

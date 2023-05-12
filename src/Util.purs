@@ -18,7 +18,7 @@ import Data.Foldable
 -- hole = unsafeThrow "hole"
 
 hole' :: forall a. String -> a
-hole' label = unsafeThrow $ "hole: " <> label
+hole' ExprLabel = unsafeThrow $ "hole: " <> ExprLabel
 
 lookup' :: forall k v. Ord k => k -> Map k v -> v
 lookup' x m = case lookup x m of

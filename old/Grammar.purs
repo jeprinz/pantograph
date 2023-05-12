@@ -61,7 +61,7 @@ Writing all of the code in the most generic way with the correct abstractions ap
 to require all kinds of data to just be in a single giant sum type.
 Maybe we can at least recover some dynamic type-checking by for example checking the Sort of things with pattern matching?
 -}
-data Label
+data ExprLabel
     -- Terms
     = Var TermVarID
     | App {-Term-} {-Term-}
@@ -103,17 +103,17 @@ G |- Newline E : S
 data Tuple a b = Tuple a b
 
 --data ExprWrap = ExprWrap Boolean Expr Expr
---data Tooth f = Tooth Label (Array (f (Expr f))) (Array (f (Expr f)))
+--data Tooth f = Tooth ExprLabel (Array (f (Expr f))) (Array (f (Expr f)))
 
 --newtype WrapMetadata = WrapMetadata {indented:: Boolean, sort:: Value}
-type Value = Expr Label
-type ValuePath = Path Label
+type Value = Expr ExprLabel
+type ValuePath = Path ExprLabel
 
-type Change = GChange Label
+type Change = GChange ExprLabel
 
 
-type TypingRuleEntry = GTypingRuleEntry Label UUID
-type TypingRule = GTypingRule Label UUID
+type TypingRuleEntry = GTypingRuleEntry ExprLabel UUID
+type TypingRule = GTypingRule ExprLabel UUID
 
 {-
 
@@ -141,14 +141,14 @@ typingRules = [
 
 {-
 
---labelBindVarInfo :: Label -> LabelInfo
---labelBindVarInfo (Lambda x) = Binds [[x]]
---labelBindVarInfo (Var id) = IsVar id
---labelBindVarInfo _ = Nothing
+--ExprLabelBindVarInfo :: ExprLabel -> ExprLabelInfo
+--ExprLabelBindVarInfo (Lambda x) = Binds [[x]]
+--ExprLabelBindVarInfo (Var id) = IsVar id
+--ExprLabelBindVarInfo _ = Nothing
 
 -- It should be possible to define typechecking fairly generically like this.
 -- This single function should be able to check both terms and paths!
-typeCheck :: Label -> Sort -> Array Sort -> Boolean
+typeCheck :: ExprLabel -> Sort -> Array Sort -> Boolean
 typeCheck App (STerm outTy) [(STerm arrTy), (STerm argTy)] = ?h -- Check that arrTy == argTy -> outTy
 typeCheck (Let tBind tyBinds) (STerm ty) [STermBind, (STerm defTy), SType, (STerm bodyTy)]
     = true -- check if ty == bodyTy, and more stuff I guess

@@ -13,10 +13,10 @@ import Data.Generic.Rep (class Generic)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Unit (unit)
-import Language.Pantograph.Generic.Grammar (class DerivRuleName)
+import Language.Pantograph.Generic.Grammar (class IsDerivRuleLabel)
 import Language.Pantograph.Generic.Grammar as G
 
-data Label =
+data ExprLabel =
     -- sorts
     STerm {-context-} {-type-} | SVar {-context-} {-type-} | SType {-type-}
     -- TODO: add a sort for names, and place an element of SName as a child of let and lambda, and make a Name rule
@@ -27,29 +27,29 @@ data Label =
     -- metadata
     | Name String
 
-type Expr = Expr.Expr Label
-type MetaExpr = Expr.MetaExpr Label
+type Expr = Expr.Expr ExprLabel
+type MetaExpr = Expr.MetaExpr ExprLabel
 
-data RuleName = Lam | App | Z | S | Var | Let | Base -- | TermBind
+data RuleLabel = Lam | App | Z | S | Var | Let | Base -- | TermBind
 
-derive instance Generic RuleName _
-derive instance Eq RuleName
-derive instance Ord RuleName
-instance Show RuleName where show x = genericShow x
-instance Enum RuleName where
+derive instance Generic RuleLabel _
+derive instance Eq RuleLabel
+derive instance Ord RuleLabel
+instance Show RuleLabel where show x = genericShow x
+instance Enum RuleLabel where
     succ x = genericSucc x
     pred x = genericPred x
-instance Bounded RuleName where
+instance Bounded RuleLabel where
     bottom = genericBottom
     top = genericTop
-instance DerivRuleName RuleName
+instance IsDerivRuleLabel RuleLabel
 
-type DerivLabel = G.DerivLabel Label RuleName
+type DerivExprLabel = G.DerivExprLabel ExprLabel RuleLabel
 
-type DerivTerm = G.DerivTerm Label RuleName
-type DerivPath dir = G.DerivPath dir Label RuleName
+type DerivTerm = G.DerivTerm ExprLabel RuleLabel
+type DerivPath dir = G.DerivPath dir ExprLabel RuleLabel
 
-type Rule = G.Rule Label
+type Rule = G.Rule ExprLabel
 
 exp :: forall l. l -> Array (Expr.MetaExpr l) -> Expr.MetaExpr l
 exp l kids = Expr.Expr (Meta (Right l)) kids

@@ -42,12 +42,12 @@ data Sort =
   -- ... other meta sorts ...
 
 -- all the things
-data Thing label = Thing label (Array Thing) Sort
+data Thing ExprLabel = Thing ExprLabel (Array Thing) Sort
 ```
-where `label` is the type of labels for the language (variants of types,
+where `ExprLabel` is the type of ExprLabels for the language (variants of types,
 variants of terms, variants of typechanges, etc).
 
-`Thing` is just a tree over `label /\ Sort`, so we might prefer to just use a
+`Thing` is just a tree over `ExprLabel /\ Sort`, so we might prefer to just use a
 library-defined tree datatype instead of reinvent the tree.
 
 The advantage of this form is that it _definitely_ handles everything -- its so

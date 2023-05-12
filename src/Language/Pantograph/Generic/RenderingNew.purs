@@ -8,7 +8,7 @@ import Type.Direction
 
 import Bug (bug)
 import Data.Array as Array
-import Data.Expr (class ExprLabel, Expr(..), Path, Zipper(..), Zipper', prettyPath, unTooth, zipDowns, zipDownsTooth, zipUp)
+import Data.Expr (class IsExprExprLabel, Expr(..), Path, Zipper(..), Zipper', prettyPath, unTooth, zipDowns, zipDownsTooth, zipUp)
 import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
@@ -69,7 +69,7 @@ data Query l r a
   | SubmitBufferQuery a
 
 type Edit l r =
-  { label :: String
+  { ExprLabel :: String
   , preview :: String
   , action :: Action l r
   }
@@ -83,7 +83,7 @@ data State l r
   | SelectState (Select l r)
   | TopState (Top l r)
 
-instance (ExprLabel l, DerivRule r) => Pretty (State l r) where
+instance (IsExprExprLabel l, IsDerivRuleLabel r) => Pretty (State l r) where
   pretty = case _ of
     BufferState buffer -> Array.intercalate "\n"
       [ "buffer:"
@@ -124,7 +124,7 @@ type Top l r =
   }
 
 editorComponent :: forall q l r.
-  ExprLabel l => DerivRule r =>
+  IsExprExprLabel l => IsDerivRuleLabel r =>
   H.Component 
     q
     { derivZipper :: DerivZipper l r
@@ -430,19 +430,19 @@ type BufferInput l r =
   , edits :: Array (Edit l r)
   }
 
-bufferComponent :: forall l r. ExprLabel l => DerivRule r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
+bufferComponent :: forall l r. IsExprExprLabel l => IsDerivRuleLabel r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
 bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""
   bufferFocus /\ bufferFocus_id <- HK.useState 0
 
-  let bufferInputRefLabelString = "buffer-input"
+  let bufferInputRefExprLabelString = "buffer-input"
 
   edits <- HK.captures {derivZipper: input.derivZipper, bufferString} $ flip HK.useMemo \_ ->
     input.edits #
       -- memo fuzzy distances
-      map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit) >>>
-      -- filter out edits that are below a certain fuzzy distance from the edit label
+      map (\edit -> Fuzzy.matchStr false bufferString edit.ExprLabel /\ edit) >>>
+      -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
       Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
       -- sort the remaining edits by the fuzzy distance
       Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
@@ -457,8 +457,8 @@ bufferComponent = HK.component \tokens input -> HK.do
       HK.put bufferFocus_id 0 -- reset bufferFocus
       if isEnabled' then do
           -- focus buffer input tag
-          HK.getHTMLElementRef (H.RefLabel bufferInputRefLabelString) >>= case _ of 
-            Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref label: " <> bufferInputRefLabelString
+          HK.getHTMLElementRef (H.RefExprLabel bufferInputRefExprLabelString) >>= case _ of 
+            Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefExprLabelString
             Just elem -> liftEffect $ HTMLElement.focus elem
           -- update facade to BufferState
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
@@ -509,7 +509,7 @@ bufferComponent = HK.component \tokens input -> HK.do
               [ HH.input 
                 [ classNames ["buffer-input"]
                 , HP.autofocus true 
-                , HP.ref $ H.RefLabel "buffer-input"
+                , HP.ref $ H.RefExprLabel "buffer-input"
                 , HP.type_ HP.InputText
                 , HE.onInput \event -> do
                     bufferString' <- liftEffect $ fromInputEventToTargetValue event

@@ -5,7 +5,7 @@ import Prelude
 import Control.Apply (lift2)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Expr (class ExprLabel, assertWellformedExpr)
+import Data.Expr (class IsExprExprLabel, assertWellformedExpr)
 import Data.Expr as Expr
 import Data.Foldable (foldl)
 import Data.List (List(..), (:))
@@ -38,7 +38,7 @@ we need to be able to:
 -
 
 In order to be able to do
-unify (+A -> B) (+A' -> B'), we would need to unify the EXPRESSIONS A and A'. But those are in labels in B and B'!
+unify (+A -> B) (+A' -> B'), we would need to unify the EXPRESSIONS A and A'. But those are in ExprLabels in B and B'!
 
 Its not clear to me though if we'll need to be able to do that.
 We might only need to do unification of changes with expressions, or changes with changes where the metavariables are
@@ -47,8 +47,8 @@ only in the change parts, not the expression parts.
 The reasoning is that when we perform the typechanging algorithm, the change going in doesn't have metavariables -
 its really only being unified with an expression that has metavariables.
 
-If I have a Change = Expr (ChangeLabel l), and then I turn it into something with metavariables for unification
-then I have Expr (ChangeLabel (Meta l)), which still doesn't have metavariables in the teeth things.
+If I have a Change = Expr (ChangeExprLabel l), and then I turn it into something with metavariables for unification
+then I have Expr (ChangeExprLabel (Meta l)), which still doesn't have metavariables in the teeth things.
 
 It seems wierd to have an change with both "change metavariables" and "expression metavariables" in it anyway.
 
@@ -64,14 +64,14 @@ genFreshener vars = foldl
 class Freshenable t where
     freshen :: Ren -> t -> t
 
-instance ExprLabel l => Freshenable (Expr.MetaExpr l) where
+instance IsExprExprLabel l => Freshenable (Expr.MetaExpr l) where
     freshen sub expr = assertWellformedExpr "freshen" expr \_ -> case expr of
         (Expr.Expr (Expr.Meta (Left x)) []) -> Expr.Expr (Expr.Meta (Left (lookup' x sub))) []
         (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr ((Expr.Meta (Right l))) (map (freshen sub) kids)
 
 type Sub l = Map Expr.MetaVar (Expr.MetaExpr l)
 
-subMetaExpr :: forall l. ExprLabel l => Sub l -> Expr.MetaExpr l -> Expr.MetaExpr l
+subMetaExpr :: forall l. IsExprExprLabel l => Sub l -> Expr.MetaExpr l -> Expr.MetaExpr l
 subMetaExpr sub expr = assertWellformedExpr "subMetaExpr" expr \_ -> case expr of
     (Expr.Expr (Expr.Meta (Left x)) []) -> lookup' x sub
     (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr (Expr.Meta (Right l)) (map (subMetaExpr sub) kids)
@@ -82,13 +82,13 @@ assertNoMetavars (Expr.Expr (Expr.Meta (Right l)) kids) = Expr.Expr l (map asser
 
 fullySubMetaExpr :: forall l. Map Expr.MetaVar (Expr.Expr l) -> Expr.MetaExpr l -> Expr.Expr l
 fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Left x)) []) = lookup' x sub
-fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Left x)) _) = unsafeCrashWith "wrong number of children on metavar label"
+fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Left x)) _) = unsafeCrashWith "wrong number of children on metavar ExprLabel"
 fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Right l)) kids) = Expr.Expr l (map (fullySubMetaExpr sub) kids)
 
 ------------- Unification ------------------------------------------------------
 
 -- we may need a more general notion of unification later, but this is ok for now
-unify :: forall l. ExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
+unify :: forall l. IsExprExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
 unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
     case l1 /\ l2 of
         Left x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
@@ -98,7 +98,7 @@ unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
             pure (Expr.Expr (Expr.Meta (Right l)) (Array.fromFoldable kids') /\ sub)
         _ /\ _ -> Nothing
 
-unifyLists :: forall l. ExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
+unifyLists :: forall l. IsExprExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
 unifyLists Nil Nil = Just (Nil /\ Map.empty)
 unifyLists (e1 : es1) (e2 : es2) = do
     e /\ sub <- unify e1 e2

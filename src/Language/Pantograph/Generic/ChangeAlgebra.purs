@@ -51,7 +51,7 @@ collectMatches (Expr (Inject l1) kids1) (Expr (Meta (Right l2)) kids2) | l1 == l
 collectMatches c (Expr (Meta (Left x)) []) = Just $ Map.insert x (Set.singleton c) Map.empty
 collectMatches _ _ = unsafeCrashWith "no"
 
-endpoints :: forall l. ExprLabel l => Change l -> Expr l /\ Expr l
+endpoints :: forall l. IsExprExprLabel l => Change l -> Expr l /\ Expr l
 endpoints ch = assertWellformedExpr "endpoints" ch \_ -> case ch of
     Expr (Plus th) [kid] -> do
         -- - `leftEp` is the left endpoint of the plus's child, and so it is the
@@ -78,7 +78,7 @@ endpoints ch = assertWellformedExpr "endpoints" ch \_ -> case ch of
 -- LUB (+ X -> A) (+ Y -> A) -- no unique solution!
 -- if you have changes where Plus and Minus DONT cancel each other out, then changes form a category without inverses.
 -- this function returns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
-lub :: forall l. ExprLabel l => Change l -> Change l -> Maybe (Change l)
+lub :: forall l. IsExprExprLabel l => Change l -> Change l -> Maybe (Change l)
 lub c1 c2 = assertWellformedExpr "lub.c1"  c1 \_ -> assertWellformedExpr "lub.c2" c2 \_ -> case c1 /\ c2 of
     Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (lub <$> kids1 <*> kids2) -- Oh no I've become a haskell programmer
     Expr (Inject _l1) _kids1 /\ Expr (Inject _l2) _kids2 -> Nothing
@@ -87,7 +87,7 @@ lub c1 c2 = assertWellformedExpr "lub.c1"  c1 \_ -> assertWellformedExpr "lub.c2
     Expr (Minus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
     Expr (Minus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
 
-matchingEndpoints :: forall l. ExprLabel l => String -> String -> Change l -> Change l -> Assertion
+matchingEndpoints :: forall l. IsExprExprLabel l => String -> String -> Change l -> Change l -> Assertion
 matchingEndpoints source message c1 c2 = 
     { name: "matchingEndpoints"
     , condition: do
@@ -98,7 +98,7 @@ matchingEndpoints source message c1 c2 =
     , message
     }
 
-compose :: forall l. ExprLabel l => Change l -> Change l -> Change l
+compose :: forall l. IsExprExprLabel l => Change l -> Change l -> Change l
 compose c1 c2 = assertWellformedExpr "lub.c1" c1 \_ -> assertWellformedExpr "lub.c2" c2 \_ -> do
     assert (matchingEndpoints "ChangeAlgebra.compose" "Change composition is only defined when endpoints match." c1 c2) \_ ->
         case c1 /\ c2 of
@@ -123,10 +123,10 @@ I don't have a good name for this operation, but what it does is:
 input Change c1 and MetaChange c2, and output sub and c3, such that:
 c1 o c3 = sub c2
 Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
-(Note that c2 has metavariables in the change positions, so its (Expr (Meta (ChangeLabel l))))
+(Note that c2 has metavariables in the change positions, so its (Expr (Meta (ChangeExprLabel l))))
 -}
 
-doOperation :: forall l. ExprLabel l => Change l -> Expr (Meta (ChangeLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
+doOperation :: forall l. IsExprExprLabel l => Change l -> Expr (Meta (ChangeExprLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
 doOperation c1 c2 = do
     matches <- getMatches c2 c1
     -- TODO: could this be written better
