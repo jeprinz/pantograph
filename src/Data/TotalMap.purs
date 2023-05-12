@@ -1,21 +1,21 @@
-module Data.TotalMap where
+module Data.TotalMap
+  ( TotalMap
+  , makeTotalMap
+  , lookup
+  , update
+  ) where
 
-import Data.Tuple.Nested
-import Data.Unfoldable
+import Data.Tuple.Nested ((/\))
 import Prelude
-
 import Data.Enum (class Enum, enumFromTo)
 import Data.Map as Map
-import Data.Maybe (Maybe, fromJust)
+import Data.Maybe (fromJust)
 import Partial.Unsafe (unsafePartial)
 
 newtype TotalMap k v = TotalMap (Map.Map k v)
 
 over :: forall k v a. (Partial => Map.Map k v -> a) -> TotalMap k v -> a
 over f m = unsafePartial (over f m)
-
-over' :: forall k v a. Partial => (Partial => Map.Map k v -> a) -> TotalMap k v -> a
-over' f (TotalMap m) = f m
 
 makeTotalMap :: forall k v. Enum k => Bounded k => (k -> v) -> TotalMap k v
 makeTotalMap f = TotalMap $ Map.fromFoldable $ ((enumFromTo bottom top <#> \k -> k /\ f k) :: Array _)
