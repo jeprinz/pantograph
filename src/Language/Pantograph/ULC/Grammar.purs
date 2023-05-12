@@ -1,7 +1,6 @@
 module Language.Pantograph.ULC.Grammar where
-
-import Data.Tuple.Nested ((/\))
 import Prelude
+
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
@@ -12,7 +11,8 @@ import Data.Generic.Rep (class Generic)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, defaultLanguageChanges, makeRule)
+import Data.Tuple.Nested ((/\))
+import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
 
 --------------------------------------------------------------------------------
@@ -30,9 +30,9 @@ instance Eq ExprLabel where eq x = genericEq x
 instance Ord ExprLabel where compare x y = genericCompare x y
 
 instance IsExprLabel ExprLabel where
-  prettyExprF'_unsafe (VarSort /\ []) = "VarSort"
-  prettyExprF'_unsafe (TermSort /\ []) = "TermSort"
-  prettyExprF'_unsafe (HoleInteriorSort /\ []) = "HoleInteriorSort"
+  prettyExprF'_unsafe (VarSort /\ []) = "Var"
+  prettyExprF'_unsafe (TermSort /\ []) = "Term"
+  prettyExprF'_unsafe (HoleInteriorSort /\ []) = "HoleInterior"
 
   expectedKidsCount VarSort = 0
   expectedKidsCount TermSort = 0
@@ -82,7 +82,7 @@ instance Enum RuleLabel where
 instance Bounded RuleLabel where
   bottom = genericBottom
   top = genericTop
-instance IsRuleLabel RuleLabel
+instance Grammar.IsRuleLabel RuleLabel
 
 --------------------------------------------------------------------------------
 -- Language
@@ -93,33 +93,33 @@ type Rule = Grammar.Rule ExprLabel
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of
-  Zero -> makeRule [] \[] ->
+  Zero -> Grammar.makeRule [] \[] ->
     [ ]
     /\ --------
     ( varSortME )
-  Suc -> makeRule [] \[] ->
+  Suc -> Grammar.makeRule [] \[] ->
     [ varSortME ]
     /\ --------
     ( varSortME )
-  Lam -> makeRule [] \[] ->
+  Lam -> Grammar.makeRule [] \[] ->
     [ varSortME
     , termSortME ]
     /\ --------
     ( termSortME )
-  App -> makeRule [] \[] ->
+  App -> Grammar.makeRule [] \[] ->
     [ termSortME
     , termSortME ]
     /\ --------
     ( termSortME )
-  Ref -> makeRule [] \[] ->
+  Ref -> Grammar.makeRule [] \[] ->
     [ varSortME ]
     /\ --------
     ( termSortME )
-  Hole -> makeRule ["sort"] \[sort] ->
+  Hole -> Grammar.makeRule ["sort"] \[sort] ->
     [ holeInteriorSortME ]
     /\ --------
     ( sort )
-  HoleInterior -> makeRule [] \[] ->
+  HoleInterior -> Grammar.makeRule [] \[] ->
     [ ]
     /\ --------
     ( holeInteriorSortME )
@@ -135,22 +135,22 @@ type DerivZipper' = Grammar.DerivZipper' ExprLabel RuleLabel
 
 -- var
 zeroDE :: DerivExpr
-zeroDE = Grammar.DerivLabel Zero varSortME % []
+zeroDE = Zero |- varSortME % []
 sucDE :: DerivExpr -> DerivExpr
-sucDE var = Grammar.DerivLabel Suc varSortME % [var]
+sucDE var = Suc |- varSortME % [var]
 -- term
 refDE :: DerivExpr -> DerivExpr
-refDE var = Grammar.DerivLabel Ref termSortME % [var]
+refDE var = Ref |- termSortME % [var]
 lamDE :: DerivExpr -> DerivExpr -> DerivExpr
-lamDE var bod = Grammar.DerivLabel Lam termSortME % [var, bod]
+lamDE var bod = Lam |- termSortME % [var, bod]
 appDE :: DerivExpr -> DerivExpr -> DerivExpr
-appDE apl arg = Grammar.DerivLabel App termSortME % [apl, arg]
+appDE apl arg = App |- termSortME % [apl, arg]
 -- hole
 holeDE :: DerivExpr -> MetaExpr -> DerivExpr
-holeDE interior sort = Grammar.DerivLabel Hole sort % [interior]
+holeDE interior sort = Hole |- sort % [interior]
 -- hole interior
 holeInteriorDE :: DerivExpr
-holeInteriorDE = Grammar.DerivLabel HoleInterior holeInteriorSortME % []
+holeInteriorDE = HoleInterior |- holeInteriorSortME % []
 
 --------------------------------------------------------------------------------
 -- LanguageChanges
@@ -161,7 +161,7 @@ type ChangeRule = Grammar.ChangeRule ExprLabel
 
 -- !TODO special cases
 languageChanges :: LanguageChanges
-languageChanges = defaultLanguageChanges language # TotalMap.mapWithKey case _ of
+languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
   Zero -> identity
   Suc -> identity
   Lam -> identity
@@ -169,3 +169,4 @@ languageChanges = defaultLanguageChanges language # TotalMap.mapWithKey case _ o
   Ref -> identity
   Hole -> identity
   HoleInterior -> identity
+

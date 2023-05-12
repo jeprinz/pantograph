@@ -51,7 +51,7 @@ import Type.Proxy (Proxy(..))
 data Expr l = Expr l (Array (Expr l))
 type ExprF l kid = l /\ Array kid
 
-infix 7 Expr as %
+infixl 7 Expr as %
 
 toExprF :: forall l. Expr l -> ExprF l (Expr l)
 toExprF (Expr l es) = l /\ es
@@ -162,7 +162,7 @@ fromMetaVar mx = Meta (Left mx) % []
 
 data Tooth l = Tooth l (ZipList.Path (Expr l))
 
-infix 7 Tooth as %<
+infixl 7 Tooth as %<
 
 derive instance Generic (Tooth l) _
 instance Show l => Show (Tooth l) where show x = genericShow x

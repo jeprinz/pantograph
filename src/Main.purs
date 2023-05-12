@@ -1,7 +1,6 @@
 module Main where
 
 import Prelude
-
 import Data.Expr as Expr
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
@@ -12,21 +11,23 @@ import Halogen.VDom.Driver as VDomDriver
 import Language.Pantograph.Generic.Rendering as Rendering
 import Partial.Unsafe (unsafeCrashWith)
 
-main :: Effect Unit 
-main = unsafeCrashWith "!TODO fix rendering so can actually run"
+-- main :: Effect Unit 
+-- main = unsafeCrashWith "!TODO fix rendering so can actually run"
 
+import Language.Pantograph.ULC.Rendering
+import Language.Pantograph.ULC.Grammar
 
--- main :: Effect Unit
--- main = HA.runHalogenAff do
---   Console.log "[main]"
---   body <- HA.awaitBody
---   VDomDriver.runUI Rendering.editorComponent input body
---   where
---   input =
---     { zipper: Expr.Zipper
---         { path: mempty
---         , expr: ex_expr2
---         }
---     , getEdits
---     , renderExprKids: renderExprKids
---     }
+main :: Effect Unit
+main = HA.runHalogenAff do
+  Console.log "[main]"
+  body <- HA.awaitBody
+  VDomDriver.runUI Rendering.editorComponent spec body
+  where
+  spec =
+    { derivZipper: Expr.Zipper
+        { path: mempty
+        , expr: holeDE holeInteriorDE termSortME
+        }
+    , getEdits
+    , renderDerivExprKids
+    }

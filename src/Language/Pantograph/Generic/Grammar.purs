@@ -28,6 +28,8 @@ class (Enum r, Bounded r, Show r) <= IsRuleLabel r
 
 data DerivLabel l r = DerivLabel r (Expr.MetaExpr l)
 
+infix 8 DerivLabel as |-
+
 derive instance Generic (DerivLabel l r) _
 instance (Show l, Show r) => Show (DerivLabel l r) where show x = genericShow x
 derive instance (Eq l, Eq r) => Eq (DerivLabel l r)
