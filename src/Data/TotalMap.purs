@@ -30,4 +30,4 @@ instance (Ord k, Semigroup v) => Semigroup (TotalMap k v) where
   append (TotalMap m1) (TotalMap m2) = TotalMap (Map.unionWith append m1 m2)
 
 instance (Enum k, Bounded k, Monoid v) => Monoid (TotalMap k v) where
-  mempty = makeTotalMap \_ -> mempty
+  mempty = makeTotalMap (const mempty)
