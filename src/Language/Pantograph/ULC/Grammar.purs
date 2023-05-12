@@ -1,36 +1,19 @@
 module Language.Pantograph.ULC.Grammar where
 
-import Data.Tuple
-import Data.Tuple.Nested
+import Data.Tuple.Nested ((/\))
 import Prelude
-
-import Bug.Assertion (assert, assertInput, positif)
 import Data.Bounded.Generic (genericBottom, genericTop)
-import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, Meta(..), Tooth(..), expectedKidsCount, freshMetaVar, freshMetaVar', fromMetaVar, prettyExprF'_unsafe, (%), (%<))
+import Data.Expr (class IsExprLabel, (%))
 import Data.Expr as Expr
-import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
-import Data.Lazy (Lazy, defer)
-import Data.List ((:))
-import Data.List as List
-import Data.List.Rev (RevList)
-import Data.List.Rev as RevList
-import Data.List.Zip as ZipList
-import Data.Maybe (Maybe(..))
-import Data.Newtype (over, unwrap, wrap)
 import Data.Ord.Generic (genericCompare)
-import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, defaultLanguageChanges, makeRule)
 import Language.Pantograph.Generic.Grammar as Grammar
-import Language.Pantograph.Generic.Rendering (Action(..), Edit)
-import Partial.Unsafe (unsafeCrashWith)
-import Text.Pretty (class Pretty, parens, pretty, (<+>))
 
 --------------------------------------------------------------------------------
 -- ExprLabel
@@ -64,9 +47,12 @@ type MetaExpr = Expr.MetaExpr ExprLabel
 type Zipper = Expr.Zipper ExprLabel
 type Tooth = Expr.Tooth ExprLabel
 
-varSortE = VarSort % [] :: Expr
-termSortE = TermSort % [] :: Expr
-holeInteriorSortE = HoleInteriorSort % [] :: Expr
+varSortE :: Expr
+varSortE = VarSort % []
+termSortE :: Expr
+termSortE = TermSort % []
+holeInteriorSortE :: Expr
+holeInteriorSortE = HoleInteriorSort % []
 
 varSortME = pure VarSort % [] :: MetaExpr
 termSortME = pure TermSort % [] :: MetaExpr
@@ -148,16 +134,23 @@ type DerivZipper = Grammar.DerivZipper ExprLabel RuleLabel
 type DerivZipper' = Grammar.DerivZipper' ExprLabel RuleLabel
 
 -- var
-zeroDE = Grammar.DerivLabel Zero varSortME % [] :: DerivExpr
-sucDE var = Grammar.DerivLabel Suc varSortME % [var] :: DerivExpr
+zeroDE :: DerivExpr
+zeroDE = Grammar.DerivLabel Zero varSortME % []
+sucDE :: DerivExpr -> DerivExpr
+sucDE var = Grammar.DerivLabel Suc varSortME % [var]
 -- term
-refDE var = Grammar.DerivLabel Ref termSortME % [var] :: DerivExpr
-lamDE var bod = Grammar.DerivLabel Lam termSortME % [var, bod] :: DerivExpr
-appDE apl arg = Grammar.DerivLabel App termSortME % [apl, arg] :: DerivExpr
+refDE :: DerivExpr -> DerivExpr
+refDE var = Grammar.DerivLabel Ref termSortME % [var]
+lamDE :: DerivExpr -> DerivExpr -> DerivExpr
+lamDE var bod = Grammar.DerivLabel Lam termSortME % [var, bod]
+appDE :: DerivExpr -> DerivExpr -> DerivExpr
+appDE apl arg = Grammar.DerivLabel App termSortME % [apl, arg]
 -- hole
-holeDE interior sort = Grammar.DerivLabel Hole sort % [interior] :: DerivExpr
+holeDE :: DerivExpr -> MetaExpr -> DerivExpr
+holeDE interior sort = Grammar.DerivLabel Hole sort % [interior]
 -- hole interior
-holeInteriorDE = Grammar.DerivLabel HoleInterior holeInteriorSortME % [] :: DerivExpr
+holeInteriorDE :: DerivExpr
+holeInteriorDE = Grammar.DerivLabel HoleInterior holeInteriorSortME % []
 
 --------------------------------------------------------------------------------
 -- LanguageChanges

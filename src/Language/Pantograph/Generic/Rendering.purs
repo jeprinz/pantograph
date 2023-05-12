@@ -36,6 +36,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName, setClassNameByElementId)
+import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.ZipperMovement (moveZipper)
 import Partial.Unsafe (unsafeCrashWith)
 import Prim.Row (class Cons)
@@ -57,40 +58,40 @@ import Web.UIEvent.MouseEvent as MouseEvent
 cursorClassName = "cursor"
 highlightClassName = "highlight"
 
-data Output l
-  = ActionOutput (Action l)
-  | UpdateFacadeOutput (State l -> HK.HookM Aff (State l))
+data Output l r
+  = ActionOutput (Action l r)
+  | UpdateFacadeOutput (State l r -> HK.HookM Aff (State l r))
 
-data Query l a
+data Query l r a
   -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
   = SetBufferEnabledQuery Boolean a
   | MoveBufferQuery MoveDir a
   | SubmitBufferQuery a
 
-type Edit l =
+type Edit l r =
   { label :: String
   , preview :: String
-  , action :: Action l
+  , action :: Action l r
   }
 
-data Action l
-  = SetZipperAction (Lazy (Maybe (Zipper l)))
+data Action l r
+  = SetDerivZipperAction (Lazy (Maybe (DerivZipper l r)))
 
-data State l
-  = BufferState (Buffer l)
-  | CursorState (Cursor l)
-  | SelectState (Select l)
-  | TopState (Top l)
+data State l r
+  = BufferState (Buffer l r)
+  | CursorState (Cursor l r)
+  | SelectState (Select l r)
+  | TopState (Top l r)
 
-instance IsExprLabel l => Pretty (State l) where
+instance (IsExprLabel l, IsRuleLabel r) => Pretty (State l r) where
   pretty = case _ of
     BufferState buffer -> Array.intercalate "\n"
       [ "buffer:"
-      , "  - zipper = " <> pretty buffer.zipper
+      , "  - derivZipper = " <> pretty buffer.derivZipper
       ]
     CursorState cursor -> Array.intercalate "\n"
       [ "cursor:"
-      , "  - zipper = " <> pretty cursor.zipper
+      , "  - derivZipper = " <> pretty cursor.derivZipper
       ]
     SelectState select -> Array.intercalate "\n"
       [ "select: !TODO"
@@ -101,46 +102,49 @@ instance IsExprLabel l => Pretty (State l) where
 
 -- !TODO is it worth having a different type for frontend that has Buffer where State doesn't have Buffer?
 -- data Facade l
---   = BufferFacade (Buffer l)
---   | CursorFacade (Cursor l)
---   | SelectFacade (Select l)
---   | TopFacade (Top l)
+--   = BufferFacade (Buffer l r)
+--   | CursorFacade (Cursor l r)
+--   | SelectFacade (Select l r)
+--   | TopFacade (Top l r)
 
-type Buffer l =
-  { zipper :: Zipper l
+type Buffer l r =
+  { derivZipper :: DerivZipper l r
   }
 
-type Cursor l =
-  { zipper :: Zipper l
+type Cursor l r =
+  { derivZipper :: DerivZipper l r
   }
 
-type Select l = 
-  { zipper' :: Zipper' l
+type Select l r =
+  { derivZipper' :: DerivZipper' l r
   }
 
-type Top l =
-  { expr :: Expr l
+type Top l r =
+  { expr :: DerivExpr l r
   }
 
-editorComponent :: forall q l.
-  Eq l => Ord l => IsExprLabel l =>
+type EditorSpec l r =
+  { derivZipper :: DerivZipper l r
+  , getEdits :: DerivZipper l r -> Array (Edit l r)
+  , renderDerivExprKids ::
+      DerivExpr l r -> 
+      Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
+      Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff)
+    -- TODO: factor out this type, and add: Grammar.Sorts, Grammar.Derivations, Grammar.Languaage, something for smallstep
+  }
+
+editorComponent :: forall q l r.
+  IsExprLabel l => IsRuleLabel r =>
   H.Component 
     q
-    { zipper :: Zipper l
-    , getEdits :: Zipper l -> Array (Edit l)
-    , renderExprKids ::
-        Expr l -> 
-        Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l) (Output l) String) Aff) -> 
-        Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l) (Output l) String) Aff)
-     -- TODO: factor out this type, and add: Grammar.Sorts, Grammar.Derivations, Grammar.Languaage, something for smallstep
-    }
+    (EditorSpec l r)
     Unit
     Aff
 editorComponent = HK.component \tokens input -> HK.do
 
   let
     initState = CursorState
-      { zipper: input.zipper
+      { derivZipper: input.derivZipper
       }
 
   currentState /\ state_id <- HK.useState $ initState
@@ -149,48 +153,48 @@ editorComponent = HK.component \tokens input -> HK.do
   let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
-  _ /\ maybeCursorPath_ref <- HK.useRef (Just (unwrap input.zipper).path)
-  _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (Path Dir.Up l) String)
+  _ /\ maybeCursorPath_ref :: _ /\ (Ref.Ref (Maybe (DerivPath Dir.Up l r))) <- HK.useRef (Just (unwrap input.derivZipper).path)
+  _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (DerivPath Dir.Up l r) String)
 
   let 
-    getElementIdByPath :: Path Dir.Up l -> HK.HookM Aff String
-    getElementIdByPath path = do
+    agetElementIdByDerivPath :: DerivPath Dir.Up l r -> HK.HookM Aff String
+    agetElementIdByDerivPath path = do
       pathElementIds <- liftEffect $ Ref.read pathElementIds_ref
       case Map.lookup path pathElementIds of
         Nothing -> bug $ "could not find element id for path: " <> prettyPath path "{}"
         Just elemId -> pure elemId
 
-    getElementByPath :: Path Dir.Up l -> HK.HookM Aff DOM.Element
-    getElementByPath path = do
+    getElementByPath :: DerivPath Dir.Up l r -> HK.HookM Aff DOM.Element
+    getElementByPath derivPath = do
       doc <- liftEffect $ HTML.window >>= Window.document
-      elemId <- getElementIdByPath path
+      elemId <- agetElementIdByDerivPath derivPath
       liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
         Nothing -> bug $ "could not find element by id: " <> elemId
         Just elem -> pure elem
 
-    setNodeElementStyle :: Ref.Ref (Maybe (Path Dir.Up l)) -> String -> Maybe (Path Dir.Up l) -> HK.HookM Aff Unit
-    setNodeElementStyle mb_path_ref className mb_path = do
+    setNodeElementStyle :: Ref.Ref (Maybe (DerivPath Dir.Up l r)) -> String -> Maybe (DerivPath Dir.Up l r) -> HK.HookM Aff Unit
+    setNodeElementStyle mb_derivPath_ref className mb_derivPath = do
       -- unset the current node element
-      liftEffect (Ref.read mb_path_ref) >>= case _ of
+      liftEffect (Ref.read mb_derivPath_ref) >>= case _ of
         Nothing -> do
           -- set the new node element
           update
-        Just path -> do
+        Just derivPath -> do
           -- ignore if the new cursor is the same as the old cursor
-          if Just path == mb_path then do
+          if Just derivPath == mb_derivPath then do
             pure unit
           else do
-            elem <- getElementByPath path
+            elem <- getElementByPath derivPath
             liftEffect $ setClassName elem className false
             -- set the new node element
             update
       where
       update = do
-        liftEffect $ Ref.write mb_path mb_path_ref
-        case mb_path of
+        liftEffect $ Ref.write mb_derivPath mb_derivPath_ref
+        case mb_derivPath of
           Nothing -> pure unit
-          Just path -> do
-            elem' <- getElementByPath path
+          Just derivPath -> do
+            elem' <- getElementByPath derivPath
             liftEffect $ setClassName elem' className true
 
     setCursorElement = setNodeElementStyle maybeCursorPath_ref cursorClassName
@@ -210,30 +214,30 @@ editorComponent = HK.component \tokens input -> HK.do
       TopState _st -> do
         setHighlightElement Nothing
 
-    setFacade :: State l -> HK.HookM Aff Unit
+    setFacade :: State l r -> HK.HookM Aff Unit
     setFacade st = do
       -- Debug.traceM $ "[setFacade] new state: " <> pretty st
       unsetFacadeElements
       setFacade' st
 
     -- doesn't `unsetFacadeElements` first
-    setFacade' :: State l -> HK.HookM Aff Unit
+    setFacade' :: State l r -> HK.HookM Aff Unit
     setFacade' st = do
       case st of
         CursorState cursor -> do
-          setCursorElement (Just (unwrap cursor.zipper).path)
+          setCursorElement (Just (unwrap cursor.derivZipper).path)
         BufferState buffer -> do
-          setCursorElement (Just (unwrap buffer.zipper).path)
+          setCursorElement (Just (unwrap buffer.derivZipper).path)
         SelectState select -> do
           unsafeCrashWith "!TODO setFacade SelectState"
         TopState top -> do
           setCursorElement Nothing
       liftEffect (Ref.write st facade_ref)
 
-    getFacade :: HK.HookM Aff (State l)
+    getFacade :: HK.HookM Aff (State l r)
     getFacade = liftEffect (Ref.read facade_ref)
 
-    setState :: State l -> HK.HookM Aff Unit
+    setState :: State l r -> HK.HookM Aff Unit
     setState st = do
       unsetFacadeElements
       HK.put state_id st
@@ -241,18 +245,18 @@ editorComponent = HK.component \tokens input -> HK.do
       setFacade' st
 
     handleAction = case _ of
-      SetZipperAction lazy_zipper -> do
-        -- compute new zipper
-        case force lazy_zipper of
+      SetDerivZipperAction lazy_derivZipper -> do
+        -- compute new derivZipper
+        case force lazy_derivZipper of
           Nothing -> pure unit
-          Just zipper -> setState $ CursorState {zipper}
+          Just derivZipper -> setState $ CursorState {derivZipper}
 
     moveCursor dir = getFacade >>= case _ of
       CursorState cursor -> do
-        -- Debug.traceM $ "[moveCursor] st = " <> pretty st.zipper
-        case moveZipper dir cursor.zipper of
+        -- Debug.traceM $ "[moveCursor] st = " <> pretty st.derivZipper
+        case moveZipper dir cursor.derivZipper of
           Nothing -> pure unit
-          Just zipper -> setFacade $ CursorState cursor {zipper = zipper}
+          Just derivZipper -> setFacade $ CursorState cursor {derivZipper = derivZipper}
       BufferState _st -> pure unit
       SelectState _st -> unsafeCrashWith "!TODO escape select then move cursor"
       TopState _st -> unsafeCrashWith "!TODO move to first top cursor position, then move"
@@ -272,31 +276,31 @@ editorComponent = HK.component \tokens input -> HK.do
         BufferState buffer -> do
           if key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath (unwrap buffer.zipper).path
+            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId SubmitBufferQuery
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
-            elemId <- getElementIdByPath (unwrap buffer.zipper).path
+            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false
             -- -- set facade to cursor
-            -- setFacade $ CursorState {zipper: buffer.zipper}
+            -- setFacade $ CursorState {derivZipper: buffer.derivZipper}
           else if key == "ArrowUp" then do
             -- Debug.traceM $ "[moveBufferQuery Up]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath (unwrap buffer.zipper).path
+            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery upDir
           else if key == "ArrowDown" then do
             -- Debug.traceM $ "[moveBufferQuery Down]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByPath (unwrap buffer.zipper).path
+            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
         CursorState cursor -> do
           if  key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
-            elemId <- getElementIdByPath (unwrap cursor.zipper).path
+            elemId <- agetElementIdByDerivPath (unwrap cursor.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
@@ -320,68 +324,68 @@ editorComponent = HK.component \tokens input -> HK.do
       ActionOutput act -> handleAction act
       UpdateFacadeOutput f -> setFacade =<< (f =<< getFacade)
   
-    renderExpr isCursor zipper = do
+    renderExpr isCursor derivZipper = do
       let 
         elemId = unsafePerformEffect do
           -- generate new elemId and add it to the map
           elemId_ <- UUID.toString <$> UUID.genUUID
-          Ref.modify_ (Map.insert (unwrap zipper).path elemId_) pathElementIds_ref
+          Ref.modify_ (Map.insert (unwrap derivZipper).path elemId_) pathElementIds_ref
           pure elemId_
 
-        clsNames /\ kidElems = input.renderExprKids (unwrap zipper).expr $ renderExpr false <$> zipDowns zipper
+        clsNames /\ kidElems = input.renderDerivExprKids (unwrap derivZipper).expr $ renderExpr false <$> zipDowns derivZipper
       HH.div
         [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
         , HP.id elemId
         , HE.onMouseDown \event -> do
             H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setFacade $ CursorState {zipper: zipper}
+            setFacade $ CursorState {derivZipper: derivZipper}
         , HE.onMouseOver \event -> do
             H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setHighlightElement (Just (unwrap zipper).path)
+            setHighlightElement (Just (unwrap derivZipper).path)
             pure unit
         ] $
         Array.concat
         [ [ HH.slot bufferSlot elemId bufferComponent 
-            { zipper: zipper
-            , edits: input.getEdits zipper
+            { derivZipper: derivZipper
+            , edits: input.getEdits derivZipper
             } 
             handleBufferOutput
           ]
         , kidElems
         ]
 
-    renderPath zipper1 interior  = do
-      case zipUp zipper1 of
+    renderPath derivZipper1 interior  = do
+      case zipUp derivZipper1 of
         Nothing -> interior
-        Just (th /\ zipper2) -> do
+        Just (th /\ derivZipper2) -> do
           let elemId = unsafePerformEffect do
                 -- generate new elemId and add it to the map
                 elemId_ <- UUID.toString <$> UUID.genUUID
-                Ref.modify_ (Map.insert (unwrap zipper2).path elemId_) pathElementIds_ref
+                Ref.modify_ (Map.insert (unwrap derivZipper2).path elemId_) pathElementIds_ref
                 pure elemId_
           let clsNames /\ kidElems = 
-                input.renderExprKids (unTooth th (unwrap zipper1).expr) $
+                input.renderDerivExprKids (unTooth th (unwrap derivZipper1).expr) $
                 Array.fromFoldable $
                 ZipList.unpathAround interior $ do
-                  let kidZippers = zipDownsTooth zipper2 th
+                  let kidZippers = zipDownsTooth derivZipper2 th
                   let ZipList.Path p = kidZippers
                   renderExpr false <$> kidZippers
-          renderPath zipper2 $
+          renderPath derivZipper2 $
             HH.div
               [ classNames $ ["node"] <> clsNames
               , HP.id elemId
               , HE.onMouseDown \event -> do
                   H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-                  setFacade $ CursorState {zipper: zipper2}
+                  setFacade $ CursorState {derivZipper: derivZipper2}
               , HE.onMouseOver \event -> do
                   H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-                  setHighlightElement (Just (unwrap zipper2).path)
+                  setHighlightElement (Just (unwrap derivZipper2).path)
                   pure unit
               ] $
               Array.concat
               [ [ HH.slot bufferSlot elemId bufferComponent 
-                  { zipper: zipper2
-                  , edits: input.getEdits zipper2
+                  { derivZipper: derivZipper2
+                  , edits: input.getEdits derivZipper2
                   } 
                   handleBufferOutput
                 ]
@@ -405,7 +409,7 @@ editorComponent = HK.component \tokens input -> HK.do
     -- Debug.trace 
     --   ("[editorComponent.render]" <> Array.foldMap ("\n" <> _)
     --     (map ("  - " <> _)
-    --       [ "zipper = " <> pretty zipper
+    --       [ "derivZipper = " <> pretty derivZipper
     --       ]))
     --   \_ ->
       HH.div [classNames ["editor"]]
@@ -416,7 +420,7 @@ editorComponent = HK.component \tokens input -> HK.do
             setHighlightElement Nothing
         ]
         case currentState of
-          CursorState st -> [renderPath st.zipper $ renderExpr true st.zipper]
+          CursorState st -> [renderPath st.derivZipper $ renderExpr true st.derivZipper]
           BufferState _st -> unsafeCrashWith "!TODO render BufferState"
           SelectState _st -> unsafeCrashWith "!TODO render SelectState"
           TopState _st -> unsafeCrashWith "!TODO render TopState"
@@ -424,20 +428,20 @@ editorComponent = HK.component \tokens input -> HK.do
 
 bufferSlot = Proxy :: Proxy "buffer"
 
-type BufferInput l =
-  { zipper :: Zipper l
-  , edits :: Array (Edit l)
+type BufferInput l r =
+  { derivZipper :: DerivZipper l r
+  , edits :: Array (Edit l r)
   }
 
-bufferComponent :: forall l. IsExprLabel l => H.Component (Query l) (BufferInput l) (Output l) Aff
+bufferComponent :: forall l r. IsExprLabel l => IsRuleLabel r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
 bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""
   bufferFocus /\ bufferFocus_id <- HK.useState 0
 
-  let bufferInputRefExprLabelString = "buffer-input"
+  let bufferInputRefLabelString = "buffer-input"
 
-  edits <- HK.captures {zipper: input.zipper, bufferString} $ flip HK.useMemo \_ ->
+  edits <- HK.captures {derivZipper: input.derivZipper, bufferString} $ flip HK.useMemo \_ ->
     input.edits #
       -- memo fuzzy distances
       map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit) >>>
@@ -456,17 +460,17 @@ bufferComponent = HK.component \tokens input -> HK.do
       HK.put bufferFocus_id 0 -- reset bufferFocus
       if isEnabled' then do
           -- focus buffer input tag
-          HK.getHTMLElementRef (H.RefLabel bufferInputRefExprLabelString) >>= case _ of 
-            Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefExprLabelString
+          HK.getHTMLElementRef (H.RefLabel bufferInputRefLabelString) >>= case _ of 
+            Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefLabelString
             Just elem -> liftEffect $ HTMLElement.focus elem
           -- update facade to BufferState
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
-            pure $ BufferState {zipper: input.zipper}
+            pure $ BufferState {derivZipper: input.derivZipper}
           pure unit
       else
         -- update facade to CursorState
         HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
-          pure $ CursorState {zipper: input.zipper}
+          pure $ CursorState {derivZipper: input.derivZipper}
       pure (Just a)
     MoveBufferQuery qm a -> do
       if isEnabled then do
@@ -495,7 +499,7 @@ bufferComponent = HK.component \tokens input -> HK.do
     -- Debug.trace 
     --   ("[bufferComponent.render]" <> Array.foldMap ("\n" <> _)
     --     (map ("  - " <> _)
-    --       [ "zipper = " <> pretty input.zipper
+    --       [ "derivZipper = " <> pretty input.derivZipper
     --       , "isEnabled = " <> show isEnabled
     --       ]))
     --   \_ ->
@@ -526,7 +530,3 @@ bufferComponent = HK.component \tokens input -> HK.do
               ]
           ]
         ]
-
---
--- utilities
---
