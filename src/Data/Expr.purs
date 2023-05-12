@@ -5,6 +5,8 @@ import Data.Either.Nested
 import Prelude
 import Type.Direction
 
+import Bug (bug)
+import Bug.Assertion (Assertion(..), assert, assertInput, assertM, assert_)
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
@@ -19,6 +21,7 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe')
 import Data.Newtype (class Newtype)
 import Data.Newtype as Newtype
@@ -26,6 +29,7 @@ import Data.Ord (class Ord1, compare1)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.String as String
+import Data.TotalMap (hasKey)
 import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
@@ -41,12 +45,13 @@ import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, quotes)
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
-import Utility (Assertion, assert, assertM, assert_)
 
 -- | Expr
 
 data Expr l = Expr l (Array (Expr l))
 type ExprF l kid = l /\ Array kid
+
+infix 7 Expr as %
 
 toExprF :: forall l. Expr l -> ExprF l (Expr l)
 toExprF (Expr l es) = l /\ es
@@ -62,48 +67,50 @@ derive instance Functor Expr
 derive instance Foldable Expr
 derive instance Traversable Expr
 
-class (Eq l, Ord l, Show l) <= IsExprExprLabel l where
+class (Eq l, Ord l, Show l) <= IsExprLabel l where
   prettyExprF'_unsafe :: Partial => ExprF l String -> String
   expectedKidsCount :: l -> Int
 
-wellformedExprF :: forall l kid. String -> IsExprExprLabel l => ExprF l kid -> Assertion
-wellformedExprF source (l /\ kids) =
-  { condition: expectedKidsCount l == Array.length kids
-  , name: "wellformedExprF"
+wellformedExprF :: forall l kid. String -> IsExprLabel l => ExprF l kid -> Assertion Unit
+wellformedExprF source (l /\ kids) = Assertion
+  { name: "wellformedExprF"
   , source
-  , message: "An expression with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids."
+  , result:
+      if expectedKidsCount l == Array.length kids 
+        then Right unit
+        else Left $ "An expression with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids."
   }
 
-wellformedExpr :: forall l. String -> IsExprExprLabel l => Expr l -> Assertion
-wellformedExpr src = wellformedExprF src <<< toExprF
+wellformedExpr :: forall l. IsExprLabel l => String -> Expr l -> Assertion Unit
+wellformedExpr source (Expr l kids) = wellformedExprF source (l /\ kids)
 
-assertWellformedExpr :: forall a l. IsExprExprLabel l => String -> Expr l -> (Partial => Unit -> a) -> a
-assertWellformedExpr src expr k = assert (wellformedExpr src expr) \_ -> unsafePartial (k unit)
-
-assertWellformedExprF :: forall a l kid. IsExprExprLabel l => String -> ExprF l kid -> (Partial => Unit -> a) -> a
-assertWellformedExprF src e    k = assert (wellformedExprF src e) \_ -> unsafePartial (k unit)
-
-prettyExprF :: forall l. IsExprExprLabel l => ExprF l String -> String
-prettyExprF e@(l /\ es) = assertWellformedExprF "prettyExprF" e \_ ->
+prettyExprF :: forall l. IsExprLabel l => ExprF l String -> String
+prettyExprF e@(l /\ es) = assert (wellformedExprF "prettyExprF" e) \_ ->
   prettyExprF'_unsafe (l /\ (pretty <$> es))
 
-instance IsExprExprLabel l => Pretty (Expr l) where
+instance IsExprLabel l => Pretty (Expr l) where
   pretty (Expr l es) = prettyExprF (l /\ (pretty <$> es))
 
 -- | MetaVar
 
-newtype MetaVar = MetaVar UUID
+newtype MetaVar = MetaVar (Maybe String /\ UUID)
 
 derive newtype instance Show MetaVar
 derive newtype instance Eq MetaVar
 derive newtype instance Ord MetaVar
-instance Pretty MetaVar where pretty (MetaVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
+-- instance Pretty MetaVar where pretty (MetaVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
+instance Pretty MetaVar where 
+  pretty (MetaVar (Nothing /\ uuid)) = "?" <> String.take 2 (UUID.toString uuid)
+  pretty (MetaVar (Just str /\ uuid)) = "?" <> str <> "~" <> String.take 2 (UUID.toString uuid)
 
 showMetaVar :: MetaVar -> String
 showMetaVar (MetaVar str) = show str
 
-freshMetaVar :: Unit -> MetaVar
-freshMetaVar _ = MetaVar $ unsafePerformEffect (UUID.genUUID)
+freshMetaVar :: String -> MetaVar
+freshMetaVar str = MetaVar (Just str /\ unsafePerformEffect (UUID.genUUID))
+
+freshMetaVar' :: Unit -> MetaVar 
+freshMetaVar' _ = MetaVar (Nothing /\ unsafePerformEffect (UUID.genUUID))
 
 newtype Meta a = Meta (MetaVar \/ a)
 derive instance Newtype (Meta a) _
@@ -117,20 +124,45 @@ derive newtype instance Foldable Meta
 derive newtype instance Traversable Meta
 instance Pretty a => Pretty (Meta a) where pretty = Newtype.unwrap >>> either pretty pretty
 
-instance IsExprExprLabel l => IsExprExprLabel (Meta l) where
+instance IsExprLabel l => IsExprLabel (Meta l) where
   prettyExprF'_unsafe ((Meta (Left x)) /\ _kids) = pretty x
   prettyExprF'_unsafe ((Meta (Right l)) /\ kids) = prettyExprF (l /\ kids)
 
   expectedKidsCount (Meta (Left _)) = 0
   expectedKidsCount (Meta (Right l)) = expectedKidsCount l
 
+type MetaVarSub a = Map.Map MetaVar a
+
+subMetaVars :: forall l. IsExprLabel l => MetaVarSub (Expr l) -> MetaExpr l -> Expr l
+subMetaVars sigma = assertInput (wellformedExpr "subMetaVars") go
+  where
+  go :: Partial => _
+  go = case _ of
+    Meta (Left mx) % [] -> assert (hasKey "subMetaVars" mx sigma) identity
+    Meta (Right l) % kids -> l % (go <$> kids)
+
+subSomeMetaVars :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
+subSomeMetaVars sigma = assertInput (wellformedExpr "subSomeMetaVars") go
+  where
+  go :: Partial => _
+  go = case _ of
+    Meta (Left mx) % [] -> case Map.lookup mx sigma of
+      Nothing -> Meta (Left mx) % []
+      Just mexpr -> mexpr
+    Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
+
 -- | MetaExpr
 
 type MetaExpr l = Expr (Meta l)
 
+fromMetaVar :: forall l. MetaVar -> MetaExpr l
+fromMetaVar mx = Meta (Left mx) % []
+
 -- | Tooth
 
 data Tooth l = Tooth l (ZipList.Path (Expr l))
+
+infix 7 Tooth as %<
 
 derive instance Generic (Tooth l) _
 instance Show l => Show (Tooth l) where show x = genericShow x
@@ -141,22 +173,22 @@ derive instance Foldable Tooth
 derive instance Traversable Tooth
 
 foldMapTooth :: forall l m. Monoid m => (l -> m) -> Tooth l -> m
-foldMapTooth f (Tooth l p) = f l <> foldMap (foldMap f) p
+foldMapTooth f (l %< p) = f l <> foldMap (foldMap f) p
 
 foldlTooth :: forall l a b. (b -> a -> b) -> b -> Tooth a -> b
-foldlTooth f b (Tooth l p) = ZipList.foldlAround (foldl f) b (flip f l) p
+foldlTooth f b (l %< p) = ZipList.foldlAround (foldl f) b (flip f l) p
 
 foldrTooth :: forall l a b. (a -> b -> b) -> b -> Tooth a -> b
-foldrTooth f b (Tooth l p) = ZipList.foldrAround (flip (foldr f)) b (f l) p
+foldrTooth f b (l %< p) = ZipList.foldrAround (flip (foldr f)) b (f l) p
 
 traverseTooth :: forall l l' m. Applicative m => (l -> m l') -> Tooth l -> m (Tooth l')
-traverseTooth f (Tooth l p) = Tooth <$> f l <*> traverse (traverse f) p
+traverseTooth f (l %< p) = Tooth <$> f l <*> traverse (traverse f) p
 
-unTooth (Tooth l p) g = Expr l (Array.fromFoldable (ZipList.unpathAround g p))
+unTooth (l %< p) g = l % Array.fromFoldable (ZipList.unpathAround g p)
 
-showTooth (Tooth l p) = show l <> " " <> intercalate " " (ZipList.unpathAround "{}" (show <$> p))
+showTooth (l %< p) = show l <> " " <> intercalate " " (ZipList.unpathAround "{}" (show <$> p))
 
-prettyTooth (Tooth l p) str = prettyExprF (l /\ Array.fromFoldable (ZipList.unpathAround str (pretty <$> p)))
+prettyTooth (l %< p) str = prettyExprF (l /\ Array.fromFoldable (ZipList.unpathAround str (pretty <$> p)))
 
 -- | Path
 
@@ -227,7 +259,7 @@ derive instance Newtype (Zipper l) _
 derive newtype instance Show l => Show (Zipper l)
 derive newtype instance Eq l => Eq (Zipper l)
 
-instance IsExprExprLabel l => Pretty (Zipper l) where
+instance IsExprLabel l => Pretty (Zipper l) where
   pretty (Zipper z) = prettyPath z.path $ pretty z.expr
 
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
@@ -236,8 +268,8 @@ zipUp (Zipper z) = case z.path of
   Path (th : ths) -> Just $ th /\ Zipper {path: Path ths, expr: unTooth th z.expr}
 
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
-zipDownsTooth :: forall l. IsExprExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
-zipDownsTooth zipper (Tooth _ kidsPath) = do
+zipDownsTooth :: forall l. IsExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
+zipDownsTooth zipper (_ %< kidsPath) = do
   let ix = ZipList.leftLength kidsPath
   let zs = zipDowns zipper
   case ZipList.zipAt ix (List.fromFoldable zs) of
@@ -246,37 +278,37 @@ zipDownsTooth zipper (Tooth _ kidsPath) = do
 
 zipDowns :: forall l. Zipper l -> Array (Zipper l)
 zipDowns (Zipper z) = do
-  let Expr l kids0 = z.expr
+  let l % kids0 = z.expr
   case Array.uncons kids0 of
     Nothing -> []
     Just {head: kid0, tail: kids1} ->
       go
         []
-        (Tooth l (ZipList.Path {left: mempty, right: List.fromFoldable kids1}))
+        (l %< ZipList.Path {left: mempty, right: List.fromFoldable kids1})
         kid0
   where
   go :: Array (Zipper l) -> Tooth l -> Expr l -> Array (Zipper l)
-  go zippers th@(Tooth _ (ZipList.Path {right: Nil})) kid =
+  go zippers th@(_ %< ZipList.Path {right: Nil}) kid =
     Array.reverse $ Array.cons (Zipper {path: stepPath th z.path, expr: kid}) zippers
-  go zippers th@(Tooth l' (ZipList.Path {left, right: Cons kid' kids'})) kid =
+  go zippers th@(l' %< ZipList.Path {left, right: Cons kid' kids'}) kid =
     go
       (Array.cons (Zipper {path: stepPath th z.path, expr: kid}) zippers)
-      (Tooth l' (ZipList.Path {left: RevList.snoc left kid, right: kids'}))
+      (l' %< ZipList.Path {left: RevList.snoc left kid, right: kids'})
       kid'
 
 zipLeft :: forall l. Zipper l -> Maybe (Zipper l)
 zipLeft (Zipper z) = case z.path of
   Path Nil -> Nothing
-  Path (Tooth l kidsPath : ths) -> do
+  Path (l %< kidsPath : ths) -> do
     expr' /\ kidsPath' <- ZipList.zipLeft (z.expr /\ kidsPath)
-    Just $ Zipper {path: Path (Tooth l kidsPath' : ths), expr: expr'}
+    Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
 
 zipRight :: forall l. Zipper l -> Maybe (Zipper l)
 zipRight (Zipper z) = case z.path of
   Path Nil -> Nothing
-  Path (Tooth l kidsPath : ths) -> do
+  Path (l %< kidsPath : ths) -> do
     expr' /\ kidsPath' <- ZipList.zipRight (z.expr /\ kidsPath)
-    Just $ Zipper {path: Path (Tooth l kidsPath' : ths), expr: expr'}
+    Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
 
 -- | Zipper'
 
@@ -333,7 +365,7 @@ derive instance Traversable ChangeExprLabel
 --     Replace e1 e2 -> Replace <$> traverse f e1 <*> traverse f e2
 --   sequence fa = sequenceDefault fa
 
-instance IsExprExprLabel l => IsExprExprLabel (ChangeExprLabel l) where
+instance IsExprLabel l => IsExprLabel (ChangeExprLabel l) where
   prettyExprF'_unsafe (Plus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Minus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)
@@ -347,13 +379,13 @@ instance IsExprExprLabel l => IsExprExprLabel (ChangeExprLabel l) where
 type MetaChange l = Change (Meta l)
 
 plusChange :: forall l. Tooth l -> Change l -> Change l
-plusChange th ch = Expr (Plus th) [ch]
+plusChange th ch = Plus th % [ch]
 
 minusChange :: forall l. Tooth l -> Change l -> Change l
-minusChange th ch = Expr (Minus th) [ch]
+minusChange th ch = Minus th % [ch]
 
 injectChange :: forall l. l -> Array (Change l) -> Change l
-injectChange l chs = Expr (Inject l) chs
+injectChange l chs = Inject l % chs
 
 replaceChange :: forall l. Expr l -> Expr l -> Change l
-replaceChange e1 e2 = Expr (Replace e1 e2) []
+replaceChange e1 e2 = Replace e1 e2 % []

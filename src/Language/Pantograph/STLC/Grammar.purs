@@ -7,13 +7,13 @@ import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
-import Data.Expr (Meta(..), MetaVar(..), freshMetaVar)
+import Data.Expr (Meta(..), MetaVar(..), freshMetaVar')
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Unit (unit)
-import Language.Pantograph.Generic.Grammar (class IsDerivRuleLabel)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
 import Language.Pantograph.Generic.Grammar as G
 
 data ExprLabel =
@@ -42,9 +42,9 @@ instance Enum RuleLabel where
 instance Bounded RuleLabel where
     bottom = genericBottom
     top = genericTop
-instance IsDerivRuleLabel RuleLabel
+instance IsRuleLabel RuleLabel
 
-type DerivExprLabel = G.DerivExprLabel ExprLabel RuleLabel
+type DerivLabel = G.DerivLabel ExprLabel RuleLabel
 
 type DerivTerm = G.DerivTerm ExprLabel RuleLabel
 type DerivPath dir = G.DerivPath dir ExprLabel RuleLabel
@@ -62,18 +62,18 @@ rules :: Array Rule
 rules = [
     --------------------------- Terms ----------------------------------------------
     -- app
-    let g = freshMetaVar unit in
-    let a = freshMetaVar unit in
-    let b = freshMetaVar unit in
+    let g = freshMetaVar' unit in
+    let a = freshMetaVar' unit in
+    let b = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [g, a, b])
         [exp STerm [var g, exp TArrow [var a, var b]],   exp STerm [var g, var a]]
         (exp STerm [var g, var b])
     ,
     -- lambda
-    let g = freshMetaVar unit in
-    let a = freshMetaVar unit in
-    let b = freshMetaVar unit in
-    let n = freshMetaVar unit in
+    let g = freshMetaVar' unit in
+    let a = freshMetaVar' unit in
+    let b = freshMetaVar' unit in
+    let n = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [g, a, b])
         [
             exp SType [var a], -- the type annotation (comment this line if we don't want annotations on lambdas)
@@ -82,17 +82,17 @@ rules = [
         (exp STerm [var g, exp TArrow [var a, var b]])
     ,
     -- var
-    let g = freshMetaVar unit in
-    let t = freshMetaVar unit in
+    let g = freshMetaVar' unit in
+    let t = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [g, t])
         [exp SVar [var g, var t]]
         (exp STerm [var g, var t])
     ,
     -- let
-    let g = freshMetaVar unit in
-    let defTy = freshMetaVar unit in
-    let bodyTy = freshMetaVar unit in
-    let n = freshMetaVar unit in
+    let g = freshMetaVar' unit in
+    let defTy = freshMetaVar' unit in
+    let bodyTy = freshMetaVar' unit in
+    let n = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [g, defTy, bodyTy])
         [
             exp SType [var defTy], -- type
@@ -102,8 +102,8 @@ rules = [
 
     ,
     -- if
-    let a = freshMetaVar unit in
-    let g = freshMetaVar unit in
+    let a = freshMetaVar' unit in
+    let g = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [a])
         []
         -- Bool -> a -> a -> a
@@ -118,8 +118,8 @@ rules = [
         (exp SType [exp TBase []])
     ,
     -- arrow
-    let a = freshMetaVar unit in
-    let b = freshMetaVar unit in
+    let a = freshMetaVar' unit in
+    let b = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [])
         [exp SType [var a], exp SType [var b]]
         (exp SType [exp TArrow [var a, var b]])
@@ -127,16 +127,16 @@ rules = [
     --------------------------- Debruin Indices ------------------------------------
     ,
     -- zero
-    let g = freshMetaVar unit in
-    let t = freshMetaVar unit in
+    let g = freshMetaVar' unit in
+    let t = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [g, t])
         []
         (exp SVar [exp CCons [var g,{-TODO: name-} var t], var t])
     ,
     -- suc
-    let g = freshMetaVar unit in
-    let a = freshMetaVar unit in
-    let b = freshMetaVar unit in
+    let g = freshMetaVar' unit in
+    let a = freshMetaVar' unit in
+    let b = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [g, a, b])
         [exp SVar [var g, var a]]
         (exp SVar [exp CCons [var g, {-TODO-} var b], var a])
@@ -144,13 +144,13 @@ rules = [
     --------------------------- Other ----------------------------------------------
     ,
     -- hole
-    let s = freshMetaVar unit in
+    let s = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [s])
         []
         (var s)
     ,
     -- newline
-    let s = freshMetaVar unit in
+    let s = freshMetaVar' unit in
     G.Rule (Set.fromFoldable [s])
         [var s]
         (var s)

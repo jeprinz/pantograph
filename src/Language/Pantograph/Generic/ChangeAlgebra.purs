@@ -6,10 +6,13 @@ import Prelude
 import Util
 
 import Bug (bug)
+import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
+import Data.Foldable (findMap)
 import Data.Foldable (foldl)
 import Data.Foldable (intercalate)
+import Data.List as List
 import Data.List.Rev (unreverse, reverse)
 import Data.List.Zip (Path(..))
 import Data.List.Zip as ListZip
@@ -24,9 +27,6 @@ import Data.Traversable (sequence)
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Exception.Unsafe (unsafeThrow)
 import Partial.Unsafe (unsafeCrashWith)
-import Utility (Assertion, assert)
-import Data.Foldable (findMap)
-import Data.List as List
 
 -- HENRY: due to generic fixpoint form of `Gram`, don't need to manually recurse
 invert :: forall l. Change l -> Change l
@@ -51,72 +51,79 @@ collectMatches (Expr (Inject l1) kids1) (Expr (Meta (Right l2)) kids2) | l1 == l
 collectMatches c (Expr (Meta (Left x)) []) = Just $ Map.insert x (Set.singleton c) Map.empty
 collectMatches _ _ = unsafeCrashWith "no"
 
-endpoints :: forall l. IsExprExprLabel l => Change l -> Expr l /\ Expr l
-endpoints ch = assertWellformedExpr "endpoints" ch \_ -> case ch of
-    Expr (Plus th) [kid] -> do
-        -- - `leftEp` is the left endpoint of the plus's child, and so it is the
-        --   plus's left endpoint.
-        -- - `rightEp` is the right endpoint of the plus's child, so the plus's
-        --   right endpoint is it wrapped in the plus's tooth.
-        let leftEp /\ rightEp = endpoints kid
-        leftEp /\ unTooth th rightEp
-    Expr (Minus th) [kid] -> do
-        -- inverse of "plus" case
-        let leftEp /\ rightEp = endpoints kid
-        unTooth th leftEp /\ rightEp
-    Expr (Inject l) kids -> do
-      -- `zippedKids` are the endpoint tuples for each of the kids. Unzipping
-      -- them yields the array of the kids' left endpoints and the array of the
-      -- kids' right endpoints
-      let zippedKids = endpoints <$> kids
-      let leftKids /\ rightKids = Array.unzip zippedKids
-      Expr l leftKids /\ Expr l rightKids
-    Expr (Replace e1 e2) [] -> e1 /\ e2
+endpoints :: forall l. IsExprLabel l => Change l -> Expr l /\ Expr l
+endpoints ch = 
+    assert (wellformedExpr "endpoints" ch) \_ ->
+    case ch of
+        Expr (Plus th) [kid] -> do
+            -- - `leftEp` is the left endpoint of the plus's child, and so it is the
+            --   plus's left endpoint.
+            -- - `rightEp` is the right endpoint of the plus's child, so the plus's
+            --   right endpoint is it wrapped in the plus's tooth.
+            let leftEp /\ rightEp = endpoints kid
+            leftEp /\ unTooth th rightEp
+        Expr (Minus th) [kid] -> do
+            -- inverse of "plus" case
+            let leftEp /\ rightEp = endpoints kid
+            unTooth th leftEp /\ rightEp
+        Expr (Inject l) kids -> do
+            -- `zippedKids` are the endpoint tuples for each of the kids. Unzipping
+            -- them yields the array of the kids' left endpoints and the array of the
+            -- kids' right endpoints
+            let zippedKids = endpoints <$> kids
+            let leftKids /\ rightKids = Array.unzip zippedKids
+            Expr l leftKids /\ Expr l rightKids
+        Expr (Replace e1 e2) [] -> e1 /\ e2
 
 -- least upper bound
 -- actually, I'm not sure we need this.
 -- LUB (+ X -> A) (+ Y -> A) -- no unique solution!
 -- if you have changes where Plus and Minus DONT cancel each other out, then changes form a category without inverses.
 -- this function returns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
-lub :: forall l. IsExprExprLabel l => Change l -> Change l -> Maybe (Change l)
-lub c1 c2 = assertWellformedExpr "lub.c1"  c1 \_ -> assertWellformedExpr "lub.c2" c2 \_ -> case c1 /\ c2 of
-    Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (lub <$> kids1 <*> kids2) -- Oh no I've become a haskell programmer
-    Expr (Inject _l1) _kids1 /\ Expr (Inject _l2) _kids2 -> Nothing
-    Expr (Plus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
-    Expr (Plus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
-    Expr (Minus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
-    Expr (Minus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
+lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
+lub c1 c2 = 
+    assert (wellformedExpr "lub.c1" c1) \_ -> 
+    assert (wellformedExpr "lub.c2" c2) \_ -> 
+    case c1 /\ c2 of
+        Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (lub <$> kids1 <*> kids2) -- Oh no I've become a haskell programmer
+        Expr (Inject _l1) _kids1 /\ Expr (Inject _l2) _kids2 -> Nothing
+        Expr (Plus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
+        Expr (Plus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
+        Expr (Minus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
+        Expr (Minus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
 
-matchingEndpoints :: forall l. IsExprExprLabel l => String -> String -> Change l -> Change l -> Assertion
-matchingEndpoints source message c1 c2 = 
+matchingEndpoints :: forall l. IsExprLabel l => String -> String -> Change l -> Change l -> Assertion Unit
+matchingEndpoints source message c1 c2 = makeAssertionBoolean
     { name: "matchingEndpoints"
+    , source
     , condition: do
         let _left1 /\ right1 = endpoints c1
         let left2 /\ _right2 = endpoints c2
         right1 == left2
-    , source
     , message
     }
 
-compose :: forall l. IsExprExprLabel l => Change l -> Change l -> Change l
-compose c1 c2 = assertWellformedExpr "lub.c1" c1 \_ -> assertWellformedExpr "lub.c2" c2 \_ -> do
+compose :: forall l. IsExprLabel l => Change l -> Change l -> Change l
+compose c1 c2 = 
+    assert (wellformedExpr "compose.c1" c1) \_ ->
+    assert (wellformedExpr "compose.c2" c2) \_ ->
     assert (matchingEndpoints "ChangeAlgebra.compose" "Change composition is only defined when endpoints match." c1 c2) \_ ->
-        case c1 /\ c2 of
-            (Expr (Plus l1) [c1']) /\ (Expr (Minus l2) [c2']) | l1 == l2 -> compose c1' c2'
-            (Expr (Minus l1) [c1']) /\ (Expr (Plus l2) [c2']) | l1 == l2 ->
-                let Tooth l (Path {left, right}) = l1 in
-                Expr (Inject l) $
-                    (Array.fromFoldable $ map (map Inject) $ unreverse left) <> 
-                    [compose c1' c2'] <>
-                    (Array.fromFoldable $ map (map Inject) $ right)
-            _ /\ (Expr (Plus l) [c2']) -> Expr (Plus l) [compose c1 c2']
-            (Expr (Minus l) [c1']) /\ _ -> Expr (Minus l) [compose c1' c2]
-            (Expr (Inject l1) kids1) /\ (Expr (Inject l2) kids2) | l1 == l2 ->
-                Expr (Inject l1) (compose <$> kids1 <*> kids2)
-            _ -> do
-                let left1 /\ _right1 = endpoints c1
-                let _left2 /\ right2 = endpoints c2
-                Expr (Replace left1 right2) []
+    case c1 /\ c2 of
+        (Expr (Plus l1) [c1']) /\ (Expr (Minus l2) [c2']) | l1 == l2 -> compose c1' c2'
+        (Expr (Minus l1) [c1']) /\ (Expr (Plus l2) [c2']) | l1 == l2 ->
+            let Tooth l (Path {left, right}) = l1 in
+            Expr (Inject l) $
+                (Array.fromFoldable $ map (map Inject) $ unreverse left) <> 
+                [compose c1' c2'] <>
+                (Array.fromFoldable $ map (map Inject) $ right)
+        _ /\ (Expr (Plus l) [c2']) -> Expr (Plus l) [compose c1 c2']
+        (Expr (Minus l) [c1']) /\ _ -> Expr (Minus l) [compose c1' c2]
+        (Expr (Inject l1) kids1) /\ (Expr (Inject l2) kids2) | l1 == l2 ->
+            Expr (Inject l1) (compose <$> kids1 <*> kids2)
+        _ -> do
+            let left1 /\ _right1 = endpoints c1
+            let _left2 /\ right2 = endpoints c2
+            Expr (Replace left1 right2) []
 
 {-
 I don't have a good name for this operation, but what it does is:
@@ -126,7 +133,7 @@ Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
 (Note that c2 has metavariables in the change positions, so its (Expr (Meta (ChangeExprLabel l))))
 -}
 
-doOperation :: forall l. IsExprExprLabel l => Change l -> Expr (Meta (ChangeExprLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
+doOperation :: forall l. IsExprLabel l => Change l -> Expr (Meta (ChangeExprLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
 doOperation c1 c2 = do
     matches <- getMatches c2 c1
     -- TODO: could this be written better
@@ -135,7 +142,7 @@ doOperation c1 c2 = do
                                               lub x y))
                 (map (Set.map Just) matches)
     sub2 <- sequence sub
-    let subc2 = fullySubMetaExpr sub2 c2
+    let subc2 = subMetaVars sub2 c2
     pure $ (sub2 /\ compose (invert c1) subc2)
 
 {-

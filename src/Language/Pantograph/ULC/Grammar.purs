@@ -4,9 +4,13 @@ import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
 
+import Bug.Assertion (assert, assertInput, positif)
+import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
+import Data.Enum (class Enum)
+import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprExprLabel, Meta(..), Tooth(..), expectedKidsCount)
+import Data.Expr (class IsExprLabel, Meta(..), Tooth(..), expectedKidsCount, freshMetaVar, freshMetaVar', fromMetaVar, (%), (%<))
 import Data.Expr as Expr
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
@@ -21,12 +25,12 @@ import Data.Newtype (over, unwrap, wrap)
 import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
-import Language.Pantograph.Generic.Grammar (class IsDerivRuleLabel)
+import Data.TotalMap as TotalMap
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, defaultLanguageChanges, makeRule)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (Action(..), Edit)
 import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
-import Utility (assert)
 
 --------------------------------------------------------------------------------
 -- ExprLabel
@@ -48,13 +52,16 @@ data ExprLabel
   | VarSort
   | TermSort
   | HoleInteriorSort
+  | Sort
+  -- Judgement
+  | Judgement {-expr-} {-sort-}
 
 derive instance Generic ExprLabel _
 instance Show ExprLabel where show x = genericShow x
 instance Eq ExprLabel where eq x = genericEq x
 instance Ord ExprLabel where compare x y = genericCompare x y
 
-instance IsExprExprLabel ExprLabel where
+instance IsExprLabel ExprLabel where
   -- var
   prettyExprF'_unsafe (Zero /\ _) = "Z"
   prettyExprF'_unsafe (Suc /\ [v]) = parens $ "S" <+> v
@@ -70,6 +77,9 @@ instance IsExprExprLabel ExprLabel where
   prettyExprF'_unsafe (VarSort /\ []) = "Var"
   prettyExprF'_unsafe (TermSort /\ []) = "Term"
   prettyExprF'_unsafe (HoleInteriorSort /\ []) = "HoleInterior"
+  prettyExprF'_unsafe (Sort /\ []) = "Sort"
+  -- judgement
+  prettyExprF'_unsafe (Judgement /\ []) = "Judgement"
 
   -- var
   expectedKidsCount Zero = 0
@@ -86,44 +96,78 @@ instance IsExprExprLabel ExprLabel where
   expectedKidsCount VarSort = 0
   expectedKidsCount TermSort = 0
   expectedKidsCount HoleInteriorSort = 0
+  expectedKidsCount Sort = 0
+  -- judgement
+  expectedKidsCount Judgement = 0
+
+--------------------------------------------------------------------------------
+-- Expr (and friends)
+--------------------------------------------------------------------------------
 
 type Expr = Expr.Expr ExprLabel
-type MetaExpr = Expr.MetaExpr ExprLabel
 type Zipper = Expr.Zipper ExprLabel
 type Tooth = Expr.Tooth ExprLabel
 
+-- var
+zeroE = Zero % []
+sucE v = Suc % [v]
+varE n = if n == 0 then zeroE else sucE (varE (n - 1))
+-- term
+lamE x b = Lam % [x, b]
+appE f a = App % [f, a]
+refE v = Ref % [v]
+-- hole
+holeE interior = Hole % [interior]
+-- hole interior
+holeInteriorE = HoleInterior % []
+-- sort
+varSortE = VarSort % []
+termSortE = TermSort % []
+holeInteriorSortE = HoleInteriorSort % []
+sortE = Sort % []
+-- judgement
+judgementE e s = Judgement % [e, s]
+
 --------------------------------------------------------------------------------
--- Expr
+-- MetaExpr
 --------------------------------------------------------------------------------
 
+type MetaExpr = Expr.MetaExpr ExprLabel
+
 -- var
-zeroExpr = Expr.Expr Zero []
-sucExpr v = Expr.Expr Suc [v]
-varExpr n = if n == 0 then zeroExpr else sucExpr (varExpr (n - 1))
+zeroME = pure Zero % []
+sucME v = pure Suc % [v]
+varME :: forall l. Int -> MetaExpr
+varME = assertInput (positif "varME") \n ->
+  if n == 0 then zeroME else sucME (varME (n - 1))
 -- term
-lamExpr x b = Expr.Expr Lam [x, b]
-appExpr f a = Expr.Expr App [f, a]
-refExpr v = Expr.Expr Ref [v]
+lamME x b = pure Lam % [x, b]
+appME f a = pure App % [f, a]
+refME v = pure Ref % [v]
 -- hole
-holeExpr = Expr.Expr Hole []
+holeME interior = pure Hole % [interior]
 -- hole interior
-holeInteriorExpr = Expr.Expr HoleInterior []
+holeInteriorME = pure HoleInterior % []
 -- sort
-varSortExpr = Expr.Expr VarSort []
-termSortExpr = Expr.Expr TermSort []
-holeInteriorSort = Expr.Expr HoleInteriorSort []
+varSortME = pure VarSort % []
+termSortME = pure TermSort % []
+holeInteriorSortME = pure HoleInteriorSort % []
+sortME = pure Sort % []
+-- judgement
+judgementME e s = pure Judgement % [e, s]
+infix 3 judgementME as |-
 
 --------------------------------------------------------------------------------
 -- Tooth
 --------------------------------------------------------------------------------
 
-suc_pred = Tooth Suc (ZipList.Path {left: mempty, right: mempty})
+-- suc_pred = Suc %< ZipList.Path {left: mempty, right: mempty}
 
-lam_bod = Tooth Lam (ZipList.Path {left: pure (holeExpr ), right: mempty})
-app_apl = Tooth App (ZipList.Path {left: pure holeExpr, right: mempty})
-app_arg = Tooth App (ZipList.Path {left: mempty, right: pure holeExpr})
+-- lam_bod = Lam %< ZipList.Path {left: pure (holeExpr ), right: mempty}
+-- app_apl = App %< ZipList.Path {left: pure holeExpr, right: mempty}
+-- app_arg = App %< ZipList.Path {left: mempty, right: pure holeExpr}
 
-hole_interior = Hole /\ ZipList.Path {left: mempty, right: mempty}
+-- hole_interior = Hole %< ZipList.Path {left: mempty, right: mempty}
 
 --------------------------------------------------------------------------------
 -- RuleLabel
@@ -135,40 +179,115 @@ data RuleLabel
   | Suc_Var
   | Lam_Term
   | App_Term 
-  | RefvTerm
+  | Ref_Term
   | Hole_Any
   | HoleInterior_HoleInterior
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
 derive instance Ord RuleLabel
-derive instance Enum RuleLabel
-derive instance Bounded RuleLabel
-instance IsDerivRuleLabel RuleLabel
+instance Show RuleLabel where show x = genericShow x
+instance Enum RuleLabel where
+  pred x = genericPred x
+  succ x = genericSucc x
+instance Bounded RuleLabel where
+  bottom = genericBottom
+  top = genericTop
+instance IsRuleLabel RuleLabel
+
+--------------------------------------------------------------------------------
+-- Language
+--------------------------------------------------------------------------------
+
+type Language = Grammar.Language ExprLabel RuleLabel
+type Rule = Grammar.Rule ExprLabel
+
+language :: Language
+language = TotalMap.makeTotalMap case _ of
+
+  Zero_Var -> makeRule [] \[] ->
+    []
+    /\ --------
+    pure Zero % []
+
+  Suc_Var -> makeRule ["var"] \[var] ->
+    [ var |- varSortME ]
+    /\ --------
+    ( sucME var |- varSortME )
+
+  Lam_Term -> makeRule ["var", "bod"] \[var, bod] ->
+    [ var |- varSortME
+    , bod |- termSortME ]
+    /\ --------
+    ( lamME var bod )
+
+  App_Term -> makeRule ["apl", "arg"] \[apl, arg] ->
+    [ apl |- termSortME
+    , arg |- termSortME ]
+    /\ --------
+    ( lamME apl arg |- termSortME )
+
+  Ref_Term -> makeRule ["var"] \[var] ->
+    [ var |- varSortME ]
+    /\ --------
+    ( refME var |- termSortME )
+
+  Hole_Any -> makeRule ["sort", "interior"] \[sort, interior] ->
+    [ interior |- holeInteriorSortME
+    , sort |- sortME ] 
+    /\ --------
+    ( holeME interior |- sort )
+
+  HoleInterior_HoleInterior -> makeRule [] \[] ->
+    [] 
+    /\ --------
+    ( holeInteriorME |- holeInteriorSortME )
+
+--------------------------------------------------------------------------------
+-- DerivExpr (and friends)
+--------------------------------------------------------------------------------
 
 type DerivExpr = Grammar.DerivExpr ExprLabel RuleLabel
-type DerivPath = Grammar.DerivPath ExprLabel RuleLabel
+type DerivPath dir = Grammar.DerivPath dir ExprLabel RuleLabel
 type DerivZipper = Grammar.DerivZipper ExprLabel RuleLabel
 type DerivZipper' = Grammar.DerivZipper' ExprLabel RuleLabel
 
---------------------------------------------------------------------------------
--- Rule
---------------------------------------------------------------------------------
-
-type Rule = Grammar.Rule ExprLabel
-
--- !TODO
--- rules :: Array Rule
--- rules = 
---   [ Grammar.Rule 
---       (Set.fromFoldable [])
---       [Expr.Expr (Meta (Right ?a)) ?a]
---       ?a
---   ]
+-- var
+zeroDE = Grammar.DerivLabel Zero_Var zeroME % []
+sucDE var = Grammar.DerivLabel Suc_Var (sucME (Grammar.fromDerivExpr var)) % [var]
+-- term
+refDE var = Grammar.DerivLabel Ref_Term (refME (Grammar.fromDerivExpr var)) % [var]
+lamDE var bod = Grammar.DerivLabel Lam_Term (lamME (Grammar.fromDerivExpr var) (Grammar.fromDerivExpr bod)) % [var, bod]
+appDE apl arg = Grammar.DerivLabel App_Term (appME (Grammar.fromDerivExpr apl) (Grammar.fromDerivExpr arg)) % [apl, arg]
+-- hole
+holeDE interior sort = Grammar.DerivLabel Hole_Any (holeME (Grammar.fromDerivExpr interior)) % [interior, sort]
+-- hole interior
+holeInteriorDE = Grammar.DerivLabel HoleInterior_HoleInterior holeInteriorME % []
 
 --------------------------------------------------------------------------------
--- DerivExpr
+-- LanguageChanges
 --------------------------------------------------------------------------------
+
+type LanguageChanges = Grammar.LanguageChanges ExprLabel RuleLabel
+type ChangeRule = Grammar.ChangeRule ExprLabel
+
+-- !TODO special cases
+languageChanges :: LanguageChanges
+languageChanges = defaultLanguageChanges language # TotalMap.mapWithKey case _ of
+  Zero_Var -> identity
+  Suc_Var -> identity
+  Lam_Term -> identity
+  App_Term -> identity
+  Ref_Term -> identity
+  Hole_Any -> identity
+  HoleInterior_HoleInterior -> identity
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- !TODO OLD
 
 -- --  
 -- -- Edit

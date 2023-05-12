@@ -1,11 +1,12 @@
 module Language.Pantograph.Generic.Unification where
 
 import Prelude
-
+import Bug.Assertion (Assertion(..), assert, assertInput)
 import Control.Apply (lift2)
+import Control.Monad.Error.Class (throwError)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Expr (class IsExprExprLabel, assertWellformedExpr)
+import Data.Expr ((%))
 import Data.Expr as Expr
 import Data.Foldable (foldl)
 import Data.List (List(..), (:))
@@ -13,16 +14,14 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Maybe (Maybe)
 import Data.MultiMap (MultiMap)
 import Data.MultiMap as MultiMap
 import Data.Set (Set)
-import Data.Set as Set
+import Data.Traversable (traverse)
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.UUID (UUID)
 import Partial.Unsafe (unsafeCrashWith)
+import Text.Pretty (pretty, quotes)
 import Util (lookup', union')
-import Utility (assert)
 
 {-
 
@@ -58,37 +57,35 @@ type Ren = Map Expr.MetaVar Expr.MetaVar
 
 genFreshener :: Set Expr.MetaVar -> Ren
 genFreshener vars = foldl
-    (\acc x -> Map.insert x (Expr.freshMetaVar unit) acc)
+    (\acc x -> Map.insert x (Expr.freshMetaVar' unit) acc)
     Map.empty vars
 
 class Freshenable t where
     freshen :: Ren -> t -> t
 
-instance IsExprExprLabel l => Freshenable (Expr.MetaExpr l) where
-    freshen sub expr = assertWellformedExpr "freshen" expr \_ -> case expr of
-        (Expr.Expr (Expr.Meta (Left x)) []) -> Expr.Expr (Expr.Meta (Left (lookup' x sub))) []
-        (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr ((Expr.Meta (Right l))) (map (freshen sub) kids)
+instance Expr.IsExprLabel l => Freshenable (Expr.MetaExpr l) where
+    freshen sub expr = 
+        assert (Expr.wellformedExpr "freshen" expr) \_ ->
+        case expr of
+            (Expr.Expr (Expr.Meta (Left x)) []) -> Expr.Expr (Expr.Meta (Left (lookup' x sub))) []
+            (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr ((Expr.Meta (Right l))) (map (freshen sub) kids)
 
 type Sub l = Map Expr.MetaVar (Expr.MetaExpr l)
 
-subMetaExpr :: forall l. IsExprExprLabel l => Sub l -> Expr.MetaExpr l -> Expr.MetaExpr l
-subMetaExpr sub expr = assertWellformedExpr "subMetaExpr" expr \_ -> case expr of
-    (Expr.Expr (Expr.Meta (Left x)) []) -> lookup' x sub
-    (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr (Expr.Meta (Right l)) (map (subMetaExpr sub) kids)
-
-assertNoMetavars :: forall l. Expr.MetaExpr l -> Expr.Expr l
-assertNoMetavars (Expr.Expr (Expr.Meta (Left x)) _) = unsafeCrashWith "has a metavar"
-assertNoMetavars (Expr.Expr (Expr.Meta (Right l)) kids) = Expr.Expr l (map assertNoMetavars kids)
-
-fullySubMetaExpr :: forall l. Map Expr.MetaVar (Expr.Expr l) -> Expr.MetaExpr l -> Expr.Expr l
-fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Left x)) []) = lookup' x sub
-fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Left x)) _) = unsafeCrashWith "wrong number of children on metavar ExprLabel"
-fullySubMetaExpr sub (Expr.Expr (Expr.Meta (Right l)) kids) = Expr.Expr l (map (fullySubMetaExpr sub) kids)
+noMetaVars :: forall l. Expr.IsExprLabel l => String -> Expr.MetaExpr l -> Assertion (Expr.Expr l)
+noMetaVars source mexpr0 = Assertion
+    { name: "noMetaVars", source
+    , result: do
+        let go = assertInput (Expr.wellformedExpr "noMetaVars") \mexpr -> case mexpr of
+                Expr.Meta (Left x) % [] -> throwError $ "Found MetaVar " <> quotes (pretty mexpr)
+                Expr.Meta (Right l) % kids -> (l % _) <$> go `traverse` kids
+        go mexpr0
+    }
 
 ------------- Unification ------------------------------------------------------
 
 -- we may need a more general notion of unification later, but this is ok for now
-unify :: forall l. IsExprExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
+unify :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
 unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
     case l1 /\ l2 of
         Left x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
@@ -98,12 +95,12 @@ unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
             pure (Expr.Expr (Expr.Meta (Right l)) (Array.fromFoldable kids') /\ sub)
         _ /\ _ -> Nothing
 
-unifyLists :: forall l. IsExprExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
+unifyLists :: forall l. Expr.IsExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
 unifyLists Nil Nil = Just (Nil /\ Map.empty)
 unifyLists (e1 : es1) (e2 : es2) = do
     e /\ sub <- unify e1 e2
-    let es1' = map (subMetaExpr sub) es1
-    let es2' = map (subMetaExpr sub) es2
+    let es1' = map (Expr.subSomeMetaVars sub) es1
+    let es2' = map (Expr.subSomeMetaVars sub) es2
     es /\ sub2 <- unifyLists es1' es2'
     pure $ (e : es) /\ union' sub sub2
 unifyLists _ _ = unsafeCrashWith "shouldn't happen"

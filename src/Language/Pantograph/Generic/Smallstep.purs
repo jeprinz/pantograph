@@ -7,7 +7,7 @@ import Prelude
 
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Expr (class IsExprExprLabel, Meta(..), Tooth(..))
+import Data.Expr ((%), (%<))
 import Data.Expr as Expr
 import Data.List (List(..), (:))
 import Data.List as List
@@ -15,6 +15,7 @@ import Data.List.Rev as Rev
 import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
+import Data.TotalMap as TotalMap
 import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
@@ -25,8 +26,7 @@ import Util (lookup')
 
 data Direction = Up | Down -- TODO:
 
-
-data StepExprLabel l r = Inject (Grammar.DerivExprLabel l r) | Cursor | Boundary Direction (Expr.MetaChange l)
+data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Expr.MetaChange l)
 type Term l r = Expr.Expr (StepExprLabel l r)
 
 type Rule l r = Term l r -> Maybe (Term l r)
@@ -36,14 +36,14 @@ type SanePath l = List (Expr.Tooth l)
 
 ---------- Code for converting zippers to terms and back ------------------------------------------
 
-addToothToTerm :: forall l r. Expr.Tooth (Grammar.DerivExprLabel l r) -> Term l r -> Term l r
-addToothToTerm (Tooth l (ZipList.Path {left, right})) t =
+addToothToTerm :: forall l r. Expr.Tooth (Grammar.DerivLabel l r) -> Term l r -> Term l r
+addToothToTerm (Expr.Tooth l (ZipList.Path {left, right})) t =
     Expr.Expr (Inject l) $
         Array.fromFoldable (map (map Inject) (Rev.unreverse left)) <>
         [t] <>
         Array.fromFoldable (map (map Inject) right)
 
-zipperToTerm :: forall l r. SanePath (Grammar.DerivExprLabel l r) -> Grammar.DerivTerm l r -> Term l r
+zipperToTerm :: forall l r. SanePath (Grammar.DerivLabel l r) -> Grammar.DerivTerm l r -> Term l r
 zipperToTerm Nil exp = Expr.Expr Cursor [map Inject exp]
 zipperToTerm (th : path) exp = addToothToTerm th (zipperToTerm path exp)
 
@@ -73,7 +73,7 @@ oneOrNone (x : xs) f = case f x of
         in
         Right (Nil /\ a /\ bs2)
 
-termToZipper :: forall l r. Term l r -> (SanePath (Grammar.DerivExprLabel l r) /\ Grammar.DerivTerm l r)
+termToZipper :: forall l r. Term l r -> (SanePath (Grammar.DerivLabel l r) /\ Grammar.DerivTerm l r)
 termToZipper (Expr.Expr Cursor [kid]) =
     Nil /\ (assertJustExpr kid)
 termToZipper (Expr.Expr (Inject l) kids) =
@@ -87,7 +87,7 @@ termToZipper (Expr.Expr (Inject l) kids) =
         Left kids'' -> Nil /\ Expr.Expr l (Array.fromFoldable (kids''))
         -- child has exactly one cursor
         Right (leftKids /\ (p /\ e) /\ rightKids) ->
-            let newTooth = Tooth l (ZipList.Path {left: Rev.reverse leftKids, right: rightKids}) in
+            let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
             (newTooth : p) /\ e
 --    let
 termToZipper _ = unsafeCrashWith "shouldn't happen"
@@ -124,10 +124,10 @@ step t@(Expr.Expr l kids) rules =
 -- The sorts in these are Expr (Meta (ChangeExprLabel (Meta l)).
 -- the out Meta is the one that comes from the normal rules. The (ChangeExprLabel (Meta l))
 -- corresponds with the changes in the boundaries, which are Expr (ChangeExprLabel (Meta l))
-type ChLanguage l r = Grammar.Language (Expr.ChangeExprLabel (Meta l)) r
+type ChLanguage l r = Grammar.Language (Expr.ChangeExprLabel (Expr.Meta l)) r
 
-metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeExprLabel (Meta l))
-metaInject e = map (map (Expr.Inject <<< Meta <<< Right)) e
+metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeExprLabel (Expr.Meta l))
+metaInject e = map (map (Expr.Inject <<< Expr.Meta <<< Right)) e
 
 langToChLang :: forall l r. Grammar.Language l r -> ChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
@@ -141,9 +141,9 @@ wrapBoundary :: forall l r. Direction -> Expr.MetaChange l -> Term l r -> Term l
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
-defaultDown :: forall l r. Ord r => IsExprExprLabel l => ChLanguage l r -> Rule l r
-defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivExprLabel RuleLabel sort)) kids]) =
-    let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = lookup' RuleLabel lang in
+defaultDown :: forall l r. Ord r => Expr.IsExprLabel l => ChLanguage l r -> Rule l r
+defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids]) =
+    let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
     let freshener = genFreshener metaVars in
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
@@ -151,10 +151,10 @@ defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.Deriv
     if not (fst (endpoints ch) == sort) then unsafeCrashWith "assertion failed: ch boundary didn't match sort in defaultDown" else
     do
         sub /\ chBackUp <- doOperation ch parentGSort
-        let kidGSorts' = map (fullySubMetaExpr sub) kidGSorts
-        let kidsWithBoundaries = (\ch kid -> wrapBoundary Down ch kid) <$> kidGSorts' <*> kids
+        let kidGSorts' = map (Expr.subMetaVars sub) kidGSorts
+        let kidsWithBoundaries = (\ch' kid -> wrapBoundary Down ch' kid) <$> kidGSorts' <*> kids
         let newSort = fst (endpoints chBackUp)
-        pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivExprLabel RuleLabel newSort)) kidsWithBoundaries
+        pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel newSort)) kidsWithBoundaries
 defaultDown _ _ = Nothing
 
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
@@ -166,9 +166,9 @@ getFirst (x : xs) f = case f x of
            pure $ ((x : ts1) /\ a /\ ts2)
     Just a -> Just (Nil /\ a /\ xs)
 
-defaultUp :: forall l r. Ord r => IsExprExprLabel l => ChLanguage l r -> Rule l r
-defaultUp lang (Expr.Expr (Inject (Grammar.DerivExprLabel RuleLabel sort)) kids) =
-    let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = lookup' RuleLabel lang in
+defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => ChLanguage l r -> Rule l r
+defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
+    let (Grammar.Rule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
     let freshener = genFreshener metaVars in
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
@@ -180,12 +180,12 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivExprLabel RuleLabel sort)) kids)
         (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
             <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
         sub /\ chBackDown <- doOperation ch gSort
-        let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (fullySubMetaExpr sub gSort1) kid1
+        let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (Expr.subMetaVars sub gSort1) kid1
         let leftKids = map wrapKid leftKidsAndSorts
         let rightKids = map wrapKid rightKidsAndSorts
-        let parentBoundary node = wrapBoundary Up (fullySubMetaExpr sub parentGSort) node
+        let parentBoundary node = wrapBoundary Up (Expr.subMetaVars sub parentGSort) node
         pure $ parentBoundary 
             (Expr.Expr
-                (Inject (Grammar.DerivExprLabel RuleLabel (fst (endpoints chBackDown))))
+                (Inject (Grammar.DerivLabel ruleLabel (fst (endpoints chBackDown))))
                 (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
 defaultUp _ _ = Nothing
