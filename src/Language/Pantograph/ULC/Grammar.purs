@@ -208,7 +208,7 @@ language = TotalMap.makeTotalMap case _ of
   Zero_Var -> makeRule [] \[] ->
     []
     /\ --------
-    pure Zero % []
+    zeroME
 
   Suc_Var -> makeRule ["var"] \[var] ->
     [ var |- varSortME ]
