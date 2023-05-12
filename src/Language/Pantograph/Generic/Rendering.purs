@@ -5,10 +5,9 @@ import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
 import Type.Direction
-
 import Bug (bug)
 import Data.Array as Array
-import Data.Expr (class IsExprLabel, Expr(..), Path, Zipper(..), Zipper', prettyPath, unTooth, zipDowns, zipDownsTooth, zipUp)
+import Data.Expr as Expr
 import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
@@ -83,7 +82,7 @@ data State l r
   | SelectState (Select l r)
   | TopState (Top l r)
 
-instance (IsExprLabel l, IsRuleLabel r) => Pretty (State l r) where
+instance (Expr.IsExprLabel l, IsRuleLabel r) => Pretty (State l r) where
   pretty = case _ of
     BufferState buffer -> Array.intercalate "\n"
       [ "buffer:"
@@ -134,7 +133,7 @@ type EditorSpec l r =
   }
 
 editorComponent :: forall q l r.
-  IsExprLabel l => IsRuleLabel r =>
+  Expr.IsExprLabel l => IsRuleLabel r =>
   H.Component 
     q
     (EditorSpec l r)
@@ -161,7 +160,7 @@ editorComponent = HK.component \tokens input -> HK.do
     agetElementIdByDerivPath path = do
       pathElementIds <- liftEffect $ Ref.read pathElementIds_ref
       case Map.lookup path pathElementIds of
-        Nothing -> bug $ "could not find element id for path: " <> prettyPath path "{}"
+        Nothing -> bug $ "could not find element id for path: " <> pretty path
         Just elemId -> pure elemId
 
     getElementByPath :: DerivPath Dir.Up l r -> HK.HookM Aff DOM.Element
@@ -332,7 +331,7 @@ editorComponent = HK.component \tokens input -> HK.do
           Ref.modify_ (Map.insert (unwrap derivZipper).path elemId_) pathElementIds_ref
           pure elemId_
 
-        clsNames /\ kidElems = input.renderDerivExprKids (unwrap derivZipper).expr $ renderExpr false <$> zipDowns derivZipper
+        clsNames /\ kidElems = input.renderDerivExprKids (unwrap derivZipper).expr $ renderExpr false <$> Expr.zipDowns derivZipper
       HH.div
         [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
         , HP.id elemId
@@ -355,7 +354,7 @@ editorComponent = HK.component \tokens input -> HK.do
         ]
 
     renderPath derivZipper1 interior  = do
-      case zipUp derivZipper1 of
+      case Expr.zipUp derivZipper1 of
         Nothing -> interior
         Just (th /\ derivZipper2) -> do
           let elemId = unsafePerformEffect do
@@ -364,10 +363,10 @@ editorComponent = HK.component \tokens input -> HK.do
                 Ref.modify_ (Map.insert (unwrap derivZipper2).path elemId_) pathElementIds_ref
                 pure elemId_
           let clsNames /\ kidElems = 
-                input.renderDerivExprKids (unTooth th (unwrap derivZipper1).expr) $
+                input.renderDerivExprKids (Expr.unTooth th (unwrap derivZipper1).expr) $
                 Array.fromFoldable $
                 ZipList.unpathAround interior $ do
-                  let kidZippers = zipDownsTooth derivZipper2 th
+                  let kidZippers = Expr.zipDownsTooth derivZipper2 th
                   let ZipList.Path p = kidZippers
                   renderExpr false <$> kidZippers
           renderPath derivZipper2 $
@@ -433,7 +432,7 @@ type BufferInput l r =
   , edits :: Array (Edit l r)
   }
 
-bufferComponent :: forall l r. IsExprLabel l => IsRuleLabel r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
+bufferComponent :: forall l r. Expr.IsExprLabel l => IsRuleLabel r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
 bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""

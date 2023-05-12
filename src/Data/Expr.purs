@@ -213,6 +213,8 @@ instance ReflectPathDir Dir.Up where reflectPathDir _ = downDir
 -- | This works on both up and down paths
 prettyPath path str = foldMapPath str prettyTooth path
 
+instance (ReflectPathDir dir, IsExprLabel l) => Pretty (Path dir l) where pretty path = prettyPath path "{{}}"
+
 stepPath :: forall dir l. Tooth l -> Path dir l -> Path dir l
 stepPath th (Path ths) = Path (th : ths)
 
