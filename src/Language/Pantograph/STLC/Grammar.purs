@@ -1,12 +1,19 @@
 module Language.Pantograph.STLC.Grammar where
 
 import Data.Tuple.Nested
+import Prelude
 
+import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
+import Data.Enum (class Enum)
+import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Expr (Meta(..), MetaVar(..), freshMetaVar)
 import Data.Expr as Expr
+import Data.Generic.Rep (class Generic)
 import Data.Set as Set
+import Data.Show.Generic (genericShow)
 import Data.Unit (unit)
+import Language.Pantograph.Generic.Grammar (class DerivRuleName)
 import Language.Pantograph.Generic.Grammar as G
 
 data Label =
@@ -25,10 +32,22 @@ type MetaExpr = Expr.MetaExpr Label
 
 data RuleName = Lam | App | Z | S | Var | Let | Base -- | TermBind
 
+derive instance Generic RuleName _
+derive instance Eq RuleName
+derive instance Ord RuleName
+instance Show RuleName where show x = genericShow x
+instance Enum RuleName where
+    succ x = genericSucc x
+    pred x = genericPred x
+instance Bounded RuleName where
+    bottom = genericBottom
+    top = genericTop
+instance DerivRuleName RuleName
+
 type DerivLabel = G.DerivLabel Label RuleName
 
 type DerivTerm = G.DerivTerm Label RuleName
-type DerivPath = G.DerivPath Label RuleName
+type DerivPath dir = G.DerivPath dir Label RuleName
 
 type Rule = G.Rule Label RuleName
 

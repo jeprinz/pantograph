@@ -4,8 +4,9 @@ import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
 
+import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class ExprLabel, Tooth(..))
+import Data.Expr (class ExprLabel, Meta(..), Tooth(..))
 import Data.Expr as Expr
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
@@ -18,35 +19,29 @@ import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Newtype (over, unwrap, wrap)
 import Data.Ord.Generic (genericCompare)
+import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (Action(..), Edit)
 import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Utility (assert)
 
-data Sort = VarSort | TermSort
-
-derive instance Generic Sort _
-instance Show Sort where show x = genericShow x
-instance Eq Sort where eq x = genericEq x
-instance Ord Sort where compare x y = genericCompare x y
-
-instance Pretty Sort where
-  pretty VarSort = "Var"
-  pretty TermSort = "Term"
-
 data Label
   -- Var
-  = Z
-  | S {-Var-}
+  = Zero
+  | Suc {-Var-}
   -- Term
   | Lam {-Var-} {-Term-}
   | App {-Term-} {-Term-}
   | Ref {-Var-}
   -- Hole
-  | Hole Sort
+  | Hole
   -- HoleInterior
-  | HoleInterior Sort
+  | HoleInterior
+  -- Sort
+  | Var
+  | Term
 
 derive instance Generic Label _
 instance Show Label where show x = genericShow x
@@ -55,20 +50,24 @@ instance Ord Label where compare x y = genericCompare x y
 
 instance ExprLabel Label where
   -- var
-  prettyExprF'_unsafe (Z /\ _) = "Z"
-  prettyExprF'_unsafe (S /\ [v]) = parens $ "S" <+> v
+  prettyExprF'_unsafe (Zero /\ _) = "Z"
+  prettyExprF'_unsafe (Suc /\ [v]) = parens $ "S" <+> v
   -- term
   prettyExprF'_unsafe (Lam /\ [v, b]) = parens $ "lam" <+> v <+> "=>" <+> b
   prettyExprF'_unsafe (App /\ [f, a]) = parens $ f <+> a
   prettyExprF'_unsafe (Ref /\ [v]) = "#" <> v
   -- hole
-  prettyExprF'_unsafe (Hole _ /\ [hi]) = "Hole(" <> hi <> ")"
+  prettyExprF'_unsafe (Hole /\ [hi]) = "Hole(" <> hi <> ")"
   -- hole interior
-  prettyExprF'_unsafe (HoleInterior _ /\ []) = "?"
+  prettyExprF'_unsafe (HoleInterior /\ []) = "?"
+  -- sort
+  prettyExprF'_unsafe (Var /\ []) = "Var"
+  prettyExprF'_unsafe (Term /\ []) = "Term"
+
 
   -- var
-  expectedKidsCount Z = 0
-  expectedKidsCount S = 1
+  expectedKidsCount Zero = 0
+  expectedKidsCount Suc = 1
   -- term
   expectedKidsCount Lam = 2
   expectedKidsCount App = 2
@@ -84,26 +83,49 @@ type Zipper = Expr.Zipper Label
 type Tooth = Expr.Tooth Label
 
 --
+-- Rule
+--
+
+data RuleName
+  = ZeroVar 
+  | SucVar
+  | LamTerm
+  | AppTerm 
+  | RefTerm
+  | HoleAny
+  | HoleInteriorAny
+
+type Rule = Grammar.Rule Label RuleName
+
+rules :: Array Rule
+rules = 
+  [ Grammar.Rule 
+      (Set.fromFoldable [])
+      [Expr.Expr (Meta (Right ?a)) ?a]
+      ?a
+  ]
+
+--
 -- Expr
 --
 
 -- var
-varE 0 = Expr.Expr Z []
-varE n = Expr.Expr S [varE (n - 1)]
+varE 0 = Expr.Expr Zero []
+varE n = Expr.Expr Suc [varE (n - 1)]
 -- term
 lamE x b = Expr.Expr Lam [x, b]
 appE f a = Expr.Expr App [f, a]
 refE v = Expr.Expr Ref [v]
 -- hole
-hole sort = Expr.Expr (Hole sort) [holeInterior sort]
+holeE sort = Expr.Expr (Hole sort) [holeInterior sort]
 -- hole interior
-holeInterior sort = Expr.Expr (HoleInterior sort) []
+holeInteriorE sort = Expr.Expr (HoleInterior sort) []
 
 --
 -- Tooth
 --
 
-var_p = Tooth S (ZipList.Path {left: mempty, right: mempty})
+var_p = Tooth Suc (ZipList.Path {left: mempty, right: mempty})
 
 lam_bod = Tooth Lam (ZipList.Path {left: pure (hole VarSort), right: mempty})
 app_apl = Tooth App (ZipList.Path {left: pure (hole TermSort), right: mempty})
@@ -119,11 +141,11 @@ getEdits :: Zipper -> Array (Edit Label)
 getEdits zipper = do
   let _ = Expr.assertWellformedExpr "getEdits" (unwrap zipper).expr
   case (unwrap zipper).expr of
-    Expr.Expr Z [] ->
+    Expr.Expr Zero [] ->
       [ deleteEdit VarSort
       , enS
       ]
-    Expr.Expr S [_p] ->
+    Expr.Expr Suc [_p] ->
       [ deleteEdit VarSort
       , enS
       ]

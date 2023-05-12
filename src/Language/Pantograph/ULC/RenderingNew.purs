@@ -1,4 +1,4 @@
-module Language.Pantograph.ULC.Rendering where
+module Language.Pantograph.ULC.RenderingNew where
 
 import Data.Tuple
 import Data.Tuple.Nested

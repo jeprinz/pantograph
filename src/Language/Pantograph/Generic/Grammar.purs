@@ -6,6 +6,7 @@ import Data.Tuple
 import Data.Tuple.Nested
 import Prelude
 
+import Data.Enum (class Enum)
 import Data.Expr (class ExprLabel, expectedKidsCount)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
@@ -18,6 +19,8 @@ import Type.Direction as Dir
 --data Label
 
 --data RuleName = Lam | App | Z | S
+
+class (Enum r, Bounded r, Show r) <= DerivRuleName r
 
 data DerivLabel l r = DerivLabel r (Expr.MetaExpr l)
 derive instance Generic (DerivLabel l r) _
@@ -37,7 +40,8 @@ instance (ExprLabel l, Eq r, Ord r, Show r) => ExprLabel (DerivLabel l r) where
 --DerivTerm and DerivPath need boundaries?
 -}
 type DerivTerm l r = Expr.Expr (DerivLabel l r)
-type DerivPath l r = Expr.Path Dir.Up (DerivLabel l r)
+type DerivExpr l r = Expr.Expr (DerivLabel l r)
+type DerivPath dir l r = Expr.Path dir (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipper' l r = Expr.Zipper' (DerivLabel l r)
 
