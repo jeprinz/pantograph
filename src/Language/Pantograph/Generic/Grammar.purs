@@ -7,7 +7,7 @@ import Data.Tuple.Nested
 import Prelude
 
 import Data.Enum (class Enum)
-import Data.Expr (class ExprLabel, expectedKidsCount)
+import Data.Expr (class IsExprLabel, expectedKidsCount)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Map (Map)
@@ -21,7 +21,7 @@ import Language.Pantograph.Generic.ChangeAlgebra
 
 --data RuleName = Lam | App | Z | S
 
-class (Enum r, Bounded r, Show r) <= DerivRuleName r
+class (Enum r, Bounded r, Show r) <= IsDerivRuleName r
 
 data DerivLabel l r = DerivLabel r (Expr.MetaExpr l)
 derive instance Generic (DerivLabel l r) _
@@ -29,10 +29,11 @@ instance (Show l, Show r) => Show (DerivLabel l r) where show x = genericShow x
 derive instance (Eq l, Eq r) => Eq (DerivLabel l r)
 derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
-instance (ExprLabel l, Eq r, Ord r, Show r) => ExprLabel (DerivLabel l r) where
+instance (IsExprLabel l, IsDerivRuleName r) => IsExprLabel (DerivLabel l r) where
   -- This implementation ignores the rule and metaexpression, but maybe we want
   -- to print those at some point for debugging?
-  prettyExprF'_unsafe (DerivLabel _r (Expr.Expr l _metaExpr) /\ kids) = Expr.prettyExprF (l /\ kids)
+  prettyExprF'_unsafe (DerivLabel _r (Expr.Expr l _metaExpr) /\ kids) = 
+    Expr.prettyExprF (l /\ kids)
 
   expectedKidsCount (DerivLabel _r (Expr.Expr l _)) = expectedKidsCount l
 
@@ -41,6 +42,9 @@ instance (ExprLabel l, Eq r, Ord r, Show r) => ExprLabel (DerivLabel l r) where
 --DerivTerm and DerivPath need boundaries?
 -}
 type DerivTerm l r = Expr.Expr (DerivLabel l r)
+-- !HENRY: personally, I think it's better to keep the name `Expr` consistent, 
+-- rather than conflate generic "terms" and "terms" in a particular language 
+-- (e.g. as in "terms and their types")
 type DerivExpr l r = Expr.Expr (DerivLabel l r)
 type DerivPath dir l r = Expr.Path dir (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
