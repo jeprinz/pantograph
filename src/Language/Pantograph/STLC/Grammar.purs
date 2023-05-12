@@ -13,7 +13,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Unit (unit)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, expectedHypothesesCount)
 import Language.Pantograph.Generic.Grammar as G
 
 data ExprLabel =
@@ -42,7 +42,15 @@ instance Enum RuleLabel where
 instance Bounded RuleLabel where
     bottom = genericBottom
     top = genericTop
-instance IsRuleLabel RuleLabel
+
+instance IsRuleLabel RuleLabel where
+    expectedHypothesesCount Lam = 3
+    expectedHypothesesCount App = 2
+    expectedHypothesesCount Z = 0
+    expectedHypothesesCount S = 1
+    expectedHypothesesCount Var = 1
+    expectedHypothesesCount Let = 4
+    expectedHypothesesCount Base = 0
 
 type DerivLabel = G.DerivLabel ExprLabel RuleLabel
 

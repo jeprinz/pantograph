@@ -24,7 +24,8 @@ import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 
 --data RuleLabel = Lam | App | Z | S
 
-class (Enum r, Bounded r, Show r) <= IsRuleLabel r
+class (Enum r, Bounded r, Show r) <= IsRuleLabel r where
+  expectedHypothesesCount :: r -> Int
 
 data DerivLabel l r = DerivLabel r (Expr.MetaExpr l)
 
@@ -41,7 +42,7 @@ instance (IsExprLabel l, IsRuleLabel r) => IsExprLabel (DerivLabel l r) where
   prettyExprF'_unsafe (DerivLabel _r (Expr.Expr l _metaExpr) /\ kids) = 
     Expr.prettyExprF (l /\ kids)
 
-  expectedKidsCount (DerivLabel _r (Expr.Expr l _)) = expectedKidsCount l
+  expectedKidsCount (DerivLabel r _) = expectedHypothesesCount r
 
 {-
 --DerivTerm needs built-in hole?

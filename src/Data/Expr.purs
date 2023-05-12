@@ -318,6 +318,9 @@ data Zipper' l
   = Zipper'Up {path :: Path Dir.Up l, selection :: Path Dir.Up l, expr :: Expr l}
   | Zipper'Down {path :: Path Dir.Up l, selection :: Path Dir.Down l, expr :: Expr l}
 
+derive instance Generic (Zipper' l) _
+instance Show l => Show (Zipper' l) where show x = genericShow x
+
 -- | Change
 
 type Change l = Expr (ChangeExprLabel l)

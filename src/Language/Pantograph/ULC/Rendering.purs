@@ -70,38 +70,39 @@ colonElem = makePuncElem "colon" ":"
 type Edit = Rendering.Edit ExprLabel RuleLabel
 
 getEdits :: DerivZipper -> Array Edit
-getEdits = assertInput (\(Expr.Zipper dz) -> wellformedExpr "getEdits" dz.expr) \(Expr.Zipper dz) -> do
-  let
-    digEdit sort = 
-      { label: "dig", preview: "?"
-      , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {expr = holeDE holeInteriorDE sort} }
+getEdits _ = []
+-- getEdits = assertInput (\(Expr.Zipper dz) -> wellformedExpr "getEdits" dz.expr) \(Expr.Zipper dz) -> do
+--   let
+--     digEdit sort = 
+--       { label: "dig", preview: "?"
+--       , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {expr = holeDE holeInteriorDE sort} }
     
-    enTooth label preview tooth =
-      { label, preview
-      , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {path = Expr.stepPath tooth dz.path} }
+--     enTooth label preview tooth =
+--       { label, preview
+--       , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {path = Expr.stepPath tooth dz.path} }
 
-    inTooth label preview path' tooth innerSort =
-      { label, preview
-      , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {path = Expr.stepPath tooth path', expr = holeDE holeInteriorDE innerSort}
-      }
+--     inTooth label preview path' tooth innerSort =
+--       { label, preview
+--       , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {path = Expr.stepPath tooth path', expr = holeDE holeInteriorDE innerSort}
+--       }
     
-    inFill label preview path' expr =
-      { label, preview
-      , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {path = path', expr = expr}
-      }
+--     inFill label preview path' expr =
+--       { label, preview
+--       , action: SetDerivZipperAction $ defer \_ -> Just $ Expr.Zipper dz {path = path', expr = expr}
+--       }
     
-    enSuc = enTooth "suc" "S" (Suc |- varSortME %< mempty)
-    enLam = enTooth "lam" "lam _ => {{}}" $ Lam |- termSortME %< ZipList.singletonLeft (holeDE holeInteriorDE varSortME)
-    enApl = enTooth "apl" "{{}} _" $ Lam |- termSortME %< ZipList.singletonLeft (holeDE holeInteriorDE varSortME)
-    enArg = enTooth "arg" "_ {{}}" $ Lam |- termSortME %< ZipList.singletonLeft (holeDE holeInteriorDE varSortME)
-    inZero path' = inFill "zero" "Z" path' zeroDE
-    inRef path' = inTooth "ref" "ref {{}}" path' (Ref |- termSortME %< mempty) varSortME
-  case dz of
-    -- var
-    {expr: _ |- (Expr.Meta (Right VarSort) % _) % _} -> [digEdit varSortME, enSuc]
-    -- term
-    {expr: _ |- (Expr.Meta (Right TermSort) % []) % _} -> [digEdit termSortME, enLam, enApl, enArg]
-    -- hole interior
-    {path: Expr.Path ((Hole |- (Expr.Meta (Right VarSort) % _) %< _) : ths), expr: HoleInterior |- (Expr.Meta (Right HoleInteriorSort) % _) % _} -> [inZero (Expr.Path ths)]
-    {path: Expr.Path ((Hole |- (Expr.Meta (Right TermSort) % _) %< _) : ths), expr: HoleInterior |- (Expr.Meta (Right HoleInteriorSort) % _) % _} -> [inRef (Expr.Path ths)]
+--     enSuc = enTooth "suc" "S" (Suc |- varSortME %< mempty)
+--     enLam = enTooth "lam" "lam _ => {{}}" $ Lam |- termSortME %< ZipList.singletonLeft (holeDE holeInteriorDE varSortME)
+--     enApl = enTooth "apl" "{{}} _" $ Lam |- termSortME %< ZipList.singletonLeft (holeDE holeInteriorDE varSortME)
+--     enArg = enTooth "arg" "_ {{}}" $ Lam |- termSortME %< ZipList.singletonLeft (holeDE holeInteriorDE varSortME)
+--     inZero path' = inFill "zero" "Z" path' zeroDE
+--     inRef path' = inTooth "ref" "ref {{}}" path' (Ref |- termSortME %< mempty) varSortME
+--   case dz of
+--     -- var
+--     {expr: _ |- (Expr.Meta (Right VarSort) % _) % _} -> [digEdit varSortME, enSuc]
+--     -- term
+--     {expr: _ |- (Expr.Meta (Right TermSort) % []) % _} -> [digEdit termSortME, enLam, enApl, enArg]
+--     -- hole interior
+--     {path: Expr.Path ((Hole |- (Expr.Meta (Right VarSort) % _) %< _) : ths), expr: HoleInterior |- (Expr.Meta (Right HoleInteriorSort) % _) % _} -> [inZero (Expr.Path ths)]
+--     {path: Expr.Path ((Hole |- (Expr.Meta (Right TermSort) % _) %< _) : ths), expr: HoleInterior |- (Expr.Meta (Right HoleInteriorSort) % _) % _} -> [inRef (Expr.Path ths)]
 

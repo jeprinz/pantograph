@@ -3,8 +3,10 @@ module Language.Pantograph.Generic.Rendering where
 import Data.CodePoint.Unicode
 import Data.Tuple
 import Data.Tuple.Nested
+import Language.Pantograph.Generic.Grammar
 import Prelude
 import Type.Direction
+
 import Bug (bug)
 import Data.Array as Array
 import Data.Expr as Expr
@@ -20,6 +22,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Rational as Rational
+import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.UUID as UUID
 import Debug as Debug
@@ -35,7 +38,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName, setClassNameByElementId)
-import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.ZipperMovement (moveZipper)
 import Partial.Unsafe (unsafeCrashWith)
 import Prim.Row (class Cons)
@@ -81,6 +83,9 @@ data State l r
   | CursorState (Cursor l r)
   | SelectState (Select l r)
   | TopState (Top l r)
+
+derive instance Generic (State l r) _
+instance (Show l, Show r) => Show (State l r) where show x = genericShow x
 
 instance (Expr.IsExprLabel l, IsRuleLabel r) => Pretty (State l r) where
   pretty = case _ of
@@ -149,6 +154,7 @@ editorComponent = HK.component \tokens input -> HK.do
   currentState /\ state_id <- HK.useState $ initState
   _ /\ facade_ref <- HK.useRef $ initState
 
+  let _ = Debug.trace ("[editorComponent] currentState: " <> show currentState) \_ -> unit
   let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing

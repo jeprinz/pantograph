@@ -1,4 +1,5 @@
 module Language.Pantograph.ULC.Grammar where
+
 import Prelude
 
 import Data.Bounded.Generic (genericBottom, genericTop)
@@ -12,7 +13,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
-import Language.Pantograph.Generic.Grammar ((|-))
+import Language.Pantograph.Generic.Grammar (expectedHypothesesCount, (|-))
 import Language.Pantograph.Generic.Grammar as Grammar
 
 --------------------------------------------------------------------------------
@@ -30,12 +31,12 @@ instance Eq ExprLabel where eq x = genericEq x
 instance Ord ExprLabel where compare x y = genericCompare x y
 
 instance IsExprLabel ExprLabel where
-  prettyExprF'_unsafe (VarSort /\ []) = "Var"
-  prettyExprF'_unsafe (TermSort /\ []) = "Term"
-  prettyExprF'_unsafe (HoleInteriorSort /\ []) = "HoleInterior"
+  prettyExprF'_unsafe (VarSort /\ _) = "Var"
+  prettyExprF'_unsafe (TermSort /\ _) = "Term"
+  prettyExprF'_unsafe (HoleInteriorSort /\ _) = "HoleInterior"
 
-  expectedKidsCount VarSort = 0
-  expectedKidsCount TermSort = 0
+  expectedKidsCount VarSort = 1
+  expectedKidsCount TermSort = 1
   expectedKidsCount HoleInteriorSort = 0
 
 --------------------------------------------------------------------------------
@@ -82,7 +83,15 @@ instance Enum RuleLabel where
 instance Bounded RuleLabel where
   bottom = genericBottom
   top = genericTop
-instance Grammar.IsRuleLabel RuleLabel
+
+instance Grammar.IsRuleLabel RuleLabel where
+  expectedHypothesesCount Zero = 0
+  expectedHypothesesCount Suc = 1
+  expectedHypothesesCount Lam = 2
+  expectedHypothesesCount App = 2
+  expectedHypothesesCount Ref = 1
+  expectedHypothesesCount Hole = 1
+  expectedHypothesesCount HoleInterior = 0
 
 --------------------------------------------------------------------------------
 -- Language
