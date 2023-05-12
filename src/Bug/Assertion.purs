@@ -31,17 +31,17 @@ makeAssertionBoolean {name, source, condition, message} = Assertion
   }
 
 assert :: forall a b. Assertion a -> (Partial => a -> b) -> b
-assert (Assertion a) = \k -> case a.result of
+assert (Assertion ass) = \k -> case ass.result of
   Right a -> unsafePartial (k a)
-  Left msg -> bug $ renderFailedAssertion (Assertion a) msg
+  Left msg -> bug $ renderFailedAssertion (Assertion ass) msg
 
 assert_ :: forall a. Assertion a -> Unit
 assert_ ass = assert ass \_ -> unit
 
 assertM :: forall m a. Applicative m => Assertion a -> m a
-assertM (Assertion a) = case a.result of
+assertM (Assertion ass) = case ass.result of
   Right a -> pure a
-  Left msg -> bug $ renderFailedAssertion (Assertion a) msg
+  Left msg -> bug $ renderFailedAssertion (Assertion ass) msg
 
 assertInterface :: forall a b za zb. (a -> Assertion za) -> (b -> Assertion zb) -> (Partial => a -> b) -> (a -> b)
 assertInterface ass_a ass_b = \f a -> 
