@@ -49,7 +49,7 @@ type DerivLabel = G.DerivLabel Label RuleName
 type DerivTerm = G.DerivTerm Label RuleName
 type DerivPath dir = G.DerivPath dir Label RuleName
 
-type Rule = G.Rule Label RuleName
+type Rule = G.Rule Label
 
 exp :: forall l. l -> Array (Expr.MetaExpr l) -> Expr.MetaExpr l
 exp l kids = Expr.Expr (Meta (Right l)) kids

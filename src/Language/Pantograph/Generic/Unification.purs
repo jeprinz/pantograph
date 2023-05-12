@@ -1,6 +1,5 @@
 module Language.Pantograph.Generic.Unification where
 
-import Language.Pantograph.Generic.Grammar
 import Prelude
 
 import Control.Apply (lift2)
