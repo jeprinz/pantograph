@@ -159,7 +159,6 @@ editorComponent = HK.component \tokens input -> HK.do
   let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
-  -- _ /\ maybeCursorPath_ref :: _ /\ (Ref.Ref (Maybe (DerivPath Dir.Up l r))) <- HK.useRef (Just (unwrap input.derivZipper).path)
   _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (DerivPath Dir.Up l r) String)
 
   let 
