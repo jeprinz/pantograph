@@ -54,7 +54,7 @@ type DerivTerm l r = Expr.Expr (DerivLabel l r)
 type DerivExpr l r = Expr.Expr (DerivLabel l r)
 type DerivPath dir l r = Expr.Path dir (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
-type DerivZipper' l r = Expr.Zipper' (DerivLabel l r)
+type DerivZipperP l r = Expr.ZipperP (DerivLabel l r)
 
 fromDerivExpr :: forall l r. Expr.Expr (DerivLabel l r) -> Expr.MetaExpr l
 fromDerivExpr (Expr.Expr (DerivLabel r mexpr) kids) = mexpr

@@ -155,7 +155,7 @@ language = TotalMap.makeTotalMap case _ of
 type DerivExpr = Grammar.DerivExpr ExprLabel RuleLabel
 type DerivPath dir = Grammar.DerivPath dir ExprLabel RuleLabel
 type DerivZipper = Grammar.DerivZipper ExprLabel RuleLabel
-type DerivZipper' = Grammar.DerivZipper' ExprLabel RuleLabel
+type DerivZipperP = Grammar.DerivZipperP ExprLabel RuleLabel
 
 -- var
 zeroDE :: DerivExpr

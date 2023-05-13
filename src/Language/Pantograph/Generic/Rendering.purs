@@ -9,6 +9,7 @@ import Type.Direction
 
 import Bug (bug)
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Expr as Expr
 import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
@@ -39,7 +40,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName, setClassNameByElementId)
-import Language.Pantograph.Generic.ZipperMovement (moveZipper)
+import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperP)
 import Partial.Unsafe (unsafeCrashWith)
 import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, pretty)
@@ -57,8 +58,16 @@ import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
 
+cursorClassName :: String
 cursorClassName = "cursor"
+highlightClassName :: String
 highlightClassName = "highlight"
+selectTopClassName :: String
+selectTopClassName = "select-top"
+selectBottomClassName :: String
+selectBottomClassName = "select-bottom"
+
+isBufferKey = (_ `Array.elem` [" ", "Enter"])
 
 data Output l r
   = ActionOutput (Action l r)
@@ -121,7 +130,7 @@ type Cursor l r =
   }
 
 type Select l r =
-  { derivZipper' :: DerivZipper' l r
+  { derivZipperP :: DerivZipperP l r
   }
 
 type Top l r =
@@ -155,15 +164,15 @@ editorComponent = HK.component \tokens input -> HK.do
   currentState /\ state_id <- HK.useState $ initState
   _ /\ facade_ref <- HK.useRef $ initState
 
-  let _ = Debug.trace ("[editorComponent] currentState: " <> show currentState) \_ -> unit
+  -- let _ = Debug.trace ("[editorComponent] currentState: " <> show currentState) \_ -> unit
   let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
   _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (DerivPath Dir.Up l r) String)
 
   let 
-    agetElementIdByDerivPath :: DerivPath Dir.Up l r -> HK.HookM Aff String
-    agetElementIdByDerivPath path = do
+    getElementIdByDerivPath :: DerivPath Dir.Up l r -> HK.HookM Aff String
+    getElementIdByDerivPath path = do
       pathElementIds <- liftEffect $ Ref.read pathElementIds_ref
       case Map.lookup path pathElementIds of
         Nothing -> bug $ "could not find element id for path: " <> pretty path
@@ -172,7 +181,7 @@ editorComponent = HK.component \tokens input -> HK.do
     getElementByPath :: DerivPath Dir.Up l r -> HK.HookM Aff DOM.Element
     getElementByPath derivPath = do
       doc <- liftEffect $ HTML.window >>= Window.document
-      elemId <- agetElementIdByDerivPath derivPath
+      elemId <- getElementIdByDerivPath derivPath
       liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
         Nothing -> bug $ "could not find element by id: " <> elemId
         Just elem -> pure elem
@@ -229,6 +238,8 @@ editorComponent = HK.component \tokens input -> HK.do
             liftEffect $ setClassName elem className true
 
     setCursorElement = setNodeElementStyle cursorClassName
+    setSelectTopElement = setNodeElementStyle selectTopClassName
+    setSelectBottomElement = setNodeElementStyle selectBottomClassName
     setHighlightElement mb_dpath_new = do
       mb_dpath_old <- liftEffect $ Ref.read maybeHighlightPath_ref
       setNodeElementStyle highlightClassName mb_dpath_old mb_dpath_new
@@ -242,10 +253,10 @@ editorComponent = HK.component \tokens input -> HK.do
       CursorState cursor -> do
         setHighlightElement Nothing
         setCursorElement (Just (unwrap (cursor.derivZipper)).path) Nothing
-      SelectState _select -> do
+      SelectState select -> do
         setHighlightElement Nothing
-        -- setCursorElement Nothing
-        -- !TODO unset selection
+        setSelectTopElement (Just (Expr.zipperpTopPath select.derivZipperP)) Nothing
+        setSelectBottomElement (Just (Expr.zipperpBottomPath select.derivZipperP)) Nothing
       TopState _top -> do
         setHighlightElement Nothing
 
@@ -266,7 +277,8 @@ editorComponent = HK.component \tokens input -> HK.do
         BufferState buffer -> do
           setCursorElement Nothing (Just (unwrap buffer.derivZipper).path)
         SelectState select -> do
-          unsafeCrashWith "!TODO setFacade SelectState"
+          setSelectTopElement Nothing (Just (Expr.zipperpTopPath select.derivZipperP))
+          setSelectBottomElement Nothing (Just (Expr.zipperpBottomPath select.derivZipperP))
         TopState top -> do
           pure unit
       liftEffect (Ref.write st facade_ref)
@@ -289,20 +301,60 @@ editorComponent = HK.component \tokens input -> HK.do
           Just derivZipper -> setState $ CursorState {derivZipper}
 
     moveCursor dir = getFacade >>= case _ of
+      BufferState _buffer -> pure unit
       CursorState cursor -> do
         -- Debug.traceM $ "[moveCursor] st = " <> pretty st.derivZipper
         case moveZipper dir cursor.derivZipper of
           Nothing -> pure unit
           Just derivZipper -> setFacade $ CursorState cursor {derivZipper = derivZipper}
-      BufferState _st -> pure unit
-      SelectState _st -> unsafeCrashWith "!TODO escape select then move cursor"
-      TopState _st -> unsafeCrashWith "!TODO move to first top cursor position, then move"
+      SelectState select -> do
+        let cursor = {derivZipper: Expr.unzipperp select.derivZipperP}
+        case moveZipper dir cursor.derivZipper of
+          Nothing -> pure unit
+          Just derivZipper -> setFacade $ CursorState cursor {derivZipper = derivZipper}
+      TopState top -> do
+        let cursor = {derivZipper: Expr.Zipper {path: mempty, expr: top.expr}}
+        case moveZipper dir cursor.derivZipper of
+          Nothing -> pure unit
+          Just derivZipper -> setFacade $ CursorState cursor {derivZipper = derivZipper}
 
     moveSelect dir = getFacade >>= case _ of
-      CursorState cursor -> unsafeCrashWith "!TODO turn into selection with direction determined by dir"
-      BufferState _ -> unsafeCrashWith "!TODO escape to cursor first"
-      SelectState _ -> unsafeCrashWith "!TODO impl select movement"
-      TopState _ -> unsafeCrashWith "!TODO move to first top cursor position, then move"
+      BufferState _buffer -> unsafeCrashWith "!TODO escape to cursor first"
+      CursorState cursor -> do
+        Debug.traceM "[moveSelect] attempting CursorState --> SelectState"
+        let select = (_ $ dir) $ case_
+              # on _up (\_ -> {derivZipperP: Expr.ZipperP {path: (unwrap cursor.derivZipper).path, selection: Left mempty, expr: (unwrap cursor.derivZipper).expr}})
+              # on _down (\_ -> {derivZipperP: Expr.ZipperP {path: (unwrap cursor.derivZipper).path, selection: Right mempty, expr: (unwrap cursor.derivZipper).expr}})
+              # on _left (\_ -> unsafeCrashWith "!TODO moveSelect left when CursorState")
+              # on _right (\_ -> unsafeCrashWith "!TODO moveSelect right when CursorState")
+              # on _prev (\_ -> unsafeCrashWith "!TODO moveSelect prev when CursorState")
+              # on _next (\_ -> unsafeCrashWith "!TODO moveSelect next when CursorState")
+        Debug.traceM $ "[moveSelect] select = " <> show select
+        case moveZipperP dir select.derivZipperP of
+          Nothing -> do
+            Debug.traceM "[moveSelect] failed to enter SelectState"
+            pure unit
+          Just (Left derivZipper) -> setFacade $ CursorState {derivZipper: derivZipper}
+          Just (Right derivZipperP) -> setFacade $ SelectState select {derivZipperP = derivZipperP}
+      SelectState select -> do
+        Debug.traceM "[moveSelect] moving selection"
+        case moveZipperP dir select.derivZipperP of
+          Nothing -> do
+            Debug.traceM "[moveSelect] failed to move selection"
+          Just (Left derivZipper) -> setFacade $ CursorState {derivZipper: derivZipper}
+          Just (Right derivZipperP) -> setFacade $ SelectState select {derivZipperP = derivZipperP}
+      TopState top -> do
+        let select = (_ $ dir) $ case_
+              # on _up (\_ -> unsafeCrashWith "!TODO moveSelect up when TopState")
+              # on _down (\_ -> {derivZipperP: Expr.ZipperP {path: mempty, selection: Left mempty, expr: top.expr}})
+              # on _left (\_ -> unsafeCrashWith "!TODO moveSelect left when TopState")
+              # on _right (\_ -> unsafeCrashWith "!TODO moveSelect right when TopState")
+              # on _prev (\_ -> unsafeCrashWith "!TODO moveSelect prev when TopState")
+              # on _next (\_ -> unsafeCrashWith "!TODO moveSelect next when TopState")
+        case moveZipperP dir select.derivZipperP of
+          Nothing -> pure unit
+          Just (Left derivZipper) -> setFacade $ CursorState {derivZipper: derivZipper}
+          Just (Right derivZipperP) -> setFacade $ SelectState select {derivZipperP = derivZipperP}
 
     handleKeyboardEvent :: KeyboardEvent.KeyboardEvent -> HK.HookM Aff Unit
     handleKeyboardEvent event = do
@@ -311,33 +363,33 @@ editorComponent = HK.component \tokens input -> HK.do
       let shiftKey = KeyboardEvent.shiftKey event
       getFacade >>= case _ of
         BufferState buffer -> do
-          if key `Array.elem` [" ", "Enter"] then do
+          if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
+            elemId <- getElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId SubmitBufferQuery
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
-            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
+            elemId <- getElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false
             -- -- set facade to cursor
             -- setFacade $ CursorState {derivZipper: buffer.derivZipper}
           else if key == "ArrowUp" then do
             -- Debug.traceM $ "[moveBufferQuery Up]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
+            elemId <- getElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery upDir
           else if key == "ArrowDown" then do
             -- Debug.traceM $ "[moveBufferQuery Down]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
+            elemId <- getElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
         CursorState cursor -> do
-          if key `Array.elem` [" ", "Enter"] then do
+          if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
-            elemId <- agetElementIdByDerivPath (unwrap cursor.derivZipper).path
+            elemId <- getElementIdByDerivPath (unwrap cursor.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
@@ -345,9 +397,26 @@ editorComponent = HK.component \tokens input -> HK.do
           else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
           else pure unit
         SelectState select -> do
-          if key == " " then do
+          if key == "Escape" then do
+            -- SelectState --> CursorState
+            setFacade $ CursorState {derivZipper: Expr.unzipperp select.derivZipperP}
+          else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            -- !TODO select --> cursor
+            -- SelectState --> CursorState
+            let cursor = {derivZipper: Expr.unzipperp select.derivZipperP}
+            setFacade $ CursorState cursor
+            -- activate buffer
+            elemId <- getElementIdByDerivPath (unwrap cursor.derivZipper).path
+            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
+          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
+          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
+          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
+          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
+          else pure unit
+        TopState _ -> do
+          if isBufferKey key then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            -- !TODO top --> cursor
             -- !TODO activate buffer
             pure unit
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
@@ -355,7 +424,6 @@ editorComponent = HK.component \tokens input -> HK.do
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
           else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
           else pure unit
-        TopState _ -> unsafeCrashWith "!TODO handle keyboard event in TopState"
 
     handleBufferOutput = case _ of
       ActionOutput act -> handleAction act
@@ -369,7 +437,7 @@ editorComponent = HK.component \tokens input -> HK.do
           Ref.modify_ (Map.insert (unwrap derivZipper).path elemId_) pathElementIds_ref
           pure elemId_
 
-        clsNames /\ kidElems = input.renderDerivExprKids (unwrap derivZipper).expr $ renderExpr false <$> Expr.zipDowns derivZipper
+        clsNames /\ kidElems = input.renderDerivExprKids (unwrap derivZipper).expr $ renderExpr false <<< snd <$> Expr.zipDowns derivZipper
       HH.div
         [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
         , HP.id elemId

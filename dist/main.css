@@ -8,7 +8,11 @@ body {
   padding: 1rem;
 }
 
-.program {
+.program {  
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
+
   font-family: monospace;
 }
 
@@ -46,6 +50,16 @@ body {
 
 .node.highlight {
   box-shadow: 0 0 0 2px rgba(0, 0, 255, 0.5);
+}
+
+.node.select-top {
+  /* background-color: rgba(68, 68, 255, 0.5); */
+  box-shadow: 0 0 0 2px red;
+}
+
+.node.select-bottom {
+  /* background-color: rgba(68, 68, 255, 0.5); */
+  box-shadow: 0 0 0 2px green;
 }
 
 .node.cursor {

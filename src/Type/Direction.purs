@@ -48,8 +48,11 @@ type MoveDir = Variant (MoveDirs ())
 
 class Opposite (dir1 :: Symbol) (dir2 :: Symbol) | dir1 -> dir2
 instance Opposite Up Down
+instance Opposite Down Up
 instance Opposite Left Right
+instance Opposite Right Left
 instance Opposite Next Prev
+instance Opposite Prev Next
 
 upDir :: forall dirs. Variant (UpDir dirs)
 upDir = inj _up (Proxy :: Proxy Up)

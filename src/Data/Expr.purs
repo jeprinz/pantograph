@@ -187,6 +187,11 @@ traverseTooth f (l %< p) = Tooth <$> f l <*> traverse (traverse f) p
 
 unTooth (l %< p) g = l % Array.fromFoldable (ZipList.unpathAround g p)
 
+tooth :: forall l. Int -> Expr l -> Maybe (Tooth l /\ Expr l)
+tooth i (Expr l kids) = do
+  kidsZip /\ kid <- ZipList.zipAt i (List.fromFoldable kids)
+  Just $ (l %< kidsZip) /\ kid
+
 showTooth (l %< p) = show l <> " " <> intercalate " " (ZipList.unpathAround "{}" (show <$> p))
 
 prettyTooth (l %< p) str = prettyExprF (l /\ Array.fromFoldable (ZipList.unpathAround str (pretty <$> p)))
@@ -214,7 +219,7 @@ instance ReflectPathDir Dir.Up where reflectPathDir _ = downDir
 -- | This works on both up and down paths
 prettyPath path str = foldMapPath str prettyTooth path
 
-instance (ReflectPathDir dir, IsExprLabel l) => Pretty (Path dir l) where pretty path = prettyPath path "{{}}"
+instance (ReflectPathDir dir, IsExprLabel l) => Pretty (Path dir l) where pretty path = prettyPath path "⌶"
 
 stepPath :: forall dir l. Tooth l -> Path dir l -> Path dir l
 stepPath th (Path ths) = Path (th : ths)
@@ -222,6 +227,24 @@ stepPath th (Path ths) = Path (th : ths)
 unstepPath :: forall dir l. Path dir l -> Maybe (Tooth l /\ Path dir l)
 unstepPath (Path Nil) = Nothing
 unstepPath (Path (th : ths)) = Just (th /\ Path ths)
+
+toUpPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Up l
+toUpPath path@(Path ths) = (_ $ reflectPathDir path) $ case_
+  # on _up (\_ -> Path ths)
+  # on _down (\_ -> reversePath (Path ths :: Path Down l))
+
+toDownPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Down l
+toDownPath path@(Path ths) = (_ $ reflectPathDir path) $ case_
+  # on _up (\_ -> reversePath (Path ths :: Path Up l))
+  # on _down (\_ -> Path ths)
+
+unPath :: forall dir l. ReflectPathDir dir => Path dir l -> Expr l -> Expr l
+unPath path expr0 = do
+  let Path ths = toUpPath path
+  go ths expr0
+  where
+  go Nil expr = expr
+  go (th : ths) expr = go ths (unTooth th expr)
 
 foldMapMPath'_down nil cons = go
   where
@@ -247,7 +270,7 @@ reversePath (Path ths) = Path (List.reverse ths)
 
 -- | Depending on direction:
 -- |   - If dir == down, then path1 is below path2.
--- |   - If dir == up, then path1 is
+-- |   - If dir == up, then path1 is above path2
 instance Semigroup (Path dir l) where
   append (Path ths1) (Path ths2) = Path (ths1 <> ths2)
 
@@ -277,9 +300,9 @@ zipDownsTooth zipper (_ %< kidsPath) = do
   let zs = zipDowns zipper
   case ZipList.zipAt ix (List.fromFoldable zs) of
     Nothing -> unsafeCrashWith "[zipDownsTooth] bad index"
-    Just (zipsPath /\ _kidZip) -> zipsPath
+    Just (zipsPath /\ _kidZip) -> snd <$> zipsPath
 
-zipDowns :: forall l. Zipper l -> Array (Zipper l)
+zipDowns :: forall l. Zipper l -> Array (Tooth l /\ Zipper l)
 zipDowns (Zipper z) = do
   let l % kids0 = z.expr
   case Array.uncons kids0 of
@@ -290,12 +313,12 @@ zipDowns (Zipper z) = do
         (l %< ZipList.Path {left: mempty, right: List.fromFoldable kids1})
         kid0
   where
-  go :: Array (Zipper l) -> Tooth l -> Expr l -> Array (Zipper l)
+  go :: Array (Tooth l /\ Zipper l) -> Tooth l -> Expr l -> Array (Tooth l /\ Zipper l)
   go zippers th@(_ %< ZipList.Path {right: Nil}) kid =
-    Array.reverse $ Array.cons (Zipper {path: stepPath th z.path, expr: kid}) zippers
+    Array.reverse $ Array.cons (th /\ Zipper {path: stepPath th z.path, expr: kid}) zippers
   go zippers th@(l' %< ZipList.Path {left, right: Cons kid' kids'}) kid =
     go
-      (Array.cons (Zipper {path: stepPath th z.path, expr: kid}) zippers)
+      (Array.cons (th /\ Zipper {path: stepPath th z.path, expr: kid}) zippers)
       (l' %< ZipList.Path {left: RevList.snoc left kid, right: kids'})
       kid'
 
@@ -313,14 +336,32 @@ zipRight (Zipper z) = case z.path of
     expr' /\ kidsPath' <- ZipList.zipRight (z.expr /\ kidsPath)
     Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
 
--- | Zipper'
+-- | ZipperP
 
-data Zipper' l
-  = Zipper'Up {path :: Path Dir.Up l, selection :: Path Dir.Up l, expr :: Expr l}
-  | Zipper'Down {path :: Path Dir.Up l, selection :: Path Dir.Down l, expr :: Expr l}
+newtype ZipperP l = ZipperP
+  { path :: Path Dir.Up l
+  , selection :: Path Dir.Down l \/ Path Dir.Up l
+  , expr :: Expr l}
 
-derive instance Generic (Zipper' l) _
-instance Show l => Show (Zipper' l) where show x = genericShow x
+derive instance Generic (ZipperP l) _
+derive instance Newtype (ZipperP l) _
+instance Show l => Show (ZipperP l) where show x = genericShow x
+
+zipperpTopPath :: forall l. ZipperP l -> Path "up" l
+zipperpTopPath (ZipperP z') = z'.path
+zipperpBottomPath :: forall l. ZipperP l -> Path "up" l
+zipperpBottomPath (ZipperP z') = z'.path <> either reversePath identity z'.selection
+
+unzipperp :: forall l. ZipperP l -> Zipper l
+unzipperp (ZipperP z') = case z'.selection of
+  Left downPath -> Zipper
+    { path: z'.path <> reversePath downPath
+    , expr: z'.expr
+    }
+  Right upPath -> Zipper
+    { path: z'.path
+    , expr: unPath upPath z'.expr
+    }
 
 -- | Change
 

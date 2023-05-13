@@ -413,8 +413,8 @@ zipRight zipper = case zipper.path of
     expr' /\ kidsPath' <- ZipList.zipRight (zipper.expr /\ kidsPath)
     Just $ {path: Path ((l /\ kidsPath') : ths), expr: expr'}
 
--- | Zipper' is the first derivative of a zipper (a zipper selection)
-type Zipper' l = 
+-- | ZipperP is the first derivative of a zipper (a zipper selection)
+type ZipperP l = 
   { path :: Path Dir.Up l
   , selection :: forall dir. Path dir l
   , expr :: Expr l
