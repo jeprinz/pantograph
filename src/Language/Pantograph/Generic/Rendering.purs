@@ -6,10 +6,10 @@ import Data.Tuple.Nested
 import Language.Pantograph.Generic.Grammar
 import Prelude
 import Type.Direction
-
+import Data.Either.Nested
 import Bug (bug)
 import Data.Array as Array
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.Expr as Expr
 import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
@@ -161,14 +161,21 @@ editorComponent = HK.component \tokens input -> HK.do
       { derivZipper: input.derivZipper
       }
 
+  -- state
   currentState /\ state_id <- HK.useState $ initState
-  _ /\ facade_ref <- HK.useRef $ initState
-
-  -- let _ = Debug.trace ("[editorComponent] currentState: " <> show currentState) \_ -> unit
   let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
-  _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
+  -- facade state
+  _ /\ facade_ref <- HK.useRef $ initState
+
+  -- clipboard
+  _ /\ clipboard_ref <- HK.useRef (Nothing :: Maybe (DerivPath Dir.Up l r \/ DerivExpr l r))
+
+  -- mapping: dpath ==> html elem id
   _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (DerivPath Dir.Up l r) String)
+
+  -- highlight path
+  _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
 
   let 
     getElementIdByDerivPath :: DerivPath Dir.Up l r -> HK.HookM Aff String
@@ -359,9 +366,18 @@ editorComponent = HK.component \tokens input -> HK.do
     handleKeyboardEvent :: KeyboardEvent.KeyboardEvent -> HK.HookM Aff Unit
     handleKeyboardEvent event = do
       -- Console.log $ "[event.key] " <> KeyboardEvent.key event
-      let key = KeyboardEvent.key event
-      let shiftKey = KeyboardEvent.shiftKey event
+      let 
+        key = KeyboardEvent.key event
+        shiftKey = KeyboardEvent.shiftKey event
+        ctrlKey = KeyboardEvent.ctrlKey event
+        metaKey = KeyboardEvent.metaKey event
+        altKey = KeyboardEvent.altKey event
+        cmdKey = ctrlKey || metaKey
+
       getFacade >>= case _ of
+        ------------------------------------------------------------------------
+        -- BufferState
+        ------------------------------------------------------------------------
         BufferState buffer -> do
           if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -372,8 +388,6 @@ editorComponent = HK.component \tokens input -> HK.do
             -- tell buffer to deactivate
             elemId <- getElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false
-            -- -- set facade to cursor
-            -- setFacade $ CursorState {derivZipper: buffer.derivZipper}
           else if key == "ArrowUp" then do
             -- Debug.traceM $ "[moveBufferQuery Up]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -385,19 +399,43 @@ editorComponent = HK.component \tokens input -> HK.do
             elemId <- getElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
+        ------------------------------------------------------------------------
+        -- CursorState
+        ------------------------------------------------------------------------
         CursorState cursor -> do
-          if isBufferKey key then do
+          let Expr.Zipper zp = cursor.derivZipper
+          -- copy
+          if cmdKey && key == "c" then do
+            -- update clipboard
+            liftEffect $ Ref.write (Just (Right zp.expr)) clipboard_ref
+          else if cmdKey && key == "v" then do
+            liftEffect (Ref.read clipboard_ref) >>= case _ of
+              Nothing -> pure unit -- nothing in clipboard
+              Just (Left path) -> do
+                -- paste a path
+                setState $ CursorState cursor {derivZipper = Expr.Zipper zp {path = path <> zp.path}}
+              Just (Right expr) -> do
+                -- paste an expr
+                setState $ CursorState cursor {derivZipper = Expr.Zipper zp {expr = expr}}
+          else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
-            elemId <- getElementIdByDerivPath (unwrap cursor.derivZipper).path
+            elemId <- getElementIdByDerivPath zp.path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
           else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
           else pure unit
+        ------------------------------------------------------------------------
+        -- SelectState
+        ------------------------------------------------------------------------
         SelectState select -> do
-          if key == "Escape" then do
+          -- copy
+          if cmdKey && key == "c" then do
+            -- update clipboard
+            liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity (unwrap select.derivZipperP).selection))) clipboard_ref
+          else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState {derivZipper: Expr.unzipperp select.derivZipperP}
           else if isBufferKey key then do
@@ -413,6 +451,9 @@ editorComponent = HK.component \tokens input -> HK.do
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
           else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
           else pure unit
+        ------------------------------------------------------------------------
+        -- TopState
+        ------------------------------------------------------------------------
         TopState _ -> do
           if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
