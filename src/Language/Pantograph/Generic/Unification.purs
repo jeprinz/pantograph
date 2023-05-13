@@ -46,8 +46,8 @@ only in the change parts, not the expression parts.
 The reasoning is that when we perform the typechanging algorithm, the change going in doesn't have metavariables -
 its really only being unified with an expression that has metavariables.
 
-If I have a Change = Expr (ChangeExprLabel l), and then I turn it into something with metavariables for unification
-then I have Expr (ChangeExprLabel (Meta l)), which still doesn't have metavariables in the teeth things.
+If I have a Change = Expr (ChangeLabel l), and then I turn it into something with metavariables for unification
+then I have Expr (ChangeLabel (Meta l)), which still doesn't have metavariables in the teeth things.
 
 It seems wierd to have an change with both "change metavariables" and "expression metavariables" in it anyway.
 

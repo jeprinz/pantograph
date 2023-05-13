@@ -130,10 +130,10 @@ I don't have a good name for this operation, but what it does is:
 input Change c1 and MetaChange c2, and output sub and c3, such that:
 c1 o c3 = sub c2
 Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
-(Note that c2 has metavariables in the change positions, so its (Expr (Meta (ChangeExprLabel l))))
+(Note that c2 has metavariables in the change positions, so its (Expr (Meta (ChangeLabel l))))
 -}
 
-doOperation :: forall l. IsExprLabel l => Change l -> Expr (Meta (ChangeExprLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
+doOperation :: forall l. IsExprLabel l => Change l -> Expr (Meta (ChangeLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
 doOperation c1 c2 = do
     matches <- getMatches c2 c1
     -- TODO: could this be written better

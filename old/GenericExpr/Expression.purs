@@ -26,9 +26,9 @@ data ListExprLabel ExprLabel = ConsExprLabel {-x-} {-xs-} | NilExprLabel
 type Path ExprLabel = Expr (Either (ListExprLabel ExprLabel) (Either (ToothExprLabel ExprLabel) ExprLabel))
 
 -- A Change is just an expression with a few extra possible ExprLabels: namely, Replace, Plus, and Minus.
-type GChange ExprLabel = ExprWM (ChangeExprLabel ExprLabel)
+type GChange ExprLabel = ExprWM (ChangeLabel ExprLabel)
 
-data ChangeExprLabel ExprLabel
+data ChangeLabel ExprLabel
     = ChangeExpr ExprLabel {-whatever kids that ExprLabel had-}
     | Plus ExprLabel Int {- has whatever kids that ExprLabel had except one, and the Int tells which one -}
     | Minus ExprLabel Int {- same as Plus -}

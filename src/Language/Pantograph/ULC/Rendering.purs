@@ -36,7 +36,7 @@ renderDerivExprKids ::
   Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
 renderDerivExprKids (dl % kids) kidElems = do
   let kids_kidElems = kids `Array.zip` kidElems
-  assert (Expr.wellformedExprF "renderDerivExprKids" (dl /\ kids_kidElems)) \_ -> case dl /\ kids_kidElems of
+  assert (Expr.wellformedExprF "renderDerivExprKids" (show <<< fst) (dl /\ kids_kidElems)) \_ -> case dl /\ kids_kidElems of
     -- var
     Zero |- _ /\ [] -> ["var", "zero"] /\ [zeroVarElem]
     Suc |- _ /\ [_ /\ predElem] -> ["var", "suc"] /\ [sucVarElem, predElem]
@@ -45,7 +45,7 @@ renderDerivExprKids (dl % kids) kidElems = do
     Lam |- _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ [lparenElem, varElem, bodElem, rparenElem]
     App |- _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ [lparenElem, aplElem, argElem, rparenElem]
     -- hole
-    Hole |- sort /\ [_ /\ hiElem] -> ["hole"] /\ [lparenElem, HH.div [classNames ["hole-interior"]] [hiElem], colonElem, HH.div [classNames ["hole-sort"]] [HH.text (pretty sort)], rparenElem]
+    Hole |- sort /\ [_ /\ hiElem] -> ["hole"] /\ [HH.div [classNames ["subnode", "hole-interior"]] [hiElem], colonElem, HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)]]
     -- hole interior
     HoleInterior |- _ /\ [] -> ["holeInterior"] /\ [holeInteriorElem]
 

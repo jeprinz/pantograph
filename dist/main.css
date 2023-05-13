@@ -59,6 +59,10 @@ body {
   .subnode
 */
 
+.subnode {
+  display: inline;
+}
+
 .subnode.s-pred {}
 
 .subnode.lam-bind {}
@@ -73,10 +77,6 @@ body {
 /* 
   .subnode.punctuation
 */
-
-.subnode {
-  display: inline;
-}
 
 .subnode.punctuation {}
 

@@ -63,3 +63,8 @@ braces2   = surround "{{" "}}"
 angles   = surround "<" ">"
 ticks    = surround "`" "`"
 
+commas = intercalate ", "
+newlines = intercalate ", "
+-- bullets = intercalate "\n  - "
+bullets :: Array String -> String
+bullets = foldMap ("\n  - " <> _) <<< map (intercalate "    " <<< String.split (Pattern "\n"))

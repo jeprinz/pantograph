@@ -7,14 +7,16 @@ import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
-import Data.Expr (Meta(..), MetaVar(..), freshMetaVar')
+import Data.Expr (class IsExprLabel, Meta(..), MetaVar(..), freshMetaVar', prettyExprF'_unsafe)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Unit (unit)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, expectedHypothesesCount)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
 import Language.Pantograph.Generic.Grammar as G
+import Text.Pretty as P
+import Text.Pretty ((<+>))
 
 data ExprLabel =
     -- sorts
@@ -42,15 +44,23 @@ instance Enum RuleLabel where
 instance Bounded RuleLabel where
     bottom = genericBottom
     top = genericTop
+instance IsExprLabel RuleLabel where
+    prettyExprF'_unsafe (Lam /\ [x, alpha, b]) = P.parens $ "λ" <+> x <+> ":" <+> alpha <+> "↦" <+> b
+    prettyExprF'_unsafe (App /\ [f, a]) = P.parens $ f <+> a
+    prettyExprF'_unsafe (Z /\ []) = "Z"
+    prettyExprF'_unsafe (S /\ [x]) = "S" <> x
+    prettyExprF'_unsafe (Var /\ [x]) = "@" <> x
+    prettyExprF'_unsafe (Let /\ [x, alpha, a, b]) = P.parens $ "let" <+> x <+> ":" <+> alpha <+> "=" <+> a <+> "in" <+> b
+    prettyExprF'_unsafe (Base /\ []) = "Base"
 
-instance IsRuleLabel RuleLabel where
-    expectedHypothesesCount Lam = 3
-    expectedHypothesesCount App = 2
-    expectedHypothesesCount Z = 0
-    expectedHypothesesCount S = 1
-    expectedHypothesesCount Var = 1
-    expectedHypothesesCount Let = 4
-    expectedHypothesesCount Base = 0
+    expectedKidsCount Lam = 3
+    expectedKidsCount App = 2
+    expectedKidsCount Z = 0
+    expectedKidsCount S = 1
+    expectedKidsCount Var = 1
+    expectedKidsCount Let = 4
+    expectedKidsCount Base = 0
+instance IsRuleLabel RuleLabel
 
 type DerivLabel = G.DerivLabel ExprLabel RuleLabel
 

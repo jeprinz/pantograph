@@ -121,12 +121,12 @@ step t@(Expr.Expr l kids) rules =
 --type Language l r = Map r (Rule l r)
 --data Rule l r = Rule (Set MetaVar) (Array (MetaExpr l)) (MetaExpr l)
 
--- The sorts in these are Expr (Meta (ChangeExprLabel (Meta l)).
--- the out Meta is the one that comes from the normal rules. The (ChangeExprLabel (Meta l))
--- corresponds with the changes in the boundaries, which are Expr (ChangeExprLabel (Meta l))
-type ChLanguage l r = Grammar.Language (Expr.ChangeExprLabel (Expr.Meta l)) r
+-- The sorts in these are Expr (Meta (ChangeLabel (Meta l)).
+-- the out Meta is the one that comes from the normal rules. The (ChangeLabel (Meta l))
+-- corresponds with the changes in the boundaries, which are Expr (ChangeLabel (Meta l))
+type ChLanguage l r = Grammar.Language (Expr.ChangeLabel (Expr.Meta l)) r
 
-metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeExprLabel (Expr.Meta l))
+metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeLabel (Expr.Meta l))
 metaInject e = map (map (Expr.Inject <<< Expr.Meta <<< Right)) e
 
 langToChLang :: forall l r. Grammar.Language l r -> ChLanguage l r

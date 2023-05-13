@@ -6,15 +6,17 @@ import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, (%))
+import Data.Expr (class IsExprLabel, prettyExprF'_unsafe, (%))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
-import Language.Pantograph.Generic.Grammar (expectedHypothesesCount, (|-))
+import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
+import Text.Pretty as P
+import Text.Pretty ((<+>))
 
 --------------------------------------------------------------------------------
 -- ExprLabel
@@ -35,8 +37,8 @@ instance IsExprLabel ExprLabel where
   prettyExprF'_unsafe (TermSort /\ _) = "Term"
   prettyExprF'_unsafe (HoleInteriorSort /\ _) = "HoleInterior"
 
-  expectedKidsCount VarSort = 1
-  expectedKidsCount TermSort = 1
+  expectedKidsCount VarSort = 0
+  expectedKidsCount TermSort = 0
   expectedKidsCount HoleInteriorSort = 0
 
 --------------------------------------------------------------------------------
@@ -55,9 +57,12 @@ termSortE = TermSort % []
 holeInteriorSortE :: Expr
 holeInteriorSortE = HoleInteriorSort % []
 
-varSortME = pure VarSort % [] :: MetaExpr
-termSortME = pure TermSort % [] :: MetaExpr
-holeInteriorSortME = pure HoleInteriorSort % [] :: MetaExpr
+varSortME :: MetaExpr
+varSortME = pure VarSort % []
+termSortME :: MetaExpr
+termSortME = pure TermSort % []
+holeInteriorSortME :: MetaExpr
+holeInteriorSortME = pure HoleInteriorSort % []
 
 --------------------------------------------------------------------------------
 -- RuleLabel
@@ -84,14 +89,24 @@ instance Bounded RuleLabel where
   bottom = genericBottom
   top = genericTop
 
-instance Grammar.IsRuleLabel RuleLabel where
-  expectedHypothesesCount Zero = 0
-  expectedHypothesesCount Suc = 1
-  expectedHypothesesCount Lam = 2
-  expectedHypothesesCount App = 2
-  expectedHypothesesCount Ref = 1
-  expectedHypothesesCount Hole = 1
-  expectedHypothesesCount HoleInterior = 0
+instance Expr.IsExprLabel RuleLabel where
+  prettyExprF'_unsafe (Zero /\ []) = "Z"
+  prettyExprF'_unsafe (Suc /\ [x]) = "S" <> x
+  prettyExprF'_unsafe (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
+  prettyExprF'_unsafe (App /\ [f, a]) = P.parens $ f <+> a
+  prettyExprF'_unsafe (Ref /\ [x]) = "@" <> x
+  prettyExprF'_unsafe (Hole /\ [hi]) = "Hole[" <> hi <> "]"
+  prettyExprF'_unsafe (HoleInterior /\ []) = "?"
+
+  expectedKidsCount Zero = 0
+  expectedKidsCount Suc = 1
+  expectedKidsCount Lam = 2
+  expectedKidsCount App = 2
+  expectedKidsCount Ref = 1
+  expectedKidsCount Hole = 1
+  expectedKidsCount HoleInterior = 0
+
+instance Grammar.IsRuleLabel RuleLabel
 
 --------------------------------------------------------------------------------
 -- Language

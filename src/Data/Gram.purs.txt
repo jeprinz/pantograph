@@ -63,7 +63,7 @@ instance GramExprLabel l => GramExprLabel (Meta l) where
   expectedKidsCount (Meta (Left _)) = 0
   expectedKidsCount (Meta (Right l)) = expectedKidsCount l
 
-instance GramExprLabel l => GramExprLabel (ChangeExprLabel l) where
+instance GramExprLabel l => GramExprLabel (ChangeLabel l) where
   prettyNodeG' (Plus th /\ kids) = pure $ prettyTooth th (intercalate "" kids)
   prettyNodeG' (Minus th /\ kids) = pure $ prettyTooth th (intercalate "" kids)
   prettyNodeG' (Expr l /\ kids) = pure $ prettyNodeG (l /\ kids)
@@ -421,26 +421,26 @@ type Zipper' l =
   }
 
 -- | Change
-type Change l = Expr (ChangeExprLabel l)
-data ChangeExprLabel l
+type Change l = Expr (ChangeLabel l)
+data ChangeLabel l
   = Plus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Minus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Expr l {-same number of kids that l has-}
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
-derive instance Generic (ChangeExprLabel l) _
-derive instance Eq l => Eq (ChangeExprLabel l)
-derive instance Ord l => Ord (ChangeExprLabel l)
+derive instance Generic (ChangeLabel l) _
+derive instance Eq l => Eq (ChangeLabel l)
+derive instance Ord l => Ord (ChangeLabel l)
 
-instance Show l => Show (ChangeExprLabel l) where
+instance Show l => Show (ChangeLabel l) where
   show (Plus th) = "(+ " <> showTooth th <> ")"
   show (Minus th) = "(- " <> showTooth th <> ")"
   show (Expr e) = show e
   show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
 
-derive instance Functor ChangeExprLabel
+derive instance Functor ChangeLabel
 
-instance Foldable ChangeExprLabel where
+instance Foldable ChangeLabel where
   foldMap f = case _ of
     Plus th -> foldMapTooth f th
     Minus th -> foldMapTooth f th
@@ -457,7 +457,7 @@ instance Foldable ChangeExprLabel where
     Expr l -> f l b
     Replace e1 e2 -> foldr f (foldr f b e2) e1
 
-instance Traversable ChangeExprLabel where
+instance Traversable ChangeLabel where
   traverse f = case _ of
     Plus th -> Plus <$> traverseTooth f th
     Minus th -> Minus <$> traverseTooth f th
@@ -480,7 +480,7 @@ replaceChange :: forall l. Expr l -> Expr l -> Change l
 replaceChange e1 e2 = Gram (Replace e1 e2 /\ [])
 
 matchChangeNode :: forall l g a.
-  NodeG Array (ChangeExprLabel l) g ->
+  NodeG Array (ChangeLabel l) g ->
   { plus :: Tooth l -> g -> a
   , minus :: Tooth l -> g -> a
   , expr :: l -> Array g -> a

@@ -43,6 +43,7 @@ import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, quotes)
+import Text.Pretty as Pretty
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
 
@@ -71,21 +72,21 @@ class (Eq l, Ord l, Show l) <= IsExprLabel l where
   prettyExprF'_unsafe :: Partial => ExprF l String -> String
   expectedKidsCount :: l -> Int
 
-wellformedExprF :: forall l kid. String -> IsExprLabel l => ExprF l kid -> Assertion Unit
-wellformedExprF source (l /\ kids) = Assertion
+wellformedExprF :: forall l kid. String -> (kid -> String) -> IsExprLabel l => ExprF l kid -> Assertion Unit
+wellformedExprF source showKid (l /\ kids) = Assertion
   { name: "wellformedExprF"
   , source
   , result:
       if expectedKidsCount l == Array.length kids 
         then Right unit
-        else Left $ "An expression with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids."
+        else Left $ "An expression with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids:" <> Pretty.bullets (showKid <$> kids)
   }
 
 wellformedExpr :: forall l. IsExprLabel l => String -> Expr l -> Assertion Unit
-wellformedExpr source (Expr l kids) = wellformedExprF source (l /\ kids)
+wellformedExpr source (Expr l kids) = wellformedExprF source pretty (l /\ kids)
 
 prettyExprF :: forall l. IsExprLabel l => ExprF l String -> String
-prettyExprF e@(l /\ es) = assert (wellformedExprF "prettyExprF" e) \_ ->
+prettyExprF e@(l /\ es) = assert (wellformedExprF "prettyExprF" identity e) \_ ->
   prettyExprF'_unsafe (l /\ (pretty <$> es))
 
 instance IsExprLabel l => Pretty (Expr l) where
@@ -323,29 +324,29 @@ instance Show l => Show (Zipper' l) where show x = genericShow x
 
 -- | Change
 
-type Change l = Expr (ChangeExprLabel l)
+type Change l = Expr (ChangeLabel l)
 
-data ChangeExprLabel l
+data ChangeLabel l
   = Plus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Minus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Inject l {-same number of kids that l has-}
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
-derive instance Generic (ChangeExprLabel l) _
-derive instance Eq l => Eq (ChangeExprLabel l)
-derive instance Ord l => Ord (ChangeExprLabel l)
+derive instance Generic (ChangeLabel l) _
+derive instance Eq l => Eq (ChangeLabel l)
+derive instance Ord l => Ord (ChangeLabel l)
 
-instance Show l => Show (ChangeExprLabel l) where
+instance Show l => Show (ChangeLabel l) where
   show (Plus th) = "(+ " <> showTooth th <> ")"
   show (Minus th) = "(- " <> showTooth th <> ")"
   show (Inject l) = show l
   show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
 
-derive instance Functor ChangeExprLabel
-derive instance Foldable ChangeExprLabel
-derive instance Traversable ChangeExprLabel
+derive instance Functor ChangeLabel
+derive instance Foldable ChangeLabel
+derive instance Traversable ChangeLabel
 
--- instance Foldable ChangeExprLabel where
+-- instance Foldable ChangeLabel where
 --   foldMap f = case _ of
 --     Plus th -> foldMapTooth f th
 --     Minus th -> foldMapTooth f th
@@ -362,7 +363,7 @@ derive instance Traversable ChangeExprLabel
 --     Inject l -> f l b
 --     Replace e1 e2 -> foldr f (foldr f b e2) e1
 
--- instance Traversable ChangeExprLabel where
+-- instance Traversable ChangeLabel where
 --   traverse f = case _ of
 --     Plus th -> Plus <$> traverseTooth f th
 --     Minus th -> Minus <$> traverseTooth f th
@@ -370,7 +371,7 @@ derive instance Traversable ChangeExprLabel
 --     Replace e1 e2 -> Replace <$> traverse f e1 <*> traverse f e2
 --   sequence fa = sequenceDefault fa
 
-instance IsExprLabel l => IsExprLabel (ChangeExprLabel l) where
+instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
   prettyExprF'_unsafe (Plus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Minus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)
