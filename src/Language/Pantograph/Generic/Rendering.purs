@@ -159,7 +159,7 @@ editorComponent = HK.component \tokens input -> HK.do
   let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
-  _ /\ maybeCursorPath_ref :: _ /\ (Ref.Ref (Maybe (DerivPath Dir.Up l r))) <- HK.useRef (Just (unwrap input.derivZipper).path)
+  -- _ /\ maybeCursorPath_ref :: _ /\ (Ref.Ref (Maybe (DerivPath Dir.Up l r))) <- HK.useRef (Just (unwrap input.derivZipper).path)
   _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (DerivPath Dir.Up l r) String)
 
   let 
@@ -178,6 +178,7 @@ editorComponent = HK.component \tokens input -> HK.do
         Nothing -> bug $ "could not find element by id: " <> elemId
         Just elem -> pure elem
 
+    {-
     setNodeElementStyle :: Ref.Ref (Maybe (DerivPath Dir.Up l r)) -> String -> Maybe (DerivPath Dir.Up l r) -> HK.HookM Aff Unit
     setNodeElementStyle mb_derivPath_ref className mb_derivPath = do
       -- unset the current node element
@@ -202,42 +203,73 @@ editorComponent = HK.component \tokens input -> HK.do
           Just derivPath -> do
             elem' <- getElementByPath derivPath
             liftEffect $ setClassName elem' className true
+    -}
 
-    setCursorElement = setNodeElementStyle maybeCursorPath_ref cursorClassName
-    setHighlightElement = setNodeElementStyle maybeHighlightPath_ref highlightClassName
+    setNodeElementStyle :: String -> Maybe (DerivPath Dir.Up l r) -> Maybe (DerivPath Dir.Up l r) -> HK.HookM Aff Unit
+    setNodeElementStyle className mb_dpath_old mb_dpath_new = do
+      case mb_dpath_old of
+        Nothing -> do
+          -- set the new node element
+          update
+        Just dpath ->
+          -- ignore if the new path is the same as the old path
+          if Just dpath == mb_dpath_new then
+            pure unit
+          else do
+            -- unset the old node element
+            elem <- getElementByPath dpath
+            liftEffect $ setClassName elem className false
+            -- set the new node element
+            update
+      where
+      update = do
+        case mb_dpath_new of
+          Nothing -> pure unit
+          Just dpath -> do
+            elem <- getElementByPath dpath
+            liftEffect $ setClassName elem className true
+
+    setCursorElement = setNodeElementStyle cursorClassName
+    setHighlightElement mb_dpath_new = do
+      mb_dpath_old <- liftEffect $ Ref.read maybeHighlightPath_ref
+      setNodeElementStyle highlightClassName mb_dpath_old mb_dpath_new
+      liftEffect $ Ref.write mb_dpath_new maybeHighlightPath_ref
 
     unsetFacadeElements :: HK.HookM Aff Unit
     unsetFacadeElements = getFacade >>= case _ of
-      BufferState _st -> do
+      BufferState buffer -> do
         setHighlightElement Nothing
-        setCursorElement Nothing
-      CursorState _st -> do
+        setCursorElement (Just (unwrap (buffer.derivZipper)).path) Nothing
+      CursorState cursor -> do
         setHighlightElement Nothing
-        setCursorElement Nothing
-      SelectState _st -> do
+        setCursorElement (Just (unwrap (cursor.derivZipper)).path) Nothing
+      SelectState _select -> do
         setHighlightElement Nothing
-        setCursorElement Nothing
-      TopState _st -> do
+        -- setCursorElement Nothing
+        -- !TODO unset selection
+      TopState _top -> do
         setHighlightElement Nothing
 
+    -- | Sets the facade state, which updates all the corresponding UI elements.
     setFacade :: State l r -> HK.HookM Aff Unit
     setFacade st = do
       -- Debug.traceM $ "[setFacade] new state: " <> pretty st
       unsetFacadeElements
       setFacade' st
 
-    -- doesn't `unsetFacadeElements` first
+    -- | Sets the facade state, which updates all the corresponding UI elements.
+    -- | Doesn't `unsetFacadeElements` first
     setFacade' :: State l r -> HK.HookM Aff Unit
     setFacade' st = do
       case st of
         CursorState cursor -> do
-          setCursorElement (Just (unwrap cursor.derivZipper).path)
+          setCursorElement Nothing (Just (unwrap cursor.derivZipper).path)
         BufferState buffer -> do
-          setCursorElement (Just (unwrap buffer.derivZipper).path)
+          setCursorElement Nothing (Just (unwrap buffer.derivZipper).path)
         SelectState select -> do
           unsafeCrashWith "!TODO setFacade SelectState"
         TopState top -> do
-          setCursorElement Nothing
+          pure unit
       liftEffect (Ref.write st facade_ref)
 
     getFacade :: HK.HookM Aff (State l r)
@@ -444,6 +476,8 @@ bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""
   bufferFocus /\ bufferFocus_id <- HK.useState 0
+  -- !TODO bufferFocus is actually 2D, since eventually I'll implement cycling
+  -- between different edits that have the same label
 
   let bufferInputRefLabelString = "buffer-input"
 
