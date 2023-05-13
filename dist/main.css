@@ -19,6 +19,7 @@ body {
 .node {
   display: inline;
   cursor: pointer;
+  border-radius: 1rem 1rem / 2rem;
 }
 
 .node.zero {}
@@ -37,12 +38,9 @@ body {
   background-color: rgb(255, 165, 63);
 }
 
-.node.hole-interior {
+.node.holeInterior {
   padding: 0 0.2rem;
   background-color: rgb(255, 0, 0);
-}
-
-.node.hole-interior>.subnode.holeInterior {
   color: white;
 }
 
@@ -71,8 +69,7 @@ body {
 
 .subnode.ref-var {}
 
-.subnode.hole-interior {
-}
+.subnode.hole-interior {}
 
 /* 
   .subnode.punctuation
@@ -95,6 +92,10 @@ body {
 .subnode.punctuation.holeInterior {}
 
 .subnode.punctuation.colon {
+  margin: 0 0.2rem;
+}
+
+.subnode.punctuation.turnstile {
   margin: 0 0.2rem;
 }
 

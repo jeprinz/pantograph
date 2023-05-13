@@ -25,6 +25,7 @@ import Data.Rational as Rational
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.UUID as UUID
+import Data.Variant (case_, on)
 import Debug as Debug
 import Effect.Aff (Aff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -66,7 +67,7 @@ data Output l r
 data Query l r a
   -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
   = SetBufferEnabledQuery Boolean a
-  | MoveBufferQuery MoveDir a
+  | MoveBufferQuery VerticalDir a
   | SubmitBufferQuery a
 
 type Edit l r =
@@ -279,7 +280,7 @@ editorComponent = HK.component \tokens input -> HK.do
       let shiftKey = KeyboardEvent.shiftKey event
       getFacade >>= case _ of
         BufferState buffer -> do
-          if key == " " then do
+          if key `Array.elem` [" ", "Enter"] then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             elemId <- agetElementIdByDerivPath (unwrap buffer.derivZipper).path
             HK.tell tokens.slotToken bufferSlot elemId SubmitBufferQuery
@@ -302,7 +303,7 @@ editorComponent = HK.component \tokens input -> HK.do
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
         CursorState cursor -> do
-          if  key == " " then do
+          if key `Array.elem` [" ", "Enter"] then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
             elemId <- agetElementIdByDerivPath (unwrap cursor.derivZipper).path
@@ -479,10 +480,9 @@ bufferComponent = HK.component \tokens input -> HK.do
       pure (Just a)
     MoveBufferQuery qm a -> do
       if isEnabled then do
-        -- case qm of
-        --   Up -> HK.modify_ bufferFocus_id (_ - 1)
-        --   Down -> HK.modify_ bufferFocus_id (_ + 1)
-        let _ = unsafeCrashWith "TODO"
+        (qm # _) $ case_
+          # on _up (\_ -> HK.modify_ bufferFocus_id (_ - 1))
+          # on _down (\_ -> HK.modify_ bufferFocus_id (_ + 1))
         pure $ Just a
       else
         pure Nothing
