@@ -37,38 +37,36 @@ body {
 .node.ref {}
 
 .node.highlight {
-  box-shadow: 0 0 0 2px rgba(0, 0, 255, 0.5);
+  box-shadow: 0 0 0 2px blue;
 }
 
 .node.select-top {
-  /* background-color: rgba(68, 68, 255, 0.5); */
-  /* box-shadow: 0 0 0 2px red; */
   box-shadow: 0 0 0 2px blue;
-  background-color: rgba(203, 203, 255, 0.5);
+  background-color: rgba(157, 157, 255, 0.5);
 }
 
 .node.select-bottom {
-  /* background-color: rgba(68, 68, 255, 0.5); */
-  /* box-shadow: 0 0 0 2px green; */
   box-shadow: 0 0 0 2px blue;
   background-color: white;
 }
 
 .node.cursor {
-  /* background-color: rgba(68, 68, 255, 0.5); */
   box-shadow: 0 0 0 2px blue;
 }
 
 .node.hole {
-  padding: 0 0.2rem;
-  /* box-shadow: 0 0 0 1px purple; */
-  background-color: rgb(255, 210, 158);
+}
+.node.hole > .subnode.inner {
+  padding: 0 0.4rem;
+  box-shadow: 0 0 0 2px rgb(255, 50, 50) inset;
 }
 
 .node.holeInterior {
+}
+
+.node.holeInterior > .subnode.inner {
   padding: 0 0.2rem;
-  background-color: rgb(255, 165, 165);
-  /* color: white; */
+  box-shadow: 0 0 0 2px rgb(255, 50, 50) inset;
 }
 
 /*
@@ -77,6 +75,7 @@ body {
 
 .subnode {
   display: inline;
+  border-radius: 1rem 1rem / 2rem;
 }
 
 .subnode.s-pred {}

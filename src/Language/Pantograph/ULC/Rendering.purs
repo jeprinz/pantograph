@@ -50,11 +50,16 @@ renderDerivExprKids (dl % kids) kidElems = do
       [lparenElem, aplElem, spaceElem, argElem, rparenElem]
     -- hole
     Hole |- sort /\ [_ /\ hiElem] -> ["hole"] /\ 
-      [ HH.div [classNames ["subnode", "hole-interior"]] [hiElem], colonElem
-      , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+      [ HH.div [classNames ["subnode", "inner"]]
+          [ HH.div [classNames ["subnode", "hole-interior"]] [hiElem], colonElem
+          , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+          ]
       ]
     -- hole interior
-    HoleInterior |- _ /\ [] -> ["holeInterior"] /\ [holeInteriorElem]
+    HoleInterior |- _ /\ [] -> ["holeInterior"] /\ 
+      [ HH.div [classNames ["subnode", "inner"]]
+          [holeInteriorElem]
+      ]
 
 makePuncElem :: forall w i. String -> String -> HH.HTML w i
 makePuncElem className symbol = HH.div [classNames ["subnode", "punctuation", className]] [HH.text symbol]
