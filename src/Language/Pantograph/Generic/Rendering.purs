@@ -97,7 +97,7 @@ data State l r
 derive instance Generic (State l r) _
 instance (Show l, Show r) => Show (State l r) where show x = genericShow x
 
-instance (Expr.IsExprLabel l, IsRuleLabel r) => Pretty (State l r) where
+instance (Expr.IsExprLabel l, IsRuleLabel l r) => Pretty (State l r) where
   pretty = case _ of
     BufferState buffer -> Array.intercalate "\n"
       [ "buffer:"
@@ -148,7 +148,7 @@ type EditorSpec l r =
   }
 
 editorComponent :: forall q l r.
-  Expr.IsExprLabel l => IsRuleLabel r =>
+  IsRuleLabel l r =>
   H.Component 
     q
     (EditorSpec l r)
@@ -579,7 +579,7 @@ type BufferInput l r =
   , edits :: Array (Edit l r)
   }
 
-bufferComponent :: forall l r. Expr.IsExprLabel l => IsRuleLabel r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
+bufferComponent :: forall l r. IsRuleLabel l r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
 bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""

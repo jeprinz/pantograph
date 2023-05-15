@@ -89,24 +89,22 @@ instance Bounded RuleLabel where
   bottom = genericBottom
   top = genericTop
 
-instance Expr.IsExprLabel RuleLabel where
-  prettyExprF'_unsafe (Zero /\ []) = "Z"
-  prettyExprF'_unsafe (Suc /\ [x]) = "S" <> x
-  prettyExprF'_unsafe (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
-  prettyExprF'_unsafe (App /\ [f, a]) = P.parens $ f <+> a
-  prettyExprF'_unsafe (Ref /\ [x]) = "@" <> x
-  prettyExprF'_unsafe (Hole /\ [hi]) = "Hole[" <> hi <> "]"
-  prettyExprF'_unsafe (HoleInterior /\ []) = "?"
+-- instance Expr.IsExprLabel RuleLabel where
+--   prettyExprF'_unsafe (Zero /\ []) = "Z"
+--   prettyExprF'_unsafe (Suc /\ [x]) = "S" <> x
+--   prettyExprF'_unsafe (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
+--   prettyExprF'_unsafe (App /\ [f, a]) = P.parens $ f <+> a
+--   prettyExprF'_unsafe (Ref /\ [x]) = "@" <> x
+--   prettyExprF'_unsafe (Hole /\ [hi]) = "Hole[" <> hi <> "]"
+--   prettyExprF'_unsafe (HoleInterior /\ []) = "?"
 
-  expectedKidsCount Zero = 0
-  expectedKidsCount Suc = 1
-  expectedKidsCount Lam = 2
-  expectedKidsCount App = 2
-  expectedKidsCount Ref = 1
-  expectedKidsCount Hole = 1
-  expectedKidsCount HoleInterior = 0
-
-instance Grammar.IsRuleLabel RuleLabel
+--   expectedKidsCount Zero = 0
+--   expectedKidsCount Suc = 1
+--   expectedKidsCount Lam = 2
+--   expectedKidsCount App = 2
+--   expectedKidsCount Ref = 1
+--   expectedKidsCount Hole = 1
+--   expectedKidsCount HoleInterior = 0
 
 --------------------------------------------------------------------------------
 -- Language
@@ -114,6 +112,17 @@ instance Grammar.IsRuleLabel RuleLabel
 
 type Language = Grammar.Language ExprLabel RuleLabel
 type Rule = Grammar.Rule ExprLabel
+
+instance Grammar.IsRuleLabel ExprLabel RuleLabel where
+  prettyExprF'_unsafe_RuleLabel (Zero /\ []) = "Z"
+  prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = "S" <> x
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
+  prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
+  prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
+  prettyExprF'_unsafe_RuleLabel (Hole /\ [hi]) = "Hole[" <> hi <> "]"
+  prettyExprF'_unsafe_RuleLabel (HoleInterior /\ []) = "?"
+
+  language = language
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of
