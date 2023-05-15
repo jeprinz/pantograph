@@ -3,7 +3,7 @@ module Language.Pantograph.Generic.Smallstep where
 import Data.Foldable
 import Language.Pantograph.Generic.ChangeAlgebra
 import Language.Pantograph.Generic.Unification
-import Prelude
+import Prelude hiding (compose)
 
 import Data.Array as Array
 import Data.Either (Either(..))
@@ -22,7 +22,7 @@ import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Partial.Unsafe (unsafeCrashWith)
 import Type.Direction as Dir
-import Util (lookup')
+import Util (lookup', fromJust')
 
 data Direction = Up | Down -- TODO:
 
@@ -189,3 +189,29 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
                 (Inject (Grammar.DerivLabel ruleLabel (fst (endpoints chBackDown))))
                 (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
 defaultUp _ _ = Nothing
+
+-------------- Other typechange related functions ---------------------
+
+getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
+getPathChange lang (Expr.Path Nil) sort = inject sort
+getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left, right})) : path)) sort
+{-
+Needs to:
+- get the corresponding change from the array
+- freshen the variables
+- one-sided unify the left/right(which one?) endpoint with the sort
+- (should only substitute for metavars in the thing from lang, not the sort)
+- return the change after the substitution
+-}
+   =
+   -- TODO: Henry, how do I use Assertion?
+   if not (sort1 == sort) then unsafeCrashWith "assertion failed: these should be equal" else
+   let (Grammar.ChangeRule vars crustyKidChanges) = (TotalMap.lookup r lang) in
+   let crustyKidChange = fromJust' "bla" $ Array.index crustyKidChanges (Rev.length left) in
+   let freshener = genFreshener vars in
+   let kidChange = freshen freshener crustyKidChange in
+   let leftType = snd $ endpoints kidChange in
+   let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType sort in
+   -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
+   let kidChange' = subSomeMetaChange sub kidChange in
+   compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))

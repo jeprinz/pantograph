@@ -106,8 +106,8 @@ derive instance Functor ChangeRule
 derive instance Foldable ChangeRule
 derive instance Traversable ChangeRule
 
-type LanguageChanges l r = TotalMap r (ChangeRule l)
+type LanguageChanges l r = TotalMap r (ChangeRule l) -- changes go from child to parent
 
 defaultLanguageChanges :: forall l r. IsExprLabel l => IsRuleLabel r => Language l r -> LanguageChanges l r
 defaultLanguageChanges = map \(Rule mvars kids parent) ->
-  ChangeRule mvars (diff parent <$> kids)
+  ChangeRule mvars ((flip diff) parent <$> kids)

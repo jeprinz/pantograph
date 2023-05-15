@@ -27,6 +27,10 @@ import Data.Traversable (sequence)
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Exception.Unsafe (unsafeThrow)
 import Partial.Unsafe (unsafeCrashWith)
+import Data.List.Zip as ZipList
+
+inject :: forall l. Expr l -> Change l
+inject = map Inject
 
 -- HENRY: due to generic fixpoint form of `Gram`, don't need to manually recurse
 invert :: forall l. Change l -> Change l
@@ -175,3 +179,20 @@ isPostfix (Expr l kids) e2 =
             innerCh <- isPostfix kid e2
             Just $ Expr (Minus (Tooth l (Path {left: reverse $ List.fromFoldable leftKids, right: List.fromFoldable rightKids}))) [innerCh]
           ) splits
+
+-- TODO: I need to figure out how to make this stuff work in a more generic way!
+subSomeChangeLabel :: forall l. IsExprLabel l => Sub l -> ChangeLabel (Meta l) -> ChangeLabel (Meta l)
+subSomeChangeLabel sub =
+  let subExpr = subSomeMetaVars sub in
+  case _ of
+      Plus (Tooth dir (ZipList.Path {left, right})) -> Plus (Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))
+      Minus (Tooth dir (ZipList.Path {left, right})) -> Minus (Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))
+      Inject l -> Inject l
+      Replace e1 e2 -> Replace (subExpr e1) (subExpr e2)
+
+-- TODO: I need to figure out how this function can really be written without repetition relative to other substitution functions we have in Expr
+subSomeMetaChange :: forall l. IsExprLabel l => Sub l -> MetaChange l -> MetaChange l
+subSomeMetaChange sub (Expr l kids) =
+    case l of
+        Inject (Meta (Left x)) -> inject $ lookup' x sub
+        _ -> Expr (subSomeChangeLabel sub l) (map (subSomeMetaChange sub) kids)

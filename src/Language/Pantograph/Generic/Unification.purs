@@ -22,6 +22,7 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (pretty, quotes)
 import Util (lookup', union')
+import Data.Either (Either(..))
 
 {-
 
@@ -63,12 +64,21 @@ genFreshener vars = foldl
 class Freshenable t where
     freshen :: Ren -> t -> t
 
-instance Expr.IsExprLabel l => Freshenable (Expr.MetaExpr l) where
-    freshen sub expr = 
-        assert (Expr.wellformedExpr "freshen" expr) \_ ->
-        case expr of
-            (Expr.Expr (Expr.Meta (Left x)) []) -> Expr.Expr (Expr.Meta (Left (lookup' x sub))) []
-            (Expr.Expr (Expr.Meta (Right l)) kids) -> Expr.Expr ((Expr.Meta (Right l))) (map (freshen sub) kids)
+instance Freshenable (Expr.Meta l) where
+    freshen ren (Expr.Meta (Left x)) = Expr.Meta (Left (lookup' x ren))
+    freshen ren (Expr.Meta (Right l)) = Expr.Meta (Right l)
+
+-- TODO: I really want this definition, but then I get an overlapping instances issue
+--instance (Functor f, Freshenable l) => Freshenable (f l) where
+--    freshen ren x = map (freshen sub) x
+
+-- TODO: so instead, I have it written manually in some specific cases
+
+instance Freshenable l => Freshenable (Expr.Expr l) where
+    freshen sub expr = map (freshen sub) expr
+
+instance Freshenable l => Freshenable (Expr.ChangeLabel l) where
+    freshen sub l = map (freshen sub) l
 
 type Sub l = Map Expr.MetaVar (Expr.MetaExpr l)
 
@@ -85,6 +95,7 @@ noMetaVars source mexpr0 = Assertion
 ------------- Unification ------------------------------------------------------
 
 -- we may need a more general notion of unification later, but this is ok for now
+-- NOTE: should prefer substituting variables from the left if possible
 unify :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
 unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
     case l1 /\ l2 of
