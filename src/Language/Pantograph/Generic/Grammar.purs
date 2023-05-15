@@ -14,17 +14,26 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap (TotalMap)
+import Data.TotalMap as TotalMap
 import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple (curry, fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Type.Proxy (Proxy(..))
 
 --data ExprLabel
 
 --data RuleLabel = Lam | App | Z | S
 
-class (Enum r, Bounded r, Show r, IsExprLabel r) <= IsRuleLabel r
+class (IsExprLabel l, Eq r, Enum r, Bounded r, Show r) <= IsRuleLabel l r | r -> l where
+  prettyExprF'_unsafe_RuleLabel :: Partial => r /\ Array String -> String
+  language :: Language l r
+
+expectedHypsCount :: forall l r. IsRuleLabel l r => r -> Int
+expectedHypsCount r = do
+  let Rule _ hyps _ = TotalMap.lookup r language 
+  Array.length hyps
 
 data DerivLabel l r = DerivLabel r (Expr.MetaExpr l)
 
@@ -35,13 +44,23 @@ instance (Show l, Show r) => Show (DerivLabel l r) where show x = genericShow x
 derive instance (Eq l, Eq r) => Eq (DerivLabel l r)
 derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
-instance (IsExprLabel l, IsExprLabel r, IsRuleLabel r) => IsExprLabel (DerivLabel l r) where
-  -- NOTE: This implementation ignores the expression label and metaexpression, but maybe we want
-  -- to print those at some point for debugging?
-  prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = 
-    Expr.prettyExprF (r /\ kids)
+newtype AsExprLabel a = AsExprLabel a
+derive newtype instance Eq a => Eq (AsExprLabel a)
+derive newtype instance Ord a => Ord (AsExprLabel a)
+derive newtype instance Show a => Show (AsExprLabel a)
 
-  expectedKidsCount (DerivLabel r _) = expectedKidsCount r
+-- | Can pretend that a rule label is the expr label of derivations.
+instance IsRuleLabel l r => IsExprLabel (AsExprLabel r) where
+  prettyExprF'_unsafe (AsExprLabel r /\ kids) = prettyExprF'_unsafe_RuleLabel (r /\ kids)
+  expectedKidsCount (AsExprLabel r) = expectedHypsCount r
+
+instance IsRuleLabel l r => IsExprLabel (DerivLabel l r) where
+  -- NOTE: This implementation ignores the expression label and metaexpression,
+  -- but maybe we want to print those at some point for debugging?
+  prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = 
+    Expr.prettyExprF (AsExprLabel r /\ kids)
+
+  expectedKidsCount (DerivLabel r _) = expectedKidsCount (AsExprLabel r)
 
 {-
 --DerivTerm needs built-in hole?
@@ -108,6 +127,6 @@ derive instance Traversable ChangeRule
 
 type LanguageChanges l r = TotalMap r (ChangeRule l)
 
-defaultLanguageChanges :: forall l r. IsExprLabel l => IsRuleLabel r => Language l r -> LanguageChanges l r
+defaultLanguageChanges :: forall l r. IsExprLabel l => IsRuleLabel l r => Language l r -> LanguageChanges l r
 defaultLanguageChanges = map \(Rule mvars kids parent) ->
   ChangeRule mvars (diff parent <$> kids)

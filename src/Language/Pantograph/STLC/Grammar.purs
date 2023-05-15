@@ -7,16 +7,20 @@ import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
+import Data.Eq.Generic (genericEq)
 import Data.Expr (class IsExprLabel, Meta(..), MetaVar(..), freshMetaVar', prettyExprF'_unsafe)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
+import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Data.TotalMap as TotalMap
 import Data.Unit (unit)
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
 import Language.Pantograph.Generic.Grammar as G
-import Text.Pretty as P
+import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty ((<+>))
+import Text.Pretty as P
 
 data ExprLabel =
     -- sorts
@@ -28,6 +32,17 @@ data ExprLabel =
     | TBase | TArrow {-type-} {-type-} | TBool
     -- metadata
     | Name String
+
+derive instance Generic ExprLabel _
+instance Eq ExprLabel where eq x y = genericEq x y
+instance Ord ExprLabel where compare x y = genericCompare x y
+instance Show ExprLabel where show x = genericShow x
+
+instance Expr.IsExprLabel ExprLabel where
+    -- prettyExprF'_unsafe :: Partial => ExprF ExprLabel String -> String
+    prettyExprF'_unsafe = unsafeCrashWith "TODO"
+    -- expectedKidsCount :: ExprLabel -> Int
+    expectedKidsCount = unsafeCrashWith "TODO"
 
 type Expr = Expr.Expr ExprLabel
 type MetaExpr = Expr.MetaExpr ExprLabel
@@ -44,23 +59,49 @@ instance Enum RuleLabel where
 instance Bounded RuleLabel where
     bottom = genericBottom
     top = genericTop
-instance IsExprLabel RuleLabel where
-    prettyExprF'_unsafe (Lam /\ [x, alpha, b]) = P.parens $ "λ" <+> x <+> ":" <+> alpha <+> "↦" <+> b
-    prettyExprF'_unsafe (App /\ [f, a]) = P.parens $ f <+> a
-    prettyExprF'_unsafe (Z /\ []) = "Z"
-    prettyExprF'_unsafe (S /\ [x]) = "S" <> x
-    prettyExprF'_unsafe (Var /\ [x]) = "@" <> x
-    prettyExprF'_unsafe (Let /\ [x, alpha, a, b]) = P.parens $ "let" <+> x <+> ":" <+> alpha <+> "=" <+> a <+> "in" <+> b
-    prettyExprF'_unsafe (Base /\ []) = "Base"
 
-    expectedKidsCount Lam = 3
-    expectedKidsCount App = 2
-    expectedKidsCount Z = 0
-    expectedKidsCount S = 1
-    expectedKidsCount Var = 1
-    expectedKidsCount Let = 4
-    expectedKidsCount Base = 0
-instance IsRuleLabel RuleLabel
+instance IsRuleLabel ExprLabel RuleLabel where
+    prettyExprF'_unsafe_RuleLabel (Lam /\ [x, alpha, b]) = P.parens $ "λ" <+> x <+> ":" <+> alpha <+> "↦" <+> b
+    prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
+    prettyExprF'_unsafe_RuleLabel (Z /\ []) = "Z"
+    prettyExprF'_unsafe_RuleLabel (S /\ [x]) = "S" <> x
+    prettyExprF'_unsafe_RuleLabel (Var /\ [x]) = "@" <> x
+    prettyExprF'_unsafe_RuleLabel (Let /\ [x, alpha, a, b]) = P.parens $ "let" <+> x <+> ":" <+> alpha <+> "=" <+> a <+> "in" <+> b
+    prettyExprF'_unsafe_RuleLabel (Base /\ []) = "Base"
+
+    language = TotalMap.makeTotalMap case _ of
+        App -> G.makeRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+            [ gamma ⊢ exp TArrow [alpha, beta]
+            , gamma ⊢ alpha ]
+            /\ --------
+            ( gamma ⊢ beta )
+        Lam -> G.makeRule ["gamma", "alpha", "name", "beta"] \[gamma, alpha, name, beta] ->
+            [ exp SType [alpha]
+            , exp CCons [gamma, name, alpha] ⊢ beta ]
+            /\ --------
+            ( gamma ⊢ exp TArrow [alpha, beta] )
+        Z -> G.makeRule ["gamma", "name", "alpha"] \[gamma, name, alpha] ->
+            [ ]
+            /\ --------
+            ( exp CCons [gamma, name, alpha] ⊢@ alpha )
+        S -> G.makeRule ["gamma", "alpha", "name", "beta"] \[gamma, alpha, name, beta] ->
+            [ gamma ⊢@ alpha ]
+            /\ --------
+            ( exp CCons [gamma, name, beta] ⊢@ alpha )
+        Var -> G.makeRule ["gamma", "x"] \[gamma, alpha] ->
+            [ gamma ⊢@ alpha ]
+            /\ --------
+            ( gamma ⊢ alpha )
+        Let -> G.makeRule ["gamma", "name", "alpha", "impl", "beta", "body"] \[gamma, name, alpha, impl, beta, body] ->
+            [ exp SType [alpha]
+            , gamma ⊢ alpha
+            , exp CCons [gamma, name, alpha] ⊢ beta ] 
+            /\ --------
+            ( gamma ⊢ beta )
+        Base -> G.makeRule [] \[] ->
+            []
+            /\ --------
+            ( exp SType [exp TBase []] )
 
 type DerivLabel = G.DerivLabel ExprLabel RuleLabel
 
@@ -74,6 +115,12 @@ exp l kids = Expr.Expr (Meta (Right l)) kids
 
 var :: forall l. MetaVar -> Expr.MetaExpr l
 var x = Expr.Expr (Meta (Left x)) []
+
+judgeTerm gamma alpha = exp STerm [gamma, alpha]
+infix 8 judgeTerm as ⊢
+
+judgeVar gamma alpha = exp SVar [gamma, alpha]
+infix 8 judgeVar as ⊢@
 
 --data Rule l r = Rule (Set MetaVar) (Array (MetaExpr l)) (MetaExpr l)
 rules :: Array Rule
