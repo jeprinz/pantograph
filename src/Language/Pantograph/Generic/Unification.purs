@@ -1,10 +1,13 @@
 module Language.Pantograph.Generic.Unification where
 
 import Prelude
+
+import Bug as Bug
 import Bug.Assertion (Assertion(..), assert, assertInput)
 import Control.Apply (lift2)
 import Control.Monad.Error.Class (throwError)
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Either (Either(..))
 import Data.Expr ((%))
 import Data.Expr as Expr
@@ -19,10 +22,8 @@ import Data.MultiMap as MultiMap
 import Data.Set (Set)
 import Data.Traversable (traverse)
 import Data.Tuple.Nested (type (/\), (/\))
-import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (pretty, quotes)
 import Util (lookup', union')
-import Data.Either (Either(..))
 
 {-
 
@@ -114,7 +115,7 @@ unifyLists (e1 : es1) (e2 : es2) = do
     let es2' = map (Expr.subSomeMetaVars sub) es2
     es /\ sub2 <- unifyLists es1' es2'
     pure $ (e : es) /\ union' sub sub2
-unifyLists _ _ = unsafeCrashWith "shouldn't happen"
+unifyLists _ _ = Bug.bug "[unifyLists] shouldn't happen"
 
 ------------- Another operation I need for typechanges stuff ------------------
 

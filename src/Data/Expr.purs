@@ -40,7 +40,7 @@ import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Effect.Unsafe (unsafePerformEffect)
-import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, quotes)
 import Text.Pretty as Pretty
@@ -302,7 +302,7 @@ zipDownsTooth zipper (_ %< kidsPath) = do
   let ix = ZipList.leftLength kidsPath
   let zs = zipDowns zipper
   case ZipList.zipAt ix (List.fromFoldable zs) of
-    Nothing -> unsafeCrashWith "[zipDownsTooth] bad index"
+    Nothing -> bug "[zipDownsTooth] bad index"
     Just (zipsPath /\ _kidZip) -> snd <$> zipsPath
 
 zipDowns :: forall l. Zipper l -> Array (Tooth l /\ Zipper l)

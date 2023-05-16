@@ -13,7 +13,7 @@ import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Tuple (fst, snd)
 import Data.Variant (case_, on)
-import Partial.Unsafe (unsafeCrashWith)
+import Hole as Hole
 
 -- data MoveDir
 --   = MoveUp | MoveDown | MoveLeft | MoveRight 
@@ -26,8 +26,8 @@ moveZipper = case_
   # on _down (\_ -> map snd <<< Array.head <<< zipDowns)
   # on _left (\_ -> zipLeft)
   # on _right (\_ -> zipRight)
-  # on _prev (\_ -> unsafeCrashWith "!TODO moveZipper prev")
-  # on _next (\_ -> unsafeCrashWith "!TODO moveZipper next")
+  # on _prev (\_ -> Hole.hole "moveZipper prev")
+  # on _next (\_ -> Hole.hole "moveZipper next")
 
 moveZipperp :: forall l. MoveDir -> Zipperp l -> Maybe (Zipper l \/ Zipperp l)
 moveZipperp dir zipperp = do
@@ -81,5 +81,5 @@ moveZipperp' = case_
           Just (Zipperp zp {selection = Right (stepPath (Tooth l kidsZip') upPath'), expr = expr'})
         Left _ -> Nothing -- can't zip left/right when selecting up
     )
-  # on _prev (\_ -> unsafeCrashWith "!TODO moveZipperp' prev")
-  # on _next (\_ -> unsafeCrashWith "!TODO moveZipperp' next")
+  # on _prev (\_ -> Hole.hole "moveZipperp' prev")
+  # on _next (\_ -> Hole.hole "moveZipperp' next")

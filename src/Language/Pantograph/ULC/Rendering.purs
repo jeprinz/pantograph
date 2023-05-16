@@ -24,7 +24,6 @@ import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (Action(..))
 import Language.Pantograph.Generic.Rendering as Rendering
-import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (pretty)
 
 type Query = Rendering.Query ExprLabel RuleLabel

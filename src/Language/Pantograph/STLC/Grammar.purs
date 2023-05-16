@@ -16,9 +16,9 @@ import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Unit (unit)
+import Hole as Hole
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
 import Language.Pantograph.Generic.Grammar as G
-import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, (<+>))
 import Text.Pretty as P
 
@@ -51,9 +51,9 @@ instance Pretty ExprLabel where
 
 instance Expr.IsExprLabel ExprLabel where
     -- prettyExprF'_unsafe :: Partial => ExprF ExprLabel String -> String
-    prettyExprF'_unsafe = unsafeCrashWith "TODO"
+    prettyExprF'_unsafe _ = Hole.hole "STLC prettyExprF'_unsafe"
     -- expectedKidsCount :: ExprLabel -> Int
-    expectedKidsCount = unsafeCrashWith "TODO"
+    expectedKidsCount _ = Hole.hole "STLC expectedKidsCount"
 
 type Expr = Expr.Expr ExprLabel
 type MetaExpr = Expr.MetaExpr ExprLabel

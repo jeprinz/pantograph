@@ -5,6 +5,8 @@ import Language.Pantograph.Generic.ChangeAlgebra
 import Language.Pantograph.Generic.Unification
 import Prelude hiding (compose)
 
+import Bug as Bug
+import Bug.Assertion (assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Expr ((%), (%<))
@@ -20,7 +22,6 @@ import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar as Grammar
-import Partial.Unsafe (unsafeCrashWith)
 import Type.Direction as Dir
 import Util (lookup', fromJust')
 
@@ -49,12 +50,12 @@ zipperToTerm (th : path) exp = addToothToTerm th (zipperToTerm path exp)
 
 assertJustExpr :: forall l r. Term l r -> Grammar.DerivTerm l r
 assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
-assertJustExpr _ = unsafeCrashWith "Error: assertJustExpr assertion failed"
+assertJustExpr _ = Bug.bug "Error: assertJustExpr assertion failed"
 
 assertNoneOfList :: forall t b. List t -> (t -> Maybe b) -> List b
 assertNoneOfList Nil _f = Nil
 assertNoneOfList (x : xs) f = case f x of
-    Nothing -> unsafeCrashWith "assertNoneOfList: assertion failed"
+    Nothing -> Bug.bug "assertNoneOfList: assertion failed"
     Just y -> y : assertNoneOfList xs f
 
 -- assert that one or zero of the children will return a
@@ -90,7 +91,7 @@ termToZipper (Expr.Expr (Inject l) kids) =
             let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
             (newTooth : p) /\ e
 --    let
-termToZipper _ = unsafeCrashWith "shouldn't happen"
+termToZipper _ = Bug.bug "shouldn't happen"
 
 --------------------------------------------------------------------------------
 
@@ -148,7 +149,7 @@ defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.Deriv
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
     -- TODO: is this the right check?
-    if not (fst (endpoints ch) == sort) then unsafeCrashWith "assertion failed: ch boundary didn't match sort in defaultDown" else
+    if not (fst (endpoints ch) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
     do
         sub /\ chBackUp <- doOperation ch parentGSort
         let kidGSorts' = map (Expr.subMetaVars sub) kidGSorts
@@ -204,14 +205,16 @@ Needs to:
 - return the change after the substitution
 -}
    =
-   -- TODO: Henry, how do I use Assertion?
-   if not (sort1 == sort) then unsafeCrashWith "assertion failed: these should be equal" else
-   let (Grammar.ChangeRule vars crustyKidChanges) = (TotalMap.lookup r lang) in
-   let crustyKidChange = fromJust' "bla" $ Array.index crustyKidChanges (Rev.length left) in
-   let freshener = genFreshener vars in
-   let kidChange = freshen freshener crustyKidChange in
-   let leftType = snd $ endpoints kidChange in
-   let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType sort in
-   -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
-   let kidChange' = subSomeMetaChange sub kidChange in
-   compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))
+   assert  (makeAssertionBoolean { condition: sort1 == sort
+                                 , source: "getPathChange"
+                                 , name: "matchingSorts"
+                                 , message: "The sort of the current tooth's derivation label should match the input sort."}) \_ ->
+    let (Grammar.ChangeRule vars crustyKidChanges) = (TotalMap.lookup r lang) in
+    let crustyKidChange = fromJust' "bla" $ Array.index crustyKidChanges (Rev.length left) in
+    let freshener = genFreshener vars in
+    let kidChange = freshen freshener crustyKidChange in
+    let leftType = snd $ endpoints kidChange in
+    let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType sort in
+    -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
+    let kidChange' = subSomeMetaChange sub kidChange in
+    compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))

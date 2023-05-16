@@ -19,7 +19,7 @@ import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple (curry, fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
-import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, pretty)
 import Type.Proxy (Proxy(..))
 
