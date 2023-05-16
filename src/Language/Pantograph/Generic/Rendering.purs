@@ -10,6 +10,7 @@ import Type.Direction
 
 import Bug (bug)
 import Data.Array as Array
+import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), either)
 import Data.Expr as Expr
 import Data.Foldable (foldMap)
@@ -54,6 +55,7 @@ import Web.HTML as HTML
 import Web.HTML.Common as HH
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.HTMLElement as HTMLElement
+import Web.HTML.HTMLInputElement as InputElement
 import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
@@ -74,9 +76,9 @@ data Output l r
   = ActionOutput (Action l r)
   | UpdateFacadeOutput (State l r -> HK.HookM Aff (State l r))
 
-data Query l r a
+data Query (l :: Type) (r :: Type) a
   -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
-  = SetBufferEnabledQuery Boolean a
+  = SetBufferEnabledQuery Boolean (Maybe String) a
   | MoveBufferQuery VerticalDir a
   | SubmitBufferQuery a
 
@@ -356,6 +358,9 @@ editorComponent = HK.component \tokens input -> HK.do
       -- Console.log $ "[event.key] " <> KeyboardEvent.key event
       let 
         key = KeyboardEvent.key event
+        keyCodePoint = case String.toCodePointArray key of
+          [c] -> Just c
+          _ -> Nothing
         shiftKey = KeyboardEvent.shiftKey event
         ctrlKey = KeyboardEvent.ctrlKey event
         metaKey = KeyboardEvent.metaKey event
@@ -375,7 +380,7 @@ editorComponent = HK.component \tokens input -> HK.do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
             elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false
+            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false Nothing
           else if key == "ArrowUp" then do
             -- Debug.traceM $ "[moveBufferQuery Up]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -415,7 +420,13 @@ editorComponent = HK.component \tokens input -> HK.do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
             elemId <- getElementIdByDerivPath zp.path
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
+            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true Nothing
+          else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
+            -- assert: key is a single alpha char
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            -- activate buffer
+            elemId <- getElementIdByDerivPath zp.path
+            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
@@ -445,7 +456,16 @@ editorComponent = HK.component \tokens input -> HK.do
             setFacade $ CursorState cursor
             -- activate buffer
             elemId <- getElementIdByDerivPath path
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
+            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true Nothing
+          else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
+            -- assert: key is a single alpha char
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            -- SelectState --> CursorState
+            let cursor = {dzipper: Expr.unzipperp select.dzipperp}
+            setFacade $ CursorState cursor
+            -- activate buffer
+            elemId <- getElementIdByDerivPath path
+            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
@@ -596,14 +616,22 @@ bufferComponent = HK.component \tokens input -> HK.do
   let normalBufferFocus = bufferFocus `mod` Array.length edits
 
   HK.useQuery tokens.queryToken case _ of
-    SetBufferEnabledQuery isEnabled' a -> do
+    SetBufferEnabledQuery isEnabled' mb_str a -> do
       HK.put isEnabled_id isEnabled' -- update isEnabled
       HK.put bufferFocus_id 0 -- reset bufferFocus
       if isEnabled' then do
           -- focus buffer input tag
           HK.getHTMLElementRef (H.RefLabel bufferInputRefLabelString) >>= case _ of 
             Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefLabelString
-            Just elem -> liftEffect $ HTMLElement.focus elem
+            Just elem -> do
+              liftEffect $ HTMLElement.focus elem
+              case mb_str of
+                Nothing -> pure unit
+                Just str -> do
+                  -- initialize string in buffer
+                  case InputElement.fromElement (HTMLElement.toElement elem) of
+                    Nothing -> bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
+                    Just inputElem -> liftEffect $ InputElement.setValue str inputElem
           -- update facade to BufferState
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
             pure $ BufferState {dzipper: input.dzipper}
