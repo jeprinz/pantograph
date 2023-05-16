@@ -6,7 +6,7 @@ import Language.Pantograph.Generic.Unification
 import Prelude hiding (compose)
 
 import Bug as Bug
-import Bug.Assertion (assert, makeAssertionBoolean)
+import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Expr ((%), (%<))
@@ -22,6 +22,7 @@ import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar as Grammar
+import Text.Pretty (pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust')
 
@@ -194,8 +195,8 @@ defaultUp _ _ = Nothing
 -------------- Other typechange related functions ---------------------
 
 getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
-getPathChange lang (Expr.Path Nil) sort = inject sort
-getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left, right})) : path)) sort
+getPathChange _lang (Expr.Path Nil) sort = inject sort
+getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left})) : path)) sort =
 {-
 Needs to:
 - get the corresponding change from the array
@@ -204,13 +205,12 @@ Needs to:
 - (should only substitute for metavars in the thing from lang, not the sort)
 - return the change after the substitution
 -}
-   =
-   assert  (makeAssertionBoolean { condition: sort1 == sort
+  assert  (makeAssertionBoolean { condition: sort1 == sort
                                  , source: "getPathChange"
                                  , name: "matchingSorts"
-                                 , message: "The sort of the current tooth's derivation label should match the input sort."}) \_ ->
-    let (Grammar.ChangeRule vars crustyKidChanges) = (TotalMap.lookup r lang) in
-    let crustyKidChange = fromJust' "bla" $ Array.index crustyKidChanges (Rev.length left) in
+                                 , message: "The sort of the current tooth's derivation label (sort) should match the input sort (sort1).\n  - sort = " <> pretty sort <> "\n  - sort1 = " <> pretty sort1}) \_ ->
+    let Grammar.ChangeRule vars crustyKidChanges = TotalMap.lookup r lang in
+    let crustyKidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
     let freshener = genFreshener vars in
     let kidChange = freshen freshener crustyKidChange in
     let leftType = snd $ endpoints kidChange in
