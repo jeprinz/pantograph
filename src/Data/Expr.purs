@@ -31,7 +31,7 @@ import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.TotalMap (hasKey)
 import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
@@ -114,6 +114,7 @@ freshMetaVar' :: Unit -> MetaVar
 freshMetaVar' _ = MetaVar (Nothing /\ unsafePerformEffect (UUID.genUUID))
 
 newtype Meta a = Meta (MetaVar \/ a)
+
 derive instance Newtype (Meta a) _
 derive newtype instance Show a => Show (Meta a)
 derive newtype instance Eq a => Eq (Meta a)
@@ -158,6 +159,14 @@ type MetaExpr l = Expr (Meta l)
 
 fromMetaVar :: forall l. MetaVar -> MetaExpr l
 fromMetaVar mx = Meta (Left mx) % []
+
+makePureMetaExpr :: forall l. l -> Array (Expr l) -> MetaExpr l
+makePureMetaExpr l kids = 
+  pure l % 
+    ((uncurry makePureMetaExpr <<< \(l' % kids') -> (l' /\ kids')) <$> kids)
+
+infixl 7 makePureMetaExpr as %*
+
 
 -- | Tooth
 
