@@ -304,15 +304,15 @@ editorComponent = HK.component \tokens input -> HK.do
           Just dzipper -> setFacade $ CursorState cursor {dzipper = dzipper}
 
     moveSelect dir = getFacade >>= case _ of
-      BufferState _buffer -> Hole.hole "!TODO escape to cursor first"
+      BufferState _buffer -> Hole.hole "escape to cursor first"
       CursorState cursor -> do
         let select = (_ $ dir) $ case_
               # on _up (\_ -> {dzipperp: Expr.Zipperp {path: (unwrap cursor.dzipper).path, selection: Left mempty, expr: (unwrap cursor.dzipper).expr}})
               # on _down (\_ -> {dzipperp: Expr.Zipperp {path: (unwrap cursor.dzipper).path, selection: Right mempty, expr: (unwrap cursor.dzipper).expr}})
-              # on _left (\_ -> Hole.hole "!TODO moveSelect left when CursorState")
-              # on _right (\_ -> Hole.hole "!TODO moveSelect right when CursorState")
-              # on _prev (\_ -> Hole.hole "!TODO moveSelect prev when CursorState")
-              # on _next (\_ -> Hole.hole "!TODO moveSelect next when CursorState")
+              # on _left (\_ -> Hole.hole "moveSelect left when CursorState")
+              # on _right (\_ -> Hole.hole "moveSelect right when CursorState")
+              # on _prev (\_ -> Hole.hole "moveSelect prev when CursorState")
+              # on _next (\_ -> Hole.hole "moveSelect next when CursorState")
         case moveZipperp dir select.dzipperp of
           Nothing -> do
             logM "moveSelect" "failed to enter SelectState"
@@ -327,12 +327,12 @@ editorComponent = HK.component \tokens input -> HK.do
           Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       TopState top -> do
         let select = (_ $ dir) $ case_
-              # on _up (\_ -> Hole.hole "!TODO moveSelect up when TopState")
+              # on _up (\_ -> Hole.hole "moveSelect up when TopState")
               # on _down (\_ -> {dzipperp: Expr.Zipperp {path: mempty, selection: Left mempty, expr: top.expr}})
-              # on _left (\_ -> Hole.hole "!TODO moveSelect left when TopState")
-              # on _right (\_ -> Hole.hole "!TODO moveSelect right when TopState")
-              # on _prev (\_ -> Hole.hole "!TODO moveSelect prev when TopState")
-              # on _next (\_ -> Hole.hole "!TODO moveSelect next when TopState")
+              # on _left (\_ -> Hole.hole "moveSelect left when TopState")
+              # on _right (\_ -> Hole.hole "moveSelect right when TopState")
+              # on _prev (\_ -> Hole.hole "moveSelect prev when TopState")
+              # on _next (\_ -> Hole.hole "moveSelect next when TopState")
         case moveZipperp dir select.dzipperp of
           Nothing -> pure unit
           Just (Left dzipper) -> setFacade $ CursorState {dzipper: dzipper}
@@ -389,7 +389,7 @@ editorComponent = HK.component \tokens input -> HK.do
             -- update clipboard
             liftEffect $ Ref.write (Just (Right zp.expr)) clipboard_ref
             -- replace cursor with hole
-            Hole.hole "!TODO requires holes in generic grammar"
+            Hole.hole "requires holes in generic grammar"
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
@@ -566,9 +566,9 @@ editorComponent = HK.component \tokens input -> HK.do
         ]
         case currentState of
           CursorState st -> [renderPath st.dzipper $ renderExpr true st.dzipper]
-          BufferState _st -> Hole.hole "!TODO render BufferState"
-          SelectState _st -> Hole.hole "!TODO render SelectState"
-          TopState _st -> Hole.hole "!TODO render TopState"
+          BufferState _st -> Hole.hole "render BufferState"
+          SelectState _st -> Hole.hole "render SelectState"
+          TopState _st -> Hole.hole "render TopState"
       ]
 
 bufferSlot = Proxy :: Proxy "buffer"
