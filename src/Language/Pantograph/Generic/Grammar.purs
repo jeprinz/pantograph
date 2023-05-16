@@ -3,7 +3,7 @@ module Language.Pantograph.Generic.Grammar where
 import Data.Either.Nested
 import Prelude
 
-import Bug.Assertion (assert, assertInput, makeAssertionBoolean)
+import Bug.Assertion (assert, assertInput_, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Enum (class Enum)
@@ -107,7 +107,7 @@ makeRule' :: forall l.
   Array String ->
   (Array (Expr.MetaExpr l) -> Array (Expr.MetaExpr l) /\ Expr.MetaExpr l) -> 
   Rule l
-makeRule' = assertInput (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f ->
+makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f ->
   let mxs = Expr.freshMetaVar <$> strs in
   let es = fromMetaVar <$> mxs in
   let hyps /\ con = f es in

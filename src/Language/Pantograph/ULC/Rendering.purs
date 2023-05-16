@@ -6,7 +6,7 @@ import Data.Tuple.Nested
 import Language.Pantograph.ULC.Grammar
 import Prelude
 
-import Bug.Assertion (assert, assertInput)
+import Bug.Assertion (assert, assertInput_)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Expr (wellformedExpr, (%), (%<))
@@ -83,7 +83,7 @@ type Edit = Rendering.Edit ExprLabel RuleLabel
 
 getEdits :: DerivZipper -> Array Edit
 -- getEdits _ = []
-getEdits = assertInput (\(Expr.Zipper dz) -> wellformedExpr "getEdits" dz.expr) \(Expr.Zipper dz) -> do
+getEdits = assertInput_ (\(Expr.Zipper dz) -> wellformedExpr "getEdits" dz.expr) \(Expr.Zipper dz) -> do
   let
     digEdit sort = 
       { label: "dig", preview: "?"

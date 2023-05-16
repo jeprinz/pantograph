@@ -3,7 +3,7 @@ module Language.Pantograph.Generic.Unification where
 import Prelude
 
 import Bug as Bug
-import Bug.Assertion (Assertion(..), assert, assertInput)
+import Bug.Assertion (Assertion(..), assert, assertInput_)
 import Control.Apply (lift2)
 import Control.Monad.Error.Class (throwError)
 import Data.Array as Array
@@ -87,7 +87,7 @@ noMetaVars :: forall l. Expr.IsExprLabel l => String -> Expr.MetaExpr l -> Asser
 noMetaVars source mexpr0 = Assertion
     { name: "noMetaVars", source
     , result: do
-        let go = assertInput (Expr.wellformedExpr "noMetaVars") \mexpr -> case mexpr of
+        let go = assertInput_ (Expr.wellformedExpr "noMetaVars") \mexpr -> case mexpr of
                 Expr.Meta (Left x) % [] -> throwError $ "Found MetaVar " <> quotes (pretty mexpr)
                 Expr.Meta (Right l) % kids -> (l % _) <$> go `traverse` kids
         go mexpr0

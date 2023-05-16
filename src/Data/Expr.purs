@@ -6,7 +6,7 @@ import Prelude
 import Type.Direction
 
 import Bug (bug)
-import Bug.Assertion (Assertion(..), assert, assertInput, assertM, assert_)
+import Bug.Assertion (Assertion(..), assert, assertInput_, assertM, assert_)
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
@@ -135,7 +135,7 @@ instance IsExprLabel l => IsExprLabel (Meta l) where
 type MetaVarSub a = Map.Map MetaVar a
 
 subMetaVars :: forall l. IsExprLabel l => MetaVarSub (Expr l) -> MetaExpr l -> Expr l
-subMetaVars sigma = assertInput (wellformedExpr "subMetaVars") go
+subMetaVars sigma = assertInput_ (wellformedExpr "subMetaVars") go
   where
   go :: Partial => _
   go = case _ of
@@ -143,7 +143,7 @@ subMetaVars sigma = assertInput (wellformedExpr "subMetaVars") go
     Meta (Right l) % kids -> l % (go <$> kids)
 
 subSomeMetaVars :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
-subSomeMetaVars sigma = assertInput (wellformedExpr "subSomeMetaVars") go
+subSomeMetaVars sigma = assertInput_ (wellformedExpr "subSomeMetaVars") go
   where
   go :: Partial => _
   go = case _ of
