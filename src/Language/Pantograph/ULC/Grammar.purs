@@ -15,8 +15,8 @@ import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
 import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
+import Text.Pretty (class Pretty, (<+>))
 import Text.Pretty as P
-import Text.Pretty ((<+>))
 
 --------------------------------------------------------------------------------
 -- ExprLabel
@@ -31,6 +31,12 @@ derive instance Generic ExprLabel _
 instance Show ExprLabel where show x = genericShow x
 instance Eq ExprLabel where eq x = genericEq x
 instance Ord ExprLabel where compare x y = genericCompare x y
+
+instance Pretty ExprLabel where
+  pretty VarSort = "var-sort"
+  pretty TermSort = "term-sort"
+  pretty HoleInteriorSort = "hole-interior-sort"
+
 
 instance IsExprLabel ExprLabel where
   prettyExprF'_unsafe (VarSort /\ _) = "Var"
@@ -88,6 +94,15 @@ instance Enum RuleLabel where
 instance Bounded RuleLabel where
   bottom = genericBottom
   top = genericTop
+
+instance Pretty RuleLabel where
+  pretty Zero = "z"
+  pretty Suc = "s"
+  pretty Lam = "lam"
+  pretty App = "app"
+  pretty Ref = "ref"
+  pretty Hole = "hole"
+  pretty HoleInterior = "hole-interior"
 
 -- instance Expr.IsExprLabel RuleLabel where
 --   prettyExprF'_unsafe (Zero /\ []) = "Z"
@@ -164,7 +179,7 @@ language = TotalMap.makeTotalMap case _ of
 type DerivExpr = Grammar.DerivExpr ExprLabel RuleLabel
 type DerivPath dir = Grammar.DerivPath dir ExprLabel RuleLabel
 type DerivZipper = Grammar.DerivZipper ExprLabel RuleLabel
-type DerivZipperP = Grammar.DerivZipperP ExprLabel RuleLabel
+type DerivZipperp = Grammar.DerivZipperp ExprLabel RuleLabel
 
 -- var
 zeroDE :: DerivExpr

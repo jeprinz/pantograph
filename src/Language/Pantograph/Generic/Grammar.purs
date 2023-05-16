@@ -20,13 +20,14 @@ import Data.Tuple (curry, fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
 import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Text.Pretty (class Pretty, pretty)
 import Type.Proxy (Proxy(..))
 
 --data ExprLabel
 
 --data RuleLabel = Lam | App | Z | S
 
-class (IsExprLabel l, Eq r, Enum r, Bounded r, Show r) <= IsRuleLabel l r | r -> l where
+class (IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleLabel l r | r -> l where
   prettyExprF'_unsafe_RuleLabel :: Partial => r /\ Array String -> String
   language :: Language l r
 
@@ -44,10 +45,14 @@ instance (Show l, Show r) => Show (DerivLabel l r) where show x = genericShow x
 derive instance (Eq l, Eq r) => Eq (DerivLabel l r)
 derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
+instance IsRuleLabel l r => Pretty (DerivLabel l r) where
+  pretty (DerivLabel r mexpr) = pretty r <> "(" <> pretty mexpr <> ")"
+
 newtype AsExprLabel a = AsExprLabel a
 derive newtype instance Eq a => Eq (AsExprLabel a)
 derive newtype instance Ord a => Ord (AsExprLabel a)
 derive newtype instance Show a => Show (AsExprLabel a)
+derive newtype instance Pretty a => Pretty (AsExprLabel a)
 
 -- | Can pretend that a rule label is the expr label of derivations.
 instance IsRuleLabel l r => IsExprLabel (AsExprLabel r) where
@@ -73,7 +78,7 @@ type DerivTerm l r = Expr.Expr (DerivLabel l r)
 type DerivExpr l r = Expr.Expr (DerivLabel l r)
 type DerivPath dir l r = Expr.Path dir (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
-type DerivZipperP l r = Expr.ZipperP (DerivLabel l r)
+type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 
 fromDerivExpr :: forall l r. Expr.Expr (DerivLabel l r) -> Expr.MetaExpr l
 fromDerivExpr (Expr.Expr (DerivLabel r mexpr) kids) = mexpr

@@ -68,7 +68,7 @@ derive instance Functor Expr
 derive instance Foldable Expr
 derive instance Traversable Expr
 
-class (Eq l, Ord l, Show l) <= IsExprLabel l where
+class (Eq l, Ord l, Show l, Pretty l) <= IsExprLabel l where
   prettyExprF'_unsafe :: Partial => ExprF l String -> String
   expectedKidsCount :: l -> Int
 
@@ -173,6 +173,9 @@ derive instance Functor Tooth
 derive instance Foldable Tooth
 derive instance Traversable Tooth
 
+instance IsExprLabel l => Pretty (Tooth l) where
+  pretty th = prettyTooth th "⌶"
+
 foldMapTooth :: forall l m. Monoid m => (l -> m) -> Tooth l -> m
 foldMapTooth f (l %< p) = f l <> foldMap (foldMap f) p
 
@@ -269,8 +272,8 @@ reversePath :: forall dir dir' l. Dir.Opposite dir dir' => Path dir l -> Path di
 reversePath (Path ths) = Path (List.reverse ths)
 
 -- | Depending on direction:
--- |   - If dir == down, then path1 is below path2.
--- |   - If dir == up, then path1 is above path2
+-- |   - If dir == up, then path1 is below path2.
+-- |   - If dir == down, then path1 is above path2
 instance Semigroup (Path dir l) where
   append (Path ths1) (Path ths2) = Path (ths1 <> ths2)
 
@@ -336,26 +339,27 @@ zipRight (Zipper z) = case z.path of
     expr' /\ kidsPath' <- ZipList.zipRight (z.expr /\ kidsPath)
     Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
 
--- | ZipperP
+-- | Zipperp
 
-newtype ZipperP l = ZipperP
+newtype Zipperp l = Zipperp
   { path :: Path Dir.Up l
   , selection :: Path Dir.Down l \/ Path Dir.Up l
   , expr :: Expr l}
 
-derive instance Generic (ZipperP l) _
-derive instance Newtype (ZipperP l) _
-instance Show l => Show (ZipperP l) where show x = genericShow x
+derive instance Generic (Zipperp l) _
+derive instance Newtype (Zipperp l) _
+instance Show l => Show (Zipperp l) where show x = genericShow x
 
-zipperpTopPath :: forall l. ZipperP l -> Path "up" l
-zipperpTopPath (ZipperP z') = z'.path
-zipperpBottomPath :: forall l. ZipperP l -> Path "up" l
-zipperpBottomPath (ZipperP z') = z'.path <> either reversePath identity z'.selection
+zipperpTopPath :: forall l. Zipperp l -> Path Up l
+zipperpTopPath (Zipperp z') = z'.path
 
-unzipperp :: forall l. ZipperP l -> Zipper l
-unzipperp (ZipperP z') = case z'.selection of
+zipperpBottomPath :: forall l. Zipperp l -> Path Up l
+zipperpBottomPath (Zipperp z') = either reversePath identity z'.selection <> z'.path
+
+unzipperp :: forall l. Zipperp l -> Zipper l
+unzipperp (Zipperp z') = case z'.selection of
   Left downPath -> Zipper
-    { path: z'.path <> reversePath downPath
+    { path: reversePath downPath <> z'.path
     , expr: z'.expr
     }
   Right upPath -> Zipper
@@ -376,12 +380,13 @@ data ChangeLabel l
 derive instance Generic (ChangeLabel l) _
 derive instance Eq l => Eq (ChangeLabel l)
 derive instance Ord l => Ord (ChangeLabel l)
+instance Show l => Show (ChangeLabel l) where show x = genericShow x
 
-instance Show l => Show (ChangeLabel l) where
-  show (Plus th) = "(+ " <> showTooth th <> ")"
-  show (Minus th) = "(- " <> showTooth th <> ")"
-  show (Inject l) = show l
-  show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
+instance IsExprLabel l => Pretty (ChangeLabel l) where
+  pretty (Plus th) = "(+ " <> prettyTooth th "{}" <> ")"
+  pretty (Minus th) = "(- " <> prettyTooth  th "{}" <> ")"
+  pretty (Inject l) = pretty l
+  pretty (Replace e1 e2) = "(" <> pretty e1 <> "~~> " <> pretty e2 <> ")"
 
 derive instance Functor ChangeLabel
 derive instance Foldable ChangeLabel

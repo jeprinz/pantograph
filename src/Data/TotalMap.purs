@@ -16,6 +16,7 @@ import Data.Enum (class Enum, enumFromTo)
 import Data.Foldable (class Foldable)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromJust)
+import Data.Newtype as Newtype
 import Data.Traversable (class Traversable)
 import Data.Tuple.Nested ((/\))
 import Partial.Unsafe (unsafePartial)
@@ -28,7 +29,7 @@ derive instance Foldable (TotalMap k)
 derive instance Traversable (TotalMap k)
 
 over :: forall k v a. (Partial => Map.Map k v -> a) -> TotalMap k v -> a
-over f m = unsafePartial (over f m)
+over = \f (TotalMap m) -> unsafePartial $ f m
 
 makeTotalMap :: forall k v. Enum k => Bounded k => (k -> v) -> TotalMap k v
 makeTotalMap f = TotalMap $ Map.fromFoldable $ ((enumFromTo bottom top <#> \k -> k /\ f k) :: Array _)

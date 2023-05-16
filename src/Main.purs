@@ -24,7 +24,7 @@ main = HA.runHalogenAff do
   VDomDriver.runUI Rendering.editorComponent spec body
   where
   spec =
-    { derivZipper: Expr.Zipper
+    { dzipper: Expr.Zipper
         { path: mempty
         , expr: holeDE holeInteriorDE termSortME
         }

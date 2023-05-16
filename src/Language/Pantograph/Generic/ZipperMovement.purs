@@ -28,43 +28,43 @@ moveZipper = case_
   # on _prev (\_ -> unsafeCrashWith "!TODO moveZipper prev")
   # on _next (\_ -> unsafeCrashWith "!TODO moveZipper next")
 
-moveZipperP :: forall l. MoveDir -> ZipperP l -> Maybe (Zipper l \/ ZipperP l)
-moveZipperP dir zipperp = do
-  zipperp' <- moveZipperP' dir zipperp
-  Just $ normalizeZipperP zipperp'
+moveZipperp :: forall l. MoveDir -> Zipperp l -> Maybe (Zipper l \/ Zipperp l)
+moveZipperp dir zipperp = do
+  zipperp' <- moveZipperp' dir zipperp
+  Just $ normalizeZipperp zipperp'
 
--- | Normalize a ZipperP by turning it into a Zipper if it has an empty
+-- | Normalize a Zipperp by turning it into a Zipper if it has an empty
 -- | selection.
-normalizeZipperP :: forall l. ZipperP l -> Zipper l \/ ZipperP l
-normalizeZipperP zipperp@(ZipperP zp) = case zp.selection of
+normalizeZipperp :: forall l. Zipperp l -> Zipper l \/ Zipperp l
+normalizeZipperp zipperp@(Zipperp zp) = case zp.selection of
   Left (Path Nil) -> Left (Zipper {path: zp.path, expr: zp.expr})
   Right (Path Nil) -> Left (Zipper {path: zp.path, expr: zp.expr})
   _ -> Right zipperp
 
-moveZipperP' :: forall l. MoveDir -> ZipperP l -> Maybe (ZipperP l)
-moveZipperP' = case_
-  # on _up (\_ (ZipperP zp) -> case zp.selection of
+moveZipperp' :: forall l. MoveDir -> Zipperp l -> Maybe (Zipperp l)
+moveZipperp' = case_
+  # on _up (\_ (Zipperp zp) -> case zp.selection of
       Left downPath -> do
         th /\ path' <- unstepPath zp.path
-        Just (ZipperP zp {path = path', selection = Left (stepPath th downPath)})
+        Just (Zipperp zp {path = path', selection = Left (stepPath th downPath)})
       Right upPath -> do
         th /\ upPath' <- unstepPath upPath
-        Just (ZipperP zp {selection = Right upPath', expr = unTooth th zp.expr})
+        Just (Zipperp zp {selection = Right upPath', expr = unTooth th zp.expr})
     )
-  # on _down (\_ (ZipperP zp) -> 
+  # on _down (\_ (Zipperp zp) -> 
       case zp.selection of
         Left downPath -> do
           th /\ downPath' <- unstepPath downPath
-          Just (ZipperP zp {path = stepPath th zp.path, selection = Left downPath'})
+          Just (Zipperp zp {path = stepPath th zp.path, selection = Left downPath'})
         Right upPath -> do
           -- th /\ upPath' <- 
-          -- Just (Right (ZipperP zp {selection = Right upPath', expr = unTooth th zp.expr}))
+          -- Just (Right (Zipperp zp {selection = Right upPath', expr = unTooth th zp.expr}))
           -- {head: th /\ zipper} <- Array.uncons (zipDowns (Zipper {path: upPath, expr: zp.expr}))
           -- Expr.too
           th /\ expr <- tooth 0 zp.expr
-          Just (ZipperP zp {selection = Right (stepPath th upPath), expr = expr})
+          Just (Zipperp zp {selection = Right (stepPath th upPath), expr = expr})
     )
-  # on _left (\_ -> unsafeCrashWith "!TODO moveZipperP' left")
-  # on _right (\_ -> unsafeCrashWith "!TODO moveZipperP' right")
-  # on _prev (\_ -> unsafeCrashWith "!TODO moveZipperP' prev")
-  # on _next (\_ -> unsafeCrashWith "!TODO moveZipperP' next")
+  # on _left (\_ -> unsafeCrashWith "!TODO moveZipperp' left")
+  # on _right (\_ -> unsafeCrashWith "!TODO moveZipperp' right")
+  # on _prev (\_ -> unsafeCrashWith "!TODO moveZipperp' prev")
+  # on _next (\_ -> unsafeCrashWith "!TODO moveZipperp' next")
