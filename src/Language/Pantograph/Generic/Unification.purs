@@ -19,6 +19,8 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.MultiMap (MultiMap)
 import Data.MultiMap as MultiMap
+import Data.Newtype (class Newtype)
+import Data.Newtype as Newtype
 import Data.Set (Set)
 import Data.Traversable (traverse)
 import Data.Tuple.Nested (type (/\), (/\))
@@ -80,6 +82,23 @@ instance Freshenable l => Freshenable (Expr.Expr l) where
 
 instance Freshenable l => Freshenable (Expr.ChangeLabel l) where
     freshen sub l = map (freshen sub) l
+
+--------------------------------------------------------------------------------
+-- !HENRY here's a way to get around this, but you still need to write instances
+-- for deeply-nested type-class-instance-inferences
+
+newtype AsFreshenable f (a :: Type) = AsFreshenable (f a)
+
+derive instance Newtype (AsFreshenable f a) _
+derive instance Functor f => Functor (AsFreshenable f)
+
+instance (Functor f, Freshenable l) => Freshenable (AsFreshenable f l) where
+    freshen rho = map (freshen rho) -- beautiful
+
+freshen' :: forall f l. Functor f => Freshenable l => Ren -> f l -> f l
+freshen' rho = AsFreshenable >>> freshen rho >>> Newtype.unwrap
+
+--------------------------------------------------------------------------------
 
 type Sub l = Map Expr.MetaVar (Expr.MetaExpr l)
 
