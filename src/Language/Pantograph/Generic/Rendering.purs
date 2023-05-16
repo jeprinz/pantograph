@@ -7,7 +7,6 @@ import Data.Tuple.Nested
 import Language.Pantograph.Generic.Grammar
 import Prelude
 import Type.Direction
-
 import Bug (bug)
 import Data.Array as Array
 import Data.CodePoint.Unicode as Unicode
@@ -42,8 +41,9 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName, setClassNameByElementId)
+import Hole as Hole
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
-import Partial.Unsafe (unsafeCrashWith)
+import Log (logM)
 import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, pretty)
 import Type.Direction as Dir
@@ -166,7 +166,7 @@ editorComponent = HK.component \tokens input -> HK.do
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
-  let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
+  -- let _ = Debug.trace ("[editorComponent] currentState: " <> pretty currentState) \_ -> unit
 
   -- facade state
   _ /\ facade_ref <- HK.useRef $ initState
@@ -249,7 +249,6 @@ editorComponent = HK.component \tokens input -> HK.do
     -- | Sets the facade state, which updates all the corresponding UI elements.
     setFacade :: State l r -> HK.HookM Aff Unit
     setFacade st = do
-      -- Debug.traceM $ "[setFacade] new state: " <> pretty st
       unsetFacadeElements
       setFacade' st
 
@@ -263,18 +262,8 @@ editorComponent = HK.component \tokens input -> HK.do
         BufferState buffer -> do
           setCursorElement Nothing (Just (unwrap buffer.dzipper).path)
         SelectState select -> do
-          Debug.traceM $ "[setFacade'] Expr.zipperpTopPath select.dzipperp = " <> show (Expr.zipperpTopPath select.dzipperp)
           setSelectTopElement Nothing (Just (Expr.zipperpTopPath select.dzipperp))
-
-          -- Debug.traceM $ case selection of
-          --   Left _ -> "left"
-          --   Right _ -> "right"
-          Debug.traceM $ show (unwrap select.dzipperp).selection
-
           let botPath = Expr.zipperpBottomPath select.dzipperp
-          Debug.traceM $ "[setFacade'] Expr.zipperpBottomPath select.dzipperp = " <> show botPath
-          Debug.traceM $ "[setFacade'] Expr.zipperpBottomPath select.dzipperp = " <> pretty botPath
-          Debug.traceM $ "[setFacade'] path dir = " <> show (Expr.reflectPathDir botPath)
           setSelectBottomElement Nothing (Just botPath)
         TopState _top -> do
           pure unit
@@ -300,7 +289,6 @@ editorComponent = HK.component \tokens input -> HK.do
     moveCursor dir = getFacade >>= case _ of
       BufferState _buffer -> pure unit
       CursorState cursor -> do
-        -- Debug.traceM $ "[moveCursor] st = " <> pretty st.dzipper
         case moveZipper dir cursor.dzipper of
           Nothing -> pure unit
           Just dzipper -> setFacade $ CursorState cursor {dzipper = dzipper}
@@ -316,38 +304,35 @@ editorComponent = HK.component \tokens input -> HK.do
           Just dzipper -> setFacade $ CursorState cursor {dzipper = dzipper}
 
     moveSelect dir = getFacade >>= case _ of
-      BufferState _buffer -> unsafeCrashWith "!TODO escape to cursor first"
+      BufferState _buffer -> Hole.hole "!TODO escape to cursor first"
       CursorState cursor -> do
-        Debug.traceM "[moveSelect] attempting CursorState --> SelectState"
         let select = (_ $ dir) $ case_
               # on _up (\_ -> {dzipperp: Expr.Zipperp {path: (unwrap cursor.dzipper).path, selection: Left mempty, expr: (unwrap cursor.dzipper).expr}})
               # on _down (\_ -> {dzipperp: Expr.Zipperp {path: (unwrap cursor.dzipper).path, selection: Right mempty, expr: (unwrap cursor.dzipper).expr}})
-              # on _left (\_ -> unsafeCrashWith "!TODO moveSelect left when CursorState")
-              # on _right (\_ -> unsafeCrashWith "!TODO moveSelect right when CursorState")
-              # on _prev (\_ -> unsafeCrashWith "!TODO moveSelect prev when CursorState")
-              # on _next (\_ -> unsafeCrashWith "!TODO moveSelect next when CursorState")
-        Debug.traceM $ "[moveSelect] select = " <> show select
+              # on _left (\_ -> Hole.hole "!TODO moveSelect left when CursorState")
+              # on _right (\_ -> Hole.hole "!TODO moveSelect right when CursorState")
+              # on _prev (\_ -> Hole.hole "!TODO moveSelect prev when CursorState")
+              # on _next (\_ -> Hole.hole "!TODO moveSelect next when CursorState")
         case moveZipperp dir select.dzipperp of
           Nothing -> do
-            Debug.traceM "[moveSelect] failed to enter SelectState"
+            logM "moveSelect" "failed to enter SelectState"
             pure unit
           Just (Left dzipper) -> setFacade $ CursorState {dzipper: dzipper}
           Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       SelectState select -> do
-        Debug.traceM "[moveSelect] moving selection"
         case moveZipperp dir select.dzipperp of
           Nothing -> do
-            Debug.traceM "[moveSelect] failed to move selection"
+            logM "moveSelect" "failed to move selection"
           Just (Left dzipper) -> setFacade $ CursorState {dzipper: dzipper}
           Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       TopState top -> do
         let select = (_ $ dir) $ case_
-              # on _up (\_ -> unsafeCrashWith "!TODO moveSelect up when TopState")
+              # on _up (\_ -> Hole.hole "!TODO moveSelect up when TopState")
               # on _down (\_ -> {dzipperp: Expr.Zipperp {path: mempty, selection: Left mempty, expr: top.expr}})
-              # on _left (\_ -> unsafeCrashWith "!TODO moveSelect left when TopState")
-              # on _right (\_ -> unsafeCrashWith "!TODO moveSelect right when TopState")
-              # on _prev (\_ -> unsafeCrashWith "!TODO moveSelect prev when TopState")
-              # on _next (\_ -> unsafeCrashWith "!TODO moveSelect next when TopState")
+              # on _left (\_ -> Hole.hole "!TODO moveSelect left when TopState")
+              # on _right (\_ -> Hole.hole "!TODO moveSelect right when TopState")
+              # on _prev (\_ -> Hole.hole "!TODO moveSelect prev when TopState")
+              # on _next (\_ -> Hole.hole "!TODO moveSelect next when TopState")
         case moveZipperp dir select.dzipperp of
           Nothing -> pure unit
           Just (Left dzipper) -> setFacade $ CursorState {dzipper: dzipper}
@@ -382,12 +367,10 @@ editorComponent = HK.component \tokens input -> HK.do
             elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false Nothing
           else if key == "ArrowUp" then do
-            -- Debug.traceM $ "[moveBufferQuery Up]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery upDir
           else if key == "ArrowDown" then do
-            -- Debug.traceM $ "[moveBufferQuery Down]"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
@@ -406,7 +389,7 @@ editorComponent = HK.component \tokens input -> HK.do
             -- update clipboard
             liftEffect $ Ref.write (Just (Right zp.expr)) clipboard_ref
             -- replace cursor with hole
-            unsafeCrashWith "!TODO requires holes in generic grammar"
+            Hole.hole "!TODO requires holes in generic grammar"
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
@@ -449,6 +432,9 @@ editorComponent = HK.component \tokens input -> HK.do
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState {dzipper: Expr.unzipperp select.dzipperp}
+          else if key == "Backspace" then do
+            -- escape to cursor mode, but without selection (updates state)
+            setState $ CursorState {dzipper: Expr.Zipper {path, expr}}
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
@@ -580,9 +566,9 @@ editorComponent = HK.component \tokens input -> HK.do
         ]
         case currentState of
           CursorState st -> [renderPath st.dzipper $ renderExpr true st.dzipper]
-          BufferState _st -> unsafeCrashWith "!TODO render BufferState"
-          SelectState _st -> unsafeCrashWith "!TODO render SelectState"
-          TopState _st -> unsafeCrashWith "!TODO render TopState"
+          BufferState _st -> Hole.hole "!TODO render BufferState"
+          SelectState _st -> Hole.hole "!TODO render SelectState"
+          TopState _st -> Hole.hole "!TODO render TopState"
       ]
 
 bufferSlot = Proxy :: Proxy "buffer"

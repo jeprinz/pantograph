@@ -9,6 +9,7 @@ import Type.Direction
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.List (List(..))
+import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Tuple (fst, snd)
 import Data.Variant (case_, on)
@@ -64,7 +65,21 @@ moveZipperp' = case_
           th /\ expr <- tooth 0 zp.expr
           Just (Zipperp zp {selection = Right (stepPath th upPath), expr = expr})
     )
-  # on _left (\_ -> unsafeCrashWith "!TODO moveZipperp' left")
-  # on _right (\_ -> unsafeCrashWith "!TODO moveZipperp' right")
+  # on _left (\_ (Zipperp zp) ->
+      case zp.selection of
+        Right upPath -> do
+          Tooth l kidsZip /\ upPath' <- unstepPath upPath
+          expr' /\ kidsZip' <- ZipList.zipLeft (zp.expr /\ kidsZip)
+          Just (Zipperp zp {selection = Right (stepPath (Tooth l kidsZip') upPath'), expr = expr'})
+        Left _ -> Nothing -- can't zip left/right when selecting up
+    )
+  # on _right (\_ (Zipperp zp) ->
+      case zp.selection of
+        Right upPath -> do
+          Tooth l kidsZip /\ upPath' <- unstepPath upPath
+          expr' /\ kidsZip' <- ZipList.zipRight (zp.expr /\ kidsZip)
+          Just (Zipperp zp {selection = Right (stepPath (Tooth l kidsZip') upPath'), expr = expr'})
+        Left _ -> Nothing -- can't zip left/right when selecting up
+    )
   # on _prev (\_ -> unsafeCrashWith "!TODO moveZipperp' prev")
   # on _next (\_ -> unsafeCrashWith "!TODO moveZipperp' next")
