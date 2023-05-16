@@ -264,7 +264,7 @@ editorComponent = HK.component \tokens input -> HK.do
           Debug.traceM $ "[setFacade'] Expr.zipperpTopPath select.dzipperp = " <> show (Expr.zipperpTopPath select.dzipperp)
           setSelectTopElement Nothing (Just (Expr.zipperpTopPath select.dzipperp))
 
-          -- Debug.traceM $ case (unwrap select.dzipperp).selection of
+          -- Debug.traceM $ case selection of
           --   Left _ -> "left"
           --   Right _ -> "right"
           Debug.traceM $ show (unwrap select.dzipperp).selection
@@ -396,6 +396,12 @@ editorComponent = HK.component \tokens input -> HK.do
           if cmdKey && key == "c" then do
             -- update clipboard
             liftEffect $ Ref.write (Just (Right zp.expr)) clipboard_ref
+          -- cut
+          else if cmdKey && key == "x" then do
+            -- update clipboard
+            liftEffect $ Ref.write (Just (Right zp.expr)) clipboard_ref
+            -- replace cursor with hole
+            unsafeCrashWith "!TODO requires holes in generic grammar"
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
@@ -419,10 +425,16 @@ editorComponent = HK.component \tokens input -> HK.do
         -- SelectState
         ------------------------------------------------------------------------
         SelectState select -> do
+          let Expr.Zipperp {path, selection, expr} = select.dzipperp
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity (unwrap select.dzipperp).selection))) clipboard_ref
+            liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
+          else if cmdKey && key == "x" then do
+            -- update clipboard
+            liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
+            -- escape to cursor mode, but without selection (updates state)
+            setState $ CursorState {dzipper: Expr.Zipper {path, expr}}
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState {dzipper: Expr.unzipperp select.dzipperp}
@@ -432,7 +444,7 @@ editorComponent = HK.component \tokens input -> HK.do
             let cursor = {dzipper: Expr.unzipperp select.dzipperp}
             setFacade $ CursorState cursor
             -- activate buffer
-            elemId <- getElementIdByDerivPath (unwrap cursor.dzipper).path
+            elemId <- getElementIdByDerivPath path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
