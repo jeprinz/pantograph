@@ -43,6 +43,7 @@ import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, quotes)
+import Text.Pretty as P
 import Text.Pretty as Pretty
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
@@ -160,13 +161,10 @@ type MetaExpr l = Expr (Meta l)
 fromMetaVar :: forall l. MetaVar -> MetaExpr l
 fromMetaVar mx = Meta (Left mx) % []
 
-makePureMetaExpr :: forall l. l -> Array (Expr l) -> MetaExpr l
-makePureMetaExpr l kids = 
-  pure l % 
-    ((uncurry makePureMetaExpr <<< \(l' % kids') -> (l' /\ kids')) <$> kids)
+pureMetaExpr :: forall l. l -> Array (MetaExpr l) -> MetaExpr l
+pureMetaExpr l = (pure l % _)
 
-infixl 7 makePureMetaExpr as %*
-
+infixl 7 pureMetaExpr as %*
 
 -- | Tooth
 
@@ -298,7 +296,10 @@ derive newtype instance Show l => Show (Zipper l)
 derive newtype instance Eq l => Eq (Zipper l)
 
 instance IsExprLabel l => Pretty (Zipper l) where
-  pretty (Zipper z) = prettyPath z.path $ pretty z.expr
+  pretty (Zipper z) = 
+    prettyPath z.path $ 
+      P.braces2 $
+        pretty z.expr
 
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
 zipUp (Zipper z) = case z.path of
@@ -358,6 +359,14 @@ newtype Zipperp l = Zipperp
 derive instance Generic (Zipperp l) _
 derive instance Newtype (Zipperp l) _
 instance Show l => Show (Zipperp l) where show x = genericShow x
+
+instance IsExprLabel l => Pretty (Zipperp l) where
+  pretty (Zipperp zp) = 
+    prettyPath zp.path $
+      P.braces2 $
+        either prettyPath prettyPath zp.selection $
+          P.braces2 $
+            pretty zp.expr
 
 zipperpTopPath :: forall l. Zipperp l -> Path Up l
 zipperpTopPath (Zipperp z') = z'.path

@@ -1,58 +1,51 @@
 module Language.Pantograph.Generic.Rendering where
 
-import Data.CodePoint.Unicode
-import Data.Either.Nested
-import Data.Tuple
-import Data.Tuple.Nested
-import Language.Pantograph.Generic.Grammar
 import Prelude
-import Type.Direction
-import Bug (bug)
+
+import Bug as Bug
+import Bug.Assertion (Assertion(..), assertM)
 import Data.Array as Array
 import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), either)
+import Data.Either.Nested (type (\/))
+import Data.Expr ((%))
 import Data.Expr as Expr
-import Data.Foldable (foldMap)
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.Lazy (Lazy, defer, force)
-import Data.List.Rev as RevList
+import Data.Lazy (force)
 import Data.List.Zip as ZipList
-import Data.Map (Map)
-import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Rational as Rational
 import Data.Show.Generic (genericShow)
 import Data.String as String
-import Data.UUID as UUID
+import Data.Tuple (snd)
+import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
-import Debug as Debug
-import Effect.Aff (Aff)
-import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Aff (Aff, throwError)
+import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
-import Effect.Unsafe (unsafePerformEffect)
 import Halogen as H
-import Halogen.HTML as HH
+import Halogen.HTML (ComponentHTML, div, input, slot, text) as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
-import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName, setClassNameByElementId)
+import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName)
 import Hole as Hole
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, Action(..), DerivExpr, DerivLabel(..), DerivPath, DerivZipper, DerivZipperp, Edit, derivExprSort, holeDerivExpr)
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
-import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, pretty)
+import Type.Direction (Up, VerticalDir, _down, _left, _next, _prev, _right, _up, downDir, leftDir, rightDir, upDir)
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
 import Web.DOM as DOM
 import Web.DOM.NonElementParentNode as NonElementParentNode
 import Web.Event.Event as Event
 import Web.HTML as HTML
-import Web.HTML.Common as HH
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as InputElement
@@ -70,6 +63,7 @@ selectTopClassName = "select-top"
 selectBottomClassName :: String
 selectBottomClassName = "select-bottom"
 
+isBufferKey :: String -> Boolean
 isBufferKey = (_ `Array.elem` [" ", "Enter"])
 
 data Output l r
@@ -81,15 +75,6 @@ data Query (l :: Type) (r :: Type) a
   = SetBufferEnabledQuery Boolean (Maybe String) a
   | MoveBufferQuery VerticalDir a
   | SubmitBufferQuery a
-
-type Edit l r =
-  { label :: String
-  , preview :: String
-  , action :: Action l r
-  }
-
-data Action l r
-  = SetDerivZipperAction (Lazy (Maybe (DerivZipper l r)))
 
 data State l r
   = BufferState (Buffer l r)
@@ -111,9 +96,10 @@ instance (Expr.IsExprLabel l, IsRuleLabel l r) => Pretty (State l r) where
       , "  - dzipper = " <> pretty cursor.dzipper
       ]
     SelectState select -> Array.intercalate "\n"
-      [ "select: !TODO"
+      [ "select:"
+      , "  - dzipperp = " <> pretty select.dzipperp
       ]
-    TopState top -> Array.intercalate "\n"
+    TopState _top -> Array.intercalate "\n"
       [ "top:"
       ]
 
@@ -139,6 +125,20 @@ type Select l r =
 type Top l r =
   { expr :: DerivExpr l r
   }
+
+cursorState source msg st = Assertion
+  { name: "cursorState"
+  , source
+  , result: case st of
+      CursorState cursor -> pure cursor
+      st -> throwError $ 
+        "Expected state to be `CursorState` because " <> msg <> "\n" <> 
+          pretty st
+  }
+
+-- case _ of
+--   CursorState cursor -> Ass
+--   st -> ?a
 
 type EditorSpec l r =
   { dzipper :: DerivZipper l r
@@ -195,7 +195,7 @@ editorComponent = HK.component \tokens input -> HK.do
       doc <- liftEffect $ HTML.window >>= Window.document
       elemId <- getElementIdByDerivPath derivPath
       liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
-        Nothing -> bug $ "could not find element by id: " <> elemId
+        Nothing -> Bug.bug $ "could not find element by id: " <> elemId
         Just elem -> pure elem
 
   let
@@ -285,6 +285,30 @@ editorComponent = HK.component \tokens input -> HK.do
         case force lazy_dzipper of
           Nothing -> pure unit
           Just dzipper -> setState $ CursorState {dzipper}
+      WrapDerivZipper _dpath -> do
+        getFacade >>= case _ of
+          CursorState cursor -> do
+            let Expr.Zipper {path, expr} = cursor.dzipper
+            let dpath = _dpath unit
+            setState $ CursorState {dzipper: Expr.Zipper {path: dpath <> path, expr: expr}}
+          BufferState buffer -> do
+            let Expr.Zipper {path, expr} = buffer.dzipper
+            let dpath = _dpath unit
+            setState $ CursorState {dzipper: Expr.Zipper {path: dpath <> path, expr: expr}}
+          TopState _top -> Hole.hole "WrapDerivZipper in TopState"
+          SelectState _select -> Hole.hole "WrapDerivZipper in BufferState"
+      Dig -> do
+        getFacade >>= case _ of
+          CursorState cursor -> do
+            let Expr.Zipper {path, expr} = cursor.dzipper
+            let DerivLabel _ sort % _ = expr
+            setState $ CursorState {dzipper: Expr.Zipper {path, expr: holeDerivExpr sort}}
+          SelectState select -> do
+            let Expr.Zipperp {path, expr} = select.dzipperp
+            -- escape to cursor mode, but without selection (updates state)
+            setState $ CursorState {dzipper: Expr.Zipper {path, expr}}
+          TopState _top -> Hole.hole "dig in TopState"
+          BufferState _buffer -> Hole.hole "dig in BufferState"
 
     moveCursor dir = getFacade >>= case _ of
       BufferState _buffer -> pure unit
@@ -379,37 +403,40 @@ editorComponent = HK.component \tokens input -> HK.do
         -- CursorState
         ------------------------------------------------------------------------
         CursorState cursor -> do
-          let Expr.Zipper zp = cursor.dzipper
+          let Expr.Zipper {path, expr} = cursor.dzipper
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Right zp.expr)) clipboard_ref
+            liftEffect $ Ref.write (Just (Right expr)) clipboard_ref
           -- cut
           else if cmdKey && key == "x" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Right zp.expr)) clipboard_ref
+            liftEffect $ Ref.write (Just (Right expr)) clipboard_ref
             -- replace cursor with hole
             Hole.hole "requires holes in generic grammar"
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
-              Just (Left path) -> do
+              Just (Left path') -> do
                 -- paste a path
-                setState $ CursorState cursor {dzipper = Expr.Zipper zp {path = path <> zp.path}}
-              Just (Right expr) -> do
+                setState $ CursorState cursor {dzipper = Expr.Zipper {path: path' <> path, expr}}
+              Just (Right expr') -> do
                 -- paste an expr
-                setState $ CursorState cursor {dzipper = Expr.Zipper zp {expr = expr}}
+                setState $ CursorState cursor {dzipper = Expr.Zipper {path, expr: expr'}}
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
-            elemId <- getElementIdByDerivPath zp.path
+            elemId <- getElementIdByDerivPath path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true Nothing
           else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
-            elemId <- getElementIdByDerivPath zp.path
+            elemId <- getElementIdByDerivPath path
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
+          else if key == "Backspace" then do
+            -- replace expr with hole derivation
+            setState $ CursorState {dzipper: Expr.Zipper {path, expr: holeDerivExpr (derivExprSort expr)}}
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
@@ -424,6 +451,7 @@ editorComponent = HK.component \tokens input -> HK.do
           if cmdKey && key == "c" then do
             -- update clipboard
             liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
+          -- cut
           else if cmdKey && key == "x" then do
             -- update clipboard
             liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
@@ -608,7 +636,7 @@ bufferComponent = HK.component \tokens input -> HK.do
       if isEnabled' then do
           -- focus buffer input tag
           HK.getHTMLElementRef (H.RefLabel bufferInputRefLabelString) >>= case _ of 
-            Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefLabelString
+            Nothing -> Bug.bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefLabelString
             Just elem -> do
               liftEffect $ HTMLElement.focus elem
               case mb_str of
@@ -616,7 +644,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                 Just str -> do
                   -- initialize string in buffer
                   case InputElement.fromElement (HTMLElement.toElement elem) of
-                    Nothing -> bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
+                    Nothing -> Bug.bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
                     Just inputElem -> liftEffect $ InputElement.setValue str inputElem
           -- update facade to BufferState
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->

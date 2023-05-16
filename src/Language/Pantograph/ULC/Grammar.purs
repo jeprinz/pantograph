@@ -6,7 +6,7 @@ import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, prettyExprF'_unsafe, (%))
+import Data.Expr (class IsExprLabel, prettyExprF'_unsafe, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Ord.Generic (genericCompare)
@@ -128,25 +128,25 @@ language = TotalMap.makeTotalMap case _ of
   Zero -> Grammar.makeRule [] \[] ->
     [ ]
     /\ --------
-    ( Hole.hole "varSortME" )
+    ( VarSort %* [] )
   Suc -> Grammar.makeRule [] \[] ->
-    [ Hole.hole "varSortME" ]
+    [ VarSort %* [] ]
     /\ --------
-    ( Hole.hole "varSortME" )
+    ( VarSort %* [] )
   Lam -> Grammar.makeRule [] \[] ->
-    [ Hole.hole "varSortME"
-    , Hole.hole "termSortME" ]
+    [ VarSort %* []
+    , TermSort %* [] ]
     /\ --------
-    ( Hole.hole "termSortME" )
+    ( TermSort %* [] )
   App -> Grammar.makeRule [] \[] ->
-    [ Hole.hole "termSortME"
-    , Hole.hole "termSortME" ]
+    [ TermSort %* []
+    , TermSort %* [] ]
     /\ --------
-    ( Hole.hole "termSortME" )
+    ( TermSort %* [] )
   Ref -> Grammar.makeRule [] \[] ->
-    [ Hole.hole "varSortME" ]
+    [ VarSort %* [] ]
     /\ --------
-    ( Hole.hole "termSortME" )
+    ( TermSort %* [] )
   -- Hole -> Grammar.makeRule ["sort"] \[sort] ->
   --   [ Hole.hole "holeInteriorSortME" ]
   --   /\ --------

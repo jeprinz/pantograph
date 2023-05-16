@@ -1,4 +1,4 @@
-module Hole where
+module Hole (class HoleWarning, hole) where
 
 import Prim.TypeError (class Warn, Text)
 
