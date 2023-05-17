@@ -193,17 +193,8 @@ defaultUp _ _ = Nothing
 -------------- Other typechange related functions ---------------------
 
 getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
-getPathChange lang (Expr.Path Nil) sort = inject sort
-getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left, right})) : path)) sort
-{-
-Needs to:
-- get the corresponding change from the array
-- freshen the variables
-- one-sided unify the left/right(which one?) endpoint with the sort
-- (should only substitute for metavars in the thing from lang, not the sort)
-- return the change after the substitution
--}
-   =
+getPathChange _lang (Expr.Path Nil) sort = inject sort
+getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left, right: _})) : path)) sort =
    -- TODO: Henry, how do I use Assertion?
    if not (sort1 == sort) then unsafeCrashWith "assertion failed: these should be equal" else
    let (Grammar.ChangeRule vars crustyKidChanges) = (TotalMap.lookup r lang) in
