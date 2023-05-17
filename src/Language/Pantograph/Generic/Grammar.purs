@@ -144,9 +144,9 @@ derivLabelRuleLabel :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRuleLabel (DerivLabel r _) = Just r
 derivLabelRuleLabel (DerivHole _) = Nothing
 
-derivLabelSort :: forall l r. DerivLabel l r -> Expr.MetaExpr l
-derivLabelSort (DerivLabel _ s) = s
-derivLabelSort (DerivHole s) = s
+derivLabelIndex :: forall l r. DerivLabel l r -> Expr.MetaExpr l
+derivLabelIndex (DerivLabel _ s) = s
+derivLabelIndex (DerivHole s) = s
 
 infix 8 DerivLabel as |-
 
@@ -211,7 +211,7 @@ type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 
 -- derivExprIndex :: forall l r. DerivExpr l r -> MetaHoleyExpr l
 derivExprIndex :: forall l r. DerivExpr l r -> Expr.MetaExpr l
-derivExprIndex (dl % _) = derivLabelSort dl
+derivExprIndex (dl % _) = derivLabelIndex dl
 
 -- derivExprRule :: forall l r. DerivExpr l r -> HoleyRuleLabel r
 derivExprRule :: forall l r. DerivExpr l r -> Maybe r
