@@ -105,19 +105,19 @@ instance IsRuleLabel ExprLabel RuleLabel where
         Z -> G.makeRule ["gamma", "name", "alpha"] \[gamma, name, alpha] ->
             [ ]
             /\ --------
-            ( exp CCons [gamma, name, alpha] ⊢@ alpha )
+            ( exp CCons [gamma, name, alpha] ⊢⊢ alpha )
         S -> G.makeRule ["gamma", "alpha", "name", "beta"] \[gamma, alpha, name, beta] ->
-            [ gamma ⊢@ alpha ]
+            [ gamma ⊢⊢ alpha ]
             /\ --------
-            ( exp CCons [gamma, name, beta] ⊢@ alpha )
+            ( exp CCons [gamma, name, beta] ⊢⊢ alpha )
         Var -> G.makeRule ["gamma", "x"] \[gamma, alpha] ->
-            [ gamma ⊢@ alpha ]
+            [ gamma ⊢⊢ alpha ]
             /\ --------
             ( gamma ⊢ alpha )
         Let -> G.makeRule ["gamma", "name", "alpha", "impl", "beta", "body"] \[gamma, name, alpha, impl, beta, body] ->
             [ exp SType [alpha]
             , gamma ⊢ alpha
-            , exp CCons [gamma, name, alpha] ⊢ beta ] 
+            , exp CCons [gamma, name, alpha] ⊢ beta ]
             /\ --------
             ( gamma ⊢ beta )
         Base -> G.makeRule [] \[] ->
@@ -142,7 +142,7 @@ judgeTerm gamma alpha = exp STerm [gamma, alpha]
 infix 8 judgeTerm as ⊢
 
 judgeVar gamma alpha = exp SVar [gamma, alpha]
-infix 8 judgeVar as ⊢@
+infix 8 judgeVar as ⊢⊢
 
 --data Rule l r = Rule (Set MetaVar) (Array (MetaExpr l)) (MetaExpr l)
 rules :: Array Rule
