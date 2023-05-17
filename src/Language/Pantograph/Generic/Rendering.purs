@@ -1,3 +1,5 @@
+-- !TODO there are some more places I need to tell the current buffer to disable e.g. when setting the facade
+
 module Language.Pantograph.Generic.Rendering where
 
 import Prelude
