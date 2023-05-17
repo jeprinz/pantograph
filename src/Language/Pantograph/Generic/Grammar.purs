@@ -213,9 +213,9 @@ type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 derivExprSort :: forall l r. DerivExpr l r -> Expr.MetaExpr l
 derivExprSort (dl % _) = derivLabelSort dl
 
--- derivExprRule :: forall l r. DerivExpr l r -> HoleyRuleLabel r
-derivExprRule :: forall l r. DerivExpr l r -> Maybe r
-derivExprRule (dl % _) = derivLabelRuleLabel dl
+-- derivExprRuleLabel :: forall l r. DerivExpr l r -> HoleyRuleLabel r
+derivExprRuleLabel :: forall l r. DerivExpr l r -> Maybe r
+derivExprRuleLabel (dl % _) = derivLabelRuleLabel dl
 
 --------------------------------------------------------------------------------
 -- Rule
