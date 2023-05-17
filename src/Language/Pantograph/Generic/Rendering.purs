@@ -35,7 +35,7 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName)
 import Hole as Hole
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, Action(..), DerivExpr, DerivLabel(..), DerivPath, DerivZipper, DerivZipperp, Edit, derivExprIndex, holeDerivExpr)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, Action(..), DerivExpr, DerivLabel(..), DerivPath, DerivZipper, DerivZipperp, Edit, derivExprSort, holeDerivExpr)
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
 import Text.Pretty (class Pretty, pretty)
@@ -437,7 +437,7 @@ editorComponent = HK.component \tokens input -> HK.do
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
           else if key == "Backspace" then do
             -- replace expr with hole derivation
-            setState $ CursorState {dzipper: Expr.Zipper {path, expr: holeDerivExpr (derivExprIndex expr)}}
+            setState $ CursorState {dzipper: Expr.Zipper {path, expr: holeDerivExpr (derivExprSort expr)}}
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
