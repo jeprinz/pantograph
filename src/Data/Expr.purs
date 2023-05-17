@@ -42,7 +42,7 @@ import Effect.Class.Console (log)
 import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons)
-import Text.Pretty (class Pretty, braces, braces2, parens, pretty, quotes)
+import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
 import Text.Pretty as Pretty
 import Type.Direction as Dir
@@ -80,7 +80,7 @@ wellformedExprF source showKid (l /\ kids) = Assertion
   , result:
       if expectedKidsCount l == Array.length kids 
         then Right unit
-        else Left $ "An expression with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids:" <> Pretty.bullets (showKid <$> kids)
+        else Left $ "An expression with ExprLabel " <> P.quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids:" <> Pretty.bullets (showKid <$> kids)
   }
 
 wellformedExpr :: forall l. IsExprLabel l => String -> Expr l -> Assertion Unit
@@ -302,7 +302,7 @@ instance Show l => Show (Zipper l) where show x = genericShow x
 instance IsExprLabel l => Pretty (Zipper l) where
   pretty (Zipper path expr) = 
     prettyPath path $ 
-      P.braces2 $
+      P.cursor $
         pretty expr
 
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
@@ -368,9 +368,9 @@ instance Show l => Show (Zipperp l) where show x = genericShow x
 instance IsExprLabel l => Pretty (Zipperp l) where
   pretty (Zipperp path selection expr) = 
     prettyPath path $
-      P.braces2 $
+      P.cursor $
         either prettyPath prettyPath selection $
-          P.braces2 $
+          P.cursor $
             pretty expr
 
 zipperpTopPath :: forall l. Zipperp l -> Path Up l
@@ -438,7 +438,7 @@ instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
   prettyExprF'_unsafe (Plus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Minus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)
-  prettyExprF'_unsafe (Replace e1 e2 /\ []) = parens (pretty e1 <> " ~~> " <> pretty e2)
+  prettyExprF'_unsafe (Replace e1 e2 /\ []) = P.parens (pretty e1 <> " ~~> " <> pretty e2)
 
   expectedKidsCount (Plus _) = 1
   expectedKidsCount (Minus _) = 1

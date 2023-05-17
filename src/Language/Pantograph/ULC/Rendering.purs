@@ -72,9 +72,10 @@ sucVarElem = Rendering.makePuncElem "sucVar" "S"
 --------------------------------------------------------------------------------
 
 type Edit = Grammar.Edit ExprLabel RuleLabel
+type HoleyDerivZipper = Rendering.HoleyDerivZipper ExprLabel RuleLabel
 
 -- !TODO eventualy this should not even require `DerivZipper` as an arg (??)
-getEdits :: DerivZipper -> Array Edit
+getEdits :: HoleyDerivZipper -> Array Edit
 -- getEdits _ = Hole.hole "!TODO derive default edits from language"
 getEdits _ = Grammar.defaultEdits
 

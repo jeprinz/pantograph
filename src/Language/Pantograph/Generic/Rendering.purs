@@ -40,6 +40,7 @@ import Language.Pantograph.Generic.Grammar (class IsRuleLabel, Action(..), Deriv
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
 import Text.Pretty (class Pretty, pretty)
+import Text.Pretty as P
 import Type.Direction (Up, VerticalDir, _down, _left, _next, _prev, _right, _up, downDir, leftDir, rightDir, upDir)
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
@@ -89,12 +90,15 @@ instance (Expr.IsExprLabel l, IsRuleLabel l r) => Pretty (State l r) where
   pretty = case _ of
     CursorState cursor -> Array.intercalate "\n"
       [ "cursor:"
-      , "  - hdzipper = " <> pretty cursor.hdzipper
-      , "  - bufferEnabled = " <> show cursor.bufferEnabled
+      , P.indent $ P.newlines
+          [ "- hdzipper = " <> pretty cursor.hdzipper
+          , "- bufferEnabled = " <> show cursor.bufferEnabled
+          ]
       ]
     SelectState select -> Array.intercalate "\n"
       [ "select:"
-      , "  - dzipperp = " <> pretty select.dzipperp
+      , P.indent $ P.newlines
+          [ "- dzipperp = " <> pretty select.dzipperp ]
       ]
     TopState _top -> Array.intercalate "\n"
       [ "top:"
@@ -138,7 +142,7 @@ instance (Show l, Show r) => Show (HoleyDerivZipper l r) where show x = genericS
 
 instance IsRuleLabel l r => Pretty (HoleyDerivZipper l r) where
   pretty (InjectHoleyDerivZipper dzipper) = pretty dzipper
-  pretty (HoleInteriorHoleyDerivZipper dpath sort) = Expr.prettyPath dpath $ "(? : " <> pretty sort <> ")"
+  pretty (HoleInteriorHoleyDerivZipper dpath sort) = Expr.prettyPath dpath $ "(⌶{?} : " <> pretty sort <> ")"
 
 data HoleyDerivPath dir l r
   = InjectHoleyDerivPath (DerivPath dir l r)
@@ -152,7 +156,7 @@ instance (Show l, Show r) => Show (HoleyDerivPath dir l r) where show x = generi
 
 instance (IsRuleLabel l r, ReflectPathDir dir) => Pretty (HoleyDerivPath dir l r) where
   pretty (InjectHoleyDerivPath dpath) = pretty dpath
-  pretty (HoleInteriorHoleyDerivPath dpath) = Expr.prettyPath dpath $ "?a"
+  pretty (HoleInteriorHoleyDerivPath dpath) = Expr.prettyPath dpath $ "(⌶{?} : _)"
 
 hdzipperDerivPath :: forall l r. HoleyDerivZipper l r -> DerivPath Up l r
 hdzipperDerivPath (InjectHoleyDerivZipper dzipper) = Expr.zipperPath dzipper
@@ -188,13 +192,9 @@ escapeHoleInterior cursor = do
 --           pretty st
 --   }
 
--- case _ of
---   CursorState cursor -> Ass
---   st -> ?a
-
 type EditorSpec l r =
-  { dzipper :: DerivZipper l r
-  , getEdits :: DerivZipper l r -> Array (Edit l r)
+  { hdzipper :: HoleyDerivZipper l r
+  , getEdits :: HoleyDerivZipper l r -> Array (Edit l r)
   , renderDerivExprKids' ::
       -- DerivExpr l r -> 
       -- Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
@@ -216,7 +216,8 @@ editorComponent :: forall q l r.
 editorComponent = HK.component \tokens input -> HK.do
   let
     initState = CursorState
-      { hdzipper: InjectHoleyDerivZipper input.dzipper
+      -- { hdzipper: InjectHoleyDerivZipper input.dzipper
+      { hdzipper: input.hdzipper
       , bufferEnabled: false
       }
 
@@ -246,7 +247,9 @@ editorComponent = HK.component \tokens input -> HK.do
       doc <- liftEffect $ HTML.window >>= Window.document
       elemId <- getElementIdByHoleyDerivPath hdzipper
       liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
-        Nothing -> Bug.bug $ "could not find element\n  - elemId = " <> elemId <> "\n  - hdzipper = " <> pretty hdzipper
+        Nothing -> do
+          st <- getState
+          Bug.bug $ "could not find element" <> P.indent ("\n- elemId = " <> elemId <> "\n- hdzipper = " <> pretty hdzipper <> "\n- st = " <> pretty st)
         Just elem -> pure elem
 
     -- getElementIdByDerivPath :: DerivPath Dir.Up l r -> HK.HookM Aff String
@@ -260,7 +263,6 @@ editorComponent = HK.component \tokens input -> HK.do
     --     Nothing -> Bug.bug $ "could not find element by id: " <> elemId
     --     Just elem -> pure elem
 
-  let
     -- setNodeElementStyle :: String -> Maybe (DerivPath Dir.Up l r) -> Maybe (DerivPath Dir.Up l r) -> HK.HookM Aff Unit
     setNodeElementStyle :: String -> Maybe (HoleyDerivPath Up l r) -> Maybe (HoleyDerivPath Up l r) -> HK.HookM Aff Unit
     setNodeElementStyle className mb_hdpath_old mb_hdpath_new = do
@@ -295,20 +297,24 @@ editorComponent = HK.component \tokens input -> HK.do
       liftEffect $ Ref.write mb_hdpath_new maybeHighlightPath_ref
 
     unsetFacadeElements :: HK.HookM Aff Unit
-    unsetFacadeElements = getFacade >>= case _ of
-      CursorState cursor -> do
-        setHighlightElement Nothing
-        setCursorElement (Just (hdzipperHoleyDerivPath cursor.hdzipper)) Nothing
-      SelectState select -> do
-        setHighlightElement Nothing
-        setSelectTopElement (Just (InjectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp))) Nothing
-        setSelectBottomElement (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp))) Nothing
-      TopState _top -> do
-        setHighlightElement Nothing
+    unsetFacadeElements = do
+      currentFacade <- getFacade
+      -- Debug.traceM $ "[unsetFacadeElements] currentFacade = " <> pretty currentFacade
+      case currentFacade of
+        CursorState cursor -> do
+          setHighlightElement Nothing
+          setCursorElement (Just (hdzipperHoleyDerivPath cursor.hdzipper)) Nothing
+        SelectState select -> do
+          setHighlightElement Nothing
+          setSelectTopElement (Just (InjectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp))) Nothing
+          setSelectBottomElement (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp))) Nothing
+        TopState _top -> do
+          setHighlightElement Nothing
 
     -- | Sets the facade state, which updates all the corresponding UI elements.
     setFacade :: State l r -> HK.HookM Aff Unit
     setFacade st = do
+      -- Debug.traceM $ "[setFacade] st = " <> pretty st
       unsetFacadeElements
       setFacade' st
 
@@ -316,6 +322,7 @@ editorComponent = HK.component \tokens input -> HK.do
     -- | Doesn't `unsetFacadeElements` first
     setFacade' :: State l r -> HK.HookM Aff Unit
     setFacade' st = do
+      -- Debug.traceM $ "[setFacade'] st = " <> pretty st
       case st of
         CursorState cursor -> do
           setCursorElement Nothing (Just (hdzipperHoleyDerivPath cursor.hdzipper))
@@ -331,10 +338,15 @@ editorComponent = HK.component \tokens input -> HK.do
 
     setState :: State l r -> HK.HookM Aff Unit
     setState st = do
+      -- Debug.traceM $ "[setState] st = " <> pretty st
       unsetFacadeElements
+      -- Debug.traceM $ "[setState] HK.put state_id st"
       HK.put state_id st
       -- can use `setFacade'` since we already `unsetFacadeElements`
       setFacade' st
+
+    getState :: HK.HookM Aff (State l r)
+    getState = HK.get state_id
 
     handleAction = case _ of
       SetDerivZipperAction lazy_dzipper -> do
@@ -342,13 +354,16 @@ editorComponent = HK.component \tokens input -> HK.do
         case force lazy_dzipper of
           Nothing -> pure unit
           Just dzipper -> setState $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
-      WrapDerivZipper _dpath -> do
+      WrapDerivZipper _dpath' -> do
         getFacade >>= case _ of
           CursorState cursor -> do
-            let path = hdzipperDerivPath cursor.hdzipper
-            let expr = hdzipperDerivExpr cursor.hdzipper
-            let dpath = _dpath unit
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper (dpath <> path) expr), bufferEnabled: false}
+            let dpath = hdzipperDerivPath cursor.hdzipper
+            let dexpr = hdzipperDerivExpr cursor.hdzipper
+            let dpath' = _dpath' unit
+            -- Debug.traceM $ "[handleAction] WrapDerivZipper at CursorState; st = " <> pretty (CursorState cursor)
+            -- Debug.traceM $ "[handleAction] WrapDerivZipper at CursorState; dpath' = " <> pretty dpath'
+            -- Debug.traceM $ "[handleAction] WrapDerivZipper at CursorState; result hdzipper = " <> pretty (InjectHoleyDerivZipper (Expr.Zipper (dpath' <> dpath) dexpr))
+            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper (dpath' <> dpath) dexpr), bufferEnabled: false}
           TopState _top -> Hole.hole "WrapDerivZipper in TopState"
           SelectState _select -> Hole.hole "WrapDerivZipper in BufferState"
       Dig -> do
@@ -366,20 +381,20 @@ editorComponent = HK.component \tokens input -> HK.do
           TopState _top -> Hole.hole "dig in TopState"
 
     moveCursor dir = do
-      Debug.traceM $ "[moveCursor] dir = " <> show dir
+      -- Debug.traceM $ "[moveCursor] dir = " <> show dir
       getFacade >>= case _ of
         CursorState cursor | cursor.bufferEnabled -> pure unit
         CursorState cursor -> do
-          Debug.traceM $ "[moveCursor] " <> pretty (CursorState cursor)
+          -- Debug.traceM $ "[moveCursor] " <> pretty (CursorState cursor)
           case cursor.hdzipper of
             -- if at hole, moving down goes to hole interior
             InjectHoleyDerivZipper dzipper 
               | DerivHole sort % _ <- Expr.zipperExpr dzipper
               , dir == inj _down Proxy -> do
-                  Debug.traceM $ "[moveCursor] at hole; going down to hole interior"
+                  -- Debug.traceM $ "[moveCursor] at hole; going down to hole interior"
                   setFacade $ CursorState {hdzipper: HoleInteriorHoleyDerivZipper (Expr.zipperPath dzipper) sort, bufferEnabled: false}
             InjectHoleyDerivZipper dzipper -> do
-              Debug.traceM $ "[moveCursor] at hole; NOT going down to hole interior"
+              -- Debug.traceM $ "[moveCursor] at hole; NOT going down to hole interior"
               case moveZipper dir dzipper of
                 Nothing -> pure unit
                 Just dzipper' -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper', bufferEnabled: false}
@@ -604,8 +619,8 @@ editorComponent = HK.component \tokens input -> HK.do
         ] $
         Array.concat
         [ [ HH.slot bufferSlot elemId bufferComponent 
-            { dzipper: dzipper
-            , edits: input.getEdits dzipper
+            { hdzipper: InjectHoleyDerivZipper dzipper
+            , edits: input.getEdits (InjectHoleyDerivZipper dzipper)
             } 
             handleBufferOutput
           ]
@@ -613,21 +628,66 @@ editorComponent = HK.component \tokens input -> HK.do
         ]
 
     renderHoleInterior isCursor dpath sort = do
-      let elemId = fromHoleyDerivPathToElementId (HoleInteriorHoleyDerivPath dpath)
-      HH.div
-        [ classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []
-        , HP.id elemId
-        , HE.onMouseDown \event -> do
-            H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setFacade $ CursorState {hdzipper: HoleInteriorHoleyDerivZipper dpath sort, bufferEnabled: false}
-        , HE.onMouseOver \event -> do
-            H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setHighlightElement (Just (HoleInteriorHoleyDerivPath dpath))
-            pure unit
-        ]
-        [ HH.div [classNames ["subnode", "inner"]]
-            [interrogativeElem]
-        ]
+      -- !TODO If at cursor, then need to actually do the work of rendering the
+      -- hole as well as the hole interior, but this SHOULD be abstracted out
+      -- into something that is also used by renderExpr and renderPath
+      (\kidElem -> if isCursor then do
+        let
+          dzipper = Expr.Zipper dpath (holeDerivExpr sort)
+          elemId = fromPathToElementId dpath
+          clsNames = ["hole"]
+        HH.div
+          [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
+          , HP.id elemId
+          , HE.onMouseDown \event -> do
+              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+              setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
+          , HE.onMouseOver \event -> do
+              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+              setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper)))
+              pure unit
+          ] $
+          Array.concat
+          [ [ HH.slot bufferSlot elemId bufferComponent 
+              { hdzipper: InjectHoleyDerivZipper dzipper
+              , edits: input.getEdits (InjectHoleyDerivZipper dzipper)
+              } 
+              handleBufferOutput
+            ]
+          , [ HH.div [classNames ["subnode", "inner"]]
+                [ HH.div [classNames ["subnode", "hole-interior"]] [kidElem]
+                , colonElem
+                , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+                ]
+            ]
+          ]
+      else
+        kidElem
+      ) do
+        let elemId = fromHoleyDerivPathToElementId (HoleInteriorHoleyDerivPath dpath)
+        HH.div
+          [ classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []
+          , HP.id elemId
+          , HE.onMouseDown \event -> do
+              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+              setFacade $ CursorState {hdzipper: HoleInteriorHoleyDerivZipper dpath sort, bufferEnabled: false}
+          , HE.onMouseOver \event -> do
+              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+              setHighlightElement (Just (HoleInteriorHoleyDerivPath dpath))
+              pure unit
+          ] $
+          Array.concat
+          [ [ let hdzipper = HoleInteriorHoleyDerivZipper dpath sort in
+              HH.slot bufferSlot elemId bufferComponent
+                { hdzipper
+                , edits: input.getEdits hdzipper
+                }
+                handleBufferOutput
+            ]
+          , [ HH.div [classNames ["subnode", "inner"]]
+              [interrogativeElem]
+            ]
+          ]
 
     renderPath dzipper1 interior  = do
       case Expr.zipUp dzipper1 of
@@ -635,9 +695,10 @@ editorComponent = HK.component \tokens input -> HK.do
         Just (th /\ dzipper2) -> do
           let
             elemId = fromPathToElementId (Expr.zipperPath dzipper2)
+            -- _ = Debug.trace ("[renderPath] Expr.zipDownsTooth dzipper2 th = " <> show (pretty <$> Expr.zipDownsTooth dzipper2 th)) \_ -> unit
             clsNames /\ kidElems = 
               -- renderDerivExprKids (Expr.unTooth th (Expr.zipperExpr dzipper1)) $
-              renderDerivExprKids dzipper1 $
+              renderDerivExprKids (Expr.Zipper (Expr.zipperPath dzipper2) (Expr.unTooth th (Expr.zipperExpr dzipper1))) $
               Array.fromFoldable $
               ZipList.unpathAround interior $ do
                 let kidZippers = Expr.zipDownsTooth dzipper2 th
@@ -656,8 +717,8 @@ editorComponent = HK.component \tokens input -> HK.do
               ] $
               Array.concat
               [ [ HH.slot bufferSlot elemId bufferComponent 
-                  { dzipper: dzipper2
-                  , edits: input.getEdits dzipper2
+                  { hdzipper: InjectHoleyDerivZipper dzipper2
+                  , edits: input.getEdits (InjectHoleyDerivZipper dzipper2)
                   } 
                   handleBufferOutput
                 ]
@@ -678,33 +739,31 @@ editorComponent = HK.component \tokens input -> HK.do
       HK.unsubscribe kbdSubId
 
   HK.pure $
-    -- Debug.trace 
-    --   ("[editorComponent.render]" <> Array.foldMap ("\n" <> _)
-    --     (map ("  - " <> _)
-    --       [ "dzipper = " <> pretty dzipper
-    --       ]))
-    --   \_ ->
-      HH.div [classNames ["editor"]]
-      [ HH.div 
-        [ classNames ["program"]
-        , HE.onMouseLeave \event -> do
-            H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setHighlightElement Nothing
-        ]
-        case currentState of
-          CursorState cursor -> do
-            let dzipper = hdzipperZipper cursor.hdzipper
-            case cursor.hdzipper of
-              InjectHoleyDerivZipper _ -> [renderPath dzipper $ renderExpr true dzipper]
-              HoleInteriorHoleyDerivZipper dpath sort -> [renderPath dzipper $ renderHoleInterior true dpath sort]
-          SelectState _st -> Hole.hole "render SelectState"
-          TopState _st -> Hole.hole "render TopState"
-      ]
+    Debug.trace 
+      ("[editorComponent.render]" <> P.bullets
+        [ "currentState = " <> pretty currentState
+        ]) \_ ->
+          HH.div [classNames ["editor"]]
+          [ HH.div 
+            [ classNames ["program"]
+            , HE.onMouseLeave \event -> do
+                H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+                setHighlightElement Nothing
+            ]
+            case currentState of
+              CursorState cursor -> do
+                let dzipper = hdzipperZipper cursor.hdzipper
+                case cursor.hdzipper of
+                  InjectHoleyDerivZipper _ -> [renderPath dzipper $ renderExpr true dzipper]
+                  HoleInteriorHoleyDerivZipper dpath sort -> [renderPath dzipper $ renderHoleInterior true dpath sort]
+              SelectState _st -> Hole.hole "render SelectState"
+              TopState _st -> Hole.hole "render TopState"
+          ]
 
 bufferSlot = Proxy :: Proxy "buffer"
 
 type BufferInput l r =
-  { dzipper :: DerivZipper l r
+  { hdzipper :: HoleyDerivZipper l r
   , edits :: Array (Edit l r)
   }
 
@@ -718,7 +777,7 @@ bufferComponent = HK.component \tokens input -> HK.do
 
   let bufferInputRefLabelString = "buffer-input"
 
-  edits <- HK.captures {dzipper: input.dzipper, bufferString} $ flip HK.useMemo \_ ->
+  edits <- HK.captures {hdzipper: input.hdzipper, bufferString} $ flip HK.useMemo \_ ->
     input.edits #
       -- memo fuzzy distances
       map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit) >>>
@@ -750,12 +809,12 @@ bufferComponent = HK.component \tokens input -> HK.do
                     Just inputElem -> liftEffect $ InputElement.setValue str inputElem
           -- update facade to BufferState
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
-            pure $ CursorState {hdzipper: InjectHoleyDerivZipper input.dzipper, bufferEnabled: true}
+            pure $ CursorState {hdzipper: input.hdzipper, bufferEnabled: true}
           pure unit
       else
         -- update facade to CursorState
         HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
-          pure $ CursorState {hdzipper: InjectHoleyDerivZipper  input.dzipper, bufferEnabled: false}
+          pure $ CursorState {hdzipper: input.hdzipper, bufferEnabled: false}
       pure (Just a)
     MoveBufferQuery qm a -> do
       if isEnabled then do

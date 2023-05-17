@@ -3,6 +3,7 @@ module Main where
 import Language.Pantograph.ULC.Grammar
 import Language.Pantograph.ULC.Rendering
 import Prelude
+
 import Data.Expr ((%), (%*))
 import Data.Expr as Expr
 import Data.Maybe (Maybe(..))
@@ -21,7 +22,9 @@ main = HA.runHalogenAff do
   VDomDriver.runUI Rendering.editorComponent spec body
   where
   spec =
-    { dzipper: Expr.Zipper mempty (holeDerivExpr (TermSort %* []))
+    { hdzipper: 
+        Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty (holeDerivExpr (TermSort %* [])))
+        -- Rendering.HoleInteriorHoleyDerivZipper mempty (TermSort %* [])
     , getEdits
     , renderDerivExprKids'
     }

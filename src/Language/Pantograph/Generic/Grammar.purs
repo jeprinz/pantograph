@@ -184,7 +184,7 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   -- but maybe we want to print those at some point for debugging?
   prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = 
     Expr.prettyExprF (AsExprLabel r /\ kids)
-  prettyExprF'_unsafe (DerivHole ix /\ []) = "(?" <+> pretty ix <> ")"
+  prettyExprF'_unsafe (DerivHole ix /\ []) = "(? : " <> pretty ix <> ")"
 
   expectedKidsCount (DerivLabel r _) = Expr.expectedKidsCount (AsExprLabel r)
   expectedKidsCount (DerivHole _) = 0
