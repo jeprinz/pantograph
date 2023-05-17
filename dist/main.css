@@ -58,15 +58,17 @@ body {
 }
 .node.hole > .subnode.inner {
   padding: 0 0.4rem;
-  box-shadow: 0 0 0 2px rgb(255, 139, 50) inset;
+  border-radius: 1rem 1rem / 2rem;
+  box-shadow: inset 0 0 0 2px rgb(255, 139, 50);
 }
 
 .node.holeInterior {
+  
 }
 
 .node.holeInterior > .subnode.inner {
   padding: 0 0.2rem;
-  box-shadow: 0 0 0 2px rgb(255, 139, 50) inset;
+  /* box-shadow: 0 0 0 4px rgb(255, 139, 50) inset; */
 }
 
 /*
