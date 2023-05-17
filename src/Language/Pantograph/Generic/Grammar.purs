@@ -134,14 +134,13 @@ instance IsRuleLabel l r => IsRuleLabel (HoleyExprLabel l) (HoleyRuleLabel r) wh
 -- DerivLabel
 --------------------------------------------------------------------------------
 
-data DerivLabel l r = DerivLabel (HoleyRuleLabel r) (Expr.MetaExpr (HoleyExprLabel l))
+data DerivLabel l r = DerivLabel (HoleyRuleLabel r) (MetaHoleyExpr l)
 
 derivLabelRuleLabel :: forall l r. DerivLabel l r -> HoleyRuleLabel r
 derivLabelRuleLabel (DerivLabel r _) = r
 
 derivLabelSort :: forall l r. DerivLabel l r -> MetaHoleyExpr l
 derivLabelSort (DerivLabel _ s) = s
-
 
 infix 8 DerivLabel as |-
 
