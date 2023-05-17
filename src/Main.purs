@@ -23,5 +23,5 @@ main = HA.runHalogenAff do
   spec =
     { dzipper: Expr.Zipper mempty (holeDerivExpr (TermSort %* []))
     , getEdits
-    , renderDerivExprKids
+    , renderDerivExprKids'
     }

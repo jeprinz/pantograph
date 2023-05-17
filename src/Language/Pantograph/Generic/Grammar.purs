@@ -21,6 +21,7 @@ import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
 import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple.Nested (type (/\), (/\))
+import Data.Variant (Variant)
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
 import Language.Pantograph.Generic.Unification (class Freshenable, freshen', genFreshener)

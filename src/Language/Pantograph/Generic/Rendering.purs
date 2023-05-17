@@ -3,12 +3,12 @@ module Language.Pantograph.Generic.Rendering where
 import Prelude
 
 import Bug as Bug
-import Bug.Assertion (Assertion(..), assertM)
+import Bug.Assertion (Assertion(..), assert, assertM)
 import Data.Array as Array
 import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), either)
 import Data.Either.Nested (type (\/))
-import Data.Expr ((%))
+import Data.Expr (wellformedExpr, (%))
 import Data.Expr as Expr
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
@@ -28,7 +28,7 @@ import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Halogen as H
-import Halogen.HTML (ComponentHTML, div, input, slot, text) as HH
+import Halogen.HTML (ComponentHTML, HTML(..), div, input, slot, text) as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
@@ -143,10 +143,14 @@ cursorState source msg st = Assertion
 type EditorSpec l r =
   { dzipper :: DerivZipper l r
   , getEdits :: DerivZipper l r -> Array (Edit l r)
-  , renderDerivExprKids ::
-      DerivExpr l r -> 
+  , renderDerivExprKids' ::
+      -- DerivExpr l r -> 
+      -- Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
+      -- Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff)
+      (r /\ Expr.MetaExpr l /\ Array (DerivExpr l r)) ->
       Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
       Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff)
+    
     -- TODO: factor out this type, and add: Grammar.Sorts, Grammar.Derivations, Grammar.Languaage, something for smallstep
   }
 
@@ -158,7 +162,6 @@ editorComponent :: forall q l r.
     Unit
     Aff
 editorComponent = HK.component \tokens input -> HK.do
-
   let
     initState = CursorState
       { dzipper: input.dzipper
@@ -505,11 +508,23 @@ editorComponent = HK.component \tokens input -> HK.do
       ActionOutput act -> handleAction act
       UpdateFacadeOutput f -> setFacade =<< (f =<< getFacade)
   
+    renderDerivExprKids dexpr kidElems = assert (wellformedExpr "renderDerivExprKids" dexpr) \_ -> case dexpr of
+      DerivLabel r sort % kids -> input.renderDerivExprKids' (r /\ sort /\ kids) kidElems
+      DerivHole sort % [] -> ["hole"] /\
+        [ HH.div [classNames ["subnode", "inner"]]
+            [ HH.div [classNames ["subnode", "hole-interior"]] 
+                [ HH.div [classNames ["subnode", "inner"]]
+                    [holeInteriorElem]
+                ]
+            , colonElem
+            , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+            ]
+        ]
+
     renderExpr isCursor dzipper = do
       let
         elemId = fromPathToElementId (Expr.zipperPath dzipper)
-        clsNames /\ kidElems = input.renderDerivExprKids (Expr.zipperExpr dzipper) $ renderExpr false <<< snd <$> Expr.zipDowns dzipper
-
+        clsNames /\ kidElems = renderDerivExprKids (Expr.zipperExpr dzipper) $ renderExpr false <<< snd <$> Expr.zipDowns dzipper
       HH.div
         [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
         , HP.id elemId
@@ -538,7 +553,7 @@ editorComponent = HK.component \tokens input -> HK.do
           let
             elemId = fromPathToElementId (Expr.zipperPath dzipper2)
             clsNames /\ kidElems = 
-              input.renderDerivExprKids (Expr.unTooth th (Expr.zipperExpr dzipper1)) $
+              renderDerivExprKids (Expr.unTooth th (Expr.zipperExpr dzipper1)) $
               Array.fromFoldable $
               ZipList.unpathAround interior $ do
                 let kidZippers = Expr.zipDownsTooth dzipper2 th
@@ -728,3 +743,13 @@ unsafePerformEffect do
     Ref.modify_ (Map.insert (Expr.zipperPath dzipper) elemId_) pathElementIds_ref
     pure elemId_
 -}
+
+makePuncElem :: forall w i. String -> String -> HH.HTML w i
+makePuncElem className symbol = HH.div [classNames ["subnode", "punctuation", className]] [HH.text symbol]
+
+spaceElem = makePuncElem "space" " "
+lparenElem = makePuncElem "lparen" "("
+rparenElem = makePuncElem "rparen" ")"
+colonElem = makePuncElem "colon" ":"
+turnstileElem = makePuncElem "turnstile" "⊢"
+holeInteriorElem = makePuncElem "holeInterior" "?"

@@ -17,30 +17,31 @@ import Hole as Hole
 import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering as Rendering
-import Language.Pantograph.ULC.Grammar (DerivExpr, DerivZipper, ExprLabel, RuleLabel(..))
+import Language.Pantograph.ULC.Grammar (DerivExpr, DerivZipper, ExprLabel, RuleLabel(..), MetaExpr)
 import Text.Pretty (pretty)
 
 type Query = Rendering.Query ExprLabel RuleLabel
 type Output = Rendering.Output ExprLabel RuleLabel
 
-renderDerivExprKids ::
-  DerivExpr -> 
+renderDerivExprKids' ::
+  -- DerivExpr -> 
+  (RuleLabel /\ MetaExpr /\ Array DerivExpr) ->
   Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff) -> 
   Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
-renderDerivExprKids (dl % kids) kidElems = do
+renderDerivExprKids' (r /\ sort /\ kids) kidElems = do
   let kids_kidElems = kids `Array.zip` kidElems
-  assert (Expr.wellformedExprF "renderDerivExprKids" (show <<< fst) (dl /\ kids_kidElems)) \_ -> case dl /\ kids_kidElems of
+  assert (Expr.wellformedExprF "ULC renderDerivExprKids'" (show <<< fst) (Grammar.DerivLabel r sort /\ kids_kidElems)) \_ -> case r /\ sort /\ kids_kidElems of
     -- var
-    Zero |- _ /\ [] -> ["var", "zero"] /\ 
+    Zero /\ _ /\ [] -> ["var", "zero"] /\ 
       [zeroVarElem]
-    Suc |- _ /\ [_ /\ predElem] -> ["var", "suc"] /\ 
+    Suc /\ _ /\ [_ /\ predElem] -> ["var", "suc"] /\ 
       [sucVarElem, predElem]
     -- term
-    Ref |- _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
-    Lam |- _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ 
-      [lparenElem, lambdaElem, varElem, mapstoElem, bodElem, rparenElem]
-    App |- _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
-      [lparenElem, aplElem, spaceElem, argElem, rparenElem]
+    Ref /\ _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
+    Lam /\ _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ 
+      [Rendering.lparenElem, lambdaElem, varElem, mapstoElem, bodElem, Rendering.rparenElem]
+    App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
+      [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
     -- -- hole
     -- Hole |- sort /\ [_ /\ hiElem] -> ["hole"] /\ 
     --   [ HH.div [classNames ["subnode", "inner"]]
@@ -59,20 +60,12 @@ renderDerivExprKids (dl % kids) kidElems = do
     -- have subtyping, which i can do with row-polymorphic variants, but will
     -- that give me what i want?
 
-makePuncElem :: forall w i. String -> String -> HH.HTML w i
-makePuncElem className symbol = HH.div [classNames ["subnode", "punctuation", className]] [HH.text symbol]
 
-lambdaElem = makePuncElem "lambda" "λ"
-mapstoElem = makePuncElem "mapsto" "↦"
-spaceElem = makePuncElem "space" " "
-refElem = makePuncElem "ref" "#"
-zeroVarElem = makePuncElem "zeroVar" "Z"
-sucVarElem = makePuncElem "sucVar" "S"
-holeInteriorElem = makePuncElem "holeInterior" "?"
-lparenElem = makePuncElem "lparen" "("
-rparenElem = makePuncElem "rparen" ")"
-colonElem = makePuncElem "colon" ":"
-turnstileElem = makePuncElem "turnstile" "⊢"
+lambdaElem = Rendering.makePuncElem "lambda" "λ"
+mapstoElem = Rendering.makePuncElem "mapsto" "↦"
+refElem = Rendering.makePuncElem "ref" "#"
+zeroVarElem = Rendering.makePuncElem "zeroVar" "Z"
+sucVarElem = Rendering.makePuncElem "sucVar" "S"
 
 --------------------------------------------------------------------------------
 -- Edit
@@ -80,7 +73,7 @@ turnstileElem = makePuncElem "turnstile" "⊢"
 
 type Edit = Grammar.Edit ExprLabel RuleLabel
 
--- !TODO eventualy this should not even require `DerivZipper` as an arg
+-- !TODO eventualy this should not even require `DerivZipper` as an arg (??)
 getEdits :: DerivZipper -> Array Edit
 -- getEdits _ = Hole.hole "!TODO derive default edits from language"
 getEdits _ = Grammar.defaultEdits
