@@ -126,6 +126,13 @@ type Top l r =
   { expr :: DerivExpr l r
   }
 
+-- !TODO `dzipper` actually be `location`; note that you cant have a selection
+-- to an inner hole, so Select doesn't use Location and still just uses DerivZipperp
+
+data Location l r
+  = DerivZipperLocation (DerivZipper l r)
+  | HoleInteriorLocation (DerivPath Up l r)
+
 cursorState source msg st = Assertion
   { name: "cursorState"
   , source
