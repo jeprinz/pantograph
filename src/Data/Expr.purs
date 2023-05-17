@@ -289,22 +289,26 @@ instance Monoid (Path dir l) where
 
 -- | Zipper
 
-newtype Zipper l = Zipper {path :: Path Dir.Up l, expr :: Expr l}
+data Zipper l = Zipper (Path Dir.Up l) (Expr l)
 
-derive instance Newtype (Zipper l) _
-derive newtype instance Show l => Show (Zipper l)
-derive newtype instance Eq l => Eq (Zipper l)
+zipperPath (Zipper p _) = p
+zipperExpr (Zipper _ e) = e
+
+derive instance Generic (Zipper l) _
+derive instance Eq l => Eq (Zipper l)
+derive instance Ord l => Ord (Zipper l)
+instance Show l => Show (Zipper l) where show x = genericShow x
 
 instance IsExprLabel l => Pretty (Zipper l) where
-  pretty (Zipper z) = 
-    prettyPath z.path $ 
+  pretty (Zipper path expr) = 
+    prettyPath path $ 
       P.braces2 $
-        pretty z.expr
+        pretty expr
 
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
-zipUp (Zipper z) = case z.path of
+zipUp (Zipper path expr) = case path of
   Path Nil -> Nothing
-  Path (th : ths) -> Just $ th /\ Zipper {path: Path ths, expr: unTooth th z.expr}
+  Path (th : ths) -> Just $ th /\ Zipper (Path ths) (unTooth th expr)
 
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
 zipDownsTooth :: forall l. IsExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
@@ -316,8 +320,8 @@ zipDownsTooth zipper (_ %< kidsPath) = do
     Just (zipsPath /\ _kidZip) -> snd <$> zipsPath
 
 zipDowns :: forall l. Zipper l -> Array (Tooth l /\ Zipper l)
-zipDowns (Zipper z) = do
-  let l % kids0 = z.expr
+zipDowns (Zipper path expr) = do
+  let l % kids0 = expr
   case Array.uncons kids0 of
     Nothing -> []
     Just {head: kid0, tail: kids1} ->
@@ -328,62 +332,54 @@ zipDowns (Zipper z) = do
   where
   go :: Array (Tooth l /\ Zipper l) -> Tooth l -> Expr l -> Array (Tooth l /\ Zipper l)
   go zippers th@(_ %< ZipList.Path {right: Nil}) kid =
-    Array.reverse $ Array.cons (th /\ Zipper {path: stepPath th z.path, expr: kid}) zippers
+    Array.reverse $ Array.cons (th /\ Zipper (stepPath th path) kid) zippers
   go zippers th@(l' %< ZipList.Path {left, right: Cons kid' kids'}) kid =
     go
-      (Array.cons (th /\ Zipper {path: stepPath th z.path, expr: kid}) zippers)
+      (Array.cons (th /\ Zipper (stepPath th path) kid) zippers)
       (l' %< ZipList.Path {left: RevList.snoc left kid, right: kids'})
       kid'
 
 zipLeft :: forall l. Zipper l -> Maybe (Zipper l)
-zipLeft (Zipper z) = case z.path of
+zipLeft (Zipper path expr) = case path of
   Path Nil -> Nothing
   Path (l %< kidsPath : ths) -> do
-    expr' /\ kidsPath' <- ZipList.zipLeft (z.expr /\ kidsPath)
-    Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
+    expr' /\ kidsPath' <- ZipList.zipLeft (expr /\ kidsPath)
+    Just $ Zipper (Path (l %< kidsPath' : ths)) expr'
 
 zipRight :: forall l. Zipper l -> Maybe (Zipper l)
-zipRight (Zipper z) = case z.path of
+zipRight (Zipper path expr) = case path of
   Path Nil -> Nothing
   Path (l %< kidsPath : ths) -> do
-    expr' /\ kidsPath' <- ZipList.zipRight (z.expr /\ kidsPath)
-    Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
+    expr' /\ kidsPath' <- ZipList.zipRight (expr /\ kidsPath)
+    Just $ Zipper (Path (l %< kidsPath' : ths)) expr'
 
 -- | Zipperp
 
-newtype Zipperp l = Zipperp
-  { path :: Path Dir.Up l
-  , selection :: Path Dir.Down l \/ Path Dir.Up l
-  , expr :: Expr l}
+data Zipperp l = Zipperp (Path Dir.Up l) (Path Dir.Down l \/ Path Dir.Up l) (Expr l)
 
 derive instance Generic (Zipperp l) _
-derive instance Newtype (Zipperp l) _
+derive instance Eq l => Eq (Zipperp l)
+derive instance Ord l => Ord (Zipperp l)
 instance Show l => Show (Zipperp l) where show x = genericShow x
 
 instance IsExprLabel l => Pretty (Zipperp l) where
-  pretty (Zipperp zp) = 
-    prettyPath zp.path $
+  pretty (Zipperp path selection expr) = 
+    prettyPath path $
       P.braces2 $
-        either prettyPath prettyPath zp.selection $
+        either prettyPath prettyPath selection $
           P.braces2 $
-            pretty zp.expr
+            pretty expr
 
 zipperpTopPath :: forall l. Zipperp l -> Path Up l
-zipperpTopPath (Zipperp z') = z'.path
+zipperpTopPath (Zipperp path _ _) = path
 
 zipperpBottomPath :: forall l. Zipperp l -> Path Up l
-zipperpBottomPath (Zipperp z') = either reversePath identity z'.selection <> z'.path
+zipperpBottomPath (Zipperp path selection _) = either reversePath identity selection <> path
 
 unzipperp :: forall l. Zipperp l -> Zipper l
-unzipperp (Zipperp z') = case z'.selection of
-  Left downPath -> Zipper
-    { path: reversePath downPath <> z'.path
-    , expr: z'.expr
-    }
-  Right upPath -> Zipper
-    { path: z'.path
-    , expr: unPath upPath z'.expr
-    }
+unzipperp (Zipperp path selection expr) = case selection of
+  Left downPath -> Zipper (reversePath downPath <> path) expr
+  Right upPath -> Zipper path (unPath upPath expr)
 
 -- | Change
 

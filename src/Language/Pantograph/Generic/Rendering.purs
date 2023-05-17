@@ -235,10 +235,10 @@ editorComponent = HK.component \tokens input -> HK.do
     unsetFacadeElements = getFacade >>= case _ of
       BufferState buffer -> do
         setHighlightElement Nothing
-        setCursorElement (Just (unwrap (buffer.dzipper)).path) Nothing
+        setCursorElement (Just (Expr.zipperPath buffer.dzipper)) Nothing
       CursorState cursor -> do
         setHighlightElement Nothing
-        setCursorElement (Just (unwrap (cursor.dzipper)).path) Nothing
+        setCursorElement (Just (Expr.zipperPath cursor.dzipper)) Nothing
       SelectState select -> do
         setHighlightElement Nothing
         setSelectTopElement (Just (Expr.zipperpTopPath select.dzipperp)) Nothing
@@ -258,9 +258,9 @@ editorComponent = HK.component \tokens input -> HK.do
     setFacade' st = do
       case st of
         CursorState cursor -> do
-          setCursorElement Nothing (Just (unwrap cursor.dzipper).path)
+          setCursorElement Nothing (Just (Expr.zipperPath cursor.dzipper))
         BufferState buffer -> do
-          setCursorElement Nothing (Just (unwrap buffer.dzipper).path)
+          setCursorElement Nothing (Just (Expr.zipperPath buffer.dzipper))
         SelectState select -> do
           setSelectTopElement Nothing (Just (Expr.zipperpTopPath select.dzipperp))
           let botPath = Expr.zipperpBottomPath select.dzipperp
@@ -288,26 +288,26 @@ editorComponent = HK.component \tokens input -> HK.do
       WrapDerivZipper _dpath -> do
         getFacade >>= case _ of
           CursorState cursor -> do
-            let Expr.Zipper {path, expr} = cursor.dzipper
+            let Expr.Zipper path expr = cursor.dzipper
             let dpath = _dpath unit
-            setState $ CursorState {dzipper: Expr.Zipper {path: dpath <> path, expr: expr}}
+            setState $ CursorState {dzipper: Expr.Zipper (dpath <> path) expr}
           BufferState buffer -> do
-            let Expr.Zipper {path, expr} = buffer.dzipper
+            let Expr.Zipper path expr = buffer.dzipper
             let dpath = _dpath unit
-            setState $ CursorState {dzipper: Expr.Zipper {path: dpath <> path, expr: expr}}
+            setState $ CursorState {dzipper: Expr.Zipper (dpath <> path) expr}
           TopState _top -> Hole.hole "WrapDerivZipper in TopState"
           SelectState _select -> Hole.hole "WrapDerivZipper in BufferState"
       Dig -> do
         getFacade >>= case _ of
           CursorState cursor -> do
-            let Expr.Zipper {path, expr} = cursor.dzipper
+            let Expr.Zipper path expr = cursor.dzipper
             case expr of
-              DerivLabel _r ix % _ -> setState $ CursorState {dzipper: Expr.Zipper {path, expr: holeDerivExpr ix}}
+              DerivLabel _r ix % _ -> setState $ CursorState {dzipper: Expr.Zipper path (holeDerivExpr ix)}
               DerivHole _ix % _ -> pure unit -- ignore dig at a hole
           SelectState select -> do
-            let Expr.Zipperp {path, expr} = select.dzipperp
+            let Expr.Zipperp path selection expr = select.dzipperp
             -- escape to cursor mode, but without selection (updates state)
-            setState $ CursorState {dzipper: Expr.Zipper {path, expr}}
+            setState $ CursorState {dzipper: (Expr.Zipper path expr)}
           TopState _top -> Hole.hole "dig in TopState"
           BufferState _buffer -> Hole.hole "dig in BufferState"
 
@@ -323,7 +323,7 @@ editorComponent = HK.component \tokens input -> HK.do
           Nothing -> pure unit
           Just dzipper -> setFacade $ CursorState cursor {dzipper = dzipper}
       TopState top -> do
-        let cursor = {dzipper: Expr.Zipper {path: mempty, expr: top.expr}}
+        let cursor = {dzipper: Expr.Zipper mempty top.expr}
         case moveZipper dir cursor.dzipper of
           Nothing -> pure unit
           Just dzipper -> setFacade $ CursorState cursor {dzipper = dzipper}
@@ -332,8 +332,8 @@ editorComponent = HK.component \tokens input -> HK.do
       BufferState _buffer -> Hole.hole "escape to cursor first"
       CursorState cursor -> do
         let select = (_ $ dir) $ case_
-              # on _up (\_ -> {dzipperp: Expr.Zipperp {path: (unwrap cursor.dzipper).path, selection: Left mempty, expr: (unwrap cursor.dzipper).expr}})
-              # on _down (\_ -> {dzipperp: Expr.Zipperp {path: (unwrap cursor.dzipper).path, selection: Right mempty, expr: (unwrap cursor.dzipper).expr}})
+              # on _up (\_ -> {dzipperp: Expr.Zipperp (Expr.zipperPath cursor.dzipper) (Left mempty) (Expr.zipperExpr cursor.dzipper)})
+              # on _down (\_ -> {dzipperp: Expr.Zipperp (Expr.zipperPath cursor.dzipper) (Right mempty) (Expr.zipperExpr cursor.dzipper)})
               # on _left (\_ -> Hole.hole "moveSelect left when CursorState")
               # on _right (\_ -> Hole.hole "moveSelect right when CursorState")
               # on _prev (\_ -> Hole.hole "moveSelect prev when CursorState")
@@ -353,7 +353,7 @@ editorComponent = HK.component \tokens input -> HK.do
       TopState top -> do
         let select = (_ $ dir) $ case_
               # on _up (\_ -> Hole.hole "moveSelect up when TopState")
-              # on _down (\_ -> {dzipperp: Expr.Zipperp {path: mempty, selection: Left mempty, expr: top.expr}})
+              # on _down (\_ -> {dzipperp: Expr.Zipperp mempty (Left mempty) top.expr})
               # on _left (\_ -> Hole.hole "moveSelect left when TopState")
               # on _right (\_ -> Hole.hole "moveSelect right when TopState")
               # on _prev (\_ -> Hole.hole "moveSelect prev when TopState")
@@ -384,27 +384,27 @@ editorComponent = HK.component \tokens input -> HK.do
         BufferState buffer -> do
           if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
+            elemId <- getElementIdByDerivPath (Expr.zipperPath buffer.dzipper)
             HK.tell tokens.slotToken bufferSlot elemId SubmitBufferQuery
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
-            elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
+            elemId <- getElementIdByDerivPath (Expr.zipperPath buffer.dzipper)
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false Nothing
           else if key == "ArrowUp" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
+            elemId <- getElementIdByDerivPath (Expr.zipperPath buffer.dzipper)
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery upDir
           else if key == "ArrowDown" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByDerivPath (unwrap buffer.dzipper).path
+            elemId <- getElementIdByDerivPath (Expr.zipperPath buffer.dzipper)
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
         ------------------------------------------------------------------------
         -- CursorState
         ------------------------------------------------------------------------
         CursorState cursor -> do
-          let Expr.Zipper {path, expr} = cursor.dzipper
+          let (Expr.Zipper path expr) = cursor.dzipper
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
@@ -420,10 +420,10 @@ editorComponent = HK.component \tokens input -> HK.do
               Nothing -> pure unit -- nothing in clipboard
               Just (Left path') -> do
                 -- paste a path
-                setState $ CursorState cursor {dzipper = Expr.Zipper {path: path' <> path, expr}}
+                setState $ CursorState cursor {dzipper = Expr.Zipper (path' <> path) expr}
               Just (Right expr') -> do
                 -- paste an expr
-                setState $ CursorState cursor {dzipper = Expr.Zipper {path, expr: expr'}}
+                setState $ CursorState cursor {dzipper = Expr.Zipper path expr'}
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
@@ -437,7 +437,7 @@ editorComponent = HK.component \tokens input -> HK.do
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
           else if key == "Backspace" then do
             -- replace expr with hole derivation
-            setState $ CursorState {dzipper: Expr.Zipper {path, expr: holeDerivExpr (derivExprSort expr)}}
+            setState $ CursorState {dzipper: Expr.Zipper path (holeDerivExpr (derivExprSort expr))}
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
@@ -447,7 +447,7 @@ editorComponent = HK.component \tokens input -> HK.do
         -- SelectState
         ------------------------------------------------------------------------
         SelectState select -> do
-          let Expr.Zipperp {path, selection, expr} = select.dzipperp
+          let Expr.Zipperp path selection expr = select.dzipperp
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
@@ -457,13 +457,13 @@ editorComponent = HK.component \tokens input -> HK.do
             -- update clipboard
             liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
             -- escape to cursor mode, but without selection (updates state)
-            setState $ CursorState {dzipper: Expr.Zipper {path, expr}}
+            setState $ CursorState {dzipper: (Expr.Zipper path expr)}
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState {dzipper: Expr.unzipperp select.dzipperp}
           else if key == "Backspace" then do
             -- escape to cursor mode, but without selection (updates state)
-            setState $ CursorState {dzipper: Expr.Zipper {path, expr}}
+            setState $ CursorState {dzipper: (Expr.Zipper path expr)}
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
@@ -507,8 +507,8 @@ editorComponent = HK.component \tokens input -> HK.do
   
     renderExpr isCursor dzipper = do
       let
-        elemId = fromPathToElementId (unwrap dzipper).path
-        clsNames /\ kidElems = input.renderDerivExprKids (unwrap dzipper).expr $ renderExpr false <<< snd <$> Expr.zipDowns dzipper
+        elemId = fromPathToElementId (Expr.zipperPath dzipper)
+        clsNames /\ kidElems = input.renderDerivExprKids (Expr.zipperExpr dzipper) $ renderExpr false <<< snd <$> Expr.zipDowns dzipper
 
       HH.div
         [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
@@ -518,7 +518,7 @@ editorComponent = HK.component \tokens input -> HK.do
             setFacade $ CursorState {dzipper: dzipper}
         , HE.onMouseOver \event -> do
             H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setHighlightElement (Just (unwrap dzipper).path)
+            setHighlightElement (Just (Expr.zipperPath dzipper))
             pure unit
         ] $
         Array.concat
@@ -536,13 +536,12 @@ editorComponent = HK.component \tokens input -> HK.do
         Nothing -> interior
         Just (th /\ dzipper2) -> do
           let
-            elemId = fromPathToElementId (unwrap dzipper2).path
+            elemId = fromPathToElementId (Expr.zipperPath dzipper2)
             clsNames /\ kidElems = 
-              input.renderDerivExprKids (Expr.unTooth th (unwrap dzipper1).expr) $
+              input.renderDerivExprKids (Expr.unTooth th (Expr.zipperExpr dzipper1)) $
               Array.fromFoldable $
               ZipList.unpathAround interior $ do
                 let kidZippers = Expr.zipDownsTooth dzipper2 th
-                let ZipList.Path p = kidZippers
                 renderExpr false <$> kidZippers
           renderPath dzipper2 $
             HH.div
@@ -553,7 +552,7 @@ editorComponent = HK.component \tokens input -> HK.do
                   setFacade $ CursorState {dzipper: dzipper2}
               , HE.onMouseOver \event -> do
                   H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-                  setHighlightElement (Just (unwrap dzipper2).path)
+                  setHighlightElement (Just (Expr.zipperPath dzipper2))
                   pure unit
               ] $
               Array.concat
@@ -726,6 +725,6 @@ fromPathToElementId
 unsafePerformEffect do
     -- generate new elemId and add it to the map
     elemId_ <- UUID.toString <$> UUID.genUUID
-    Ref.modify_ (Map.insert (unwrap dzipper).path elemId_) pathElementIds_ref
+    Ref.modify_ (Map.insert (Expr.zipperPath dzipper) elemId_) pathElementIds_ref
     pure elemId_
 -}
