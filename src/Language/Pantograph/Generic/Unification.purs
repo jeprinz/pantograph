@@ -1,10 +1,13 @@
 module Language.Pantograph.Generic.Unification where
 
 import Prelude
-import Bug.Assertion (Assertion(..), assert, assertInput)
+
+import Bug as Bug
+import Bug.Assertion (Assertion(..), assert, assertInput_)
 import Control.Apply (lift2)
 import Control.Monad.Error.Class (throwError)
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Either (Either(..))
 import Data.Expr ((%))
 import Data.Expr as Expr
@@ -16,13 +19,13 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.MultiMap (MultiMap)
 import Data.MultiMap as MultiMap
+import Data.Newtype (class Newtype)
+import Data.Newtype as Newtype
 import Data.Set (Set)
 import Data.Traversable (traverse)
 import Data.Tuple.Nested (type (/\), (/\))
-import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (pretty, quotes)
 import Util (lookup', union')
-import Data.Either (Either(..))
 
 {-
 
@@ -80,13 +83,30 @@ instance Freshenable l => Freshenable (Expr.Expr l) where
 instance Freshenable l => Freshenable (Expr.ChangeLabel l) where
     freshen sub l = map (freshen sub) l
 
+--------------------------------------------------------------------------------
+-- !HENRY here's a way to get around this, but you still need to write instances
+-- for deeply-nested type-class-instance-inferences
+
+newtype AsFreshenable f (a :: Type) = AsFreshenable (f a)
+
+derive instance Newtype (AsFreshenable f a) _
+derive instance Functor f => Functor (AsFreshenable f)
+
+instance (Functor f, Freshenable l) => Freshenable (AsFreshenable f l) where
+    freshen rho = map (freshen rho) -- beautiful
+
+freshen' :: forall f l. Functor f => Freshenable l => Ren -> f l -> f l
+freshen' rho = AsFreshenable >>> freshen rho >>> Newtype.unwrap
+
+--------------------------------------------------------------------------------
+
 type Sub l = Map Expr.MetaVar (Expr.MetaExpr l)
 
 noMetaVars :: forall l. Expr.IsExprLabel l => String -> Expr.MetaExpr l -> Assertion (Expr.Expr l)
 noMetaVars source mexpr0 = Assertion
     { name: "noMetaVars", source
     , result: do
-        let go = assertInput (Expr.wellformedExpr "noMetaVars") \mexpr -> case mexpr of
+        let go = assertInput_ (Expr.wellformedExpr "noMetaVars") \mexpr -> case mexpr of
                 Expr.Meta (Left x) % [] -> throwError $ "Found MetaVar " <> quotes (pretty mexpr)
                 Expr.Meta (Right l) % kids -> (l % _) <$> go `traverse` kids
         go mexpr0
@@ -114,7 +134,7 @@ unifyLists (e1 : es1) (e2 : es2) = do
     let es2' = map (Expr.subSomeMetaVars sub) es2
     es /\ sub2 <- unifyLists es1' es2'
     pure $ (e : es) /\ union' sub sub2
-unifyLists _ _ = unsafeCrashWith "shouldn't happen"
+unifyLists _ _ = Bug.bug "[unifyLists] shouldn't happen"
 
 ------------- Another operation I need for typechanges stuff ------------------
 

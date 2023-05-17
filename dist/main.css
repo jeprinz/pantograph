@@ -58,7 +58,11 @@ body {
 }
 .node.hole > .subnode.inner {
   padding: 0 0.4rem;
-  box-shadow: 0 0 0 2px rgb(255, 50, 50) inset;
+  border-radius: 1rem 1rem / 2rem;
+  background-color: rgba(255, 139, 50, 0.1);
+  box-shadow: 
+    inset 0 0 0 2px rgb(255, 139, 50),
+    0 0 2px 0 black;
 }
 
 .node.holeInterior {
@@ -66,7 +70,7 @@ body {
 
 .node.holeInterior > .subnode.inner {
   padding: 0 0.2rem;
-  box-shadow: 0 0 0 2px rgb(255, 50, 50) inset;
+  /* box-shadow: 0 0 0 4px rgb(255, 139, 50) inset; */
 }
 
 /*
@@ -94,7 +98,9 @@ body {
 
 .subnode.punctuation {}
 
-.subnode.punctuation.lambda {}
+.subnode.punctuation.lambda {
+  margin-right: 0.2rem;
+}
 
 .subnode.punctuation.mapsto {
   padding: 0 0.5rem;
@@ -106,7 +112,7 @@ body {
 
 .subnode.punctuation.sucVar {}
 
-.subnode.punctuation.holeInterior {}
+.subnode.punctuation.interrogative {}
 
 .subnode.punctuation.colon {
   margin: 0 0.2rem;
@@ -131,6 +137,7 @@ body {
   top: 2rem;
 
   box-shadow: 0 0 0 1px black;
+  border-radius: 0.2rem;
 }
 
 .subnode.buffer>.inner>.buffer-results {}

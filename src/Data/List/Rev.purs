@@ -5,7 +5,7 @@ module Data.List.Rev
   , reverse
   , reverseArray
   , unreverse
-  , snoc, (:*)
+  , snoc, (@@)
   , unsnoc
   , singleton
   , reversed
@@ -75,7 +75,7 @@ unsnoc = unwrap >>> List.uncons >>> map \{ head, tail } -> { init: Rev tail, las
 
 snoc r_xs x = over (List.Cons x) r_xs
 
-infixl 6 snoc as :*
+infixl 6 snoc as @@
 
 singleton = reverse <<< List.singleton
 

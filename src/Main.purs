@@ -1,6 +1,10 @@
 module Main where
 
+import Language.Pantograph.ULC.Grammar
+import Language.Pantograph.ULC.Rendering
 import Prelude
+
+import Data.Expr ((%), (%*))
 import Data.Expr as Expr
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
@@ -8,14 +12,8 @@ import Effect.Class.Console as Console
 import Effect.Console (log)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver as VDomDriver
+import Language.Pantograph.Generic.Grammar (holeDerivExpr)
 import Language.Pantograph.Generic.Rendering as Rendering
-import Partial.Unsafe (unsafeCrashWith)
-
--- main :: Effect Unit 
--- main = unsafeCrashWith "!TODO fix rendering so can actually run"
-
-import Language.Pantograph.ULC.Rendering
-import Language.Pantograph.ULC.Grammar
 
 main :: Effect Unit
 main = HA.runHalogenAff do
@@ -24,10 +22,9 @@ main = HA.runHalogenAff do
   VDomDriver.runUI Rendering.editorComponent spec body
   where
   spec =
-    { derivZipper: Expr.Zipper
-        { path: mempty
-        , expr: holeDE holeInteriorDE termSortME
-        }
+    { hdzipper: 
+        Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty (holeDerivExpr (TermSort %* [])))
+        -- Rendering.HoleInteriorHoleyDerivZipper mempty (TermSort %* [])
     , getEdits
-    , renderDerivExprKids
+    , renderDerivExprKids'
     }

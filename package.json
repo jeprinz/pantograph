@@ -18,10 +18,10 @@
   "scripts": {
     "postinstall": "spago install",
     "clean": "rm -rf node_modules output .spago *.lock .cache",
-    "build": "npx spago build",
+    "build": "npx spago build --purs-args \"--codegen=sourcemaps,js\"",
     "build-prod": "spago -x spago.production.dhall build --purs-args \"-o output-prod -g sourcemaps --json-errors\"",
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/index.js",
-    "serve": "npm run build && esbuild index.js --bundle --outdir=dist --servedir=dist",
+    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outdir=dist --servedir=dist",
     "test": "npx spago test"
   },
   "repository": {

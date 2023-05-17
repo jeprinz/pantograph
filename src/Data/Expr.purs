@@ -6,7 +6,7 @@ import Prelude
 import Type.Direction
 
 import Bug (bug)
-import Bug.Assertion (Assertion(..), assert, assertInput, assertM, assert_)
+import Bug.Assertion (Assertion(..), assert, assertInput_, assertM, assert_)
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
@@ -31,7 +31,7 @@ import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.TotalMap (hasKey)
 import Data.Traversable (class Traversable, sequence, sequenceDefault, traverse)
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
@@ -40,9 +40,10 @@ import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Effect.Unsafe (unsafePerformEffect)
-import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons)
-import Text.Pretty (class Pretty, braces, braces2, parens, pretty, quotes)
+import Text.Pretty (class Pretty, pretty)
+import Text.Pretty as P
 import Text.Pretty as Pretty
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
@@ -68,7 +69,7 @@ derive instance Functor Expr
 derive instance Foldable Expr
 derive instance Traversable Expr
 
-class (Eq l, Ord l, Show l) <= IsExprLabel l where
+class (Eq l, Ord l, Show l, Pretty l) <= IsExprLabel l where
   prettyExprF'_unsafe :: Partial => ExprF l String -> String
   expectedKidsCount :: l -> Int
 
@@ -79,7 +80,7 @@ wellformedExprF source showKid (l /\ kids) = Assertion
   , result:
       if expectedKidsCount l == Array.length kids 
         then Right unit
-        else Left $ "An expression with ExprLabel " <> quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids:" <> Pretty.bullets (showKid <$> kids)
+        else Left $ "An expression with ExprLabel " <> P.quotes (show l) <> " is expected to have " <> show (expectedKidsCount l) <> " kids, but an instance of it actually has " <> show (Foldable.length kids :: Int) <> " kids:" <> Pretty.bullets (showKid <$> kids)
   }
 
 wellformedExpr :: forall l. IsExprLabel l => String -> Expr l -> Assertion Unit
@@ -114,6 +115,7 @@ freshMetaVar' :: Unit -> MetaVar
 freshMetaVar' _ = MetaVar (Nothing /\ unsafePerformEffect (UUID.genUUID))
 
 newtype Meta a = Meta (MetaVar \/ a)
+
 derive instance Newtype (Meta a) _
 derive newtype instance Show a => Show (Meta a)
 derive newtype instance Eq a => Eq (Meta a)
@@ -135,7 +137,7 @@ instance IsExprLabel l => IsExprLabel (Meta l) where
 type MetaVarSub a = Map.Map MetaVar a
 
 subMetaVars :: forall l. IsExprLabel l => MetaVarSub (Expr l) -> MetaExpr l -> Expr l
-subMetaVars sigma = assertInput (wellformedExpr "subMetaVars") go
+subMetaVars sigma = assertInput_ (wellformedExpr "subMetaVars") go
   where
   go :: Partial => _
   go = case _ of
@@ -143,7 +145,7 @@ subMetaVars sigma = assertInput (wellformedExpr "subMetaVars") go
     Meta (Right l) % kids -> l % (go <$> kids)
 
 subSomeMetaVars :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
-subSomeMetaVars sigma = assertInput (wellformedExpr "subSomeMetaVars") go
+subSomeMetaVars sigma = assertInput_ (wellformedExpr "subSomeMetaVars") go
   where
   go :: Partial => _
   go = case _ of
@@ -159,6 +161,11 @@ type MetaExpr l = Expr (Meta l)
 fromMetaVar :: forall l. MetaVar -> MetaExpr l
 fromMetaVar mx = Meta (Left mx) % []
 
+pureMetaExpr :: forall l. l -> Array (MetaExpr l) -> MetaExpr l
+pureMetaExpr l = (pure l % _)
+
+infixl 7 pureMetaExpr as %*
+
 -- | Tooth
 
 data Tooth l = Tooth l (ZipList.Path (Expr l))
@@ -172,6 +179,9 @@ instance Ord l => Ord (Tooth l) where compare x y = genericCompare x y
 derive instance Functor Tooth
 derive instance Foldable Tooth
 derive instance Traversable Tooth
+
+instance IsExprLabel l => Pretty (Tooth l) where
+  pretty th = prettyTooth th "⌶"
 
 foldMapTooth :: forall l m. Monoid m => (l -> m) -> Tooth l -> m
 foldMapTooth f (l %< p) = f l <> foldMap (foldMap f) p
@@ -269,8 +279,8 @@ reversePath :: forall dir dir' l. Dir.Opposite dir dir' => Path dir l -> Path di
 reversePath (Path ths) = Path (List.reverse ths)
 
 -- | Depending on direction:
--- |   - If dir == down, then path1 is below path2.
--- |   - If dir == up, then path1 is above path2
+-- |   - If dir == up, then path1 is below path2.
+-- |   - If dir == down, then path1 is above path2
 instance Semigroup (Path dir l) where
   append (Path ths1) (Path ths2) = Path (ths1 <> ths2)
 
@@ -279,19 +289,26 @@ instance Monoid (Path dir l) where
 
 -- | Zipper
 
-newtype Zipper l = Zipper {path :: Path Dir.Up l, expr :: Expr l}
+data Zipper l = Zipper (Path Dir.Up l) (Expr l)
 
-derive instance Newtype (Zipper l) _
-derive newtype instance Show l => Show (Zipper l)
-derive newtype instance Eq l => Eq (Zipper l)
+zipperPath (Zipper p _) = p
+zipperExpr (Zipper _ e) = e
+
+derive instance Generic (Zipper l) _
+derive instance Eq l => Eq (Zipper l)
+derive instance Ord l => Ord (Zipper l)
+instance Show l => Show (Zipper l) where show x = genericShow x
 
 instance IsExprLabel l => Pretty (Zipper l) where
-  pretty (Zipper z) = prettyPath z.path $ pretty z.expr
+  pretty (Zipper path expr) = 
+    prettyPath path $ 
+      P.cursor $
+        pretty expr
 
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
-zipUp (Zipper z) = case z.path of
+zipUp (Zipper path expr) = case path of
   Path Nil -> Nothing
-  Path (th : ths) -> Just $ th /\ Zipper {path: Path ths, expr: unTooth th z.expr}
+  Path (th : ths) -> Just $ th /\ Zipper (Path ths) (unTooth th expr)
 
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
 zipDownsTooth :: forall l. IsExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
@@ -299,12 +316,12 @@ zipDownsTooth zipper (_ %< kidsPath) = do
   let ix = ZipList.leftLength kidsPath
   let zs = zipDowns zipper
   case ZipList.zipAt ix (List.fromFoldable zs) of
-    Nothing -> unsafeCrashWith "[zipDownsTooth] bad index"
+    Nothing -> bug "[zipDownsTooth] bad index"
     Just (zipsPath /\ _kidZip) -> snd <$> zipsPath
 
 zipDowns :: forall l. Zipper l -> Array (Tooth l /\ Zipper l)
-zipDowns (Zipper z) = do
-  let l % kids0 = z.expr
+zipDowns (Zipper path expr) = do
+  let l % kids0 = expr
   case Array.uncons kids0 of
     Nothing -> []
     Just {head: kid0, tail: kids1} ->
@@ -315,53 +332,57 @@ zipDowns (Zipper z) = do
   where
   go :: Array (Tooth l /\ Zipper l) -> Tooth l -> Expr l -> Array (Tooth l /\ Zipper l)
   go zippers th@(_ %< ZipList.Path {right: Nil}) kid =
-    Array.reverse $ Array.cons (th /\ Zipper {path: stepPath th z.path, expr: kid}) zippers
+    Array.reverse $ Array.cons (th /\ Zipper (stepPath th path) kid) zippers
   go zippers th@(l' %< ZipList.Path {left, right: Cons kid' kids'}) kid =
     go
-      (Array.cons (th /\ Zipper {path: stepPath th z.path, expr: kid}) zippers)
+      (Array.cons (th /\ Zipper (stepPath th path) kid) zippers)
       (l' %< ZipList.Path {left: RevList.snoc left kid, right: kids'})
       kid'
 
 zipLeft :: forall l. Zipper l -> Maybe (Zipper l)
-zipLeft (Zipper z) = case z.path of
+zipLeft (Zipper path expr) = case path of
   Path Nil -> Nothing
   Path (l %< kidsPath : ths) -> do
-    expr' /\ kidsPath' <- ZipList.zipLeft (z.expr /\ kidsPath)
-    Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
+    expr' /\ kidsPath' <- ZipList.zipLeft (expr /\ kidsPath)
+    Just $ Zipper (Path (l %< kidsPath' : ths)) expr'
 
 zipRight :: forall l. Zipper l -> Maybe (Zipper l)
-zipRight (Zipper z) = case z.path of
+zipRight (Zipper path expr) = case path of
   Path Nil -> Nothing
   Path (l %< kidsPath : ths) -> do
-    expr' /\ kidsPath' <- ZipList.zipRight (z.expr /\ kidsPath)
-    Just $ Zipper {path: Path (l %< kidsPath' : ths), expr: expr'}
+    expr' /\ kidsPath' <- ZipList.zipRight (expr /\ kidsPath)
+    Just $ Zipper (Path (l %< kidsPath' : ths)) expr'
 
--- | ZipperP
+unzipper :: forall l. Zipper l -> Expr l
+unzipper (Zipper path expr) = unPath path expr
 
-newtype ZipperP l = ZipperP
-  { path :: Path Dir.Up l
-  , selection :: Path Dir.Down l \/ Path Dir.Up l
-  , expr :: Expr l}
+-- | Zipperp
 
-derive instance Generic (ZipperP l) _
-derive instance Newtype (ZipperP l) _
-instance Show l => Show (ZipperP l) where show x = genericShow x
+data Zipperp l = Zipperp (Path Dir.Up l) (Path Dir.Down l \/ Path Dir.Up l) (Expr l)
 
-zipperpTopPath :: forall l. ZipperP l -> Path "up" l
-zipperpTopPath (ZipperP z') = z'.path
-zipperpBottomPath :: forall l. ZipperP l -> Path "up" l
-zipperpBottomPath (ZipperP z') = z'.path <> either reversePath identity z'.selection
+derive instance Generic (Zipperp l) _
+derive instance Eq l => Eq (Zipperp l)
+derive instance Ord l => Ord (Zipperp l)
+instance Show l => Show (Zipperp l) where show x = genericShow x
 
-unzipperp :: forall l. ZipperP l -> Zipper l
-unzipperp (ZipperP z') = case z'.selection of
-  Left downPath -> Zipper
-    { path: z'.path <> reversePath downPath
-    , expr: z'.expr
-    }
-  Right upPath -> Zipper
-    { path: z'.path
-    , expr: unPath upPath z'.expr
-    }
+instance IsExprLabel l => Pretty (Zipperp l) where
+  pretty (Zipperp path selection expr) = 
+    prettyPath path $
+      P.cursor $
+        either prettyPath prettyPath selection $
+          P.cursor $
+            pretty expr
+
+zipperpTopPath :: forall l. Zipperp l -> Path Up l
+zipperpTopPath (Zipperp path _ _) = path
+
+zipperpBottomPath :: forall l. Zipperp l -> Path Up l
+zipperpBottomPath (Zipperp path selection _) = either reversePath identity selection <> path
+
+unzipperp :: forall l. Zipperp l -> Zipper l
+unzipperp (Zipperp path selection expr) = case selection of
+  Left downPath -> Zipper (reversePath downPath <> path) expr
+  Right upPath -> Zipper path (unPath upPath expr)
 
 -- | Change
 
@@ -376,12 +397,13 @@ data ChangeLabel l
 derive instance Generic (ChangeLabel l) _
 derive instance Eq l => Eq (ChangeLabel l)
 derive instance Ord l => Ord (ChangeLabel l)
+instance Show l => Show (ChangeLabel l) where show x = genericShow x
 
-instance Show l => Show (ChangeLabel l) where
-  show (Plus th) = "(+ " <> showTooth th <> ")"
-  show (Minus th) = "(- " <> showTooth th <> ")"
-  show (Inject l) = show l
-  show (Replace e1 e2) = "(" <> show e1 <> "~~> " <> show e2 <> ")"
+instance IsExprLabel l => Pretty (ChangeLabel l) where
+  pretty (Plus th) = "(+ " <> prettyTooth th "{}" <> ")"
+  pretty (Minus th) = "(- " <> prettyTooth  th "{}" <> ")"
+  pretty (Inject l) = pretty l
+  pretty (Replace e1 e2) = "(" <> pretty e1 <> "~~> " <> pretty e2 <> ")"
 
 derive instance Functor ChangeLabel
 derive instance Foldable ChangeLabel
@@ -416,7 +438,7 @@ instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
   prettyExprF'_unsafe (Plus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Minus th /\ [kid]) = prettyTooth th kid
   prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)
-  prettyExprF'_unsafe (Replace e1 e2 /\ []) = parens (pretty e1 <> " ~~> " <> pretty e2)
+  prettyExprF'_unsafe (Replace e1 e2 /\ []) = P.parens (pretty e1 <> " ~~> " <> pretty e2)
 
   expectedKidsCount (Plus _) = 1
   expectedKidsCount (Minus _) = 1

@@ -5,6 +5,8 @@ import Language.Pantograph.Generic.ChangeAlgebra
 import Language.Pantograph.Generic.Unification
 import Prelude hiding (compose)
 
+import Bug as Bug
+import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Expr ((%), (%<))
@@ -18,11 +20,15 @@ import Data.Maybe as Maybe
 import Data.TotalMap as TotalMap
 import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
+import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
 import Language.Pantograph.Generic.Grammar as Grammar
-import Partial.Unsafe (unsafeCrashWith)
+import Text.Pretty (pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust')
+import Utility ((<$$>))
+import Partial.Unsafe (unsafeCrashWith)
 
 data Direction = Up | Down -- TODO:
 
@@ -49,12 +55,12 @@ zipperToTerm (th : path) exp = addToothToTerm th (zipperToTerm path exp)
 
 assertJustExpr :: forall l r. Term l r -> Grammar.DerivTerm l r
 assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
-assertJustExpr _ = unsafeCrashWith "Error: assertJustExpr assertion failed"
+assertJustExpr _ = Bug.bug "Error: assertJustExpr assertion failed"
 
 assertNoneOfList :: forall t b. List t -> (t -> Maybe b) -> List b
 assertNoneOfList Nil _f = Nil
 assertNoneOfList (x : xs) f = case f x of
-    Nothing -> unsafeCrashWith "assertNoneOfList: assertion failed"
+    Nothing -> Bug.bug "assertNoneOfList: assertion failed"
     Just y -> y : assertNoneOfList xs f
 
 -- assert that one or zero of the children will return a
@@ -90,7 +96,7 @@ termToZipper (Expr.Expr (Inject l) kids) =
             let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
             (newTooth : p) /\ e
 --    let
-termToZipper _ = unsafeCrashWith "shouldn't happen"
+termToZipper _ = Bug.bug "shouldn't happen"
 
 --------------------------------------------------------------------------------
 
@@ -129,9 +135,15 @@ type ChLanguage l r = Grammar.Language (Expr.ChangeLabel (Expr.Meta l)) r
 metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeLabel (Expr.Meta l))
 metaInject e = map (map (Expr.Inject <<< Expr.Meta <<< Right)) e
 
-langToChLang :: forall l r. Grammar.Language l r -> ChLanguage l r
+langToChLang :: forall l r. IsRuleLabel l r => Grammar.Language l r -> ChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
         -> Grammar.Rule vars (map metaInject kids) (metaInject parent)) lang
+-- langToChLang lang = TotalMap.makeTotalMap case _ of
+--     Hole -> Hole.hole "!TODO langToChLang rule for Hole"
+--     HoleInterior -> Hole.hole "!TODO langToChLang rule for HoleInterior"
+--     InjectRuleLabel r -> do
+--         let Grammar.Rule vars kids parent = TotalMap.lookup r lang
+--         Grammar.Rule vars (map metaInject kids) (metaInject parent)
 
 -- TODO: everywhere that a boundary is introduced, I should have a function which does that, and only introduces it
 -- if the change is not the identity.
@@ -148,12 +160,14 @@ defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.Deriv
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
     -- TODO: is this the right check?
-    if not (fst (endpoints ch) == sort) then unsafeCrashWith "assertion failed: ch boundary didn't match sort in defaultDown" else
+    -- if not (injectMetaHoleyExpr (fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
+    if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
     do
         sub /\ chBackUp <- doOperation ch parentGSort
         let kidGSorts' = map (Expr.subMetaVars sub) kidGSorts
         let kidsWithBoundaries = (\ch' kid -> wrapBoundary Down ch' kid) <$> kidGSorts' <*> kids
         let newSort = fst (endpoints chBackUp)
+        -- pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
         pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel newSort)) kidsWithBoundaries
 defaultDown _ _ = Nothing
 
@@ -186,6 +200,7 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
         let parentBoundary node = wrapBoundary Up (Expr.subMetaVars sub parentGSort) node
         pure $ parentBoundary 
             (Expr.Expr
+                -- (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr (fst (endpoints chBackDown)))))
                 (Inject (Grammar.DerivLabel ruleLabel (fst (endpoints chBackDown))))
                 (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
 defaultUp _ _ = Nothing
@@ -194,15 +209,18 @@ defaultUp _ _ = Nothing
 
 getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
 getPathChange _lang (Expr.Path Nil) sort = inject sort
-getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left, right: _})) : path)) sort =
-   -- TODO: Henry, how do I use Assertion?
-   if not (sort1 == sort) then unsafeCrashWith "assertion failed: these should be equal" else
-   let (Grammar.ChangeRule vars crustyKidChanges) = (TotalMap.lookup r lang) in
-   let crustyKidChange = fromJust' "bla" $ Array.index crustyKidChanges (Rev.length left) in
-   let freshener = genFreshener vars in
-   let kidChange = freshen freshener crustyKidChange in
-   let leftType = snd $ endpoints kidChange in
-   let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType sort in
-   -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
-   let kidChange' = subSomeMetaChange sub kidChange in
-   compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))
+getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivHole sort1) (ZipList.Path {left})) : path)) sort = unsafeCrashWith "Holes aren't paths"
+getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left})) : path)) sort =
+  assert  (makeAssertionBoolean { condition: sort1 == sort -- injectMetaHoleyExpr sort
+                                 , source: "getPathChange"
+                                 , name: "matchingSorts"
+                                 , message: "The sort of the current tooth's derivation label (sort) should match the input sort (sort1).\n  - sort = " <> pretty sort <> "\n  - sort1 = " <> pretty sort1}) \_ ->
+    let Grammar.ChangeRule vars crustyKidChanges = TotalMap.lookup r lang in
+    let crustyKidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
+    let freshener = genFreshener vars in
+    let kidChange = freshen freshener crustyKidChange in
+    let leftType = snd $ endpoints kidChange in
+    let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType sort in
+    -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
+    let kidChange' = subSomeMetaChange sub kidChange in
+    compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))

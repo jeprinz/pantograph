@@ -5,14 +5,14 @@ import Data.Expr
 import Data.Tuple.Nested
 import Prelude
 import Type.Direction
-
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.List (List(..))
+import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Tuple (fst, snd)
 import Data.Variant (case_, on)
-import Partial.Unsafe (unsafeCrashWith)
+import Hole as Hole
 
 -- data MoveDir
 --   = MoveUp | MoveDown | MoveLeft | MoveRight 
@@ -25,46 +25,56 @@ moveZipper = case_
   # on _down (\_ -> map snd <<< Array.head <<< zipDowns)
   # on _left (\_ -> zipLeft)
   # on _right (\_ -> zipRight)
-  # on _prev (\_ -> unsafeCrashWith "!TODO moveZipper prev")
-  # on _next (\_ -> unsafeCrashWith "!TODO moveZipper next")
+  # on _prev (\_ -> Hole.hole "moveZipper prev")
+  # on _next (\_ -> Hole.hole "moveZipper next")
 
-moveZipperP :: forall l. MoveDir -> ZipperP l -> Maybe (Zipper l \/ ZipperP l)
-moveZipperP dir zipperp = do
-  zipperp' <- moveZipperP' dir zipperp
-  Just $ normalizeZipperP zipperp'
+moveZipperp :: forall l. MoveDir -> Zipperp l -> Maybe (Zipper l \/ Zipperp l)
+moveZipperp dir zipperp = do
+  zipperp' <- moveZipperp' dir zipperp
+  Just $ normalizeZipperp zipperp'
 
--- | Normalize a ZipperP by turning it into a Zipper if it has an empty
+-- | Normalize a Zipperp by turning it into a Zipper if it has an empty
 -- | selection.
-normalizeZipperP :: forall l. ZipperP l -> Zipper l \/ ZipperP l
-normalizeZipperP zipperp@(ZipperP zp) = case zp.selection of
-  Left (Path Nil) -> Left (Zipper {path: zp.path, expr: zp.expr})
-  Right (Path Nil) -> Left (Zipper {path: zp.path, expr: zp.expr})
+normalizeZipperp :: forall l. Zipperp l -> Zipper l \/ Zipperp l
+normalizeZipperp zipperp@(Zipperp path selection expr) = case selection of
+  Left (Path Nil) -> Left (Zipper path expr)
+  Right (Path Nil) -> Left (Zipper path expr)
   _ -> Right zipperp
 
-moveZipperP' :: forall l. MoveDir -> ZipperP l -> Maybe (ZipperP l)
-moveZipperP' = case_
-  # on _up (\_ (ZipperP zp) -> case zp.selection of
+moveZipperp' :: forall l. MoveDir -> Zipperp l -> Maybe (Zipperp l)
+moveZipperp' = case_
+  # on _up (\_ (Zipperp path selection expr) -> case selection of
       Left downPath -> do
-        th /\ path' <- unstepPath zp.path
-        Just (ZipperP zp {path = path', selection = Left (stepPath th downPath)})
+        th /\ path' <- unstepPath path
+        Just (Zipperp path' (Left (stepPath th downPath)) expr)
       Right upPath -> do
         th /\ upPath' <- unstepPath upPath
-        Just (ZipperP zp {selection = Right upPath', expr = unTooth th zp.expr})
+        Just (Zipperp path (Right upPath') (unTooth th expr))
     )
-  # on _down (\_ (ZipperP zp) -> 
-      case zp.selection of
+  # on _down (\_ (Zipperp path selection expr) -> 
+      case selection of
         Left downPath -> do
           th /\ downPath' <- unstepPath downPath
-          Just (ZipperP zp {path = stepPath th zp.path, selection = Left downPath'})
+          Just (Zipperp (stepPath th path) (Left downPath') expr)
         Right upPath -> do
-          -- th /\ upPath' <- 
-          -- Just (Right (ZipperP zp {selection = Right upPath', expr = unTooth th zp.expr}))
-          -- {head: th /\ zipper} <- Array.uncons (zipDowns (Zipper {path: upPath, expr: zp.expr}))
-          -- Expr.too
-          th /\ expr <- tooth 0 zp.expr
-          Just (ZipperP zp {selection = Right (stepPath th upPath), expr = expr})
+          th /\ expr' <- tooth 0 expr
+          Just (Zipperp path (Right (stepPath th upPath)) expr')
     )
-  # on _left (\_ -> unsafeCrashWith "!TODO moveZipperP' left")
-  # on _right (\_ -> unsafeCrashWith "!TODO moveZipperP' right")
-  # on _prev (\_ -> unsafeCrashWith "!TODO moveZipperP' prev")
-  # on _next (\_ -> unsafeCrashWith "!TODO moveZipperP' next")
+  # on _left (\_ (Zipperp path selection expr) ->
+      case selection of
+        Right upPath -> do
+          Tooth l kidsZip /\ upPath' <- unstepPath upPath
+          expr' /\ kidsZip' <- ZipList.zipLeft (expr /\ kidsZip)
+          Just (Zipperp path (Right (stepPath (Tooth l kidsZip') upPath')) expr')
+        Left _ -> Nothing -- can't zip left/right when selecting up
+    )
+  # on _right (\_ (Zipperp path selection expr) ->
+      case selection of
+        Right upPath -> do
+          Tooth l kidsZip /\ upPath' <- unstepPath upPath
+          expr' /\ kidsZip' <- ZipList.zipRight (expr /\ kidsZip)
+          Just (Zipperp path (Right (stepPath (Tooth l kidsZip') upPath')) expr')
+        Left _ -> Nothing -- can't zip left/right when selecting up
+    )
+  # on _prev (\_ -> Hole.hole "moveZipperp' prev")
+  # on _next (\_ -> Hole.hole "moveZipperp' next")

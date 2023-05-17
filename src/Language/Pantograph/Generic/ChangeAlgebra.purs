@@ -6,6 +6,7 @@ import Prelude
 import Util
 
 import Bug (bug)
+import Bug as Bug
 import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
@@ -16,6 +17,7 @@ import Data.List as List
 import Data.List.Rev (unreverse, reverse)
 import Data.List.Zip (Path(..))
 import Data.List.Zip as ListZip
+import Data.List.Zip as ZipList
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -26,8 +28,7 @@ import Data.Set as Set
 import Data.Traversable (sequence)
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Exception.Unsafe (unsafeThrow)
-import Partial.Unsafe (unsafeCrashWith)
-import Data.List.Zip as ZipList
+import Hole as Hole
 
 inject :: forall l. Expr l -> Change l
 inject = map Inject
@@ -51,9 +52,9 @@ collectMatches (Expr (Inject l1) kids1) (Expr (Meta (Right l2)) kids2) | l1 == l
 --    let combine c1 c2 = if isId c1 then Just c2 else if isId c2 then Just c1 else if c1 == c2 then Just c1 else Nothing in
 --    let
 --    Array.fold subs
-    unsafeCrashWith "TODO"
+    Hole.hole "TODO: collectMatches"
 collectMatches c (Expr (Meta (Left x)) []) = Just $ Map.insert x (Set.singleton c) Map.empty
-collectMatches _ _ = unsafeCrashWith "no"
+collectMatches _ _ = Bug.bug "base case in collectMatches"
 
 endpoints :: forall l. IsExprLabel l => Change l -> Expr l /\ Expr l
 endpoints ch = 

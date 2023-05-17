@@ -16,10 +16,10 @@ import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Unit (unit)
+import Hole as Hole
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
 import Language.Pantograph.Generic.Grammar as G
-import Partial.Unsafe (unsafeCrashWith)
-import Text.Pretty ((<+>))
+import Text.Pretty (class Pretty, (<+>))
 import Text.Pretty as P
 
 data ExprLabel =
@@ -38,11 +38,22 @@ instance Eq ExprLabel where eq x y = genericEq x y
 instance Ord ExprLabel where compare x y = genericCompare x y
 instance Show ExprLabel where show x = genericShow x
 
+instance Pretty ExprLabel where
+    pretty STerm = "term-sort"
+    pretty SVar = "var-sort"
+    pretty SType = "type-sort"
+    pretty CCons = "ctx-cons"
+    pretty CNil = "ctx-nil"
+    pretty TBase = "base"
+    pretty TArrow = "arrow"
+    pretty TBool = "bool"
+    pretty (Name str) = str
+
 instance Expr.IsExprLabel ExprLabel where
     -- prettyExprF'_unsafe :: Partial => ExprF ExprLabel String -> String
-    prettyExprF'_unsafe = unsafeCrashWith "TODO"
+    prettyExprF'_unsafe _ = Hole.hole "STLC prettyExprF'_unsafe"
     -- expectedKidsCount :: ExprLabel -> Int
-    expectedKidsCount = unsafeCrashWith "TODO"
+    expectedKidsCount _ = Hole.hole "STLC expectedKidsCount"
 
 type Expr = Expr.Expr ExprLabel
 type MetaExpr = Expr.MetaExpr ExprLabel
@@ -53,9 +64,20 @@ derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
 derive instance Ord RuleLabel
 instance Show RuleLabel where show x = genericShow x
+
+instance Pretty RuleLabel where
+    pretty Lam = "lam"
+    pretty App = "app"
+    pretty Z = "z"
+    pretty S = "s"
+    pretty Var = "var"
+    pretty Let = "let"
+    pretty Base = "base"
+
 instance Enum RuleLabel where
     succ x = genericSucc x
     pred x = genericPred x
+
 instance Bounded RuleLabel where
     bottom = genericBottom
     top = genericTop

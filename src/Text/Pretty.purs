@@ -60,11 +60,12 @@ parens   = surround "(" ")"
 brackets = surround "[" "]"
 braces   = surround "{" "}"
 braces2   = surround "{{" "}}"
+cursor    = surround "⌶{" "}"
 angles   = surround "<" ">"
 ticks    = surround "`" "`"
 
 commas = intercalate ", "
-newlines = intercalate ", "
+newlines = intercalate "\n"
 -- bullets = intercalate "\n  - "
 bullets :: Array String -> String
-bullets = foldMap ("\n  - " <> _) <<< map (intercalate "    " <<< String.split (Pattern "\n"))
+bullets = indent <<< foldMap ("\n- " <> _) <<< map (intercalate "\n  " <<< String.split (Pattern "\n"))

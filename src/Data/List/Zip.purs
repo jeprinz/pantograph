@@ -11,7 +11,7 @@ import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
-import Data.List.Rev (RevList, (:*))
+import Data.List.Rev (RevList, (@@))
 import Data.List.Rev as Rev
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
@@ -71,7 +71,7 @@ leftLength (Path p) = Rev.length p.left
 rightLength (Path p) = List.length p.right
 
 appendLeft :: forall a. a -> Path a -> Path a
-appendLeft a (Path d) = Path d {left = d.left :* a}
+appendLeft a (Path d) = Path d {left = d.left @@ a}
 
 appendRight :: forall a. a -> Path a -> Path a
 appendRight a (Path d) = Path d {right = a : d.right}
@@ -95,8 +95,16 @@ zipAt :: forall a. Int -> List.List a -> Maybe (Path a /\ a)
 zipAt = go mempty
   where
   go _ _ Nil = Nothing
-  go left 0 (Cons x right) = Just (Path {left, right} /\ x)
-  go left n (Cons x right) = go (Rev.snoc left x) (n - 1) right
+  go left 0 (x : right) = Just (Path {left, right} /\ x)
+  go left n (x : right) = go (Rev.snoc left x) (n - 1) right
+
+zips :: forall a. List.List a -> Maybe (List (Path a /\ a))
+zips Nil = Nothing
+zips (x0 : xs0) = Just $ go mempty x0 xs0
+  where
+  go :: RevList a -> a -> List a -> List (Path a /\ a)
+  go left x right@Nil = List.singleton $ Path {left, right} /\ x
+  go left x right@(x' : right') = (Path {left, right} /\ x) : go (left @@ x) x' right'
 
 singletonLeft :: forall a. a -> Path a
 singletonLeft a = appendLeft a mempty
@@ -118,7 +126,7 @@ unconsRight (Path d) = List.uncons d.right <#> \{head, tail} -> {head, tail: Pat
 zipLeft :: forall a. (a /\ Path a) -> Maybe (a /\ Path a)
 zipLeft (a /\ Path p) = do
   {init: left', last: a'} <- Rev.unsnoc p.left
-  Just $ a' /\ Path {left: left', right: Cons a p.right}
+  Just $ a' /\ Path {left: left', right: a : p.right}
 
 zipRight :: forall a. (a /\ Path a) -> Maybe (a /\ Path a)
 zipRight (a /\ Path p) = do
