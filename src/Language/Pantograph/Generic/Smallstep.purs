@@ -22,7 +22,7 @@ import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, HoleyExprLabel(..), HoleyRuleLabel(..), injectMetaHoleyExpr)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Text.Pretty (pretty)
 import Type.Direction as Dir
@@ -129,20 +129,20 @@ step t@(Expr.Expr l kids) rules =
 -- The sorts in these are Expr (Meta (ChangeLabel (Meta l)).
 -- the out Meta is the one that comes from the normal rules. The (ChangeLabel (Meta l))
 -- corresponds with the changes in the boundaries, which are Expr (ChangeLabel (Meta l))
-type ChLanguage l r = Grammar.HoleyLanguage (Expr.ChangeLabel (Expr.Meta l)) r
+type ChLanguage l r = Grammar.Language (Expr.ChangeLabel (Expr.Meta l)) r
 
 metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeLabel (Expr.Meta l))
 metaInject e = map (map (Expr.Inject <<< Expr.Meta <<< Right)) e
 
 langToChLang :: forall l r. IsRuleLabel l r => Grammar.Language l r -> ChLanguage l r
--- langToChLang lang = map (\(Grammar.Rule vars kids parent)
---         -> Grammar.Rule vars (map metaInject kids) (metaInject parent)) lang
-langToChLang lang = TotalMap.makeTotalMap case _ of
-    Hole -> Hole.hole "!TODO langToChLang rule for Hole"
-    HoleInterior -> Hole.hole "!TODO langToChLang rule for HoleInterior"
-    InjectRuleLabel r -> do
-        let Grammar.Rule vars kids parent = TotalMap.lookup r lang
-        Grammar.Rule vars (map metaInject kids) (metaInject parent)
+langToChLang lang = map (\(Grammar.Rule vars kids parent)
+        -> Grammar.Rule vars (map metaInject kids) (metaInject parent)) lang
+-- langToChLang lang = TotalMap.makeTotalMap case _ of
+--     Hole -> Hole.hole "!TODO langToChLang rule for Hole"
+--     HoleInterior -> Hole.hole "!TODO langToChLang rule for HoleInterior"
+--     InjectRuleLabel r -> do
+--         let Grammar.Rule vars kids parent = TotalMap.lookup r lang
+--         Grammar.Rule vars (map metaInject kids) (metaInject parent)
 
 -- TODO: everywhere that a boundary is introduced, I should have a function which does that, and only introduces it
 -- if the change is not the identity.
@@ -159,13 +159,15 @@ defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.Deriv
     let kidGSorts = map (freshen freshener) crustyKidGSorts in
     let parentGSort = freshen freshener crustyParentGSort in
     -- TODO: is this the right check?
-    if not (injectMetaHoleyExpr (fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
+    -- if not (injectMetaHoleyExpr (fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
+    if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
     do
         sub /\ chBackUp <- doOperation ch parentGSort
         let kidGSorts' = map (Expr.subMetaVars sub) kidGSorts
         let kidsWithBoundaries = (\ch' kid -> wrapBoundary Down ch' kid) <$> kidGSorts' <*> kids
         let newSort = fst (endpoints chBackUp)
-        pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
+        -- pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
+        pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel newSort)) kidsWithBoundaries
 defaultDown _ _ = Nothing
 
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
@@ -197,14 +199,16 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
         let parentBoundary node = wrapBoundary Up (Expr.subMetaVars sub parentGSort) node
         pure $ parentBoundary 
             (Expr.Expr
-                (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr (fst (endpoints chBackDown)))))
+                -- (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr (fst (endpoints chBackDown)))))
+                (Inject (Grammar.DerivLabel ruleLabel (fst (endpoints chBackDown))))
                 (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
 defaultUp _ _ = Nothing
 
 -------------- Other typechange related functions ---------------------
 
-getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.HoleyLanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
+getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
 getPathChange _lang (Expr.Path Nil) sort = inject sort
+getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivHole sort1) (ZipList.Path {left})) : path)) sort = Hole.hole "getPathChange at a DerivHole"
 getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left})) : path)) sort =
 {-
 Needs to:
@@ -214,7 +218,7 @@ Needs to:
 - (should only substitute for metavars in the thing from lang, not the sort)
 - return the change after the substitution
 -}
-  assert  (makeAssertionBoolean { condition: sort1 == injectMetaHoleyExpr sort
+  assert  (makeAssertionBoolean { condition: sort1 == sort -- injectMetaHoleyExpr sort
                                  , source: "getPathChange"
                                  , name: "matchingSorts"
                                  , message: "The sort of the current tooth's derivation label (sort) should match the input sort (sort1).\n  - sort = " <> pretty sort <> "\n  - sort1 = " <> pretty sort1}) \_ ->

@@ -25,7 +25,7 @@ import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
 import Language.Pantograph.Generic.Unification (class Freshenable, freshen', genFreshener)
 import Partial.Unsafe (unsafePartial)
-import Text.Pretty (class Pretty, pretty)
+import Text.Pretty (class Pretty, pretty, (<+>))
 import Type.Direction (Up)
 
 --------------------------------------------------------------------------------
@@ -38,109 +38,115 @@ class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleL
 
 expectedHypsCount :: forall l r. IsRuleLabel l r => r -> Int
 expectedHypsCount r = do
-  let Rule _ hyps _ = TotalMap.lookup (InjectRuleLabel r) language 
+  -- let Rule _ hyps _ = TotalMap.lookup (InjectRuleLabel r) language 
+  let Rule _ hyps _ = TotalMap.lookup r language 
   Array.length hyps
 
---------------------------------------------------------------------------------
--- HoleyExprLabel
---------------------------------------------------------------------------------
+-- --------------------------------------------------------------------------------
+-- -- HoleyExprLabel
+-- --------------------------------------------------------------------------------
 
-data HoleyExprLabel l
-  = ConcreteExprLabel l
-  | HoleInteriorSort
+-- data HoleyExprLabel l
+--   = ConcreteExprLabel l
+--   | HoleInteriorSort
 
--- !TODO does the version without `MetaExpr` ever get used? if not, then maybe
--- just make that the definition of HoleyExpr (i.e. HoleyExpr inherently can
--- have metavars)
-type HoleyExpr l = Expr.Expr (HoleyExprLabel l)
-type MetaHoleyExpr l = Expr.MetaExpr (HoleyExprLabel l)
+-- -- !TODO does the version without `MetaExpr` ever get used? if not, then maybe
+-- -- just make that the definition of HoleyExpr (i.e. HoleyExpr inherently can
+-- -- have metavars)
+-- type HoleyExpr l = Expr.Expr (HoleyExprLabel l)
+-- type MetaHoleyExpr l = Expr.MetaExpr (HoleyExprLabel l)
 
-pureHoleyExpr :: forall l. l -> Array (HoleyExpr l) -> HoleyExpr l
-pureHoleyExpr l = (ConcreteExprLabel l % _)
+-- pureHoleyExpr :: forall l. l -> Array (HoleyExpr l) -> HoleyExpr l
+-- pureHoleyExpr l = (ConcreteExprLabel l % _)
 
-injectHoleyExpr :: forall l. Expr.Expr l -> HoleyExpr l
-injectHoleyExpr (l % kids) = pureHoleyExpr l (injectHoleyExpr <$> kids)
+-- injectHoleyExpr :: forall l. Expr.Expr l -> HoleyExpr l
+-- injectHoleyExpr (l % kids) = pureHoleyExpr l (injectHoleyExpr <$> kids)
 
-pureMetaHoleyExpr :: forall l. l -> Array (MetaHoleyExpr l) -> MetaHoleyExpr l
-pureMetaHoleyExpr l = (pure (ConcreteExprLabel l) % _)
+-- pureMetaHoleyExpr :: forall l. l -> Array (MetaHoleyExpr l) -> MetaHoleyExpr l
+-- pureMetaHoleyExpr l = (pure (ConcreteExprLabel l) % _)
 
-injectMetaHoleyExpr :: forall l. Expr.MetaExpr l -> MetaHoleyExpr l
-injectMetaHoleyExpr (l % kids) = (ConcreteExprLabel <$> l) % (injectMetaHoleyExpr <$> kids)
+-- injectMetaHoleyExpr :: forall l. Expr.MetaExpr l -> MetaHoleyExpr l
+-- injectMetaHoleyExpr (l % kids) = (ConcreteExprLabel <$> l) % (injectMetaHoleyExpr <$> kids)
 
-derive instance Generic (HoleyExprLabel l) _
-instance Show l => Show (HoleyExprLabel l) where show x = genericShow x
-derive instance Eq l => Eq (HoleyExprLabel l)
-derive instance Ord l => Ord (HoleyExprLabel l)
-derive instance Functor HoleyExprLabel
+-- derive instance Generic (HoleyExprLabel l) _
+-- instance Show l => Show (HoleyExprLabel l) where show x = genericShow x
+-- derive instance Eq l => Eq (HoleyExprLabel l)
+-- derive instance Ord l => Ord (HoleyExprLabel l)
+-- derive instance Functor HoleyExprLabel
 
-instance Expr.IsExprLabel l => Pretty (HoleyExprLabel l) where
-  pretty (ConcreteExprLabel l) = pretty l
-  pretty l = show l
+-- instance Expr.IsExprLabel l => Pretty (HoleyExprLabel l) where
+--   pretty (ConcreteExprLabel l) = pretty l
+--   pretty l = show l
 
-instance Expr.IsExprLabel l => Expr.IsExprLabel (HoleyExprLabel l) where
-  prettyExprF'_unsafe (ConcreteExprLabel l /\ kids) = prettyExprF'_unsafe (l /\ kids)
-  prettyExprF'_unsafe (HoleInteriorSort /\ []) = "?"
+-- instance Expr.IsExprLabel l => Expr.IsExprLabel (HoleyExprLabel l) where
+--   prettyExprF'_unsafe (ConcreteExprLabel l /\ kids) = prettyExprF'_unsafe (l /\ kids)
+--   prettyExprF'_unsafe (HoleInteriorSort /\ []) = "?"
 
-  expectedKidsCount = case _ of
-    ConcreteExprLabel l -> Expr.expectedKidsCount l
-    HoleInteriorSort -> 0
+--   expectedKidsCount = case _ of
+--     ConcreteExprLabel l -> Expr.expectedKidsCount l
+--     HoleInteriorSort -> 0
 
---------------------------------------------------------------------------------
--- HoleyRuleLabel
---------------------------------------------------------------------------------
+-- --------------------------------------------------------------------------------
+-- -- HoleyRuleLabel
+-- --------------------------------------------------------------------------------
 
-data HoleyRuleLabel r
-  = InjectRuleLabel r
-  | Hole
-  | HoleInterior
+-- data HoleyRuleLabel r
+--   = InjectRuleLabel r
+--   | Hole
+--   | HoleInterior
 
-derive instance Generic (HoleyRuleLabel r) _
-instance Show r => Show (HoleyRuleLabel r) where show x = genericShow x
-derive instance Eq r => Eq (HoleyRuleLabel r)
-derive instance Ord r => Ord (HoleyRuleLabel r)
-instance Bounded r => Bounded (HoleyRuleLabel r) where
-  top = genericTop
-  bottom = genericBottom
-instance (Enum r, Bounded r) => Enum (HoleyRuleLabel r) where
-  pred x = genericPred x
-  succ x = genericSucc x
+-- derive instance Generic (HoleyRuleLabel r) _
+-- instance Show r => Show (HoleyRuleLabel r) where show x = genericShow x
+-- derive instance Eq r => Eq (HoleyRuleLabel r)
+-- derive instance Ord r => Ord (HoleyRuleLabel r)
+-- instance Bounded r => Bounded (HoleyRuleLabel r) where
+--   top = genericTop
+--   bottom = genericBottom
+-- instance (Enum r, Bounded r) => Enum (HoleyRuleLabel r) where
+--   pred x = genericPred x
+--   succ x = genericSucc x
 
-instance IsRuleLabel l r => Pretty (HoleyRuleLabel r) where
-  pretty (InjectRuleLabel r) = pretty r
-  pretty Hole = "[?]"
-  pretty HoleInterior = "?"
+-- instance IsRuleLabel l r => Pretty (HoleyRuleLabel r) where
+--   pretty (InjectRuleLabel r) = pretty r
+--   pretty Hole = "[?]"
+--   pretty HoleInterior = "?"
 
-instance IsRuleLabel l r => IsRuleLabel (HoleyExprLabel l) (HoleyRuleLabel r) where
-  prettyExprF'_unsafe_RuleLabel (InjectRuleLabel r /\ kids) = prettyExprF'_unsafe_RuleLabel (r /\ kids)
-  prettyExprF'_unsafe_RuleLabel (Hole /\ [kid]) = "Hole[" <> kid <> "]"
-  prettyExprF'_unsafe_RuleLabel (HoleInterior /\ []) = "?"
+-- instance IsRuleLabel l r => IsRuleLabel (HoleyExprLabel l) (HoleyRuleLabel r) where
+--   prettyExprF'_unsafe_RuleLabel (InjectRuleLabel r /\ kids) = prettyExprF'_unsafe_RuleLabel (r /\ kids)
+--   prettyExprF'_unsafe_RuleLabel (Hole /\ [kid]) = "Hole[" <> kid <> "]"
+--   prettyExprF'_unsafe_RuleLabel (HoleInterior /\ []) = "?"
   
-  language = TotalMap.makeTotalMap case _ of
-    -- inject rule from base language
-    InjectRuleLabel r -> ConcreteExprLabel <$> TotalMap.lookup r language
-    -- intro new "hole" rule that can produce an instance of any sort
-    Hole -> makeRule ["sort"] \[sort] -> 
-      [ HoleInteriorSort %* [] ]
-      /\ ----------------
-      ( sort )
-    -- intro new "hole interior" rule that can produce only a hole interior
-    -- (which goes inside a hole)
-    HoleInterior -> makeRule [] \[] ->
-      [ ]
-      /\ ----------------
-      ( HoleInteriorSort %* [] )
+--   language = TotalMap.makeTotalMap case _ of
+--     -- inject rule from base language
+--     InjectRuleLabel r -> ConcreteExprLabel <$> TotalMap.lookup r language
+--     -- intro new "hole" rule that can produce an instance of any sort
+--     Hole -> makeRule ["sort"] \[sort] -> 
+--       [ HoleInteriorSort %* [] ]
+--       /\ ----------------
+--       ( sort )
+--     -- intro new "hole interior" rule that can produce only a hole interior
+--     -- (which goes inside a hole)
+--     HoleInterior -> makeRule [] \[] ->
+--       [ ]
+--       /\ ----------------
+--       ( HoleInteriorSort %* [] )
 
 --------------------------------------------------------------------------------
 -- DerivLabel
 --------------------------------------------------------------------------------
 
-data DerivLabel l r = DerivLabel (HoleyRuleLabel r) (MetaHoleyExpr l)
+data DerivLabel l r 
+  = DerivLabel r (Expr.MetaExpr l)
+  | DerivHole (Expr.MetaExpr l)
 
-derivLabelRuleLabel :: forall l r. DerivLabel l r -> HoleyRuleLabel r
-derivLabelRuleLabel (DerivLabel r _) = r
+-- derivLabelRuleLabel :: forall l r. DerivLabel l r -> HoleyRuleLabel r
+derivLabelRuleLabel :: forall l r. DerivLabel l r -> Maybe r
+derivLabelRuleLabel (DerivLabel r _) = Just r
+derivLabelRuleLabel (DerivHole _) = Nothing
 
-derivLabelSort :: forall l r. DerivLabel l r -> MetaHoleyExpr l
+derivLabelSort :: forall l r. DerivLabel l r -> Expr.MetaExpr l
 derivLabelSort (DerivLabel _ s) = s
+derivLabelSort (DerivHole s) = s
 
 infix 8 DerivLabel as |-
 
@@ -150,10 +156,12 @@ derive instance (Eq l, Eq r) => Eq (DerivLabel l r)
 derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
 instance IsRuleLabel l r => Pretty (DerivLabel l r) where
-  pretty (DerivLabel r mexpr) = pretty r <> "(" <> pretty mexpr <> ")"
+  pretty (DerivLabel r ix) = pretty r <> "(" <> pretty ix <> ")"
+  pretty (DerivHole ix) = "(?" <+> pretty ix <> ")"
 
 instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
+  freshen rho (DerivHole me) = DerivHole (freshen' rho me)
 
 --------------------------------------------------------------------------------
 -- AsExprLabel
@@ -175,8 +183,10 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   -- but maybe we want to print those at some point for debugging?
   prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = 
     Expr.prettyExprF (AsExprLabel r /\ kids)
+  prettyExprF'_unsafe (DerivHole ix /\ []) = "(?" <+> pretty ix <> ")"
 
   expectedKidsCount (DerivLabel r _) = Expr.expectedKidsCount (AsExprLabel r)
+  expectedKidsCount (DerivHole _) = 0
 
 --------------------------------------------------------------------------------
 -- DerivTerm
@@ -196,15 +206,16 @@ type DerivTooth l r = Expr.Tooth (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 
--- derivExprSort :: forall l r. DerivExpr l r -> HoleyRuleLabel r
--- derivExprSort (dl % _) = derivLabelRuleLabel dl
+-- derivExprIndex :: forall l r. DerivExpr l r -> HoleyRuleLabel r
+-- derivExprIndex (dl % _) = derivLabelRuleLabel dl
 
-derivExprSort :: forall l r. DerivExpr l r -> MetaHoleyExpr l
-derivExprSort (DerivLabel _ me % _) = me
+-- derivExprIndex :: forall l r. DerivExpr l r -> MetaHoleyExpr l
+derivExprIndex :: forall l r. DerivExpr l r -> Expr.MetaExpr l
+derivExprIndex (dl % _) = derivLabelSort dl
 
-derivExprRuleLabel :: forall l r. DerivExpr l r -> HoleyRuleLabel r
-derivExprRuleLabel (DerivLabel r _ % _) = r
-
+-- derivExprRule :: forall l r. DerivExpr l r -> HoleyRuleLabel r
+derivExprRule :: forall l r. DerivExpr l r -> Maybe r
+derivExprRule (dl % _) = derivLabelRuleLabel dl
 
 --------------------------------------------------------------------------------
 -- Rule
@@ -257,14 +268,14 @@ makeRule = \strs f -> makeRule' strs (unsafePartial f)
 
 -- | A `Language` associates each `RuleLabel` to a `Rule`
 type Language l r = TotalMap r (Rule l)
-type HoleyLanguage l r = Language l (HoleyRuleLabel r)
+-- type HoleyLanguage l r = Language l (HoleyRuleLabel r)
 
 --------------------------------------------------------------------------------
 -- LanguageChanges, ChangeRule
 --------------------------------------------------------------------------------
 
 type LanguageChanges l r = TotalMap r (ChangeRule l) -- changes go from child to parent
-type HoleyLanguageChanges l r = LanguageChanges l (HoleyRuleLabel r)
+-- type HoleyLanguageChanges l r = LanguageChanges l (HoleyRuleLabel r)
 
 defaultLanguageChanges :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r => Language l r -> LanguageChanges l r
 defaultLanguageChanges = map \(Rule mvars kids parent) ->
@@ -302,10 +313,12 @@ defaultEdits = Array.concat [ruleEdits]
     -- where the other kids are holes
     case ZipList.zips (List.fromFoldable hyps) of
       Nothing -> []
-      Just hypZips -> Array.fromFoldable $ hypZips <#> \(hypPath /\ hyp) -> do
+      Just hypZips -> Array.fromFoldable $ hypZips <#> \(hypPath /\ _hyp) -> do
         let tooth = Expr.Tooth 
-              (DerivLabel (InjectRuleLabel r) (injectMetaHoleyExpr con))
-              (holeDerivExpr <<< injectMetaHoleyExpr <$> hypPath) -- each other kid is a hole deriv
+              -- (DerivLabel (InjectRuleLabel r) (injectMetaHoleyExpr con))
+              (DerivLabel r con)
+              -- (holeDerivExpr <<< injectMetaHoleyExpr <$> hypPath) -- each other kid is a hole deriv
+              (holeDerivExpr <$> hypPath) -- each other kid is a hole deriv
         { label: pretty r
         , preview: pretty tooth
         , action: WrapDerivZipper \_ -> do
@@ -314,10 +327,12 @@ defaultEdits = Array.concat [ruleEdits]
             Expr.Path $ List.singleton tooth'
         }
     
-holeDerivExpr :: forall l r. MetaHoleyExpr l -> DerivExpr l r
-holeDerivExpr prop = 
-  DerivLabel Hole prop % 
-    [DerivLabel HoleInterior (pure HoleInteriorSort % []) % []]
+-- holeDerivExpr :: forall l r. MetaHoleyExpr l -> DerivExpr l r
+holeDerivExpr :: forall l r. Expr.MetaExpr l -> DerivExpr l r
+holeDerivExpr ix = 
+  -- DerivLabel Hole prop % 
+    -- [DerivLabel HoleInterior (pure HoleInteriorSort % []) % []]
+  DerivHole ix % []
 
 digEdit :: forall l r. IsRuleLabel l r => Edit l r
 digEdit = 

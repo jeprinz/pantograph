@@ -14,7 +14,7 @@ import Halogen.HTML as HH
 import Halogen.Hooks as HK
 import Halogen.Utilities (classNames)
 import Hole as Hole
-import Language.Pantograph.Generic.Grammar (HoleyRuleLabel(..), (|-))
+import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering as Rendering
 import Language.Pantograph.ULC.Grammar (DerivExpr, DerivZipper, ExprLabel, RuleLabel(..))
@@ -31,28 +31,33 @@ renderDerivExprKids (dl % kids) kidElems = do
   let kids_kidElems = kids `Array.zip` kidElems
   assert (Expr.wellformedExprF "renderDerivExprKids" (show <<< fst) (dl /\ kids_kidElems)) \_ -> case dl /\ kids_kidElems of
     -- var
-    InjectRuleLabel Zero |- _ /\ [] -> ["var", "zero"] /\ 
+    Zero |- _ /\ [] -> ["var", "zero"] /\ 
       [zeroVarElem]
-    InjectRuleLabel Suc |- _ /\ [_ /\ predElem] -> ["var", "suc"] /\ 
+    Suc |- _ /\ [_ /\ predElem] -> ["var", "suc"] /\ 
       [sucVarElem, predElem]
     -- term
-    InjectRuleLabel Ref |- _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
-    InjectRuleLabel Lam |- _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ 
+    Ref |- _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
+    Lam |- _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ 
       [lparenElem, lambdaElem, varElem, mapstoElem, bodElem, rparenElem]
-    InjectRuleLabel App |- _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
+    App |- _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
       [lparenElem, aplElem, spaceElem, argElem, rparenElem]
-    -- hole
-    Hole |- sort /\ [_ /\ hiElem] -> ["hole"] /\ 
-      [ HH.div [classNames ["subnode", "inner"]]
-          [ HH.div [classNames ["subnode", "hole-interior"]] [hiElem], colonElem
-          , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-          ]
-      ]
-    -- hole interior
-    HoleInterior |- _ /\ [] -> ["holeInterior"] /\ 
-      [ HH.div [classNames ["subnode", "inner"]]
-          [holeInteriorElem]
-      ]
+    -- -- hole
+    -- Hole |- sort /\ [_ /\ hiElem] -> ["hole"] /\ 
+    --   [ HH.div [classNames ["subnode", "inner"]]
+    --       [ HH.div [classNames ["subnode", "hole-interior"]] [hiElem], colonElem
+    --       , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+    --       ]
+    --   ]
+    -- -- hole interior
+    -- HoleInterior |- _ /\ [] -> ["holeInterior"] /\ 
+    --   [ HH.div [classNames ["subnode", "inner"]]
+    --       [holeInteriorElem]
+    --   ]
+    
+    -- !TODO design decision: sometimes I want to handle only the non-hole
+    -- Derivs, like here, so how do I encode that interface? would be nice to
+    -- have subtyping, which i can do with row-polymorphic variants, but will
+    -- that give me what i want?
 
 makePuncElem :: forall w i. String -> String -> HH.HTML w i
 makePuncElem className symbol = HH.div [classNames ["subnode", "punctuation", className]] [HH.text symbol]
