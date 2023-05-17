@@ -353,6 +353,9 @@ zipRight (Zipper path expr) = case path of
     expr' /\ kidsPath' <- ZipList.zipRight (expr /\ kidsPath)
     Just $ Zipper (Path (l %< kidsPath' : ths)) expr'
 
+unzipper :: forall l. Zipper l -> Expr l
+unzipper (Zipper path expr) = unPath path expr
+
 -- | Zipperp
 
 data Zipperp l = Zipperp (Path Dir.Up l) (Path Dir.Down l \/ Path Dir.Up l) (Expr l)

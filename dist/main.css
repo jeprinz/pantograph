@@ -63,7 +63,6 @@ body {
 }
 
 .node.holeInterior {
-  
 }
 
 .node.holeInterior > .subnode.inner {
@@ -108,7 +107,7 @@ body {
 
 .subnode.punctuation.sucVar {}
 
-.subnode.punctuation.holeInterior {}
+.subnode.punctuation.interrogative {}
 
 .subnode.punctuation.colon {
   margin: 0 0.2rem;

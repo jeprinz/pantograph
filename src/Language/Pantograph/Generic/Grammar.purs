@@ -158,7 +158,7 @@ derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
 instance IsRuleLabel l r => Pretty (DerivLabel l r) where
   pretty (DerivLabel r ix) = pretty r <> "(" <> pretty ix <> ")"
-  pretty (DerivHole ix) = "(?" <+> pretty ix <> ")"
+  pretty (DerivHole ix) = "(? : " <> pretty ix <> ")"
 
 instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
