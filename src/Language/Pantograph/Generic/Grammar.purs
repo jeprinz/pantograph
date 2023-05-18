@@ -2,7 +2,8 @@ module Language.Pantograph.Generic.Grammar where
 
 import Prelude
 
-import Bug.Assertion (Assertion, assertInput_, makeAssertionBoolean)
+import Bug as Bug
+import Bug.Assertion (Assertion, assert, assertInput_, just, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Enum (class Enum, enumFromTo)
@@ -217,6 +218,14 @@ derivExprSort (dl % _) = derivLabelSort dl
 -- derivExprRuleLabel :: forall l r. DerivExpr l r -> HoleyRuleLabel r
 derivExprRuleLabel :: forall l r. DerivExpr l r -> Maybe r
 derivExprRuleLabel (dl % _) = derivLabelRuleLabel dl
+
+-- !TODO do unification of the rule with the given tooth before providing the
+-- sort of kid
+derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Expr.MetaExpr l
+derivToothInteriorSort (Expr.Tooth (DerivLabel r _) kidsPath) = do
+  let Rule _mvars hyps _con = TotalMap.lookup r language
+  assert (just "[derivToothInteriorSort]" $ hyps Array.!! ZipList.leftLength kidsPath) identity
+derivToothInteriorSort (Expr.Tooth (DerivHole _sort) _) = Bug.bug "[derivToothInteriorSort] should not have a tooth into DerivHole"
 
 --------------------------------------------------------------------------------
 -- Rule

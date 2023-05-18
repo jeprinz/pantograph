@@ -16,6 +16,7 @@ import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (force)
+import Data.List (List(..), (:))
 import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
@@ -38,13 +39,12 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName)
 import Hole as Hole
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, Action(..), DerivExpr, DerivLabel(..), DerivPath, DerivZipper, DerivZipperp, Edit, derivExprSort, holeDerivExpr)
+import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
-import Type.Direction (Up, VerticalDir, _down, _left, _next, _prev, _right, _up, downDir, leftDir, rightDir, upDir)
-import Type.Direction as Dir
+import Type.Direction
 import Type.Proxy (Proxy(..))
 import Web.DOM as DOM
 import Web.DOM.NonElementParentNode as NonElementParentNode
@@ -231,11 +231,11 @@ editorComponent = HK.component \tokens input -> HK.do
   _ /\ facade_ref <- HK.useRef $ initState
 
   -- clipboard
-  _ /\ clipboard_ref <- HK.useRef (Nothing :: Maybe (DerivPath Dir.Up l r \/ DerivExpr l r))
+  _ /\ clipboard_ref <- HK.useRef (Nothing :: Maybe (DerivPath Up l r \/ DerivExpr l r))
 
   -- !TODO OLD
   -- -- mapping: dpath ==> html elem id
-  -- _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (DerivPath Dir.Up l r) String)
+  -- _ /\ pathElementIds_ref <- HK.useRef (Map.empty :: Map (DerivPath Up l r) String)
 
   -- highlight path
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
@@ -254,10 +254,10 @@ editorComponent = HK.component \tokens input -> HK.do
           Bug.bug $ "could not find element" <> P.indent ("\n- elemId = " <> elemId <> "\n- hdzipper = " <> pretty hdzipper <> "\n- st = " <> pretty st)
         Just elem -> pure elem
 
-    -- getElementIdByDerivPath :: DerivPath Dir.Up l r -> HK.HookM Aff String
+    -- getElementIdByDerivPath :: DerivPath Up l r -> HK.HookM Aff String
     -- getElementIdByDerivPath = pure <<< fromPathToElementId
 
-    -- getElementByPath :: DerivPath Dir.Up l r -> HK.HookM Aff DOM.Element
+    -- getElementByPath :: DerivPath Up l r -> HK.HookM Aff DOM.Element
     -- getElementByPath derivPath = do
     --   doc <- liftEffect $ HTML.window >>= Window.document
     --   elemId <- getElementIdByDerivPath derivPath
@@ -265,7 +265,7 @@ editorComponent = HK.component \tokens input -> HK.do
     --     Nothing -> Bug.bug $ "could not find element by id: " <> elemId
     --     Just elem -> pure elem
 
-    -- setNodeElementStyle :: String -> Maybe (DerivPath Dir.Up l r) -> Maybe (DerivPath Dir.Up l r) -> HK.HookM Aff Unit
+    -- setNodeElementStyle :: String -> Maybe (DerivPath Up l r) -> Maybe (DerivPath Up l r) -> HK.HookM Aff Unit
     setNodeElementStyle :: String -> Maybe (HoleyDerivPath Up l r) -> Maybe (HoleyDerivPath Up l r) -> HK.HookM Aff Unit
     setNodeElementStyle className mb_hdpath_old mb_hdpath_new = do
       case mb_hdpath_old of
@@ -360,12 +360,14 @@ editorComponent = HK.component \tokens input -> HK.do
         getFacade >>= case _ of
           CursorState cursor -> do
             let dpath = hdzipperDerivPath cursor.hdzipper
-            let dexpr = hdzipperDerivExpr cursor.hdzipper
             let dpath' = _dpath' unit
-            -- Debug.traceM $ "[handleAction] WrapDerivZipper at CursorState; st = " <> pretty (CursorState cursor)
-            -- Debug.traceM $ "[handleAction] WrapDerivZipper at CursorState; dpath' = " <> pretty dpath'
-            -- Debug.traceM $ "[handleAction] WrapDerivZipper at CursorState; result hdzipper = " <> pretty (InjectHoleyDerivZipper (Expr.Zipper (dpath' <> dpath) dexpr))
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper (dpath' <> dpath) dexpr), bufferEnabled: false}
+            let sort = case dpath' of
+                  Expr.Path Nil -> Bug.bug "should't try to `WrapDerivZipper` with a nil `dpath'`"
+                  Expr.Path (th : _) -> derivToothInteriorSort th
+            let hdzipper = case cursor.hdzipper of
+                  InjectHoleyDerivZipper _ -> InjectHoleyDerivZipper $ Expr.Zipper (dpath' <> dpath) (holeDerivExpr sort)
+                  HoleInteriorHoleyDerivZipper _ _ -> HoleInteriorHoleyDerivZipper (dpath' <> dpath) sort
+            setState $ CursorState {hdzipper, bufferEnabled: false}
           TopState _top -> Hole.hole "WrapDerivZipper in TopState"
           SelectState _select -> Hole.hole "WrapDerivZipper in BufferState"
       Dig -> do
@@ -639,7 +641,7 @@ editorComponent = HK.component \tokens input -> HK.do
           elemId = fromPathToElementId dpath
           clsNames = ["hole"]
         HH.div
-          [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
+          [ classNames $ ["node"] <> clsNames
           , HP.id elemId
           , HE.onMouseDown \event -> do
               H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
