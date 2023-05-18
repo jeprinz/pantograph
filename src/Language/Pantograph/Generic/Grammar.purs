@@ -138,8 +138,10 @@ expectedHypsCount r = do
 --------------------------------------------------------------------------------
 
 data DerivLabel l r 
-  = DerivLabel r (Expr.MetaExpr l)
-  | DerivHole (Expr.MetaExpr l)
+  = DerivLabel r (Sort l)
+  | DerivHole (Sort l)
+  -- | TextBox String
+  -- alternate idea: any hole of a (Name s) sort is a textbox
 
 -- derivLabelRuleLabel :: forall l r. DerivLabel l r -> HoleyRuleLabel r
 derivLabelRuleLabel :: forall l r. DerivLabel l r -> Maybe r
@@ -149,6 +151,7 @@ derivLabelRuleLabel (DerivHole _) = Nothing
 derivLabelSort :: forall l r. DerivLabel l r -> Expr.MetaExpr l
 derivLabelSort (DerivLabel _ s) = s
 derivLabelSort (DerivHole s) = s
+--derivLabelSort (TextBox s) = Name s
 
 infix 8 DerivLabel as |-
 
@@ -191,17 +194,19 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   expectedKidsCount (DerivHole _) = 0
 
 --------------------------------------------------------------------------------
+-- Sorts
+--------------------------------------------------------------------------------
+-- currently, we implicity have:
+type Sort l = Expr.MetaExpr l
+
+--but, we could instead have:
+data Sort' l = SortInject l | Str String | Name {-String-}
+
+
+--------------------------------------------------------------------------------
 -- DerivTerm
 --------------------------------------------------------------------------------
-
-{-
---DerivTerm needs built-in hole?
---DerivTerm and DerivPath need boundaries?
--}
 type DerivTerm l r = Expr.Expr (DerivLabel l r)
--- !HENRY: personally, I think it's better to keep the name `Expr` consistent, 
--- rather than conflate generic "terms" and "terms" in a particular language 
--- (e.g. as in "terms and their types")
 type DerivExpr l r = Expr.Expr (DerivLabel l r)
 type DerivPath dir l r = Expr.Path dir (DerivLabel l r)
 type DerivTooth l r = Expr.Tooth (DerivLabel l r)

@@ -110,7 +110,7 @@ instance IsRuleLabel ExprLabel RuleLabel where
             [ gamma ⊢⊢ alpha ]
             /\ --------
             ( gamma ⊢ alpha )
-        Let -> G.makeRule ["gamma", "name", "alpha", "impl", "beta", "body"] \[gamma, name, alpha, impl, beta, body] ->
+        Let -> G.makeRule ["gamma", "name", "alpha", "beta"] \[gamma, name, alpha, beta] ->
             [ exp SType [alpha]
             , gamma ⊢ alpha
             , exp CCons [gamma, name, alpha] ⊢ beta ]

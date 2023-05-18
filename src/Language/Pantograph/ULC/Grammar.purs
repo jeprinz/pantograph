@@ -134,7 +134,7 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( VarSort %* [] )
   Lam -> Grammar.makeRule [] \[] ->
-    [ VarSort %* []
+    [ VarSort %* [] -- instead, s
     , TermSort %* [] ]
     /\ --------
     ( TermSort %* [] )
