@@ -40,8 +40,7 @@ class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleL
 
 expectedHypsCount :: forall l r. IsRuleLabel l r => r -> Int
 expectedHypsCount r = do
-  -- let Rule _ hyps _ = TotalMap.lookup (InjectRuleLabel r) language 
-  let Rule _ hyps _ = TotalMap.lookup r language 
+  let Rule _ hyps _ = TotalMap.lookup r language
   Array.length hyps
 
 --------------------------------------------------------------------------------
@@ -61,7 +60,6 @@ derivLabelRule (DerivHole _) = Nothing
 derivLabelSort :: forall l r. DerivLabel l r -> Expr.MetaExpr l
 derivLabelSort (DerivLabel _ s) = s
 derivLabelSort (DerivHole s) = s
---derivLabelSort (TextBox s) = Name s
 
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
 mapDerivLabelSort f (DerivLabel r sort) = DerivLabel r (f sort)
@@ -205,14 +203,12 @@ makeRule = \strs f -> makeRule' strs (unsafePartial f)
 
 -- | A `Language` associates each `RuleLabel` to a `Rule`
 type Language l r = TotalMap r (Rule l)
--- type HoleyLanguage l r = Language l (HoleyRuleLabel r)
 
 --------------------------------------------------------------------------------
 -- LanguageChanges, ChangeRule
 --------------------------------------------------------------------------------
 
 type LanguageChanges l r = TotalMap r (ChangeRule l) -- changes go from child to parent
--- type HoleyLanguageChanges l r = LanguageChanges l (HoleyRuleLabel r)
 
 defaultLanguageChanges :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r => Language l r -> LanguageChanges l r
 defaultLanguageChanges = map \(Rule mvars kids parent) ->
