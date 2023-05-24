@@ -134,38 +134,6 @@ instance IsExprLabel l => IsExprLabel (Meta l) where
   expectedKidsCount (Meta (Left _)) = 0
   expectedKidsCount (Meta (Right l)) = expectedKidsCount l
 
-type MetaVarSub a = Map.Map MetaVar a
-
-subMetaVars :: forall l. IsExprLabel l => MetaVarSub (Expr l) -> MetaExpr l -> Expr l
-subMetaVars sigma = assertInput_ (wellformedExpr "subMetaVars") go
-  where
-  go :: Partial => _
-  go = case _ of
-    Meta (Left mx) % [] -> assert (hasKey "subMetaVars" mx sigma) identity
-    Meta (Right l) % kids -> l % (go <$> kids)
-
-subSomeMetaVars :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
-subSomeMetaVars sigma = assertInput_ (wellformedExpr "subSomeMetaVars") go
-  where
-  go :: Partial => _
-  go = case _ of
-    Meta (Left mx) % [] -> case Map.lookup mx sigma of
-      Nothing -> Meta (Left mx) % []
-      Just mexpr -> mexpr
-    Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
-
--- | MetaExpr
-
-type MetaExpr l = Expr (Meta l)
-
-fromMetaVar :: forall l. MetaVar -> MetaExpr l
-fromMetaVar mx = Meta (Left mx) % []
-
-pureMetaExpr :: forall l. l -> Array (MetaExpr l) -> MetaExpr l
-pureMetaExpr l = (pure l % _)
-
-infixl 7 pureMetaExpr as %*
-
 -- | Tooth
 
 data Tooth l = Tooth l (ZipList.Path (Expr l))
@@ -458,3 +426,38 @@ injectChange l chs = Inject l % chs
 
 replaceChange :: forall l. Expr l -> Expr l -> Change l
 replaceChange e1 e2 = Replace e1 e2 % []
+
+-- | MetaExpr
+
+type MetaExpr l = Expr (Meta l)
+
+fromMetaVar :: forall l. MetaVar -> MetaExpr l
+fromMetaVar mx = Meta (Left mx) % []
+
+pureMetaExpr :: forall l. l -> Array (MetaExpr l) -> MetaExpr l
+pureMetaExpr l = (pure l % _)
+
+infixl 7 pureMetaExpr as %*
+
+-- | Substitution
+
+type MetaVarSub a = Map.Map MetaVar a
+
+subMetaExpr :: forall l. IsExprLabel l => MetaVarSub (Expr l) -> MetaExpr l -> Expr l
+subMetaExpr sigma = assertInput_ (wellformedExpr "subMetaExpr") go
+  where
+  go :: Partial => _
+  go = case _ of
+    Meta (Left mx) % [] -> assert (hasKey "subMetaExpr" mx sigma) identity
+    Meta (Right l) % kids -> l % (go <$> kids)
+
+subMetaExprPartially :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
+subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially") go
+  where
+  go :: Partial => _
+  go = case _ of
+    Meta (Left mx) % [] -> case Map.lookup mx sigma of
+      Nothing -> Meta (Left mx) % []
+      Just mexpr -> mexpr
+    Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
+

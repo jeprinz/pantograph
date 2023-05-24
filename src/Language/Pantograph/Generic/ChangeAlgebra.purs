@@ -147,7 +147,7 @@ doOperation c1 c2 = do
                                               lub x y))
                 (map (Set.map Just) matches)
     sub2 <- sequence sub
-    let subc2 = subMetaVars sub2 c2
+    let subc2 = subMetaExpr sub2 c2
     pure $ (sub2 /\ compose (invert c1) subc2)
 
 {-
@@ -184,7 +184,7 @@ isPostfix (Expr l kids) e2 =
 -- TODO: I need to figure out how to make this stuff work in a more generic way!
 subSomeChangeLabel :: forall l. IsExprLabel l => Sub l -> ChangeLabel (Meta l) -> ChangeLabel (Meta l)
 subSomeChangeLabel sub =
-  let subExpr = subSomeMetaVars sub in
+  let subExpr = subMetaExprPartially sub in
   case _ of
       Plus (Tooth dir (ZipList.Path {left, right})) -> Plus (Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))
       Minus (Tooth dir (ZipList.Path {left, right})) -> Minus (Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))

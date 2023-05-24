@@ -130,8 +130,8 @@ unifyLists :: forall l. Expr.IsExprLabel l => List (Expr.MetaExpr l) -> List (Ex
 unifyLists Nil Nil = Just (Nil /\ Map.empty)
 unifyLists (e1 : es1) (e2 : es2) = do
     e /\ sub <- unify e1 e2
-    let es1' = map (Expr.subSomeMetaVars sub) es1
-    let es2' = map (Expr.subSomeMetaVars sub) es2
+    let es1' = map (Expr.subMetaExprPartially sub) es1
+    let es2' = map (Expr.subMetaExprPartially sub) es2
     es /\ sub2 <- unifyLists es1' es2'
     pure $ (e : es) /\ union' sub sub2
 unifyLists _ _ = Bug.bug "[unifyLists] shouldn't happen"

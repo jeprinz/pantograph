@@ -164,7 +164,7 @@ defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.Deriv
     if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
     do
         sub /\ chBackUp <- doOperation ch parentGSort
-        let kidGSorts' = map (Expr.subMetaVars sub) kidGSorts
+        let kidGSorts' = map (Expr.subMetaExpr sub) kidGSorts
         let kidsWithBoundaries = (\ch' kid -> wrapBoundary Down ch' kid) <$> kidGSorts' <*> kids
         let newSort = fst (endpoints chBackUp)
         -- pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
@@ -194,10 +194,10 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
         (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
             <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
         sub /\ chBackDown <- doOperation ch gSort
-        let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (Expr.subMetaVars sub gSort1) kid1
+        let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (Expr.subMetaExpr sub gSort1) kid1
         let leftKids = map wrapKid leftKidsAndSorts
         let rightKids = map wrapKid rightKidsAndSorts
-        let parentBoundary node = wrapBoundary Up (Expr.subMetaVars sub parentGSort) node
+        let parentBoundary node = wrapBoundary Up (Expr.subMetaExpr sub parentGSort) node
         pure $ parentBoundary 
             (Expr.Expr
                 -- (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr (fst (endpoints chBackDown)))))
