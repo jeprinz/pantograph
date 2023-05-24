@@ -43,6 +43,9 @@ assertM (Assertion ass) = case ass.result of
   Right a -> pure a
   Left msg -> bug $ renderFailedAssertion (Assertion ass) msg
 
+assertM_ :: forall m a. Applicative m => Assertion a -> m Unit
+assertM_ ass = void $ assertM ass
+
 assertInterface_ :: forall a b za zb. (a -> Assertion za) -> (b -> Assertion zb) -> (Partial => a -> b) -> (a -> b)
 assertInterface_ ass_a ass_b = \f a -> 
   assert (ass_a a) \_ ->
@@ -83,4 +86,22 @@ just source mb_a = Assertion
   , result: case mb_a of
       Nothing -> Left "Wasn't 'Just'"
       Just a -> Right a
+  }
+
+ordered :: forall a. Ord a => String -> String -> a -> a -> Assertion Ordering 
+ordered source msg a1 a2 = Assertion
+  { name: "ordered"
+  , source
+  , result: case compare a1 a2 of
+      GT -> Left msg
+      c -> Right c
+  }
+
+strictlyOrdered :: forall a. Ord a => String -> String -> a -> a -> Assertion Ordering 
+strictlyOrdered source msg a1 a2 = Assertion
+  { name: "ordered"
+  , source
+  , result: case compare a1 a2 of
+      LT -> Right LT
+      c -> Left msg
   }
