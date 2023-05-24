@@ -2,7 +2,9 @@
 
 module Language.Pantograph.Generic.Rendering where
 
+import Language.Pantograph.Generic.Grammar
 import Prelude
+import Type.Direction
 
 import Bug as Bug
 import Bug.Assertion (Assertion(..), assert, assertM)
@@ -15,6 +17,7 @@ import Data.Expr as Expr
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
+import Data.Int.Bits as Bits
 import Data.Lazy (force)
 import Data.List (List(..), (:))
 import Data.List.Zip as ZipList
@@ -39,12 +42,10 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName)
 import Hole as Hole
-import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
-import Type.Direction
 import Type.Proxy (Proxy(..))
 import Web.DOM as DOM
 import Web.DOM.NonElementParentNode as NonElementParentNode
@@ -140,7 +141,6 @@ derive instance Generic (HoleyDerivZipper l r) _
 derive instance (Eq l, Eq r) => Eq (HoleyDerivZipper l r)
 derive instance (Ord l, Ord r) => Ord (HoleyDerivZipper l r)
 instance (Show l, Show r) => Show (HoleyDerivZipper l r) where show x = genericShow x
-
 
 instance IsRuleLabel l r => Pretty (HoleyDerivZipper l r) where
   pretty (InjectHoleyDerivZipper dzipper) = pretty dzipper
@@ -597,6 +597,43 @@ editorComponent = HK.component \tokens input -> HK.do
             ]
         ]
 
+    {-
+    mouse cursoring and selecting:
+    
+    - onMouseDown a node: 
+        - set cursor to this node
+    - onMouseOver a node:
+        - if mouse is down
+          - if this node is not equal to cursor node, and selection is possible
+            from cursor node to this node:
+              - update all nodes to have a cache of their
+              - set selection to be from cursor node to this node
+        - else if mouse is up:
+          - set highlight to this node
+    -}
+
+    onMouseDown hdzipper event = do
+      H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+      setFacade $ CursorState {hdzipper, bufferEnabled: false}
+    
+    onMouseOver hdzipper event = do
+      H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+      let dzipper = (hdzipperZipper hdzipper)
+      if MouseEvent.buttons event Bits..&. 1 /= 0 then do
+        getFacade >>= case _ of
+          CursorState cursor -> do
+            case Expr.zipperpFromTo (hdzipperZipper cursor.hdzipper) dzipper of
+              Nothing -> pure unit
+              Just dzipperp -> setFacade (SelectState {dzipperp})
+          SelectState select -> do
+            case Expr.zipperpFromTo (Expr.unzipperp select.dzipperp) dzipper of
+              Nothing -> pure unit
+              Just dzipperp -> setFacade (SelectState {dzipperp})
+          TopState _top -> pure unit
+        setHighlightElement Nothing
+      else do
+        setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper)))
+
     renderExpr isCursor dzipper = do
       let
         elemId = fromPathToElementId (Expr.zipperPath dzipper)
@@ -604,13 +641,8 @@ editorComponent = HK.component \tokens input -> HK.do
       HH.div
         [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
         , HP.id elemId
-        , HE.onMouseDown \event -> do
-            H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
-        , HE.onMouseOver \event -> do
-            H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-            setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper)))
-            pure unit
+        , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
+        , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
         ] $
         Array.concat
         [ [ HH.slot bufferSlot elemId bufferComponent 
@@ -634,13 +666,8 @@ editorComponent = HK.component \tokens input -> HK.do
         HH.div
           [ classNames $ ["node"] <> clsNames
           , HP.id elemId
-          , HE.onMouseDown \event -> do
-              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-              setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
-          , HE.onMouseOver \event -> do
-              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-              setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper)))
-              pure unit
+          , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
+          , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
           ] $
           Array.concat
           [ [ HH.slot bufferSlot elemId bufferComponent 
@@ -663,13 +690,8 @@ editorComponent = HK.component \tokens input -> HK.do
         HH.div
           [ classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []
           , HP.id elemId
-          , HE.onMouseDown \event -> do
-              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-              setFacade $ CursorState {hdzipper: HoleInteriorHoleyDerivZipper dpath sort, bufferEnabled: false}
-          , HE.onMouseOver \event -> do
-              H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-              setHighlightElement (Just (HoleInteriorHoleyDerivPath dpath))
-              pure unit
+          , HE.onMouseDown (onMouseDown (HoleInteriorHoleyDerivZipper dpath sort))
+          , HE.onMouseOver (onMouseOver (HoleInteriorHoleyDerivZipper dpath sort))
           ] $
           Array.concat
           [ [ let hdzipper = HoleInteriorHoleyDerivZipper dpath sort in
@@ -903,3 +925,4 @@ rparenElem = makePuncElem "rparen" ")"
 colonElem = makePuncElem "colon" ":"
 turnstileElem = makePuncElem "turnstile" "⊢"
 interrogativeElem = makePuncElem "interrogative" "?"
+

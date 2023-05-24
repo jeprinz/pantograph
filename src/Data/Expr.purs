@@ -40,6 +40,7 @@ import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Effect.Unsafe (unsafePerformEffect)
+import Hole as Hole
 import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, pretty)
@@ -324,6 +325,9 @@ zipRight (Zipper path expr) = case path of
 unzipper :: forall l. Zipper l -> Expr l
 unzipper (Zipper path expr) = unPath path expr
 
+zipperpFromTo :: forall l. IsExprLabel l => Zipper l -> Zipper l -> Maybe (Zipperp l)
+zipperpFromTo begin end = Hole.hole "zipperpFromTo"
+
 -- | Zipperp
 
 data Zipperp l = Zipperp (Path Dir.Up l) (Path Dir.Down l \/ Path Dir.Up l) (Expr l)
@@ -343,6 +347,9 @@ instance IsExprLabel l => Pretty (Zipperp l) where
 
 zipperpTopPath :: forall l. Zipperp l -> Path Up l
 zipperpTopPath (Zipperp path _ _) = path
+
+-- zipperpTop :: forall l. Zipperp l -> Zipper l
+-- zipperpTop (Zipperp path selection expr) = ?a
 
 zipperpBottomPath :: forall l. Zipperp l -> Path Up l
 zipperpBottomPath (Zipperp path selection _) = either reversePath identity selection <> path
