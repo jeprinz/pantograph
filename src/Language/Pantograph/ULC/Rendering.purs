@@ -16,6 +16,7 @@ import Halogen.Utilities (classNames)
 import Hole as Hole
 import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
+import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
 import Language.Pantograph.Generic.Rendering as Rendering
 import Language.Pantograph.ULC.Grammar (DerivExpr, DerivZipper, ExprLabel, RuleLabel(..), MetaExpr)
 import Text.Pretty (pretty)
@@ -74,10 +75,12 @@ sucVarElem = Rendering.makePuncElem "sucVar" "S"
 type Edit = Grammar.Edit ExprLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper ExprLabel RuleLabel
 
--- !TODO eventualy this should not even require `DerivZipper` as an arg (??)
-getEdits :: HoleyDerivZipper -> Array Edit
--- getEdits _ = Hole.hole "!TODO derive default edits from language"
-getEdits _ = Grammar.defaultEdits
+editsAtHoleyDerivZipper = defaultEditsAtHoleyDerivZipper
+
+-- -- !TODO eventualy this should not even require `DerivZipper` as an arg (??)
+-- getEdits :: HoleyDerivZipper -> Array Edit
+-- -- getEdits _ = Hole.hole "!TODO derive default edits from language"
+-- getEdits _ = Grammar.defaultEdits
 
 -- getEdits = assertInput_ (\(Expr.Zipper dz) -> wellformedExpr "getEdits" dz.expr) \(Expr.Zipper dz) -> do
 --   let

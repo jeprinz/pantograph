@@ -8,7 +8,7 @@ import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Enum (class Enum, enumFromTo)
 import Data.Enum.Generic (genericPred, genericSucc)
-import Data.Expr (class IsExprLabel, prettyExprF'_unsafe, (%), (%*))
+import Data.Expr (class IsExprLabel, class ReflectPathDir, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (Lazy, defer)
@@ -23,13 +23,12 @@ import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
 import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.Variant (Variant)
-import Hole as Hole
+import Data.Variant (case_, on)
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
-import Language.Pantograph.Generic.Unification (class Freshenable, freshen', genFreshener, unify)
+import Language.Pantograph.Generic.Unification (class Freshenable, composeSub, freshen', genFreshener, unify)
 import Partial.Unsafe (unsafePartial)
-import Text.Pretty (class Pretty, pretty, (<+>))
-import Type.Direction (Up)
+import Text.Pretty (class Pretty, pretty)
+import Type.Direction (Up, _down, _up)
 
 --------------------------------------------------------------------------------
 -- IsRuleLabel
@@ -217,19 +216,17 @@ type DerivTooth l r = Expr.Tooth (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 
--- derivExprSort :: forall l r. DerivExpr l r -> HoleyRuleLabel r
--- derivExprSort (dl % _) = derivLabelRule dl
+holeDerivExpr :: forall l r. Expr.MetaExpr l -> DerivExpr l r
+holeDerivExpr ix = DerivHole ix % []
 
--- derivExprSort :: forall l r. DerivExpr l r -> MetaHoleyExpr l
 derivExprSort :: forall l r. DerivExpr l r -> Sort l
 derivExprSort (dl % _) = derivLabelSort dl
 
--- derivExprRuleLabel :: forall l r. DerivExpr l r -> HoleyRuleLabel r
 derivExprRuleLabel :: forall l r. DerivExpr l r -> Maybe r
 derivExprRuleLabel (dl % _) = derivLabelRule dl
 
 derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
-derivToothSort (Expr.Tooth (DerivLabel r sort) _) = sort
+derivToothSort (Expr.Tooth (DerivLabel _r sort) _) = sort
 derivToothSort (Expr.Tooth (DerivHole sort) _) = sort
 
 derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
@@ -238,9 +235,13 @@ derivToothInteriorSort (Expr.Tooth (DerivLabel r _) kidsPath) = do
   assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
 derivToothInteriorSort (Expr.Tooth (DerivHole _sort) _) = Bug.bug "[derivToothInteriorSort] should not have a tooth into DerivHole"
 
-derivPathSort :: forall dir l r. IsRuleLabel l r => Sort l -> DerivPath dir l r -> Sort l
+derivPathSort :: forall dir l r. IsRuleLabel l r => ReflectPathDir dir => Sort l -> DerivPath dir l r -> Sort l
 derivPathSort topSort (Expr.Path Nil) = topSort
-derivPathSort topSort (Expr.Path (th : _)) = topSort
+derivPathSort _ path@(Expr.Path (th : _)) = reflectPathDir path # 
+  (case_
+    # on _up (\_ -> derivToothInteriorSort th)
+    # on _down (\_ -> derivToothSort th)
+  )
 
 --------------------------------------------------------------------------------
 -- Rule
@@ -324,66 +325,94 @@ type Edit l r =
   , action :: Action l r
   }
 
--- data Action l r
---   = SetDerivZipperAction (Lazy (Maybe (DerivZipper l r))) -- !TODO phase this out for more specific edits
---   | WrapDerivZipper (Unit -> DerivPath Up l r)
---   | Dig
-
 data Action l r 
   = SetCursorAction (Lazy (DerivZipper l r))
   | Dig
 
-defaultCursorEdits :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
-defaultCursorEdits topSort dz = 
-  Array.concat $ 
+
+defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
+defaultEditsAtDerivZipper topSort dz = 
+  Array.concat $
+  [digEdit] Array.:
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
     let Rule mvars hyps con = TotalMap.lookup r language
-    -- for each hyp, there is an edit that wraps with a tooth into that hyp,
+    -- For each hyp, there is an edit that wraps with a tooth into that hyp,
     -- where the other kids are holes
     case ZipList.zips (List.fromFoldable hyps) of
       Nothing -> []
       -- `hyp` is what _would_ be at the bottom of the tooth
-      Just hypZips -> Array.fromFoldable $ hypZips <#> \(hypPath /\ hyp) -> do
-        let tooth0 = Expr.Tooth 
-              (DerivLabel r con)
-              (holeDerivExpr <$> hypPath) -- each other kid is a hole deriv
+      Just hypZips -> Array.fromFoldable $ hypZips <#> \(hypPath /\ _hyp) -> do
         let rho = genFreshener mvars
-        let tooth1 = freshen' rho tooth0
+        let tooth0 = freshen' rho $ 
+              -- Each kid of the tooth is a hole deriv
+              Expr.Tooth (DerivLabel r con) (holeDerivExpr <$> hypPath) 
 
-        case 
-          ( do
-              -- Unify sort of the tooth with the sort of the bottom of the
-              -- cursor path
-              path /\ tooth2 <- do
-                _ /\ sigma <- unify (derivToothSort tooth1) (derivPathSort topSort (Expr.zipperPath dz))
-                pure $
-                  (mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperPath dz) /\ 
-                  (mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> tooth1)
+        -- In `isValidTooth`, we do only the necessary computation to check if
+        -- the tooth is valid to wrap around the cursor. In particular, we don't
+        -- yet apply the unifying substitutions to the while program.
+        let isValidTooth = do
+              -- Unify sort of the tooth with the sort of the bottom of the path
+              -- above the cursor
+              _ /\ sigma1 <- unify (derivToothSort tooth0) (derivPathSort topSort (Expr.zipperPath dz))
+              let tooth1 = mapDerivLabelSort (Expr.subMetaExprPartially sigma1) <$> tooth0
+              -- Unify sort of the tooth interior with the sort of the expression
+              -- at the cursor
+              _ /\ sigma2 <- unify (derivToothInteriorSort tooth1) (derivExprSort (Expr.zipperExpr dz))
+              let tooth2 = mapDerivLabelSort (Expr.subMetaExprPartially sigma2) <$> tooth1
 
-              -- Unify sort of the bottom of the tooth with sort of the top of
-              -- the cursor expr.
-              tooth3 /\ expr <- do
-                _ /\ sigma <- unify (derivToothInteriorSort tooth2) (derivExprSort (Expr.zipperExpr dz))
-                pure $ 
-                  (mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> tooth2) /\
-                  (mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperExpr dz)
+              pure (composeSub sigma2 sigma1 /\ tooth2)
 
-              pure $ path /\ tooth3 /\ expr
-          ) of
+        -- In `newCursor`, we do the rest of the computations involved in
+        -- computing the new cursor, in particular inserting the tooth and
+        -- applying the unifying substitutions to the whole program. It's `Lazy`
+        -- so that we only invoke this when actually _doing_ the action.
+        let newCursor sigma tooth = defer \_ -> do
+              let path = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperPath dz
+              let expr = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperExpr dz
+              Expr.Zipper (Expr.stepPath tooth path) expr
+
+        case isValidTooth of
           Nothing -> []
-          Just (path /\ tooth /\ expr) -> do
-            [ { label: pretty r 
-              , preview: pretty tooth
-              , action: SetCursorAction $ defer \_ -> 
-                  Expr.Zipper (Expr.stepPath tooth path) expr
-              }]
-    
--- holeDerivExpr :: forall l r. MetaHoleyExpr l -> DerivExpr l r
-holeDerivExpr :: forall l r. Expr.MetaExpr l -> DerivExpr l r
-holeDerivExpr ix = 
-  -- DerivLabel Hole prop % 
-    -- [DerivLabel HoleInterior (pure HoleInteriorSort % []) % []]
-  DerivHole ix % []
+          Just (sigma /\ tooth) -> pure
+            { label: pretty r 
+            , preview: pretty tooth
+            , action: SetCursorAction (newCursor sigma tooth)
+            }
+
+defaultEditsAtHoleInterior :: forall l r. IsRuleLabel l r => DerivPath Up l r -> Sort l -> Array (Edit l r)
+defaultEditsAtHoleInterior path sort =
+  -- For each rule, there is an edit that fills the hole with that constructor,
+  -- where all the kids are hole derivs
+  flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
+  let Rule mvars hyps con = TotalMap.lookup r language
+  let rho = genFreshener mvars
+  let fill0 = freshen' rho $
+        -- Each kid is a hole deriv
+        Expr.Expr (DerivLabel r con) (holeDerivExpr <$> hyps)
+  
+  -- In `isValidFill`, only do computation necessary to check if fill is valid
+  let isValidFill = do
+        -- Unify sort of the fill with the sort of the hole
+        _ /\ sigma <- unify (derivExprSort fill0) sort
+        let fill1 = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> fill0
+
+        pure (sigma /\ fill1)
+
+  -- In `newCursor`, we are lazily doing the rest of the comptuations necessary
+  -- to compute the new cursor, so that we only do this when we are actually
+  -- applying the action.
+  let newCursor sigma fill = defer \_ -> do
+        let path' = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> path
+        let expr' = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> fill
+        Expr.Zipper path' expr'
+
+  case isValidFill of
+    Nothing -> []
+    Just (sigma /\ fill) -> pure
+      { label: pretty r
+      , preview: pretty fill
+      , action: SetCursorAction (newCursor sigma fill)
+      }
 
 digEdit :: forall l r. IsRuleLabel l r => Edit l r
 digEdit = 

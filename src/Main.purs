@@ -22,9 +22,8 @@ main = HA.runHalogenAff do
   VDomDriver.runUI Rendering.editorComponent spec body
   where
   spec =
-    { hdzipper: 
-        Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty (holeDerivExpr (TermSort %* [])))
-        -- Rendering.HoleInteriorHoleyDerivZipper mempty (TermSort %* [])
-    , getEdits
+    { hdzipper: Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty (holeDerivExpr (TermSort %* [])))
+    , topSort: TermSort %* []
+    , editsAtHoleyDerivZipper
     , renderDerivExprKids'
     }

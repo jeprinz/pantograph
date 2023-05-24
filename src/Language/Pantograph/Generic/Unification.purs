@@ -9,7 +9,7 @@ import Control.Monad.Error.Class (throwError)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Either (Either(..))
-import Data.Expr ((%))
+import Data.Expr (subMetaExprPartially, (%))
 import Data.Expr as Expr
 import Data.Foldable (foldl)
 import Data.List (List(..), (:))
@@ -57,7 +57,7 @@ It seems wierd to have an change with both "change metavariables" and "expressio
 
 -}
 
-type Ren = Map Expr.MetaVar Expr.MetaVar
+type Ren = Expr.MetaVarSub Expr.MetaVar
 
 genFreshener :: Set Expr.MetaVar -> Ren
 genFreshener vars = foldl
@@ -100,14 +100,18 @@ freshen' rho = AsFreshenable >>> freshen rho >>> Newtype.unwrap
 
 --------------------------------------------------------------------------------
 
-type Sub l = Map Expr.MetaVar (Expr.MetaExpr l)
+type Sub l = Expr.MetaVarSub (Expr.MetaExpr l)
+
+-- sigma1 after sigma2
+composeSub :: forall l. Expr.IsExprLabel l => Sub l -> Sub l -> Sub l
+composeSub sigma1 sigma2 = subMetaExprPartially sigma1 <$> sigma2
 
 noMetaVars :: forall l. Expr.IsExprLabel l => String -> Expr.MetaExpr l -> Assertion (Expr.Expr l)
 noMetaVars source mexpr0 = Assertion
     { name: "noMetaVars", source
     , result: do
         let go = assertInput_ (Expr.wellformedExpr "noMetaVars") \mexpr -> case mexpr of
-                Expr.Meta (Left x) % [] -> throwError $ "Found MetaVar " <> quotes (pretty mexpr)
+                Expr.Meta (Left _) % [] -> throwError $ "Found MetaVar " <> quotes (pretty mexpr)
                 Expr.Meta (Right l) % kids -> (l % _) <$> go `traverse` kids
         go mexpr0
     }

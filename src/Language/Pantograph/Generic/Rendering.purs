@@ -134,7 +134,7 @@ data HoleyDerivZipper l r
   = InjectHoleyDerivZipper (DerivZipper l r)
   | HoleInteriorHoleyDerivZipper 
       (DerivPath Up l r) -- the path to the Hole
-      (Expr.MetaExpr l) -- the sort of the Hole
+      (Sort l) -- the sort of the Hole
 
 derive instance Generic (HoleyDerivZipper l r) _
 derive instance (Eq l, Eq r) => Eq (HoleyDerivZipper l r)
@@ -194,9 +194,15 @@ escapeHoleInterior cursor = do
 --           pretty st
 --   }
 
+defaultEditsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
+defaultEditsAtHoleyDerivZipper topSort = case _ of
+  InjectHoleyDerivZipper dz -> defaultEditsAtDerivZipper topSort dz
+  HoleInteriorHoleyDerivZipper p sort -> defaultEditsAtHoleInterior p sort
+
 type EditorSpec l r =
   { hdzipper :: HoleyDerivZipper l r
-  , getEdits :: HoleyDerivZipper l r -> Array (Edit l r)
+  , topSort :: Sort l
+  , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   , renderDerivExprKids' ::
       -- DerivExpr l r -> 
       -- Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
@@ -351,25 +357,10 @@ editorComponent = HK.component \tokens input -> HK.do
     getState = HK.get state_id
 
     handleAction = case _ of
-      SetDerivZipperAction lazy_dzipper -> do
+      SetCursorAction lazy_dzipper -> do
         -- compute new dzipper
-        case force lazy_dzipper of
-          Nothing -> pure unit
-          Just dzipper -> setState $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
-      WrapDerivZipper _dpath' -> do
-        getFacade >>= case _ of
-          CursorState cursor -> do
-            let dpath = hdzipperDerivPath cursor.hdzipper
-            let dpath' = _dpath' unit
-            let sort = case dpath' of
-                  Expr.Path Nil -> Bug.bug "should't try to `WrapDerivZipper` with a nil `dpath'`"
-                  Expr.Path (th : _) -> derivToothInteriorSort th
-            let hdzipper = case cursor.hdzipper of
-                  InjectHoleyDerivZipper _ -> InjectHoleyDerivZipper $ Expr.Zipper (dpath' <> dpath) (holeDerivExpr sort)
-                  HoleInteriorHoleyDerivZipper _ _ -> HoleInteriorHoleyDerivZipper (dpath' <> dpath) sort
-            setState $ CursorState {hdzipper, bufferEnabled: false}
-          TopState _top -> Hole.hole "WrapDerivZipper in TopState"
-          SelectState _select -> Hole.hole "WrapDerivZipper in BufferState"
+        let dzipper = force lazy_dzipper
+        setState $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
       Dig -> do
         getFacade >>= case _ of
           CursorState cursor -> do
@@ -624,7 +615,7 @@ editorComponent = HK.component \tokens input -> HK.do
         Array.concat
         [ [ HH.slot bufferSlot elemId bufferComponent 
             { hdzipper: InjectHoleyDerivZipper dzipper
-            , edits: input.getEdits (InjectHoleyDerivZipper dzipper)
+            , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper)
             } 
             handleBufferOutput
           ]
@@ -654,7 +645,7 @@ editorComponent = HK.component \tokens input -> HK.do
           Array.concat
           [ [ HH.slot bufferSlot elemId bufferComponent 
               { hdzipper: InjectHoleyDerivZipper dzipper
-              , edits: input.getEdits (InjectHoleyDerivZipper dzipper)
+              , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper)
               } 
               handleBufferOutput
             ]
@@ -684,7 +675,7 @@ editorComponent = HK.component \tokens input -> HK.do
           [ [ let hdzipper = HoleInteriorHoleyDerivZipper dpath sort in
               HH.slot bufferSlot elemId bufferComponent
                 { hdzipper
-                , edits: input.getEdits hdzipper
+                , edits: input.editsAtHoleyDerivZipper input.topSort hdzipper
                 }
                 handleBufferOutput
             ]
@@ -722,7 +713,7 @@ editorComponent = HK.component \tokens input -> HK.do
               Array.concat
               [ [ HH.slot bufferSlot elemId bufferComponent 
                   { hdzipper: InjectHoleyDerivZipper dzipper2
-                  , edits: input.getEdits (InjectHoleyDerivZipper dzipper2)
+                  , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper2)
                   } 
                   handleBufferOutput
                 ]
