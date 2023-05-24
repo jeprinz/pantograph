@@ -6,7 +6,7 @@ import Prelude
 import Type.Direction
 
 import Bug (bug)
-import Bug.Assertion (Assertion(..), assert, assertInput_, assertM, assert_)
+import Bug.Assertion (Assertion(..), assert, assertInput_, assertM_, strictlyOrdered)
 import Data.Array as Array
 import Data.Bifunctor (bimap, lmap, rmap)
 import Data.Const (Const(..))
@@ -17,13 +17,13 @@ import Data.Foldable (class Foldable, foldMap, foldl, foldr, intercalate, sequen
 import Data.Foldable as Foldable
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
-import Data.List (List(..), (:))
+import Data.List (List(..), Pattern(..), (:))
 import Data.List as List
 import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe')
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Newtype as Newtype
 import Data.Ord (class Ord1, compare1)
 import Data.Ord.Generic (genericCompare)
@@ -35,12 +35,13 @@ import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
+import Utility
 import Data.Variant (case_, on)
 import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Effect.Unsafe (unsafePerformEffect)
-import Hole as Hole
+import Hole (hole)
 import Partial.Unsafe (unsafePartial)
 import Prim.Row (class Cons)
 import Text.Pretty (class Pretty, pretty)
@@ -326,7 +327,40 @@ unzipper :: forall l. Zipper l -> Expr l
 unzipper (Zipper path expr) = unPath path expr
 
 zipperpFromTo :: forall l. IsExprLabel l => Zipper l -> Zipper l -> Maybe (Zipperp l)
-zipperpFromTo begin end = Hole.hole "zipperpFromTo"
+zipperpFromTo begin end = do
+  -- First, determine which direction to go
+  let beginPathLength = List.length (unwrap (zipperPath begin))
+  let endPathLength = List.length (unwrap (zipperPath end))
+  case compare beginPathLength endPathLength of
+    -- The path lengths are either the same (empty selection) or incomparable,
+    -- so either way there's no zipperp between them
+    EQ -> Nothing
+    LT -> zipperFromDownTo begin end
+    GT -> zipperFromUpTo begin end
+
+zipperFromDownTo :: forall l. IsExprLabel l => Zipper l -> Zipper l -> Maybe (Zipperp l)
+zipperFromDownTo begin end = do
+  -- Upward oriented
+  let beginTooths = unwrap (zipperPath begin)
+  let endTooths = unwrap (zipperPath end)
+  assertM_ $ strictlyOrdered "zipperFromDownTo" "`begin` should have a shorter path than `end`" 
+    (List.length beginTooths) (List.length endTooths)
+  -- Upward oriented, since selection is going from a top begin to a bottom end
+  selectionTooths <- stripSuffix (Pattern beginTooths) endTooths
+  pure $ Zipperp (zipperPath begin) (Left (Path selectionTooths)) (zipperExpr end)
+
+zipperFromUpTo :: forall l. IsExprLabel l => Zipper l -> Zipper l -> Maybe (Zipperp l)
+zipperFromUpTo begin end = do
+  -- Downward oriented (so, need to reverse the zipper paths which are upward
+  -- oriented)
+  let beginTooths = List.reverse $ unwrap (zipperPath begin)
+  let endTooths = List.reverse $ unwrap (zipperPath end)
+  assertM_ $ strictlyOrdered "zipperFromUpTo" "`end` should have a shorter path than `begin`" 
+    (List.length endTooths) (List.length beginTooths)
+  -- Downward oriented, since selection is going from a bottom begin to a top
+  -- end
+  selectionTooths <- List.stripPrefix (Pattern endTooths) beginTooths
+  pure $ Zipperp (zipperPath end) (Right (Path selectionTooths)) (zipperExpr begin)
 
 -- | Zipperp
 

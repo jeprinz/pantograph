@@ -99,9 +99,9 @@ ordered source msg a1 a2 = Assertion
 
 strictlyOrdered :: forall a. Ord a => String -> String -> a -> a -> Assertion Ordering 
 strictlyOrdered source msg a1 a2 = Assertion
-  { name: "ordered"
+  { name: "strictlyOrdered"
   , source
   , result: case compare a1 a2 of
       LT -> Right LT
-      c -> Left msg
+      _ -> Left msg
   }

@@ -44,6 +44,7 @@ import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName)
 import Hole as Hole
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
+import Log as Log
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
 import Type.Proxy (Proxy(..))
@@ -616,6 +617,8 @@ editorComponent = HK.component \tokens input -> HK.do
       H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
       setFacade $ CursorState {hdzipper, bufferEnabled: false}
     
+    -- !TODO when making a selection, should i check that sorts match? Or should
+    -- I delay that check to when you try to do an action e.g. delete/cut
     onMouseOver hdzipper event = do
       H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
       let dzipper = (hdzipperZipper hdzipper)
@@ -724,13 +727,15 @@ editorComponent = HK.component \tokens input -> HK.do
             HH.div
               [ classNames $ ["node"] <> clsNames
               , HP.id elemId
-              , HE.onMouseDown \event -> do
-                  H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-                  setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper2, bufferEnabled: false}
-              , HE.onMouseOver \event -> do
-                  H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-                  setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper2)))
-                  pure unit
+              -- , HE.onMouseDown \event -> do
+              --     H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+              --     setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper2, bufferEnabled: false}
+              -- , HE.onMouseOver \event -> do
+              --     H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+              --     setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper2)))
+              --     pure unit
+              , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper2))
+              , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper2))
               ] $
               Array.concat
               [ [ HH.slot bufferSlot elemId bufferComponent 
