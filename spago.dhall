@@ -29,6 +29,7 @@ to generate this file without the comments in this block.
   , "halogen"
   , "halogen-hooks"
   , "identity"
+  , "integers"
   , "lazy"
   , "lists"
   , "maybe"
