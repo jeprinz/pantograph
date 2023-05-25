@@ -12,7 +12,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
-import Language.Pantograph.Generic.Grammar ((|-))
+import Language.Pantograph.Generic.Grammar ((%|-))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Text.Pretty (class Pretty, (<+>))
 import Text.Pretty as P
@@ -105,7 +105,7 @@ instance Grammar.IsRuleLabel SortLabel RuleLabel where
     Hole -> true
     _ -> false
 
-  defaultDerivTerm' sort = (Hole |- sort) % []
+  defaultDerivTerm' sort = (Hole %|- sort) % []
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of

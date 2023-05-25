@@ -91,7 +91,11 @@ mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLa
 mapDerivLabelSort f (DerivLabel r sort) = DerivLabel r (f sort)
 mapDerivLabelSort _ (DerivString str) = DerivString str
 
-infix 8 DerivLabel as |-
+infix 8 DerivLabel as %|-
+
+injectSortLabelDerivLabel sortLabel kids = InjectSortLabel sortLabel %* kids
+
+infix 8 injectSortLabelDerivLabel as %|-*
 
 derive instance Generic (DerivLabel l r) _
 instance (Show l, Show r) => Show (DerivLabel l r) where show x = genericShow x

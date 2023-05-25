@@ -76,7 +76,7 @@ data Output l r
   = ActionOutput (Action l r)
   | UpdateFacadeOutput (State l r -> HK.HookM Aff (State l r))
 
-data Query (l :: Type) (r :: Type) a
+data Query a
   -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
   = SetBufferEnabledQuery Boolean (Maybe String) a
   | MoveBufferQuery VerticalDir a
@@ -205,8 +205,8 @@ type EditorSpec l r =
   , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   , renderDerivTermKids' ::
       (r /\ Sort l /\ Array (DerivTerm l r)) ->
-      Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
-      Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff)
+      Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff) -> 
+      Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff)
     
     -- TODO: factor out this type, and add: Grammar.Sorts, Grammar.Derivations, Grammar.Languaage, something for smallstep
   }
@@ -804,10 +804,10 @@ bufferSlot = Proxy :: Proxy "buffer"
 
 type BufferInput l r =
   { hdzipper :: HoleyDerivZipper l r
-  , edits :: Array (Lazy (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) /\ Edit l r)
+  , edits :: Array (Lazy (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff) /\ Edit l r)
   }
 
-bufferComponent :: forall l r. IsRuleLabel l r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
+bufferComponent :: forall l r. IsRuleLabel l r => H.Component (Query) (BufferInput l r) (Output l r) Aff
 bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""

@@ -1,5 +1,6 @@
-module Language.Pantograph.ULC.Rendering where
+module Language.Pantograph.SULC.Rendering where
 
+import Language.Pantograph.SULC.Grammar
 import Prelude
 
 import Bug (bug)
@@ -12,13 +13,13 @@ import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
+import Hole (hole)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
 import Language.Pantograph.Generic.Rendering as Rendering
-import Language.Pantograph.ULC.Grammar (DerivTerm, SortLabel, MetaExpr, Sort, RuleLabel(..))
 
 type Query = Rendering.Query
-type Output = Rendering.Output SortLabel RuleLabel
+type Output = Rendering.Output PreSortLabel RuleLabel
 
 renderDerivTermKids' ::
   (RuleLabel /\ Sort /\ Array DerivTerm) ->
@@ -27,19 +28,20 @@ renderDerivTermKids' ::
 renderDerivTermKids' (r /\ sort /\ kids) kidElems = do
   let kids_kidElems = kids `Array.zip` kidElems
   assert (Expr.wellformedExprF "ULC renderDerivTermKids'" (show <<< fst) (Grammar.DerivLabel r sort /\ kids_kidElems)) \_ -> case r /\ sort /\ kids_kidElems of
-    -- var
-    Zero /\ _ /\ [] -> ["var", "zero"] /\ 
-      [zeroVarElem]
-    Suc /\ _ /\ [_ /\ predElem] -> ["var", "suc"] /\ 
-      [sucVarElem, predElem]
-    -- term
-    Ref /\ _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
-    Lam /\ _ /\ [_ /\ bodElem] -> ["term", "lam"] /\ 
-      [Rendering.lparenElem, lambdaElem, bodElem, Rendering.rparenElem]
-    App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
-      [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
-    -- hole
-    Hole /\ _ /\ _ -> bug "[ULC.Grammar.renderDerivTermKids'] hole should be handled generically"
+    -- -- var
+    -- Zero /\ _ /\ [] -> ["var", "zero"] /\ 
+    --   [zeroVarElem]
+    -- Suc /\ _ /\ [_ /\ predElem] -> ["var", "suc"] /\ 
+    --   [sucVarElem, predElem]
+    -- -- term
+    -- Ref /\ _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
+    -- Lam /\ _ /\ [_ /\ bodElem] -> ["term", "lam"] /\ 
+    --   [Rendering.lparenElem, lambdaElem, bodElem, Rendering.rparenElem]
+    -- App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
+    --   [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
+    -- -- hole
+    -- Hole /\ _ /\ _ -> bug "[ULC.Grammar.renderDerivTermKids'] hole should be handled generically"
+    _ -> hole "TODO"
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
@@ -51,7 +53,7 @@ sucVarElem = Rendering.makePuncElem "sucVar" "S"
 -- Edit
 --------------------------------------------------------------------------------
 
-type Edit = Grammar.Edit SortLabel RuleLabel
-type HoleyDerivZipper = Rendering.HoleyDerivZipper SortLabel RuleLabel
+type Edit = Grammar.Edit PreSortLabel RuleLabel
+type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
 editsAtHoleyDerivZipper = defaultEditsAtHoleyDerivZipper
