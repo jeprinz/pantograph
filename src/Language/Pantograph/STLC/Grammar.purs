@@ -16,8 +16,9 @@ import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Unit (unit)
+import Hole (hole)
 import Hole as Hole
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, defaultDerivTerm, isHoleRuleTotalMap)
 import Language.Pantograph.Generic.Grammar as G
 import Text.Pretty (class Pretty, (<+>))
 import Text.Pretty as P
@@ -143,6 +144,12 @@ instance IsRuleLabel ExprLabel RuleLabel where
             [s]
             /\ --------
             s
+
+    isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
+        _ -> hole "TODO: @jacob add hole rule(s) to STLC"
+
+    defaultDerivTerm' = case _ of
+        _ -> hole "TODO: @jacob add hole rule(s) to STLC"
 
 type DerivLabel = G.DerivLabel ExprLabel RuleLabel
 

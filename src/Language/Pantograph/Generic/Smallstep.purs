@@ -22,13 +22,13 @@ import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, isHoleDerivLabel, isHoleDerivTerm)
 import Language.Pantograph.Generic.Grammar as Grammar
+import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust')
 import Utility ((<$$>))
-import Partial.Unsafe (unsafeCrashWith)
 
 data Direction = Up | Down -- TODO:
 
@@ -207,9 +207,10 @@ defaultUp _ _ = Nothing
 
 -------------- Other typechange related functions ---------------------
 
-getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
+getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.IsRuleLabel l r => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Expr.MetaExpr l -> Expr.MetaChange l
 getPathChange _lang (Expr.Path Nil) sort = inject sort
-getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivHole sort1) (ZipList.Path {left})) : path)) sort = unsafeCrashWith "Holes aren't paths"
+-- getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivHole sort1) (ZipList.Path {left})) : path)) sort = unsafeCrashWith "Holes aren't paths"
+getPathChange lang (Expr.Path ((Expr.Tooth dlabel (ZipList.Path {left})) : path)) sort | isHoleDerivLabel dlabel = unsafeCrashWith "Holes aren't paths"
 getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left})) : path)) sort =
   assert  (makeAssertionBoolean { condition: sort1 == sort -- injectMetaHoleyExpr sort
                                  , source: "getPathChange"

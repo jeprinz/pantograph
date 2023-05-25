@@ -4,9 +4,11 @@ import Data.Either.Nested
 import Prelude
 
 import Bug as Bug
-import Bug.Assertion (Assertion, assert, assertInput_, just, makeAssertionBoolean)
+import Bug.Assertion (Assertion(..), assert, assertInput_, just, makeAssertionBoolean)
+import Bug.Assertion as Assertion
 import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
+import Data.Either (Either(..))
 import Data.Enum (class Enum, enumFromTo)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Expr (class IsExprLabel, class ReflectPathDir, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
@@ -40,8 +42,21 @@ import Type.Direction as Dir
 class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleLabel l r | r -> l where
   prettyExprF'_unsafe_RuleLabel :: Partial => r /\ Array String -> String
   language :: Language l r
-  isHoleRule :: r -> Boolean
-  defaultDerivTerm :: Sort l -> DerivTerm l r
+  isHoleRuleTotalMap :: TotalMap r Boolean
+  defaultDerivTerm' :: Partial => Sort l -> DerivTerm l r
+
+defaultDerivTerm :: forall l r. IsRuleLabel l r => Sort l -> DerivTerm l r
+defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ -> 
+  defaultDerivTerm' sort
+
+isHoleRule :: forall l r. IsRuleLabel l r => r -> Boolean
+isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap
+
+isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Boolean
+isHoleDerivLabel (DerivLabel r _) = isHoleRule r 
+
+isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Boolean
+isHoleDerivTerm (dl % _) = isHoleDerivLabel dl
 
 expectedHypsCount :: forall l r. IsRuleLabel l r => r -> Int
 expectedHypsCount r = do
@@ -135,11 +150,11 @@ type DerivTooth l r = Expr.Tooth (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 
-derivExprSort :: forall l r. DerivTerm l r -> Sort l
-derivExprSort (dl % _) = derivLabelSort dl
+derivTermSort :: forall l r. DerivTerm l r -> Sort l
+derivTermSort (dl % _) = derivLabelSort dl
 
-derivExprRuleLabel :: forall l r. DerivTerm l r -> Maybe r
-derivExprRuleLabel (dl % _) = derivLabelRule dl
+derivTermRuleLabel :: forall l r. DerivTerm l r -> Maybe r
+derivTermRuleLabel (dl % _) = derivLabelRule dl
 
 derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothSort (Expr.Tooth (DerivLabel _r sort) _) = sort
@@ -243,11 +258,14 @@ data EditPreview l r
 
 data Action l r 
   = SetCursorAction (Lazy (DerivZipper l r))
-  | Dig
 
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
 defaultEditsAtDerivZipper topSort dz = 
   Array.concat $
+  (if isHoleDerivTerm (Expr.zipperExpr dz)
+    then []
+    else [digEdit dz])
+  Array.:
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
     let Rule mvars hyps con = TotalMap.lookup r language
     -- For each hyp, there is an edit that wraps with a tooth into that hyp,
@@ -271,7 +289,7 @@ defaultEditsAtDerivZipper topSort dz =
               let tooth1 = mapDerivLabelSort (Expr.subMetaExprPartially sigma1) <$> tooth0
               -- Unify sort of the tooth interior with the sort of the expression
               -- at the cursor
-              _ /\ sigma2 <- unify (derivToothInteriorSort tooth1) (derivExprSort (Expr.zipperExpr dz))
+              _ /\ sigma2 <- unify (derivToothInteriorSort tooth1) (derivTermSort (Expr.zipperExpr dz))
               let tooth2 = mapDerivLabelSort (Expr.subMetaExprPartially sigma2) <$> tooth1
 
               pure (composeSub sigma2 sigma1 /\ tooth2)
@@ -307,7 +325,7 @@ defaultEditsAtHoleInterior path sort =
   -- In `isValidFill`, only do computation necessary to check if fill is valid
   let isValidFill = do
         -- Unify sort of the fill with the sort of the hole
-        _ /\ sigma <- unify (derivExprSort fill0) sort
+        _ /\ sigma <- unify (derivTermSort fill0) sort
         let fill1 = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> fill0
 
         pure (sigma /\ fill1)
@@ -328,9 +346,11 @@ defaultEditsAtHoleInterior path sort =
       , action: SetCursorAction (newCursor sigma fill)
       }
 
--- digEdit :: forall l r. IsRuleLabel l r => Edit l r
--- digEdit = 
---   { label: "dig"
---   , preview: DerivTermEditPreview ()
---   , action: Dig
---   }
+digEdit :: forall l r. IsRuleLabel l r => DerivZipper l r -> Edit l r
+digEdit dz = do
+  let dterm = defaultDerivTerm (derivTermSort (Expr.zipperExpr dz))
+  { label: "dig"
+  , preview: DerivTermEditPreview dterm
+  , action: SetCursorAction $ defer \_ ->
+      Expr.Zipper (Expr.zipperPath dz) dterm
+  }

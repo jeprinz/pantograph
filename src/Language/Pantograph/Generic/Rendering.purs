@@ -129,7 +129,7 @@ type Select l r =
   }
 
 type Top l r =
-  { expr :: DerivTerm l r
+  { dterm :: DerivTerm l r
   }
 
 data HoleyDerivZipper l r
@@ -168,21 +168,21 @@ hdzipperHoleyDerivPath :: forall l r. HoleyDerivZipper l r -> HoleyDerivPath Up 
 hdzipperHoleyDerivPath (InjectHoleyDerivZipper dzipper) = InjectHoleyDerivPath (Expr.zipperPath dzipper)
 hdzipperHoleyDerivPath (HoleInteriorHoleyDerivZipper dpath _) = HoleInteriorHoleyDerivPath dpath
 
-hdzipperDerivTerm :: forall l r. HoleyDerivZipper l r -> DerivTerm l r
+hdzipperDerivTerm :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivTerm l r
 hdzipperDerivTerm (InjectHoleyDerivZipper dzipper) = Expr.zipperExpr dzipper
 hdzipperDerivTerm (HoleInteriorHoleyDerivZipper dpath sort) = Expr.unzipper (Expr.Zipper dpath (defaultDerivTerm sort))
 
-hdzipperZipper :: forall l r. HoleyDerivZipper l r -> DerivZipper l r
+hdzipperZipper :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivZipper l r
 hdzipperZipper hdzipper = do
   let path = hdzipperDerivPath hdzipper
-  let expr = hdzipperDerivTerm hdzipper
-  Expr.Zipper path expr
+  let dterm = hdzipperDerivTerm hdzipper
+  Expr.Zipper path dterm
 
-escapeHoleInterior :: forall l r. Cursor l r -> Cursor l r
+escapeHoleInterior :: forall l r. IsRuleLabel l r => Cursor l r -> Cursor l r
 escapeHoleInterior cursor = do
   let path = hdzipperDerivPath cursor.hdzipper
-  let expr = hdzipperDerivTerm cursor.hdzipper
-  {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path expr), bufferEnabled: false}
+  let dterm = hdzipperDerivTerm cursor.hdzipper
+  {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm), bufferEnabled: false}
 
 -- cursorState source msg st = Assertion
 --   { name: "cursorState"
@@ -358,19 +358,20 @@ editorComponent = HK.component \tokens input -> HK.do
         -- compute new dzipper
         let dzipper = force lazy_dzipper
         setState $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
-      Dig -> do
-        getFacade >>= case _ of
-          CursorState cursor -> do
-            let path = hdzipperDerivPath cursor.hdzipper
-            let expr = hdzipperDerivTerm cursor.hdzipper
-            case expr of
-              DerivLabel _r ix % _ -> setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm ix)), bufferEnabled: false}
-              DerivHole _ix % _ -> pure unit -- ignore dig at a hole
-          SelectState select -> do
-            let Expr.Zipperp path _selection expr = select.dzipperp
-            -- escape to cursor mode, but without selection (updates state)
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path expr), bufferEnabled: false}
-          TopState _top -> hole "dig in TopState"
+      -- !TODO Dig was deprecated, in favor of just having digEdit take the current zipper as input
+      -- Dig -> do
+      --   getFacade >>= case _ of
+      --     CursorState cursor -> do
+      --       let path = hdzipperDerivPath cursor.hdzipper
+      --       let dterm = hdzipperDerivTerm cursor.hdzipper
+      --       case dterm of
+      --         -- !TODO no delete edit when rule isHole
+      --         DerivLabel _r ix % _ -> setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm ix)), bufferEnabled: false}
+      --     SelectState select -> do
+      --       let Expr.Zipperp path _selection dterm = select.dzipperp
+      --       -- escape to cursor mode, but without selection (updates state)
+      --       setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm), bufferEnabled: false}
+      --     TopState _top -> hole "dig in TopState"
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
@@ -381,10 +382,12 @@ editorComponent = HK.component \tokens input -> HK.do
           case cursor.hdzipper of
             -- if at hole, moving down goes to hole interior
             InjectHoleyDerivZipper dzipper 
-              | DerivHole sort % _ <- Expr.zipperExpr dzipper
+              -- | DerivHole sort % _ <- Expr.zipperExpr dzipper
+              | dterm <- Expr.zipperExpr dzipper
+              , isHoleDerivTerm dterm
               , dir == inj _down Proxy -> do
                   -- Debug.traceM $ "[moveCursor] at hole; going down to hole interior"
-                  setFacade $ CursorState {hdzipper: HoleInteriorHoleyDerivZipper (Expr.zipperPath dzipper) sort, bufferEnabled: false}
+                  setFacade $ CursorState {hdzipper: HoleInteriorHoleyDerivZipper (Expr.zipperPath dzipper) (derivTermSort dterm), bufferEnabled: false}
             InjectHoleyDerivZipper dzipper -> do
               -- Debug.traceM $ "[moveCursor] at hole; NOT going down to hole interior"
               case moveZipper dir dzipper of
@@ -402,7 +405,7 @@ editorComponent = HK.component \tokens input -> HK.do
             Nothing -> pure unit
             Just dzipper' -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper', bufferEnabled: false}
         TopState top -> do
-          let cursor = {dzipper: Expr.Zipper mempty top.expr, bufferEnabled: false}
+          let cursor = {dzipper: Expr.Zipper mempty top.dterm, bufferEnabled: false}
           case moveZipper dir cursor.dzipper of
             Nothing -> pure unit
             Just dzipper -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper, bufferEnabled: false}
@@ -410,10 +413,10 @@ editorComponent = HK.component \tokens input -> HK.do
     moveSelect dir = getFacade >>= case _ of
       CursorState cursor -> do
         let path = hdzipperDerivPath cursor.hdzipper
-        let expr = hdzipperDerivTerm cursor.hdzipper
+        let dterm = hdzipperDerivTerm cursor.hdzipper
         let select = (_ $ dir) $ case_
-              # on _up (\_ -> {dzipperp: Expr.Zipperp path (Left mempty) expr})
-              # on _down (\_ -> {dzipperp: Expr.Zipperp path (Right mempty) expr})
+              # on _up (\_ -> {dzipperp: Expr.Zipperp path (Left mempty) dterm})
+              # on _down (\_ -> {dzipperp: Expr.Zipperp path (Right mempty) dterm})
               # on _left (\_ -> hole "moveSelect left when CursorState")
               # on _right (\_ -> hole "moveSelect right when CursorState")
               # on _prev (\_ -> hole "moveSelect prev when CursorState")
@@ -432,7 +435,7 @@ editorComponent = HK.component \tokens input -> HK.do
           Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       TopState top -> do
         let mb_select = (_ $ dir) $ default Nothing -- (pure unit)
-              # on _down (\_ -> Just {dzipperp: Expr.Zipperp mempty (Left mempty) top.expr})
+              # on _down (\_ -> Just {dzipperp: Expr.Zipperp mempty (Left mempty) top.dterm})
               # on _next (\_ -> Just (hole "moveSelect next when TopState"))
         case mb_select of
           Nothing -> pure unit
@@ -483,26 +486,26 @@ editorComponent = HK.component \tokens input -> HK.do
         ------------------------------------------------------------------------
         CursorState cursor -> do
           let path = hdzipperDerivPath cursor.hdzipper
-          let expr = hdzipperDerivTerm cursor.hdzipper
+          let dterm = hdzipperDerivTerm cursor.hdzipper
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Right expr)) clipboard_ref
+            liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
           -- cut
           else if cmdKey && key == "x" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Right expr)) clipboard_ref
+            liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
             -- replace cursor with hole
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm (derivExprSort expr))), bufferEnabled: false}
+            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm (derivTermSort dterm))), bufferEnabled: false}
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
               Just (Left path') -> do
                 -- paste a path
-                setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper (path' <> path) expr), bufferEnabled: false}
-              Just (Right expr') -> do
-                -- paste an expr
-                setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path expr'), bufferEnabled: false}
+                setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper (path' <> path) dterm), bufferEnabled: false}
+              Just (Right dterm') -> do
+                -- paste an dterm
+                setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm'), bufferEnabled: false}
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
@@ -515,8 +518,8 @@ editorComponent = HK.component \tokens input -> HK.do
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
           else if key == "Backspace" then do
-            -- replace expr with hole derivation
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm (derivExprSort expr))), bufferEnabled: false}
+            -- replace dterm with hole derivation
+            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm (derivTermSort dterm))), bufferEnabled: false}
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
@@ -526,7 +529,7 @@ editorComponent = HK.component \tokens input -> HK.do
         -- SelectState
         ------------------------------------------------------------------------
         SelectState select -> do
-          let Expr.Zipperp path selection expr = select.dzipperp
+          let Expr.Zipperp path selection dterm = select.dzipperp
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
@@ -536,13 +539,13 @@ editorComponent = HK.component \tokens input -> HK.do
             -- update clipboard
             liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
             -- escape to cursor mode, but without selection (updates state)
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path expr), bufferEnabled: false}
+            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm), bufferEnabled: false}
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp), bufferEnabled: false}
           else if key == "Backspace" then do
             -- escape to cursor mode, but without selection (updates state)
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path expr), bufferEnabled: false}
+            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm), bufferEnabled: false}
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
@@ -585,14 +588,15 @@ editorComponent = HK.component \tokens input -> HK.do
       UpdateFacadeOutput f -> setFacade =<< (f =<< getFacade)
   
     renderDerivTermKids (Expr.Zipper dpath dterm) kidElems = assert (wellformedExpr "renderDerivTermKids" dterm) \_ -> case dterm of
-      DerivLabel r sort % kids -> input.renderDerivTermKids' (r /\ sort /\ kids) kidElems
-      DerivHole sort % [] -> ["hole"] /\
+      DerivLabel r sort % [] | isHoleRule r -> ["hole"] /\
         [ HH.div [classNames ["subnode", "inner"]]
             [ HH.div [classNames ["subnode", "hole-interior"]] [renderHoleInterior false dpath sort]
             , colonElem
             , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
             ]
         ]
+      DerivLabel r sort % kids -> input.renderDerivTermKids' (r /\ sort /\ kids) kidElems
+  
 
     {-
     mouse cursoring and selecting:
@@ -827,7 +831,7 @@ bufferComponent = HK.component \tokens input -> HK.do
 
   let normalBufferFocus = bufferFocus `mod` Array.length edits
 
-  let submitBuffer = do
+  let submitBuffer _ = do
         if isEnabled then do
           case Array.index edits normalBufferFocus of
             Nothing -> bug $ "[bufferComponent.SubmitBufferQuery] attempted to submit buffer, but bufferFocus is out of range: \n  - length edits = " <> show (Array.length edits) <> "\n  - bufferFocus = " <> show bufferFocus 
@@ -874,7 +878,7 @@ bufferComponent = HK.component \tokens input -> HK.do
       else
         pure Nothing
     SubmitBufferQuery a -> do
-      submitBuffer >>= case _ of
+      submitBuffer unit >>= case _ of
         false -> pure Nothing
         true -> pure $ Just a
 
@@ -915,7 +919,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                     , HE.onMouseDown \event -> do
                         liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
                         -- HK.put bufferFocus_id i
-                        void $ submitBuffer
+                        void $ submitBuffer unit
                     ]
                     [force lazy_editHtml]
               ]

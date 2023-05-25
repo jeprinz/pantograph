@@ -5,7 +5,7 @@ import Prelude
 import Bug (bug)
 import Data.Either (Either(..), either)
 import Data.Either.Nested (type (\/))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Partial.Unsafe (unsafePartial)
 
 newtype Assertion a = Assertion 
@@ -69,6 +69,9 @@ assertInterface ass_a_b ass_d_e f_b_c a = assert (ass_a_b a) \b -> assert (ass_d
 
 try :: forall a. Assertion a -> Maybe a
 try (Assertion ass) = ass.result # either (const Nothing) Just
+
+test :: forall a. Assertion a -> Boolean
+test ass = isJust (try ass)
 
 positif :: String -> Int -> Assertion Int
 positif source x = Assertion

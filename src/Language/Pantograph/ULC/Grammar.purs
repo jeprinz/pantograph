@@ -2,7 +2,9 @@ module Language.Pantograph.ULC.Grammar where
 
 import Prelude
 
+import Bug (bug)
 import Data.Bounded.Generic (genericBottom, genericTop)
+import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
@@ -13,10 +15,11 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
+import Hole (hole)
 import Hole as Hole
-import Language.Pantograph.Generic.Grammar ((|-))
+import Language.Pantograph.Generic.Grammar (defaultDerivTerm, isHoleRuleTotalMap, (|-))
 import Language.Pantograph.Generic.Grammar as Grammar
-import Text.Pretty (class Pretty, (<+>))
+import Text.Pretty (class Pretty, pretty, (<+>))
 import Text.Pretty as P
 
 --------------------------------------------------------------------------------
@@ -82,8 +85,7 @@ data RuleLabel
   | Lam
   | App
   | Ref
-  -- | Hole
-  -- | HoleInterior
+  | Hole
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -102,8 +104,7 @@ instance Pretty RuleLabel where
   pretty Lam = "lam"
   pretty App = "app"
   pretty Ref = "ref"
-  -- pretty Hole = "hole"
-  -- pretty HoleInterior = "hole-interior"
+  pretty Hole = "?"
 
 --------------------------------------------------------------------------------
 -- Language
@@ -118,10 +119,15 @@ instance Grammar.IsRuleLabel ExprLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
-  -- prettyExprF'_unsafe_RuleLabel (Hole /\ [hi]) = "Hole[" <> hi <> "]"
-  -- prettyExprF'_unsafe_RuleLabel (HoleInterior /\ []) = "?"
+  prettyExprF'_unsafe_RuleLabel (Hole /\ []) = "?"
 
   language = language
+
+  isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
+    Hole -> true
+    _ -> false
+
+  defaultDerivTerm' sort = (Hole |- sort) % []
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of
@@ -147,14 +153,10 @@ language = TotalMap.makeTotalMap case _ of
     [ VarSort %* [] ]
     /\ --------
     ( TermSort %* [] )
-  -- Hole -> Grammar.makeRule ["sort"] \[sort] ->
-  --   [ Hole.hole "holeInteriorSortME" ]
-  --   /\ --------
-  --   ( sort )
-  -- HoleInterior -> Grammar.makeRule [] \[] ->
-  --   [ ]
-  --   /\ --------
-  --   ( Hole.hole "holeInteriorSortME" )
+  Hole -> Grammar.makeRule ["sort"] \[sort] ->
+    [ ]
+    /\ --------
+    ( sort )
 
 --------------------------------------------------------------------------------
 -- DerivTerm (and friends)
@@ -199,6 +201,5 @@ languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey 
   Lam -> identity
   App -> identity
   Ref -> identity
-  -- Hole -> identity
-  -- HoleInterior -> identity
+  Hole -> identity
 
