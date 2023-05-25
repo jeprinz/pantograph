@@ -2,6 +2,8 @@ module Language.Pantograph.SULC.Grammar where
 
 import Prelude
 
+import Bug (bug)
+import Control.Plus (empty)
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
 import Data.Enum (class Enum)
@@ -17,7 +19,7 @@ import Data.Tuple.Nested ((/\))
 import Hole (hole)
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
-import Text.Pretty (class Pretty, (<+>))
+import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 
 --------------------------------------------------------------------------------
@@ -42,8 +44,8 @@ instance Pretty PreSortLabel where
   pretty CtxNilSort = "CtxNil"
 
 instance IsExprLabel PreSortLabel where
-  prettyExprF'_unsafe (VarSort /\ [gamma, x]) = "Var(" <> x <> ")"
-  prettyExprF'_unsafe (TermSort /\ [gamma]) = "Term"
+  prettyExprF'_unsafe (VarSort /\ [gamma, x]) = "Var" <+> parens gamma <+> x
+  prettyExprF'_unsafe (TermSort /\ [gamma]) = "Term" <+> parens gamma
   prettyExprF'_unsafe (CtxConsSort /\ [x, gamma]) = x <> ", " <> gamma
   prettyExprF'_unsafe (CtxNilSort /\ []) = "∅"
 
@@ -104,7 +106,7 @@ type Rule = Grammar.Rule PreSortLabel
 instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = "Z"
   prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = "S" <> x
-  prettyExprF'_unsafe_RuleLabel (Lam /\ [b]) = P.parens $ "λ" <+> b
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ []) = "?"
@@ -115,8 +117,10 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TermHole -> true
     _ -> false
 
-  defaultDerivTerm' ctx@(Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = (TermHole %|- ctx) % []
-  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % []) = Grammar.DerivString "" % []
+  defaultDerivTerm' sort@(Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma]) = pure $ (TermHole %|- sort) % []
+  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x]) = empty
+  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % []
+  defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
 ctxCons x gamma = CtxConsSort %|-* [x, gamma]
 infixl 7 ctxCons as %:
@@ -151,7 +155,7 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  TermHole -> Grammar.makeRule ["gamm"] \[gamma] ->
+  TermHole -> Grammar.makeRule ["gamma"] \[gamma] ->
     [ ]
     /\ --------
     ( TermSort %|-* [gamma] )

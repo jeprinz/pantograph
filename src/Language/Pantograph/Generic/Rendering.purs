@@ -8,7 +8,7 @@ import Prelude
 import Type.Direction
 
 import Bug (bug)
-import Bug.Assertion (Assertion(..), assert, assertM)
+import Bug.Assertion (Assertion(..), assert, assertM, just)
 import Data.Array as Array
 import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), either)
@@ -170,7 +170,8 @@ hdzipperHoleyDerivPath (HoleInteriorHoleyDerivZipper dpath _) = HoleInteriorHole
 
 hdzipperDerivTerm :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivTerm l r
 hdzipperDerivTerm (InjectHoleyDerivZipper dzipper) = Expr.zipperExpr dzipper
-hdzipperDerivTerm (HoleInteriorHoleyDerivZipper dpath sort) = Expr.unzipper (Expr.Zipper dpath (defaultDerivTerm sort))
+hdzipperDerivTerm (HoleInteriorHoleyDerivZipper dpath sort) = assert (just "hdzipperDerivTerm" (defaultDerivTerm sort)) \dterm ->
+  Expr.unzipper $ Expr.Zipper dpath dterm
 
 hdzipperZipper :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivZipper l r
 hdzipperZipper hdzipper = do
@@ -394,7 +395,9 @@ editorComponent = HK.component \tokens input -> HK.do
                 Just dzipper' -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper', bufferEnabled: false}
             HoleInteriorHoleyDerivZipper dpath sort -> default (pure unit)
               -- if at hole interior, moving up goes to hole
-              # on _up (\_ -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper dpath (defaultDerivTerm sort)), bufferEnabled: false})
+              -- # on _up (\_ -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper dpath (defaultDerivTerm sort)), bufferEnabled: false})
+              # on _up (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm ->
+                  setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper dpath dterm), bufferEnabled: false})
               # on _prev (\_ -> hole "!TODO move 'prev' at HoleInterior")
               # on _next (\_ -> hole "!TODO move 'next' at HoleInterior") 
               $ dir
@@ -492,10 +495,13 @@ editorComponent = HK.component \tokens input -> HK.do
             liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
           -- cut
           else if cmdKey && key == "x" then do
-            -- update clipboard
-            liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
-            -- replace cursor with hole
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm (derivTermSort dterm))), bufferEnabled: false}
+            case defaultDerivTerm (derivTermSort dterm) of
+              Nothing -> pure unit
+              Just dterm' -> do
+                -- update clipboard
+                liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
+                -- replace cursor with default deriv
+                setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm'), bufferEnabled: false}
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
@@ -517,8 +523,10 @@ editorComponent = HK.component \tokens input -> HK.do
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
           else if key == "Backspace" then do
-            -- replace dterm with hole derivation
-            setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm (derivTermSort dterm))), bufferEnabled: false}
+            -- replace dterm with default deriv
+            case defaultDerivTerm (derivTermSort dterm) of
+              Nothing -> pure unit
+              Just dterm' ->  setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm'), bufferEnabled: false}
           else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
           else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
           else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
@@ -586,7 +594,7 @@ editorComponent = HK.component \tokens input -> HK.do
       ActionOutput act -> handleAction act
       UpdateFacadeOutput f -> setFacade =<< (f =<< getFacade)
   
-    renderDerivTermKids (Expr.Zipper dpath dterm) kidElems = assert (wellformedExpr "renderDerivTermKids" dterm) \_ -> case dterm of
+    renderDerivTermKids (Expr.Zipper dpath dterm) kidElems = Debug.trace ("[renderDerivTermKids] dterm = " <> pretty dterm) \_ -> assert (wellformedExpr "renderDerivTermKids" dterm) \_ -> case dterm of
       DerivLabel r sort % [] | isHoleRule r -> ["hole"] /\
         [ HH.div [classNames ["subnode", "inner"]]
             [ HH.div [classNames ["subnode", "hole-interior"]] [renderHoleInterior false dpath sort]
@@ -595,7 +603,7 @@ editorComponent = HK.component \tokens input -> HK.do
             ]
         ]
       DerivLabel r sort % kids -> input.renderDerivTermKids' (r /\ sort /\ kids) kidElems
-  
+      DerivString str % [] -> ["string"] /\ [HH.text str]
 
     {-
     mouse cursoring and selecting:
@@ -665,9 +673,9 @@ editorComponent = HK.component \tokens input -> HK.do
         kidElems
 
     renderHoleInterior isCursor dpath sort = do
-      (\kidElem -> if isCursor then do
+      (\kidElem -> if isCursor then assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
         let
-          dzipper = Expr.Zipper dpath (defaultDerivTerm sort)
+          dzipper = Expr.Zipper dpath dterm
           elemId = fromPathToElementId dpath
           clsNames = ["hole"]
         HH.div
@@ -747,9 +755,9 @@ editorComponent = HK.component \tokens input -> HK.do
               , kidElems
               ]
 
-    renderPreviewDerivTooth dtooth = do
+    renderPreviewDerivTooth dtooth = assert (just "renderPreviewDerivTooth" (defaultDerivTerm (derivToothInteriorSort dtooth))) \dterm -> do
       let
-        dzipper = Expr.Zipper mempty (Expr.unTooth dtooth (defaultDerivTerm (derivToothInteriorSort dtooth)))
+        dzipper = Expr.Zipper mempty (Expr.unTooth dtooth dterm)
 
         clsNames /\ kidElems =
           renderDerivTermKids dzipper $
