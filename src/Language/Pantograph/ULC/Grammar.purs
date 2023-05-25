@@ -31,8 +31,8 @@ instance Eq SortLabel where eq x = genericEq x
 instance Ord SortLabel where compare x y = genericCompare x y
 
 instance Pretty SortLabel where
-  pretty VarSort = "var-sort"
-  pretty TermSort = "term-sort"
+  pretty VarSort = "Var"
+  pretty TermSort = "Term"
 
 
 instance IsExprLabel SortLabel where
@@ -94,7 +94,7 @@ type Rule = Grammar.Rule SortLabel
 instance Grammar.IsRuleLabel SortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = "Z"
   prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = "S" <> x
-  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [b]) = P.parens $ "λ" <+> b
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (Hole /\ []) = "?"
@@ -118,8 +118,7 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( Grammar.InjectSortLabel VarSort %* [] )
   Lam -> Grammar.makeRule [] \[] ->
-    [ Grammar.InjectSortLabel VarSort %* [] -- instead, s
-    , Grammar.InjectSortLabel TermSort %* [] ]
+    [ Grammar.InjectSortLabel TermSort %* [] ]
     /\ --------
     ( Grammar.InjectSortLabel TermSort %* [] )
   App -> Grammar.makeRule [] \[] ->

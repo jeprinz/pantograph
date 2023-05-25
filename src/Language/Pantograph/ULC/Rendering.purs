@@ -34,8 +34,8 @@ renderDerivTermKids' (r /\ sort /\ kids) kidElems = do
       [sucVarElem, predElem]
     -- term
     Ref /\ _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
-    Lam /\ _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ 
-      [Rendering.lparenElem, lambdaElem, varElem, mapstoElem, bodElem, Rendering.rparenElem]
+    Lam /\ _ /\ [_ /\ bodElem] -> ["term", "lam"] /\ 
+      [Rendering.lparenElem, lambdaElem, bodElem, Rendering.rparenElem]
     App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
       [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
     -- hole
