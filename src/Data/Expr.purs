@@ -72,6 +72,7 @@ derive instance Foldable Expr
 derive instance Traversable Expr
 
 class (Eq l, Ord l, Show l, Pretty l) <= IsExprLabel l where
+  -- !TODO rename to prettyExprF_unsafe
   prettyExprF'_unsafe :: Partial => ExprF l String -> String
   expectedKidsCount :: l -> Int
 

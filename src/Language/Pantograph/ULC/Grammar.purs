@@ -17,7 +17,7 @@ import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
 import Hole (hole)
 import Hole as Hole
-import Language.Pantograph.Generic.Grammar (defaultDerivTerm, isHoleRuleTotalMap, (|-))
+import Language.Pantograph.Generic.Grammar (SortLabel(..), defaultDerivTerm, isHoleRuleTotalMap, (|-))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Text.Pretty (class Pretty, pretty, (<+>))
 import Text.Pretty as P
@@ -59,6 +59,7 @@ type Expr = Expr.Expr ExprLabel
 type MetaExpr = Expr.MetaExpr ExprLabel
 type Zipper = Expr.Zipper ExprLabel
 type Tooth = Expr.Tooth ExprLabel
+type Sort = Grammar.Sort ExprLabel
 
 -- varSortE :: Expr
 -- varSortE = VarSort % []
@@ -134,25 +135,25 @@ language = TotalMap.makeTotalMap case _ of
   Zero -> Grammar.makeRule [] \[] ->
     [ ]
     /\ --------
-    ( VarSort %* [] )
+    ( InjectSortLabel VarSort %* [] )
   Suc -> Grammar.makeRule [] \[] ->
-    [ VarSort %* [] ]
+    [ InjectSortLabel VarSort %* [] ]
     /\ --------
-    ( VarSort %* [] )
+    ( InjectSortLabel VarSort %* [] )
   Lam -> Grammar.makeRule [] \[] ->
-    [ VarSort %* [] -- instead, s
-    , TermSort %* [] ]
+    [ InjectSortLabel VarSort %* [] -- instead, s
+    , InjectSortLabel TermSort %* [] ]
     /\ --------
-    ( TermSort %* [] )
+    ( InjectSortLabel TermSort %* [] )
   App -> Grammar.makeRule [] \[] ->
-    [ TermSort %* []
-    , TermSort %* [] ]
+    [ InjectSortLabel TermSort %* []
+    , InjectSortLabel TermSort %* [] ]
     /\ --------
-    ( TermSort %* [] )
+    ( InjectSortLabel TermSort %* [] )
   Ref -> Grammar.makeRule [] \[] ->
-    [ VarSort %* [] ]
+    [ InjectSortLabel VarSort %* [] ]
     /\ --------
-    ( TermSort %* [] )
+    ( InjectSortLabel TermSort %* [] )
   Hole -> Grammar.makeRule ["sort"] \[sort] ->
     [ ]
     /\ --------

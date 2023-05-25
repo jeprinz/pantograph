@@ -11,7 +11,7 @@ import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
 import Data.Enum (class Enum, enumFromTo)
 import Data.Enum.Generic (genericPred, genericSucc)
-import Data.Expr (class IsExprLabel, class ReflectPathDir, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
+import Data.Expr (class IsExprLabel, class ReflectPathDir, expectedKidsCount, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (Lazy, defer)
@@ -71,6 +71,7 @@ expectedHypsCount r = do
 
 data DerivLabel l r 
   = DerivLabel r (Sort l)
+  
   -- | TextBox String -- this String s stands for the sort (Name (Str s))
   -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """renderDerivTermKids"""
   -- alternate idea: any hole of a (Name s) sort is a textbox
@@ -78,7 +79,7 @@ data DerivLabel l r
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRule (DerivLabel r _) = Just r
 
-derivLabelSort :: forall l r. DerivLabel l r -> Expr.MetaExpr l
+derivLabelSort :: forall l r. DerivLabel l r -> Sort l
 derivLabelSort (DerivLabel _ s) = s
 -- derivLabelSort (TextBox s) = Name (Str s)
 
@@ -124,15 +125,9 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
 --------------------------------------------------------------------------------
 -- Sorts
 --------------------------------------------------------------------------------
--- currently, we implicity have:
-data SortLabel l = SortInject l
-type Sort l = Expr.MetaExpr {-SortLabel l-}l
-
---but, we could instead have:
-data SortLabel' l = SortInject' l | Str String | Name {-String-}
 
 {-
-For example, in named ULC
+For example, in SULC, where sorts have scopes:
 
  (Name ?a)       Term (cons gamma ?a)
 ----------------------------------------------- lam
@@ -140,6 +135,36 @@ For example, in named ULC
 
 -}
 
+type Sort l = Expr.MetaExpr (SortLabel l)
+
+data SortLabel l 
+  = InjectSortLabel l
+  | NameSortLabel
+  | StringSortLabel String
+
+derive instance Generic (SortLabel l) _
+instance Show l => Show (SortLabel l) where show x = genericShow x
+derive instance Eq l => Eq (SortLabel l)
+derive instance Ord l => Ord (SortLabel l)
+derive instance Functor SortLabel
+derive instance Foldable SortLabel
+derive instance Traversable SortLabel
+
+instance Pretty l => Pretty (SortLabel l) where
+  pretty (InjectSortLabel l) = pretty l
+  pretty NameSortLabel = "NameSort"
+  pretty (StringSortLabel str) = "\"" <> str <> "\"" 
+
+instance IsExprLabel l => IsExprLabel (SortLabel l) where
+  prettyExprF'_unsafe = case _ of
+    InjectSortLabel l /\ kids -> prettyExprF'_unsafe (l /\ kids)
+    NameSortLabel /\ [string] -> "Name(" <> string <> ")"
+    StringSortLabel str /\ [] -> "\"" <> str <> "\"" 
+
+  expectedKidsCount = case _ of
+    InjectSortLabel l -> expectedKidsCount l
+    NameSortLabel -> 1
+    StringSortLabel _ -> 0
 
 --------------------------------------------------------------------------------
 -- DerivTerm
@@ -184,7 +209,7 @@ derivPathSort _ path@(Expr.Path (th : _)) = reflectPathDir path #
 -- |   «MetaExpr» -- parent
 -- | ```
 data Rule l = 
-  Rule 
+  Rule
     (Set Expr.MetaVar)
     (Array (Sort l))
     (Sort l)
@@ -203,7 +228,7 @@ nonDuplicateArray source message arr = makeAssertionBoolean
 
 makeRule' :: forall l. 
   Array String ->
-  (Array (Expr.MetaExpr l) -> Array (Expr.MetaExpr l) /\ Expr.MetaExpr l) -> 
+  (Array (Sort l) -> Array (Sort l) /\ Sort l) -> 
   Rule l
 makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f ->
   let mxs = Expr.freshMetaVar <$> strs in
@@ -213,7 +238,7 @@ makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar st
 
 makeRule :: forall l. 
   Array String ->
-  (Partial => Array (Expr.MetaExpr l) -> Array (Expr.MetaExpr l) /\ Expr.MetaExpr l) -> 
+  (Partial => Array (Sort l) -> Array (Sort l) /\ Sort l) -> 
   Rule l
 makeRule = \strs f -> makeRule' strs (unsafePartial f)
 
@@ -232,11 +257,11 @@ type LanguageChanges l r = TotalMap r (ChangeRule l) -- changes go from child to
 
 defaultLanguageChanges :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r => Language l r -> LanguageChanges l r
 defaultLanguageChanges = map \(Rule mvars kids parent) ->
-  ChangeRule mvars ((flip diff) parent <$> kids)
+  ChangeRule mvars (kids <#> \kid -> diff kid parent) 
 
 -- | A `ChangeRule` is oriented from parent to kid i.e. it describes the changes
 -- to apply to the parent's kids.
-data ChangeRule l = ChangeRule (Set Expr.MetaVar) (Array (Expr.MetaChange l))
+data ChangeRule l = ChangeRule (Set Expr.MetaVar) (Array (Expr.MetaChange (SortLabel l)))
 
 derive instance Functor ChangeRule
 derive instance Foldable ChangeRule

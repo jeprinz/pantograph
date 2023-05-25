@@ -204,7 +204,7 @@ type EditorSpec l r =
   , topSort :: Sort l
   , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   , renderDerivTermKids' ::
-      (r /\ Expr.MetaExpr l /\ Array (DerivTerm l r)) ->
+      (r /\ Sort l /\ Array (DerivTerm l r)) ->
       Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
       Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff)
     
@@ -382,7 +382,6 @@ editorComponent = HK.component \tokens input -> HK.do
           case cursor.hdzipper of
             -- if at hole, moving down goes to hole interior
             InjectHoleyDerivZipper dzipper 
-              -- | DerivHole sort % _ <- Expr.zipperExpr dzipper
               | dterm <- Expr.zipperExpr dzipper
               , isHoleDerivTerm dterm
               , dir == inj _down Proxy -> do

@@ -14,14 +14,14 @@ import Halogen.Hooks as HK
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
 import Language.Pantograph.Generic.Rendering as Rendering
-import Language.Pantograph.ULC.Grammar (DerivTerm, ExprLabel, MetaExpr, RuleLabel(..))
+import Language.Pantograph.ULC.Grammar (DerivTerm, ExprLabel, MetaExpr, Sort, RuleLabel(..))
 
 type Query = Rendering.Query ExprLabel RuleLabel
 type Output = Rendering.Output ExprLabel RuleLabel
 
 renderDerivTermKids' ::
   -- DerivTerm -> 
-  (RuleLabel /\ MetaExpr /\ Array DerivTerm) ->
+  (RuleLabel /\ Sort /\ Array DerivTerm) ->
   Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff) -> 
   Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
 renderDerivTermKids' (r /\ sort /\ kids) kidElems = do
