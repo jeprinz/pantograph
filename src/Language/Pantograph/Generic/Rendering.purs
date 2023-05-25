@@ -7,7 +7,7 @@ import Language.Pantograph.Generic.Grammar
 import Prelude
 import Type.Direction
 
-import Bug as Bug
+import Bug (bug)
 import Bug.Assertion (Assertion(..), assert, assertM)
 import Data.Array as Array
 import Data.CodePoint.Unicode as Unicode
@@ -254,7 +254,7 @@ editorComponent = HK.component \tokens input -> HK.do
       liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
         Nothing -> do
           st <- getState
-          Bug.bug $ "could not find element" <> P.indent ("\n- elemId = " <> elemId <> "\n- hdzipper = " <> pretty hdzipper <> "\n- st = " <> pretty st)
+          bug $ "could not find element" <> P.indent ("\n- elemId = " <> elemId <> "\n- hdzipper = " <> pretty hdzipper <> "\n- st = " <> pretty st)
         Just elem -> pure elem
 
     -- getElementIdByDerivPath :: DerivPath Up l r -> HK.HookM Aff String
@@ -265,7 +265,7 @@ editorComponent = HK.component \tokens input -> HK.do
     --   doc <- liftEffect $ HTML.window >>= Window.document
     --   elemId <- getElementIdByDerivPath derivPath
     --   liftEffect (NonElementParentNode.getElementById elemId (HTMLDocument.toNonElementParentNode doc)) >>= case _ of
-    --     Nothing -> Bug.bug $ "could not find element by id: " <> elemId
+    --     Nothing -> bug $ "could not find element by id: " <> elemId
     --     Just elem -> pure elem
 
     -- setNodeElementStyle :: String -> Maybe (DerivPath Up l r) -> Maybe (DerivPath Up l r) -> HK.HookM Aff Unit
@@ -457,7 +457,7 @@ editorComponent = HK.component \tokens input -> HK.do
 
       getFacade >>= case _ of
         ------------------------------------------------------------------------
-        -- CursorState where bufferEnabled == true
+        -- CursorState where bufferEnabled
         ------------------------------------------------------------------------
         CursorState cursor | cursor.bufferEnabled -> do
           if isBufferKey key then do
@@ -479,7 +479,7 @@ editorComponent = HK.component \tokens input -> HK.do
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
         ------------------------------------------------------------------------
-        -- CursorState
+        -- CursorState (where not bufferEnabled)
         ------------------------------------------------------------------------
         CursorState cursor -> do
           let path = hdzipperDerivPath cursor.hdzipper
@@ -655,12 +655,11 @@ editorComponent = HK.component \tokens input -> HK.do
         ]
 
     renderPreviewDerivZipper dzipper = do
-      Debug.trace ("[renderPreviewDerivZipper] dzipper = " <> pretty dzipper) \_ -> do
-        let
-          clsNames /\ kidElems = renderDerivExprKids dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
-        HH.div
-          [classNames $ ["node"] <> clsNames]
-          kidElems
+      let
+        clsNames /\ kidElems = renderDerivExprKids dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
+      HH.div
+        [classNames $ ["node"] <> clsNames]
+        kidElems
 
     renderHoleInterior isCursor dpath sort = do
       (\kidElem -> if isCursor then do
@@ -828,6 +827,18 @@ bufferComponent = HK.component \tokens input -> HK.do
 
   let normalBufferFocus = bufferFocus `mod` Array.length edits
 
+  let submitBuffer = do
+        if isEnabled then do
+          case Array.index edits normalBufferFocus of
+            Nothing -> bug $ "[bufferComponent.SubmitBufferQuery] attempted to submit buffer, but bufferFocus is out of range: \n  - length edits = " <> show (Array.length edits) <> "\n  - bufferFocus = " <> show bufferFocus 
+            Just (_ /\ edit) -> do
+              HK.put isEnabled_id false -- disable query
+              HK.put bufferFocus_id 0 -- reset bufferFocus
+              HK.raise tokens.outputToken $ ActionOutput edit.action -- output edit action
+              pure true
+        else
+          pure false
+
   HK.useQuery tokens.queryToken case _ of
     SetBufferEnabledQuery isEnabled' mb_str a -> do
       HK.put isEnabled_id isEnabled' -- update isEnabled
@@ -835,7 +846,7 @@ bufferComponent = HK.component \tokens input -> HK.do
       if isEnabled' then do
           -- focus buffer input tag
           HK.getHTMLElementRef (H.RefLabel bufferInputRefLabelString) >>= case _ of 
-            Nothing -> Bug.bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefLabelString
+            Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefLabelString
             Just elem -> do
               liftEffect $ HTMLElement.focus elem
               case mb_str of
@@ -843,7 +854,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                 Just str -> do
                   -- initialize string in buffer
                   case InputElement.fromElement (HTMLElement.toElement elem) of
-                    Nothing -> Bug.bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
+                    Nothing -> bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
                     Just inputElem -> liftEffect $ InputElement.setValue str inputElem
           -- update facade to BufferState
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
@@ -863,18 +874,9 @@ bufferComponent = HK.component \tokens input -> HK.do
       else
         pure Nothing
     SubmitBufferQuery a -> do
-      if isEnabled then do
-        case Array.index edits normalBufferFocus of
-          Nothing -> do
-            liftEffect $ Console.log $ "[bufferComponent.SubmitBufferQuery] attempted to submit buffer, but bufferFocus is out of range: \n  - length edits = " <> show (Array.length edits) <> "\n  - bufferFocus = " <> show bufferFocus 
-            pure Nothing
-          Just (_ /\ edit) -> do
-            HK.put isEnabled_id false -- disable query
-            HK.put bufferFocus_id 0 -- reset bufferFocus
-            HK.raise tokens.outputToken $ ActionOutput edit.action -- output edit action
-            pure $ Just a
-      else
-        pure Nothing
+      submitBuffer >>= case _ of
+        false -> pure Nothing
+        true -> pure $ Just a
 
   HK.pure $
     -- Debug.trace 
@@ -906,7 +908,15 @@ bufferComponent = HK.component \tokens input -> HK.do
                 ] $
                 flip Array.mapWithIndex edits \i (lazy_editHtml /\ edit) -> 
                   HH.div 
-                    [classNames $ ["buffer-result"] <> if i == normalBufferFocus then ["buffer-focus"] else []]
+                    [ classNames $ ["buffer-result"] <> if i == normalBufferFocus then ["buffer-focus"] else []
+                    , HE.onMouseOver \event -> do
+                        liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
+                        HK.put bufferFocus_id i
+                    , HE.onMouseDown \event -> do
+                        liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
+                        -- HK.put bufferFocus_id i
+                        void $ submitBuffer
+                    ]
                     [force lazy_editHtml]
               ]
           ]
