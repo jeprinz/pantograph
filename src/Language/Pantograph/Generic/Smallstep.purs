@@ -33,27 +33,27 @@ import Partial.Unsafe (unsafeCrashWith)
 data Direction = Up | Down -- TODO:
 
 data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Expr.MetaChange l)
-type Term l r = Expr.Expr (StepExprLabel l r)
+type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
-type Rule l r = Term l r -> Maybe (Term l r)
+type Rule l r = SSTerm l r -> Maybe (SSTerm l r)
 
 -- later Henry can tell me how his definition of path works
 type SanePath l = List (Expr.Tooth l)
 
 ---------- Code for converting zippers to terms and back ------------------------------------------
 
-addToothToTerm :: forall l r. Expr.Tooth (Grammar.DerivLabel l r) -> Term l r -> Term l r
+addToothToTerm :: forall l r. Expr.Tooth (Grammar.DerivLabel l r) -> SSTerm l r -> SSTerm l r
 addToothToTerm (Expr.Tooth l (ZipList.Path {left, right})) t =
     Expr.Expr (Inject l) $
         Array.fromFoldable (map (map Inject) (Rev.unreverse left)) <>
         [t] <>
         Array.fromFoldable (map (map Inject) right)
 
-zipperToTerm :: forall l r. SanePath (Grammar.DerivLabel l r) -> Grammar.DerivTerm l r -> Term l r
+zipperToTerm :: forall l r. SanePath (Grammar.DerivLabel l r) -> Grammar.DerivTerm l r -> SSTerm l r
 zipperToTerm Nil exp = Expr.Expr Cursor [map Inject exp]
 zipperToTerm (th : path) exp = addToothToTerm th (zipperToTerm path exp)
 
-assertJustExpr :: forall l r. Term l r -> Grammar.DerivTerm l r
+assertJustExpr :: forall l r. SSTerm l r -> Grammar.DerivTerm l r
 assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
 assertJustExpr _ = Bug.bug "Error: assertJustExpr assertion failed"
 
@@ -79,7 +79,7 @@ oneOrNone (x : xs) f = case f x of
         in
         Right (Nil /\ a /\ bs2)
 
-termToZipper :: forall l r. Term l r -> (SanePath (Grammar.DerivLabel l r) /\ Grammar.DerivTerm l r)
+termToZipper :: forall l r. SSTerm l r -> (SanePath (Grammar.DerivLabel l r) /\ Grammar.DerivTerm l r)
 termToZipper (Expr.Expr Cursor [kid]) =
     Nil /\ (assertJustExpr kid)
 termToZipper (Expr.Expr (Inject l) kids) =
@@ -108,13 +108,13 @@ doAnyApply t (r : rs) = case r t of
     Just t' -> Just t'
     Nothing -> doAnyApply t rs
 
-stepSomebody :: forall l r. List (Term l r) -> List (Rule l r) -> Maybe (List (Term l r))
+stepSomebody :: forall l r. List (SSTerm l r) -> List (Rule l r) -> Maybe (List (SSTerm l r))
 stepSomebody Nil _ = Nothing
 stepSomebody (t : ts) rules = case step t rules of
     Just t' -> Just (t' : ts)
     Nothing -> (:) <$> pure t <*> stepSomebody ts rules
 
-step :: forall l r. Term l r -> List (Rule l r) -> Maybe (Term l r)
+step :: forall l r. SSTerm l r -> List (Rule l r) -> Maybe (SSTerm l r)
 step t@(Expr.Expr l kids) rules =
     case doAnyApply t rules of
         Nothing -> do
@@ -149,7 +149,7 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 -- if the change is not the identity.
 
 -- wraps a boundary unless the change is the identity, in which case so is this function
-wrapBoundary :: forall l r. Direction -> Expr.MetaChange l -> Term l r -> Term l r
+wrapBoundary :: forall l r. Direction -> Expr.MetaChange l -> SSTerm l r -> SSTerm l r
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
