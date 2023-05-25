@@ -49,8 +49,9 @@ expectedHypsCount r = do
 
 data DerivLabel l r 
   = DerivLabel r (Sort l)
-  | DerivHole (Sort l)
-  -- | TextBox String
+  | DerivHole (Sort l) -- TODO: get rid of this, instead have "isHole : r -> Boolean"
+  -- | TextBox String -- this String s stands for the sort (Name (Str s))
+  -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """renderDerivExprKids"""
   -- alternate idea: any hole of a (Name s) sort is a textbox
 
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
@@ -60,6 +61,7 @@ derivLabelRule (DerivHole _) = Nothing
 derivLabelSort :: forall l r. DerivLabel l r -> Expr.MetaExpr l
 derivLabelSort (DerivLabel _ s) = s
 derivLabelSort (DerivHole s) = s
+-- derivLabelSort (TextBox s) = Name (Str s)
 
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
 mapDerivLabelSort f (DerivLabel r sort) = DerivLabel r (f sort)
@@ -109,10 +111,20 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
 -- Sorts
 --------------------------------------------------------------------------------
 -- currently, we implicity have:
-type Sort l = Expr.MetaExpr l
+data SortLabel l = SortInject l
+type Sort l = Expr.MetaExpr {-SortLabel l-}l
 
 --but, we could instead have:
-data Sort' l = SortInject l | Str String | Name {-String-}
+data SortLabel' l = SortInject' l | Str String | Name {-String-}
+
+{-
+For example, in named ULC
+
+ (Name ?a)       Term (cons gamma ?a)
+----------------------------------------------- lam
+   Term gamma
+
+-}
 
 
 --------------------------------------------------------------------------------

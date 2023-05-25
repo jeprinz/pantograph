@@ -23,7 +23,7 @@ import Text.Pretty as P
 -- ExprLabel
 --------------------------------------------------------------------------------
 
-data ExprLabel
+data ExprLabel -- TODO: rename to SortLabel
   = VarSort
   | TermSort
   -- | HoleInteriorSort
