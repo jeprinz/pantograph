@@ -21,6 +21,9 @@ import Text.Pretty ((<+>))
 
 newtype Tooth a = Zip {path :: Path a, focus :: a}
 
+toothPath (Zip {path}) = path
+toothFocus (Zip {focus}) = focus
+
 derive instance Generic (Tooth a) _ 
 instance Show a => Show (Tooth a) where show x = genericShow x
 derive instance Eq a => Eq (Tooth a)

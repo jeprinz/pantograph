@@ -1,5 +1,6 @@
 module Language.Pantograph.Generic.Grammar where
 
+import Data.Either.Nested
 import Prelude
 
 import Bug as Bug
@@ -29,6 +30,7 @@ import Language.Pantograph.Generic.Unification (class Freshenable, composeSub, f
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, pretty)
 import Type.Direction (Up, _down, _up)
+import Type.Direction as Dir
 
 --------------------------------------------------------------------------------
 -- IsRuleLabel
@@ -240,19 +242,21 @@ derive instance Traversable ChangeRule
 
 type Edit l r =
   { label :: String
-  , preview :: String
+  , preview :: EditPreview l r
   , action :: Action l r
   }
+
+data EditPreview l r
+  = DerivTermEditPreview (DerivTerm l r)
+  | DerivToothEditPreview (DerivTooth l r)
 
 data Action l r 
   = SetCursorAction (Lazy (DerivZipper l r))
   | Dig
 
-
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
 defaultEditsAtDerivZipper topSort dz = 
   Array.concat $
-  [digEdit] Array.:
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
     let Rule mvars hyps con = TotalMap.lookup r language
     -- For each hyp, there is an edit that wraps with a tooth into that hyp,
@@ -294,7 +298,7 @@ defaultEditsAtDerivZipper topSort dz =
           Nothing -> []
           Just (sigma /\ tooth) -> pure
             { label: pretty r 
-            , preview: pretty tooth
+            , preview: DerivToothEditPreview tooth
             , action: SetCursorAction (newCursor sigma tooth)
             }
 
@@ -329,13 +333,13 @@ defaultEditsAtHoleInterior path sort =
     Nothing -> []
     Just (sigma /\ fill) -> pure
       { label: pretty r
-      , preview: pretty fill
+      , preview: DerivTermEditPreview fill
       , action: SetCursorAction (newCursor sigma fill)
       }
 
-digEdit :: forall l r. IsRuleLabel l r => Edit l r
-digEdit = 
-  { label: "dig"
-  , preview: "?"
-  , action: Dig
-  }
+-- digEdit :: forall l r. IsRuleLabel l r => Edit l r
+-- digEdit = 
+--   { label: "dig"
+--   , preview: DerivTermEditPreview ()
+--   , action: Dig
+--   }

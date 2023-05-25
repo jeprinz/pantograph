@@ -140,6 +140,9 @@ instance IsExprLabel l => IsExprLabel (Meta l) where
 
 data Tooth l = Tooth l (ZipList.Path (Expr l))
 
+toothPath (Tooth _ p) = p
+toothLabel (Tooth l _) = l
+
 infixl 7 Tooth as %<
 
 derive instance Generic (Tooth l) _

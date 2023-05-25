@@ -106,7 +106,9 @@ body {
   padding: 0 0.5rem;
 }
 
-.subnode.punctuation.space {}
+.subnode.punctuation.space {
+  white-space: pre;
+}
 
 .subnode.punctuation.zeroVar {}
 
@@ -147,5 +149,25 @@ body {
 }
 
 .subnode.buffer>.inner>.buffer-results>.buffer-result.buffer-focus {
-  background-color: rgb(98, 98, 245, 0.5);
+  background-color: rgb(98, 98, 245, 0.25);
+}
+
+.buffer-input {
+  outline: none;
+}
+
+/* placeholder-cursor */
+
+.node.placeholder-cursor {
+
+}
+
+.node.placeholder-cursor > .subnode.inner {
+  padding: 0 0.4rem;
+  border-radius: 1rem 1rem / 2rem;
+  background-color: rgba(255, 139, 50, 0.1);
+  box-shadow: 
+    0 0 0 2px blue,
+    /* inset 0 0 2px 2px black; */
+    inset 0 0 2px 1px black;
 }

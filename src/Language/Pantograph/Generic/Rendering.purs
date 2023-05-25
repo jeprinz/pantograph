@@ -2,6 +2,7 @@
 
 module Language.Pantograph.Generic.Rendering where
 
+import Hole
 import Language.Pantograph.Generic.Grammar
 import Prelude
 import Type.Direction
@@ -18,7 +19,7 @@ import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Int.Bits as Bits
-import Data.Lazy (force)
+import Data.Lazy (Lazy, defer, force)
 import Data.List (List(..), (:))
 import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
@@ -41,7 +42,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName)
-import Hole as Hole
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
 import Log as Log
@@ -149,8 +149,7 @@ instance IsRuleLabel l r => Pretty (HoleyDerivZipper l r) where
 
 data HoleyDerivPath dir l r
   = InjectHoleyDerivPath (DerivPath dir l r)
-  | HoleInteriorHoleyDerivPath 
-      (DerivPath Up l r) -- the path to the Hole
+  | HoleInteriorHoleyDerivPath (DerivPath Up l r) -- the path to the Hole
 
 derive instance Generic (HoleyDerivPath dir l r) _
 derive instance (Eq l, Eq r) => Eq (HoleyDerivPath dir l r)
@@ -205,9 +204,6 @@ type EditorSpec l r =
   , topSort :: Sort l
   , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   , renderDerivExprKids' ::
-      -- DerivExpr l r -> 
-      -- Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
-      -- Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff)
       (r /\ Expr.MetaExpr l /\ Array (DerivExpr l r)) ->
       Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) -> 
       Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff)
@@ -374,7 +370,7 @@ editorComponent = HK.component \tokens input -> HK.do
             let Expr.Zipperp path _selection expr = select.dzipperp
             -- escape to cursor mode, but without selection (updates state)
             setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path expr), bufferEnabled: false}
-          TopState _top -> Hole.hole "dig in TopState"
+          TopState _top -> hole "dig in TopState"
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
@@ -397,8 +393,8 @@ editorComponent = HK.component \tokens input -> HK.do
             HoleInteriorHoleyDerivZipper dpath sort -> default (pure unit)
               -- if at hole interior, moving up goes to hole
               # on _up (\_ -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper dpath (holeDerivExpr sort)), bufferEnabled: false})
-              # on _prev (\_ -> Hole.hole "!TODO move 'prev' at HoleInterior")
-              # on _next (\_ -> Hole.hole "!TODO move 'next' at HoleInterior") 
+              # on _prev (\_ -> hole "!TODO move 'prev' at HoleInterior")
+              # on _next (\_ -> hole "!TODO move 'next' at HoleInterior") 
               $ dir
         SelectState select -> do
           let dzipper = Expr.unzipperp select.dzipperp
@@ -418,10 +414,10 @@ editorComponent = HK.component \tokens input -> HK.do
         let select = (_ $ dir) $ case_
               # on _up (\_ -> {dzipperp: Expr.Zipperp path (Left mempty) expr})
               # on _down (\_ -> {dzipperp: Expr.Zipperp path (Right mempty) expr})
-              # on _left (\_ -> Hole.hole "moveSelect left when CursorState")
-              # on _right (\_ -> Hole.hole "moveSelect right when CursorState")
-              # on _prev (\_ -> Hole.hole "moveSelect prev when CursorState")
-              # on _next (\_ -> Hole.hole "moveSelect next when CursorState")
+              # on _left (\_ -> hole "moveSelect left when CursorState")
+              # on _right (\_ -> hole "moveSelect right when CursorState")
+              # on _prev (\_ -> hole "moveSelect prev when CursorState")
+              # on _next (\_ -> hole "moveSelect next when CursorState")
         case moveZipperp dir select.dzipperp of
           Nothing -> do
             logM "moveSelect" "failed to enter SelectState"
@@ -437,7 +433,7 @@ editorComponent = HK.component \tokens input -> HK.do
       TopState top -> do
         let mb_select = (_ $ dir) $ default Nothing -- (pure unit)
               # on _down (\_ -> Just {dzipperp: Expr.Zipperp mempty (Left mempty) top.expr})
-              # on _next (\_ -> Just (Hole.hole "moveSelect next when TopState"))
+              # on _next (\_ -> Just (hole "moveSelect next when TopState"))
         case mb_select of
           Nothing -> pure unit
           Just select -> case moveZipperp dir select.dzipperp of
@@ -635,7 +631,7 @@ editorComponent = HK.component \tokens input -> HK.do
           TopState _top -> pure unit
         setHighlightElement Nothing
       else do
-        setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper)))
+        setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
 
     renderExpr isCursor dzipper = do
       let
@@ -650,17 +646,23 @@ editorComponent = HK.component \tokens input -> HK.do
         Array.concat
         [ [ HH.slot bufferSlot elemId bufferComponent 
             { hdzipper: InjectHoleyDerivZipper dzipper
-            , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper)
+            , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
+                \edit -> renderEditPreview edit.preview /\ edit
             } 
             handleBufferOutput
           ]
         , kidElems
         ]
 
+    renderPreviewDerivZipper dzipper = do
+      Debug.trace ("[renderPreviewDerivZipper] dzipper = " <> pretty dzipper) \_ -> do
+        let
+          clsNames /\ kidElems = renderDerivExprKids dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
+        HH.div
+          [classNames $ ["node"] <> clsNames]
+          kidElems
+
     renderHoleInterior isCursor dpath sort = do
-      -- !TODO If at cursor, then need to actually do the work of rendering the
-      -- hole as well as the hole interior, but this SHOULD be abstracted out
-      -- into something that is also used by renderExpr and renderPath
       (\kidElem -> if isCursor then do
         let
           dzipper = Expr.Zipper dpath (holeDerivExpr sort)
@@ -675,7 +677,8 @@ editorComponent = HK.component \tokens input -> HK.do
           Array.concat
           [ [ HH.slot bufferSlot elemId bufferComponent 
               { hdzipper: InjectHoleyDerivZipper dzipper
-              , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper)
+              , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
+                \edit -> renderEditPreview edit.preview /\ edit
               } 
               handleBufferOutput
             ]
@@ -700,7 +703,8 @@ editorComponent = HK.component \tokens input -> HK.do
           [ [ let hdzipper = HoleInteriorHoleyDerivZipper dpath sort in
               HH.slot bufferSlot elemId bufferComponent
                 { hdzipper
-                , edits: input.editsAtHoleyDerivZipper input.topSort hdzipper
+                , edits: input.editsAtHoleyDerivZipper input.topSort hdzipper <#>
+                    \edit -> renderEditPreview edit.preview /\ edit
                 }
                 handleBufferOutput
             ]
@@ -727,25 +731,37 @@ editorComponent = HK.component \tokens input -> HK.do
             HH.div
               [ classNames $ ["node"] <> clsNames
               , HP.id elemId
-              -- , HE.onMouseDown \event -> do
-              --     H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-              --     setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper dzipper2, bufferEnabled: false}
-              -- , HE.onMouseOver \event -> do
-              --     H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-              --     setHighlightElement (Just (InjectHoleyDerivPath (Expr.zipperPath dzipper2)))
-              --     pure unit
               , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper2))
               , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper2))
               ] $
               Array.concat
               [ [ HH.slot bufferSlot elemId bufferComponent 
                   { hdzipper: InjectHoleyDerivZipper dzipper2
-                  , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper2)
+                  , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper2) <#>
+                    \edit -> renderEditPreview edit.preview /\ edit
                   } 
                   handleBufferOutput
                 ]
               , kidElems
               ]
+
+    renderPreviewDerivTooth dtooth = do
+      let
+        dzipper = Expr.Zipper mempty (Expr.unTooth dtooth (holeDerivExpr (derivToothInteriorSort dtooth)))
+
+        clsNames /\ kidElems =
+          renderDerivExprKids dzipper $
+          Array.fromFoldable $
+          ZipList.unpathAround placeholderCursorNodeElem $ do
+            let kidDZippers = Expr.zipDownsTooth dzipper dtooth
+            renderPreviewDerivZipper <$> kidDZippers
+      HH.div
+        [classNames $ ["node"] <> clsNames]
+        kidElems
+
+    renderEditPreview preview = defer \_ -> case preview of
+      DerivTermEditPreview dterm -> renderPreviewDerivZipper (Expr.Zipper mempty dterm)
+      DerivToothEditPreview dtooth -> renderPreviewDerivTooth dtooth
 
   HK.useLifecycleEffect do
     -- initialize
@@ -778,15 +794,15 @@ editorComponent = HK.component \tokens input -> HK.do
                 case cursor.hdzipper of
                   InjectHoleyDerivZipper _ -> [renderPath dzipper $ renderExpr true dzipper]
                   HoleInteriorHoleyDerivZipper dpath sort -> [renderPath dzipper $ renderHoleInterior true dpath sort]
-              SelectState _st -> Hole.hole "render SelectState"
-              TopState _st -> Hole.hole "render TopState"
+              SelectState _st -> hole "render SelectState"
+              TopState _st -> hole "render TopState"
           ]
 
 bufferSlot = Proxy :: Proxy "buffer"
 
 type BufferInput l r =
   { hdzipper :: HoleyDerivZipper l r
-  , edits :: Array (Edit l r)
+  , edits :: Array (Lazy (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query l r) (Output l r) String) Aff) /\ Edit l r)
   }
 
 bufferComponent :: forall l r. IsRuleLabel l r => H.Component (Query l r) (BufferInput l r) (Output l r) Aff
@@ -802,13 +818,13 @@ bufferComponent = HK.component \tokens input -> HK.do
   edits <- HK.captures {hdzipper: input.hdzipper, bufferString} $ flip HK.useMemo \_ ->
     input.edits #
       -- memo fuzzy distances
-      map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit) >>>
+      map (map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit)) >>>
       -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
-      Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
+      Array.filter (\(_ /\ (FuzzyStr fs /\ _)) -> Rational.fromInt 0 < fs.ratio) >>>
       -- sort the remaining edits by the fuzzy distance
-      Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
+      Array.sortBy (\(_ /\ (fuzzyStr1 /\ _)) (_ /\ (fuzzyStr2 /\ _)) -> compare fuzzyStr1 fuzzyStr2) >>>
       -- forget fuzzy distances
-      map snd
+      map (map snd)
 
   let normalBufferFocus = bufferFocus `mod` Array.length edits
 
@@ -852,7 +868,7 @@ bufferComponent = HK.component \tokens input -> HK.do
           Nothing -> do
             liftEffect $ Console.log $ "[bufferComponent.SubmitBufferQuery] attempted to submit buffer, but bufferFocus is out of range: \n  - length edits = " <> show (Array.length edits) <> "\n  - bufferFocus = " <> show bufferFocus 
             pure Nothing
-          Just edit -> do
+          Just (_ /\ edit) -> do
             HK.put isEnabled_id false -- disable query
             HK.put bufferFocus_id 0 -- reset bufferFocus
             HK.raise tokens.outputToken $ ActionOutput edit.action -- output edit action
@@ -888,13 +904,17 @@ bufferComponent = HK.component \tokens input -> HK.do
               , HH.div
                 [ classNames ["buffer-results"]
                 ] $
-                flip Array.mapWithIndex edits \i edit -> 
+                flip Array.mapWithIndex edits \i (lazy_editHtml /\ edit) -> 
                   HH.div 
                     [classNames $ ["buffer-result"] <> if i == normalBufferFocus then ["buffer-focus"] else []]
-                    [HH.text edit.preview]
+                    [force lazy_editHtml]
               ]
           ]
         ]
+
+--
+-- | Rendering utilities
+--
 
 _verbose_path_element_ids :: Boolean
 _verbose_path_element_ids = true
@@ -931,3 +951,11 @@ colonElem = makePuncElem "colon" ":"
 turnstileElem = makePuncElem "turnstile" "⊢"
 interrogativeElem = makePuncElem "interrogative" "?"
 
+ibeamElem = makePuncElem "ibeam" "⌶"
+
+placeholderCursorNodeElem =
+  HH.div [classNames ["node", "placeholder-cursor"]]
+    [ HH.div [classNames ["subnode", "inner"]]
+        -- [ibeamElem]
+        [spaceElem]
+    ]
