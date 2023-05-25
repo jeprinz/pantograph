@@ -157,31 +157,31 @@ language = TotalMap.makeTotalMap case _ of
   --   ( Hole.hole "holeInteriorSortME" )
 
 --------------------------------------------------------------------------------
--- DerivExpr (and friends)
+-- DerivTerm (and friends)
 --------------------------------------------------------------------------------
 
-type DerivExpr = Grammar.DerivExpr ExprLabel RuleLabel
+type DerivTerm = Grammar.DerivTerm ExprLabel RuleLabel
 type DerivPath dir = Grammar.DerivPath dir ExprLabel RuleLabel
 type DerivZipper = Grammar.DerivZipper ExprLabel RuleLabel
 type DerivZipperp = Grammar.DerivZipperp ExprLabel RuleLabel
 
 -- -- var
--- zeroDE :: DerivExpr
+-- zeroDE :: DerivTerm
 -- zeroDE = Zero |- varSortME % []
--- sucDE :: DerivExpr -> DerivExpr
+-- sucDE :: DerivTerm -> DerivTerm
 -- sucDE var = Suc |- varSortME % [var]
 -- -- term
--- refDE :: DerivExpr -> DerivExpr
+-- refDE :: DerivTerm -> DerivTerm
 -- refDE var = Ref |- termSortME % [var]
--- lamDE :: DerivExpr -> DerivExpr -> DerivExpr
+-- lamDE :: DerivTerm -> DerivTerm -> DerivTerm
 -- lamDE var bod = Lam |- termSortME % [var, bod]
--- appDE :: DerivExpr -> DerivExpr -> DerivExpr
+-- appDE :: DerivTerm -> DerivTerm -> DerivTerm
 -- appDE apl arg = App |- termSortME % [apl, arg]
 -- -- hole
--- holeDE :: DerivExpr -> MetaExpr -> DerivExpr
+-- holeDE :: DerivTerm -> MetaExpr -> DerivTerm
 -- holeDE interior sort = Hole |- sort % [interior]
 -- -- hole interior
--- holeInteriorDE :: DerivExpr
+-- holeInteriorDE :: DerivTerm
 -- holeInteriorDE = HoleInterior |- holeInteriorSortME % []
 
 --------------------------------------------------------------------------------

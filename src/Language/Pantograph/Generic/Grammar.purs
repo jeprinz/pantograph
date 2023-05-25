@@ -25,6 +25,7 @@ import Data.TotalMap as TotalMap
 import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
+import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
 import Language.Pantograph.Generic.Unification (class Freshenable, composeSub, freshen', genFreshener, unify)
 import Partial.Unsafe (unsafePartial)
@@ -39,6 +40,8 @@ import Type.Direction as Dir
 class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleLabel l r | r -> l where
   prettyExprF'_unsafe_RuleLabel :: Partial => r /\ Array String -> String
   language :: Language l r
+  isHoleRule :: r -> Boolean
+  defaultDerivTerm :: Sort l -> DerivTerm l r
 
 expectedHypsCount :: forall l r. IsRuleLabel l r => r -> Int
 expectedHypsCount r = do
@@ -49,25 +52,23 @@ expectedHypsCount r = do
 -- DerivLabel
 --------------------------------------------------------------------------------
 
+-- !TODO Removed: DerivHole (Sort l) -- TODO: get rid of this, instead have "isHole : r -> Boolean"
+
 data DerivLabel l r 
   = DerivLabel r (Sort l)
-  | DerivHole (Sort l) -- TODO: get rid of this, instead have "isHole : r -> Boolean"
   -- | TextBox String -- this String s stands for the sort (Name (Str s))
-  -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """renderDerivExprKids"""
+  -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """renderDerivTermKids"""
   -- alternate idea: any hole of a (Name s) sort is a textbox
 
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRule (DerivLabel r _) = Just r
-derivLabelRule (DerivHole _) = Nothing
 
 derivLabelSort :: forall l r. DerivLabel l r -> Expr.MetaExpr l
 derivLabelSort (DerivLabel _ s) = s
-derivLabelSort (DerivHole s) = s
 -- derivLabelSort (TextBox s) = Name (Str s)
 
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
 mapDerivLabelSort f (DerivLabel r sort) = DerivLabel r (f sort)
-mapDerivLabelSort f (DerivHole sort) = DerivHole (f sort)
 
 infix 8 DerivLabel as |-
 
@@ -78,11 +79,9 @@ derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
 instance IsRuleLabel l r => Pretty (DerivLabel l r) where
   pretty (DerivLabel r ix) = pretty r <> "(" <> pretty ix <> ")"
-  pretty (DerivHole ix) = "(? : " <> pretty ix <> ")"
 
 instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
-  freshen rho (DerivHole me) = DerivHole (freshen' rho me)
 
 --------------------------------------------------------------------------------
 -- AsExprLabel
@@ -104,10 +103,8 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   -- but maybe we want to print those at some point for debugging?
   prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = 
     Expr.prettyExprF (AsExprLabel r /\ kids)
-  prettyExprF'_unsafe (DerivHole ix /\ []) = "(? : " <> pretty ix <> ")"
 
   expectedKidsCount (DerivLabel r _) = Expr.expectedKidsCount (AsExprLabel r)
-  expectedKidsCount (DerivHole _) = 0
 
 --------------------------------------------------------------------------------
 -- Sorts
@@ -133,30 +130,24 @@ For example, in named ULC
 -- DerivTerm
 --------------------------------------------------------------------------------
 type DerivTerm l r = Expr.Expr (DerivLabel l r)
-type DerivExpr l r = Expr.Expr (DerivLabel l r)
 type DerivPath dir l r = Expr.Path dir (DerivLabel l r)
 type DerivTooth l r = Expr.Tooth (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 
-holeDerivExpr :: forall l r. Expr.MetaExpr l -> DerivExpr l r
-holeDerivExpr ix = DerivHole ix % []
-
-derivExprSort :: forall l r. DerivExpr l r -> Sort l
+derivExprSort :: forall l r. DerivTerm l r -> Sort l
 derivExprSort (dl % _) = derivLabelSort dl
 
-derivExprRuleLabel :: forall l r. DerivExpr l r -> Maybe r
+derivExprRuleLabel :: forall l r. DerivTerm l r -> Maybe r
 derivExprRuleLabel (dl % _) = derivLabelRule dl
 
 derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothSort (Expr.Tooth (DerivLabel _r sort) _) = sort
-derivToothSort (Expr.Tooth (DerivHole sort) _) = sort
 
 derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothInteriorSort (Expr.Tooth (DerivLabel r _) kidsPath) = do
   let Rule _mvars hyps _con = TotalMap.lookup r language
   assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
-derivToothInteriorSort (Expr.Tooth (DerivHole _sort) _) = Bug.bug "[derivToothInteriorSort] should not have a tooth into DerivHole"
 
 derivPathSort :: forall dir l r. IsRuleLabel l r => ReflectPathDir dir => Sort l -> DerivPath dir l r -> Sort l
 derivPathSort topSort (Expr.Path Nil) = topSort
@@ -268,7 +259,7 @@ defaultEditsAtDerivZipper topSort dz =
         let rho = genFreshener mvars
         let tooth0 = freshen' rho $ 
               -- Each kid of the tooth is a hole deriv
-              Expr.Tooth (DerivLabel r con) (holeDerivExpr <$> hypPath) 
+              Expr.Tooth (DerivLabel r con) (defaultDerivTerm <$> hypPath) 
 
         -- In `isValidTooth`, we do only the necessary computation to check if
         -- the tooth is valid to wrap around the cursor. In particular, we don't
@@ -311,7 +302,7 @@ defaultEditsAtHoleInterior path sort =
   let rho = genFreshener mvars
   let fill0 = freshen' rho $
         -- Each kid is a hole deriv
-        Expr.Expr (DerivLabel r con) (holeDerivExpr <$> hyps)
+        Expr.Expr (DerivLabel r con) (defaultDerivTerm <$> hyps)
   
   -- In `isValidFill`, only do computation necessary to check if fill is valid
   let isValidFill = do

@@ -14,19 +14,19 @@ import Halogen.Hooks as HK
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
 import Language.Pantograph.Generic.Rendering as Rendering
-import Language.Pantograph.ULC.Grammar (DerivExpr, ExprLabel, MetaExpr, RuleLabel(..))
+import Language.Pantograph.ULC.Grammar (DerivTerm, ExprLabel, MetaExpr, RuleLabel(..))
 
 type Query = Rendering.Query ExprLabel RuleLabel
 type Output = Rendering.Output ExprLabel RuleLabel
 
-renderDerivExprKids' ::
-  -- DerivExpr -> 
-  (RuleLabel /\ MetaExpr /\ Array DerivExpr) ->
+renderDerivTermKids' ::
+  -- DerivTerm -> 
+  (RuleLabel /\ MetaExpr /\ Array DerivTerm) ->
   Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff) -> 
   Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
-renderDerivExprKids' (r /\ sort /\ kids) kidElems = do
+renderDerivTermKids' (r /\ sort /\ kids) kidElems = do
   let kids_kidElems = kids `Array.zip` kidElems
-  assert (Expr.wellformedExprF "ULC renderDerivExprKids'" (show <<< fst) (Grammar.DerivLabel r sort /\ kids_kidElems)) \_ -> case r /\ sort /\ kids_kidElems of
+  assert (Expr.wellformedExprF "ULC renderDerivTermKids'" (show <<< fst) (Grammar.DerivLabel r sort /\ kids_kidElems)) \_ -> case r /\ sort /\ kids_kidElems of
     -- var
     Zero /\ _ /\ [] -> ["var", "zero"] /\ 
       [zeroVarElem]
