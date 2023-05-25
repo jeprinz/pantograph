@@ -1,79 +1,56 @@
 module Language.Pantograph.ULC.Grammar where
 
 import Prelude
-
-import Bug (bug)
 import Data.Bounded.Generic (genericBottom, genericTop)
-import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, prettyExprF'_unsafe, (%), (%*))
+import Data.Expr (class IsExprLabel, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
-import Hole (hole)
-import Hole as Hole
-import Language.Pantograph.Generic.Grammar (SortLabel(..), defaultDerivTerm, isHoleRuleTotalMap, (|-))
+import Language.Pantograph.Generic.Grammar ((|-))
 import Language.Pantograph.Generic.Grammar as Grammar
-import Text.Pretty (class Pretty, pretty, (<+>))
+import Text.Pretty (class Pretty, (<+>))
 import Text.Pretty as P
 
 --------------------------------------------------------------------------------
--- ExprLabel
+-- SortLabel
 --------------------------------------------------------------------------------
 
-data ExprLabel -- TODO: rename to SortLabel
+data SortLabel
   = VarSort
   | TermSort
-  -- | HoleInteriorSort
 
-derive instance Generic ExprLabel _
-instance Show ExprLabel where show x = genericShow x
-instance Eq ExprLabel where eq x = genericEq x
-instance Ord ExprLabel where compare x y = genericCompare x y
+derive instance Generic SortLabel _
+instance Show SortLabel where show x = genericShow x
+instance Eq SortLabel where eq x = genericEq x
+instance Ord SortLabel where compare x y = genericCompare x y
 
-instance Pretty ExprLabel where
+instance Pretty SortLabel where
   pretty VarSort = "var-sort"
   pretty TermSort = "term-sort"
-  -- pretty HoleInteriorSort = "hole-interior-sort"
 
 
-instance IsExprLabel ExprLabel where
+instance IsExprLabel SortLabel where
   prettyExprF'_unsafe (VarSort /\ _) = "Var"
   prettyExprF'_unsafe (TermSort /\ _) = "Term"
-  -- prettyExprF'_unsafe (HoleInteriorSort /\ _) = "HoleInterior"
 
   expectedKidsCount VarSort = 0
   expectedKidsCount TermSort = 0
-  -- expectedKidsCount HoleInteriorSort = 0
 
 --------------------------------------------------------------------------------
 -- Expr
 --------------------------------------------------------------------------------
 
-type Expr = Expr.Expr ExprLabel
-type MetaExpr = Expr.MetaExpr ExprLabel
-type Zipper = Expr.Zipper ExprLabel
-type Tooth = Expr.Tooth ExprLabel
-type Sort = Grammar.Sort ExprLabel
-
--- varSortE :: Expr
--- varSortE = VarSort % []
--- termSortE :: Expr
--- termSortE = TermSort % []
--- holeInteriorSortE :: Expr
--- holeInteriorSortE = HoleInteriorSort % []
-
--- varSortME :: MetaExpr
--- varSortME = pure VarSort % []
--- termSortME :: MetaExpr
--- termSortME = pure TermSort % []
--- holeInteriorSortME :: MetaExpr
--- holeInteriorSortME = pure HoleInteriorSort % []
+type Expr = Expr.Expr SortLabel
+type MetaExpr = Expr.MetaExpr SortLabel
+type Zipper = Expr.Zipper SortLabel
+type Tooth = Expr.Tooth SortLabel
+type Sort = Grammar.Sort SortLabel
 
 --------------------------------------------------------------------------------
 -- RuleLabel
@@ -111,10 +88,10 @@ instance Pretty RuleLabel where
 -- Language
 --------------------------------------------------------------------------------
 
-type Language = Grammar.Language ExprLabel RuleLabel
-type Rule = Grammar.Rule ExprLabel
+type Language = Grammar.Language SortLabel RuleLabel
+type Rule = Grammar.Rule SortLabel
 
-instance Grammar.IsRuleLabel ExprLabel RuleLabel where
+instance Grammar.IsRuleLabel SortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = "Z"
   prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = "S" <> x
   prettyExprF'_unsafe_RuleLabel (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
@@ -135,25 +112,25 @@ language = TotalMap.makeTotalMap case _ of
   Zero -> Grammar.makeRule [] \[] ->
     [ ]
     /\ --------
-    ( InjectSortLabel VarSort %* [] )
+    ( Grammar.InjectSortLabel VarSort %* [] )
   Suc -> Grammar.makeRule [] \[] ->
-    [ InjectSortLabel VarSort %* [] ]
+    [ Grammar.InjectSortLabel VarSort %* [] ]
     /\ --------
-    ( InjectSortLabel VarSort %* [] )
+    ( Grammar.InjectSortLabel VarSort %* [] )
   Lam -> Grammar.makeRule [] \[] ->
-    [ InjectSortLabel VarSort %* [] -- instead, s
-    , InjectSortLabel TermSort %* [] ]
+    [ Grammar.InjectSortLabel VarSort %* [] -- instead, s
+    , Grammar.InjectSortLabel TermSort %* [] ]
     /\ --------
-    ( InjectSortLabel TermSort %* [] )
+    ( Grammar.InjectSortLabel TermSort %* [] )
   App -> Grammar.makeRule [] \[] ->
-    [ InjectSortLabel TermSort %* []
-    , InjectSortLabel TermSort %* [] ]
+    [ Grammar.InjectSortLabel TermSort %* []
+    , Grammar.InjectSortLabel TermSort %* [] ]
     /\ --------
-    ( InjectSortLabel TermSort %* [] )
+    ( Grammar.InjectSortLabel TermSort %* [] )
   Ref -> Grammar.makeRule [] \[] ->
-    [ InjectSortLabel VarSort %* [] ]
+    [ Grammar.InjectSortLabel VarSort %* [] ]
     /\ --------
-    ( InjectSortLabel TermSort %* [] )
+    ( Grammar.InjectSortLabel TermSort %* [] )
   Hole -> Grammar.makeRule ["sort"] \[sort] ->
     [ ]
     /\ --------
@@ -163,44 +140,19 @@ language = TotalMap.makeTotalMap case _ of
 -- DerivTerm (and friends)
 --------------------------------------------------------------------------------
 
-type DerivTerm = Grammar.DerivTerm ExprLabel RuleLabel
-type DerivPath dir = Grammar.DerivPath dir ExprLabel RuleLabel
-type DerivZipper = Grammar.DerivZipper ExprLabel RuleLabel
-type DerivZipperp = Grammar.DerivZipperp ExprLabel RuleLabel
-
--- -- var
--- zeroDE :: DerivTerm
--- zeroDE = Zero |- varSortME % []
--- sucDE :: DerivTerm -> DerivTerm
--- sucDE var = Suc |- varSortME % [var]
--- -- term
--- refDE :: DerivTerm -> DerivTerm
--- refDE var = Ref |- termSortME % [var]
--- lamDE :: DerivTerm -> DerivTerm -> DerivTerm
--- lamDE var bod = Lam |- termSortME % [var, bod]
--- appDE :: DerivTerm -> DerivTerm -> DerivTerm
--- appDE apl arg = App |- termSortME % [apl, arg]
--- -- hole
--- holeDE :: DerivTerm -> MetaExpr -> DerivTerm
--- holeDE interior sort = Hole |- sort % [interior]
--- -- hole interior
--- holeInteriorDE :: DerivTerm
--- holeInteriorDE = HoleInterior |- holeInteriorSortME % []
+type DerivTerm = Grammar.DerivTerm SortLabel RuleLabel
+type DerivPath dir = Grammar.DerivPath dir SortLabel RuleLabel
+type DerivZipper = Grammar.DerivZipper SortLabel RuleLabel
+type DerivZipperp = Grammar.DerivZipperp SortLabel RuleLabel
 
 --------------------------------------------------------------------------------
 -- LanguageChanges
 --------------------------------------------------------------------------------
 
-type LanguageChanges = Grammar.LanguageChanges ExprLabel RuleLabel
-type ChangeRule = Grammar.ChangeRule ExprLabel
+type LanguageChanges = Grammar.LanguageChanges SortLabel RuleLabel
+type ChangeRule = Grammar.ChangeRule SortLabel
 
--- !TODO special cases
 languageChanges :: LanguageChanges
 languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
-  Zero -> identity
-  Suc -> identity
-  Lam -> identity
-  App -> identity
-  Ref -> identity
-  Hole -> identity
+  _ -> identity
 

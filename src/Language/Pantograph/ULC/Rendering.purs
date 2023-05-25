@@ -2,6 +2,7 @@ module Language.Pantograph.ULC.Rendering where
 
 import Prelude
 
+import Bug (bug)
 import Bug.Assertion (assert)
 import Data.Array as Array
 import Data.Expr as Expr
@@ -14,13 +15,12 @@ import Halogen.Hooks as HK
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
 import Language.Pantograph.Generic.Rendering as Rendering
-import Language.Pantograph.ULC.Grammar (DerivTerm, ExprLabel, MetaExpr, Sort, RuleLabel(..))
+import Language.Pantograph.ULC.Grammar (DerivTerm, SortLabel, MetaExpr, Sort, RuleLabel(..))
 
-type Query = Rendering.Query ExprLabel RuleLabel
-type Output = Rendering.Output ExprLabel RuleLabel
+type Query = Rendering.Query SortLabel RuleLabel
+type Output = Rendering.Output SortLabel RuleLabel
 
 renderDerivTermKids' ::
-  -- DerivTerm -> 
   (RuleLabel /\ Sort /\ Array DerivTerm) ->
   Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff) -> 
   Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
@@ -38,24 +38,8 @@ renderDerivTermKids' (r /\ sort /\ kids) kidElems = do
       [Rendering.lparenElem, lambdaElem, varElem, mapstoElem, bodElem, Rendering.rparenElem]
     App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
       [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
-    -- -- hole
-    -- Hole |- sort /\ [_ /\ hiElem] -> ["hole"] /\ 
-    --   [ HH.div [classNames ["subnode", "inner"]]
-    --       [ HH.div [classNames ["subnode", "hole-interior"]] [hiElem], colonElem
-    --       , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-    --       ]
-    --   ]
-    -- -- hole interior
-    -- HoleInterior |- _ /\ [] -> ["holeInterior"] /\ 
-    --   [ HH.div [classNames ["subnode", "inner"]]
-    --       [holeInteriorElem]
-    --   ]
-    
-    -- !TODO design decision: sometimes I want to handle only the non-hole
-    -- Derivs, like here, so how do I encode that interface? would be nice to
-    -- have subtyping, which i can do with row-polymorphic variants, but will
-    -- that give me what i want?
-
+    -- hole
+    Hole /\ _ /\ _ -> bug "[ULC.Grammar.renderDerivTermKids'] hole should be handled generically"
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
@@ -67,7 +51,7 @@ sucVarElem = Rendering.makePuncElem "sucVar" "S"
 -- Edit
 --------------------------------------------------------------------------------
 
-type Edit = Grammar.Edit ExprLabel RuleLabel
-type HoleyDerivZipper = Rendering.HoleyDerivZipper ExprLabel RuleLabel
+type Edit = Grammar.Edit SortLabel RuleLabel
+type HoleyDerivZipper = Rendering.HoleyDerivZipper SortLabel RuleLabel
 
 editsAtHoleyDerivZipper = defaultEditsAtHoleyDerivZipper
