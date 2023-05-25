@@ -4,6 +4,7 @@ import Data.Either
 import Data.Either.Nested
 import Prelude
 import Type.Direction
+import Utility
 
 import Bug (bug)
 import Bug.Assertion (Assertion(..), assert, assertInput_, assertM_, strictlyOrdered)
@@ -35,7 +36,6 @@ import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
-import Utility
 import Data.Variant (case_, on)
 import Debug as Debug
 import Effect (Effect)
@@ -88,6 +88,9 @@ wellformedExprF source showKid (l /\ kids) = Assertion
 
 wellformedExpr :: forall l. IsExprLabel l => String -> Expr l -> Assertion Unit
 wellformedExpr source (Expr l kids) = wellformedExprF source pretty (l /\ kids)
+
+wellformedTooth :: forall l. IsExprLabel l => String -> Tooth l -> Assertion Unit
+wellformedTooth source (Tooth l kidsPath) = wellformedExprF source identity (l /\ Array.fromFoldable (ZipList.unpathAround "⌶" (pretty <$> kidsPath)))
 
 prettyExprF :: forall l. IsExprLabel l => ExprF l String -> String
 prettyExprF e@(l /\ es) = assert (wellformedExprF "prettyExprF" identity e) \_ ->

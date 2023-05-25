@@ -3,8 +3,9 @@ module Language.Pantograph.Generic.Grammar where
 import Data.Either.Nested
 import Prelude
 
+import Bug (bug)
 import Bug as Bug
-import Bug.Assertion (Assertion(..), assert, assertInput_, just, makeAssertionBoolean)
+import Bug.Assertion (Assertion(..), assert, assertInput_, assertInterface, assertInterface_, just, makeAssertionBoolean)
 import Bug.Assertion as Assertion
 import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
@@ -54,6 +55,7 @@ isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap
 
 isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Boolean
 isHoleDerivLabel (DerivLabel r _) = isHoleRule r 
+isHoleDerivLabel (DerivString _) = false
 
 isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Boolean
 isHoleDerivTerm (dl % _) = isHoleDerivLabel dl
@@ -71,6 +73,7 @@ expectedHypsCount r = do
 
 data DerivLabel l r 
   = DerivLabel r (Sort l)
+  | DerivString String
   
   -- | TextBox String -- this String s stands for the sort (Name (Str s))
   -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """renderDerivTermKids"""
@@ -78,13 +81,15 @@ data DerivLabel l r
 
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRule (DerivLabel r _) = Just r
+derivLabelRule (DerivString _) = Nothing
 
 derivLabelSort :: forall l r. DerivLabel l r -> Sort l
 derivLabelSort (DerivLabel _ s) = s
--- derivLabelSort (TextBox s) = Name (Str s)
+derivLabelSort (DerivString str) = NameSortLabel %* [StringSortLabel str %* []]
 
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
 mapDerivLabelSort f (DerivLabel r sort) = DerivLabel r (f sort)
+mapDerivLabelSort _ (DerivString str) = DerivString str
 
 infix 8 DerivLabel as |-
 
@@ -95,9 +100,11 @@ derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
 instance IsRuleLabel l r => Pretty (DerivLabel l r) where
   pretty (DerivLabel r ix) = pretty r <> "(" <> pretty ix <> ")"
+  pretty (DerivString str) = "Text(" <> str <> ")"
 
 instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
+  freshen rho (DerivString str) = DerivString str
 
 --------------------------------------------------------------------------------
 -- AsExprLabel
@@ -117,10 +124,11 @@ instance IsRuleLabel l r => Expr.IsExprLabel (AsExprLabel r) where
 instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   -- NOTE: This implementation ignores the expression label and metaexpression,
   -- but maybe we want to print those at some point for debugging?
-  prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = 
-    Expr.prettyExprF (AsExprLabel r /\ kids)
+  prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = Expr.prettyExprF (AsExprLabel r /\ kids)
+  prettyExprF'_unsafe (DerivString str /\ []) = "Text(" <> str <> ")"
 
   expectedKidsCount (DerivLabel r _) = Expr.expectedKidsCount (AsExprLabel r)
+  expectedKidsCount (DerivString str) = 0
 
 --------------------------------------------------------------------------------
 -- Sorts
@@ -182,12 +190,14 @@ derivTermRuleLabel :: forall l r. DerivTerm l r -> Maybe r
 derivTermRuleLabel (dl % _) = derivLabelRule dl
 
 derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
-derivToothSort (Expr.Tooth (DerivLabel _r sort) _) = sort
+derivToothSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
+  Expr.Tooth (DerivLabel _r sort) _ -> sort
 
 derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
-derivToothInteriorSort (Expr.Tooth (DerivLabel r _) kidsPath) = do
-  let Rule _mvars hyps _con = TotalMap.lookup r language
-  assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
+derivToothInteriorSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
+  Expr.Tooth (DerivLabel r _) kidsPath -> do
+    let Rule _mvars hyps _con = TotalMap.lookup r language
+    assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
 
 derivPathSort :: forall dir l r. IsRuleLabel l r => ReflectPathDir dir => Sort l -> DerivPath dir l r -> Sort l
 derivPathSort topSort (Expr.Path Nil) = topSort
@@ -281,7 +291,7 @@ data EditPreview l r
   = DerivTermEditPreview (DerivTerm l r)
   | DerivToothEditPreview (DerivTooth l r)
 
-data Action l r 
+data Action l r
   = SetCursorAction (Lazy (DerivZipper l r))
 
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
