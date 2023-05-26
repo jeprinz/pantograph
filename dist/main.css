@@ -93,6 +93,23 @@ body {
 
 .subnode.hole-interior {}
 
+.node.string>.subnode.inner {
+  white-space: pre;
+  color: green;
+  background-color: rgb(227, 227, 227);
+}
+
+.node.string>.subnode.inner.empty-string {
+  color: gray;
+  font-style: italic;
+  padding: 0 0.4rem;
+  border-radius: 1rem 1rem / 2rem;
+  background-color: rgba(255, 139, 50, 0.1);
+  box-shadow: 
+    inset 0 0 0 2px rgb(255, 139, 50),
+    0 0 2px 0 black;
+}
+
 /* 
   .subnode.punctuation
 */
@@ -143,9 +160,13 @@ body {
   border-radius: 0.2rem;
 }
 
-.subnode.buffer>.inner>.buffer-results {}
+.subnode.buffer>.inner>.buffer-results {
+}
 
 .subnode.buffer>.inner>.buffer-results>.buffer-result {
+  /* min-width: 200px; */
+  white-space: nowrap;
+  overflow: hidden;
   padding: 0.2rem;
 }
 
@@ -153,7 +174,7 @@ body {
   background-color: rgb(98, 98, 245, 0.25);
 }
 
-.buffer-input {
+.subnode.buffer>.inner>.buffer-input {
   outline: none;
 }
 

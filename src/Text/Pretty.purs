@@ -9,6 +9,7 @@ import Data.List.Rev as Rev
 import Data.Maybe (Maybe, maybe)
 import Data.String (Pattern(..))
 import Data.String as String
+import Data.Tuple (Tuple(..))
 
 class Pretty a where pretty :: a -> String
 
@@ -18,6 +19,7 @@ instance Pretty Boolean where pretty = show
 instance Pretty a => Pretty (List.List a) where pretty xs = "[" <> List.intercalate ", " (pretty <$> xs) <> "]"
 instance Pretty a => Pretty (Array a) where pretty xs = "[" <> intercalate ", " (pretty <$> xs) <> "]"
 instance Pretty a => Pretty (Maybe a) where pretty = maybe "NOTHING" pretty
+instance (Pretty a, Pretty b) => Pretty (Tuple a b) where pretty (Tuple a b) = pretty a <> ", " <> pretty b
 
 {-
 -- | Pretty `a` that takes an argument of type `b`.

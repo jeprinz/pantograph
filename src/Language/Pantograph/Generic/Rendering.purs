@@ -603,7 +603,11 @@ editorComponent = HK.component \tokens input -> HK.do
             ]
         ]
       DerivLabel r sort % kids -> input.renderDerivTermKids' (r /\ sort /\ kids) kidElems
-      DerivString str % [] -> ["string"] /\ [HH.text str]
+      DerivString str % [] -> ["string"] /\ 
+        [ if String.null str 
+            then HH.div [classNames ["subnode", "inner", "empty-string"]] [HH.text "String"]
+            else HH.div [classNames ["subnode", "inner"]] [HH.text str]
+        ]
 
     {-
     mouse cursoring and selecting:
@@ -944,14 +948,14 @@ fromHoleyDerivPathToElementId :: forall l r. IsRuleLabel l r => HoleyDerivPath U
 fromHoleyDerivPathToElementId
   | _verbose_path_element_ids = case _ of
       InjectHoleyDerivPath dpath -> fromPathToElementId dpath
-      HoleInteriorHoleyDerivPath dpath -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> pretty l <> "@" <> show (ZipList.leftLength kidsZip) <> "-" <> str
+      HoleInteriorHoleyDerivPath dpath -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> String.replaceAll (String.Pattern " ") (String.Replacement "_") (pretty l <> "@" <> show (ZipList.leftLength kidsZip)) <> "-" <> str
   | otherwise = case _ of
       InjectHoleyDerivPath dpath -> fromPathToElementId dpath
       HoleInteriorHoleyDerivPath dpath -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> show (ZipList.leftLength kidsZip) <> "-" <> str
 
 fromPathToElementId :: forall l. Expr.IsExprLabel l => Expr.Path Up l -> String
 fromPathToElementId 
-  | _verbose_path_element_ids = Expr.foldMapPath "PathNil" \(Expr.Tooth l kidsZip) str -> pretty l <> "@" <> show (ZipList.leftLength kidsZip) <> "-" <> str
+  | _verbose_path_element_ids = Expr.foldMapPath "PathNil" \(Expr.Tooth l kidsZip) str -> String.replaceAll (String.Pattern " ") (String.Replacement "_") (pretty l <> "@" <> show (ZipList.leftLength kidsZip)) <> "-" <> str
   | otherwise = Expr.foldMapPath "PathNil" \(Expr.Tooth _ kidsZip) str -> show (ZipList.leftLength kidsZip) <> "-" <> str
 
 {-

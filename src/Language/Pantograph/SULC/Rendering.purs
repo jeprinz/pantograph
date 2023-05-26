@@ -20,6 +20,7 @@ import Hole (hole)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
 import Language.Pantograph.Generic.Rendering as Rendering
+import Text.Pretty (pretty)
 
 type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
@@ -38,13 +39,12 @@ renderDerivTermKids' (r /\ sort /\ kids) kidElems = do
       [nameElem str]
     -- term
     Ref /\ _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
-    Lam /\ _ /\ [_ /\ bodElem] -> ["term", "lam"] /\ 
-      [Rendering.lparenElem, lambdaElem, bodElem, Rendering.rparenElem]
+    Lam /\ _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ 
+      [Rendering.lparenElem, lambdaElem, varElem, mapstoElem, bodElem, Rendering.rparenElem]
     App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
       [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
     -- hole
     TermHole /\ _ /\ _ -> bug "[ULC.Grammar.renderDerivTermKids'] hole should be handled generically"
-    _ -> hole "TODO"
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"

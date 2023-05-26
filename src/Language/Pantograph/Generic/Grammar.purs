@@ -29,6 +29,7 @@ import Data.TotalMap as TotalMap
 import Data.Traversable (class Foldable, class Traversable, sequence)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
+import Debug as Debug
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
 import Language.Pantograph.Generic.Unification (class Freshenable, composeSub, freshen', genFreshener, unify)
@@ -245,10 +246,10 @@ makeRule' :: forall l.
   Array String ->
   (Array (Sort l) -> Array (Sort l) /\ Sort l) -> 
   Rule l
-makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f ->
-  let mxs = Expr.freshMetaVar <$> strs in
-  let es = Expr.fromMetaVar <$> mxs in
-  let hyps /\ con = f es in
+makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f -> do
+  let mxs = Expr.freshMetaVar <$> strs
+  let es = Expr.fromMetaVar <$> mxs
+  let hyps /\ con = f es
   Rule (Set.fromFoldable mxs) hyps con
 
 makeRule :: forall l. 
