@@ -126,7 +126,7 @@ type Cursor l r =
 
 data CursorMode 
   = NavigationCursorMode
-  | StringCursorMode
+  | StringCursorMode String
   | BufferCursorMode
 
 derive instance Generic CursorMode _
@@ -459,10 +459,11 @@ editorComponent = HK.component \tokens input -> HK.do
 
       getFacade >>= case _ of
         ------------------------------------------------------------------------
-        -- CursorState where bufferEnabled
+        -- CursorState where mode = BufferCursorMode
         ------------------------------------------------------------------------
         CursorState cursor@{mode: BufferCursorMode} -> do
           if isBufferKey key then do
+            -- exit BufferCursorMode
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
             HK.tell tokens.slotToken bufferSlot elemId SubmitBufferQuery
@@ -481,7 +482,20 @@ editorComponent = HK.component \tokens input -> HK.do
             HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
           else pure unit
         ------------------------------------------------------------------------
-        -- CursorState (where not bufferEnabled)
+        -- CursorState where mode = StringCursorMode
+        ------------------------------------------------------------------------
+        CursorState cursor@{mode: StringCursorMode str} -> do
+          if isBufferKey key then do
+            -- exit StringCursorMode
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            setState $ CursorState cursor {mode = NavigationCursorMode}
+          else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
+            -- !TODO modify string
+            pure unit
+          else
+            pure unit
+        ------------------------------------------------------------------------
+        -- CursorState where mode = NavigationCursorMode
         ------------------------------------------------------------------------
         CursorState cursor -> do
           let path = hdzipperDerivPath cursor.hdzipper
@@ -509,10 +523,16 @@ editorComponent = HK.component \tokens input -> HK.do
                 -- paste an dterm
                 setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
           else if isBufferKey key then do
+            -- enter BufferCursorMode or StringCursorMode depending on the dterm
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            -- activate buffer
-            elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true Nothing
+            case hdzipperDerivTerm cursor.hdzipper of
+              DerivString str % _ -> do
+                Debug.traceM "entering StringCursorMode"
+                setFacade $ CursorState (cursor {mode = StringCursorMode str})
+              _ -> do
+                -- activate buffer
+                elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
+                HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true Nothing
           else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -542,13 +562,13 @@ editorComponent = HK.component \tokens input -> HK.do
           else if cmdKey && key == "x" then do
             -- update clipboard
             liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
-            -- escape to cursor mode, but without selection (updates state)
+            -- escape to cursor state, but without selection (updates state)
             setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm)))
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
           else if key == "Backspace" then do
-            -- escape to cursor mode, but without selection (updates state)
+            -- escape to cursor state, but without selection (updates state)
             setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm)))
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -774,6 +794,34 @@ editorComponent = HK.component \tokens input -> HK.do
       DerivTermEditPreview dterm -> renderPreviewDerivZipper (Expr.Zipper mempty dterm)
       DerivToothEditPreview dtooth -> renderPreviewDerivTooth dtooth
 
+    renderEditableString dzipper str = do
+      let elemId = fromPathToElementId (Expr.zipperPath dzipper)
+      let clsNames /\ _ = renderDerivTermKids dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
+      HH.div 
+        [ classNames ["node", "editable-string"]
+        , HP.id elemId
+        ] $
+        [ HH.input
+          [ HP.autofocus true
+          , HP.type_ HP.InputText
+          , HE.onInput \_event -> do
+              Debug.traceM "[string.onInput]"
+          , HP.value str
+          ]
+        ]
+          -- [ [ HH.slot bufferSlot elemId bufferComponent 
+          --     { hdzipper: InjectHoleyDerivZipper dzipper
+          --     , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
+          --       \edit -> renderEditPreview edit.preview /\ edit
+          --     } 
+          --     handleBufferOutput
+          --   ]
+          -- , [ HH.div [classNames ["subnode", "inner"]]
+          --       [ HH.div [classNames ["subnode", "editable-string"]] [HH.text (pretty (Expr.zipperExpr dzipper))] 
+          --       ]
+          --   ]
+          -- ]
+
   HK.useLifecycleEffect do
     -- initialize
     doc <- liftEffect $ HTML.window >>= Window.document
@@ -800,6 +848,9 @@ editorComponent = HK.component \tokens input -> HK.do
                 setHighlightElement Nothing
             ]
             case currentState of
+              CursorState cursor@{mode: StringCursorMode str} -> do
+                let dzipper = hdzipperZipper cursor.hdzipper
+                [renderPath dzipper $ renderEditableString dzipper str]
               CursorState cursor -> do
                 let dzipper = hdzipperZipper cursor.hdzipper
                 case cursor.hdzipper of
@@ -868,7 +919,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                   case InputElement.fromElement (HTMLElement.toElement elem) of
                     Nothing -> bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
                     Just inputElem -> liftEffect $ InputElement.setValue str inputElem
-          -- update facade to BufferState
+          -- update facade to BufferCursorMode
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
             pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper) {mode = BufferCursorMode}
           pure unit
