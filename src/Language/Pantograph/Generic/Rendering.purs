@@ -97,6 +97,7 @@ instance (Expr.IsExprLabel l, IsRuleLabel l r) => Pretty (State l r) where
       , P.indent $ P.newlines
           [ "- hdzipper = " <> pretty cursor.hdzipper
           , "- bufferEnabled = " <> show cursor.bufferEnabled
+          , " - stringEditEnabled = " <> show cursor.stringEditEnabled
           ]
       ]
     SelectState select -> Array.intercalate "\n"
@@ -398,10 +399,10 @@ editorComponent = HK.component \tokens input -> HK.do
             Nothing -> pure unit
             Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
         TopState top -> do
-          let cursor = cursorFromHoleyDerivZipper (Expr.Zipper mempty top.dterm)
-          case moveZipper dir cursor.dzipper of
+          let dzipper = Expr.Zipper mempty top.dterm
+          case moveZipper dir dzipper of
             Nothing -> pure unit
-            Just dzipper -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
+            Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
 
     moveSelect dir = getFacade >>= case _ of
       CursorState cursor -> do
