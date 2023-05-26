@@ -96,8 +96,7 @@ instance (Expr.IsExprLabel l, IsRuleLabel l r) => Pretty (State l r) where
       [ "cursor:"
       , P.indent $ P.newlines
           [ "- hdzipper = " <> pretty cursor.hdzipper
-          , "- bufferEnabled = " <> show cursor.bufferEnabled
-          , " - stringEditEnabled = " <> show cursor.stringEditEnabled
+          , "- mode = " <> show cursor.mode
           ]
       ]
     SelectState select -> Array.intercalate "\n"
@@ -122,15 +121,21 @@ instance (Expr.IsExprLabel l, IsRuleLabel l r) => Pretty (State l r) where
 
 type Cursor l r =
   { hdzipper :: HoleyDerivZipper l r
-  , stringEditEnabled :: Boolean
-  , bufferEnabled :: Boolean
+  , mode :: CursorMode
   }
+
+data CursorMode 
+  = NavigationCursorMode
+  | StringCursorMode
+  | BufferCursorMode
+
+derive instance Generic CursorMode _
+instance Show CursorMode where show x = genericShow x
 
 cursorFromHoleyDerivZipper :: forall l r. HoleyDerivZipper l r -> Cursor l r
 cursorFromHoleyDerivZipper hdzipper = 
   { hdzipper
-  , stringEditEnabled: false
-  , bufferEnabled: false
+  , mode: NavigationCursorMode
   }
 
 type Select l r =
@@ -370,7 +375,7 @@ editorComponent = HK.component \tokens input -> HK.do
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
       getFacade >>= case _ of
-        CursorState cursor | cursor.bufferEnabled -> pure unit
+        CursorState cursor@{mode: BufferCursorMode}  -> pure unit
         CursorState cursor -> do
           -- Debug.traceM $ "[moveCursor] " <> pretty (CursorState cursor)
           case cursor.hdzipper of
@@ -456,7 +461,7 @@ editorComponent = HK.component \tokens input -> HK.do
         ------------------------------------------------------------------------
         -- CursorState where bufferEnabled
         ------------------------------------------------------------------------
-        CursorState cursor | cursor.bufferEnabled -> do
+        CursorState cursor@{mode: BufferCursorMode} -> do
           if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
@@ -865,7 +870,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                     Just inputElem -> liftEffect $ InputElement.setValue str inputElem
           -- update facade to BufferState
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
-            pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper) {bufferEnabled = true}
+            pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper) {mode = BufferCursorMode}
           pure unit
       else
         -- update facade to CursorState
