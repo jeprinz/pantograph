@@ -125,6 +125,7 @@ type Cursor l r =
   , bufferEnabled :: Boolean
   }
 
+cursorFromHoleyDerivZipper :: forall l r. HoleyDerivZipper l r -> Cursor l r
 cursorFromHoleyDerivZipper hdzipper = 
   { hdzipper
   , stringEditEnabled: false
