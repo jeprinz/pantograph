@@ -365,20 +365,6 @@ editorComponent = HK.component \tokens input -> HK.do
         -- compute new dzipper
         let dzipper = force lazy_dzipper
         setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
-      -- !TODO Dig was deprecated, in favor of just having digEdit take the current zipper as input
-      -- Dig -> do
-      --   getFacade >>= case _ of
-      --     CursorState cursor -> do
-      --       let path = hdzipperDerivPath cursor.hdzipper
-      --       let dterm = hdzipperDerivTerm cursor.hdzipper
-      --       case dterm of
-      --         -- !TODO no delete edit when rule isHole
-      --         DerivLabel _r ix % _ -> setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path (defaultDerivTerm ix)), bufferEnabled: false}
-      --     SelectState select -> do
-      --       let Expr.Zipperp path _selection dterm = select.dzipperp
-      --       -- escape to cursor mode, but without selection (updates state)
-      --       setState $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper path dterm), bufferEnabled: false}
-      --     TopState _top -> hole "dig in TopState"
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
@@ -401,7 +387,6 @@ editorComponent = HK.component \tokens input -> HK.do
                 Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
             HoleInteriorHoleyDerivZipper dpath sort -> default (pure unit)
               -- if at hole interior, moving up goes to hole
-              -- # on _up (\_ -> setFacade $ CursorState {hdzipper: InjectHoleyDerivZipper (Expr.Zipper dpath (defaultDerivTerm sort)), bufferEnabled: false})
               # on _up (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm ->
                   setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
               # on _prev (\_ -> hole "!TODO move 'prev' at HoleInterior")
@@ -413,7 +398,7 @@ editorComponent = HK.component \tokens input -> HK.do
             Nothing -> pure unit
             Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
         TopState top -> do
-          let cursor = {dzipper: Expr.Zipper mempty top.dterm, bufferEnabled: false}
+          let cursor = cursorFromHoleyDerivZipper (Expr.Zipper mempty top.dterm)
           case moveZipper dir cursor.dzipper of
             Nothing -> pure unit
             Just dzipper -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
