@@ -14,6 +14,7 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple (fst, snd)
 import Data.Variant (case_, on)
 import Hole as Hole
+import Util (fromJust')
 
 -- data MoveDir
 --   = MoveUp | MoveDown | MoveLeft | MoveRight 
@@ -38,7 +39,7 @@ zipNext kidSkip zip =
     case Array.index children kidSkip of
         Just (_ /\ child) -> Just child
         Nothing -> case zipUp zip of
-            Just ((Tooth _ (ZipList.Path {left})) /\ parent) -> zipNext (RevList.length left) parent
+            Just ((Tooth _ zipList) /\ parent) -> zipNext (ZipList.leftLength zipList) parent
             Nothing -> Nothing
 
 zipPrev :: forall l. Zipper l -> Maybe (Zipper l)
@@ -47,7 +48,7 @@ zipPrev zip@(Zipper _ expr) =
         Nothing -> Nothing
         Just (Tooth me zipList /\ parent) -> case ZipList.zipLeft (expr /\ zipList) of
             Nothing -> Just parent
-            Just th -> let prevChild = (Hole.hole "need to use th and parent to get a new position somehow") in
+            Just th -> let prevChild = snd $ fromJust' "zipPrev" $ Array.index (zipDowns parent) (ZipList.leftLength zipList) in -- (Hole.hole "need to use th and parent to get a new position somehow") in
                 Just $ lastChild prevChild
 
 lastChild :: forall l. Zipper l -> Zipper l
