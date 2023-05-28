@@ -12,6 +12,7 @@ import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
+import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
 import Language.Pantograph.Generic.Rendering as Rendering
@@ -51,7 +52,7 @@ sucVarElem = Rendering.makePuncElem "sucVar" "S"
 -- Edit
 --------------------------------------------------------------------------------
 
-type Edit = Grammar.Edit SortLabel RuleLabel
+type Edit = Edit.Edit SortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper SortLabel RuleLabel
 
 editsAtHoleyDerivZipper = defaultEditsAtHoleyDerivZipper

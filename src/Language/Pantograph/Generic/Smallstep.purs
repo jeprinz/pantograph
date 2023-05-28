@@ -31,15 +31,15 @@ import Type.Direction as Dir
 import Util (lookup', fromJust')
 import Utility ((<$$>))
 
--- data Direction = Up | Down -- TODO:
+data Direction = Up | Down -- TODO:
 
--- data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Expr.MetaChange l)
--- type SSTerm l r = Expr.Expr (StepExprLabel l r)
+data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Expr.MetaChange l)
+type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
--- type Rule l r = SSTerm l r -> Maybe (SSTerm l r)
+type Rule l r = SSTerm l r -> Maybe (SSTerm l r)
 
--- -- later Henry can tell me how his definition of path works
--- type SanePath l = List (Expr.Tooth l)
+-- later Henry can tell me how his definition of path works
+type SanePath l = List (Expr.Tooth l)
 
 -- ---------- Code for converting zippers to terms and back ------------------------------------------
 

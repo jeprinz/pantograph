@@ -42,6 +42,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, fromInputEventToTargetValue, setClassName)
+import Language.Pantograph.Generic.Edit (Action(..), Edit, EditPreview(..), defaultEditsAtDerivZipper, defaultEditsAtHoleInterior)
 import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
 import Log (logM)
 import Log as Log
@@ -600,10 +601,10 @@ editorComponent = HK.component \tokens input -> HK.do
             -- !TODO top --> cursor
             -- !TODO activate buffer
             pure unit
-          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
-          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
-          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
-          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
+          else if isJust (readMoveDir key) then
+            assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
+              liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+              (if shiftKey then moveSelect else moveCursor) dir
           else pure unit
 
     handleBufferOutput = case _ of
