@@ -1,6 +1,10 @@
 module Type.Direction where
 
+import Prelude
 import Prim.Row
+
+import Control.Plus (empty)
+import Data.Maybe (Maybe)
 import Data.Variant (Variant, inj)
 import Type.Proxy (Proxy(..))
 
@@ -72,3 +76,14 @@ prevDir = inj _prev (Proxy :: Proxy Prev)
 nextDir :: forall dirs. Variant (NextDir dirs)
 nextDir = inj _next (Proxy :: Proxy Next)
 
+readMoveDir :: String -> Maybe MoveDir
+readMoveDir "ArrowLeft" = pure prevDir
+readMoveDir "ArrowRight" = pure nextDir
+readMoveDir "ArrowUp" = pure upDir
+readMoveDir "ArrowDown" = pure downDir
+readMoveDir _ = empty
+
+readVerticalDir :: String -> Maybe VerticalDir
+readVerticalDir "ArrowUp" = pure upDir
+readVerticalDir "ArrowDown" = pure downDir
+readVerticalDir _ = empty

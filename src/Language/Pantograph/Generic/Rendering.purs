@@ -22,7 +22,7 @@ import Data.Int.Bits as Bits
 import Data.Lazy (Lazy, defer, force)
 import Data.List (List(..), (:))
 import Data.List.Zip as ZipList
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Data.Newtype (unwrap)
 import Data.Rational as Rational
 import Data.Show.Generic (genericShow)
@@ -393,10 +393,12 @@ editorComponent = HK.component \tokens input -> HK.do
                 Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
             HoleInteriorHoleyDerivZipper dpath sort -> default (pure unit)
               -- if at hole interior, moving up goes to hole
-              # on _up (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm ->
-                  setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
-              # on _prev (\_ -> hole "!TODO move 'prev' at HoleInterior")
-              # on _next (\_ -> hole "!TODO move 'next' at HoleInterior") 
+              # on _down (\_ -> pure unit)
+              # on _up (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
+              # on _left (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
+              # on _right (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
+              # on _prev (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
+              # on _next (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
               $ dir
         SelectState select -> do
           let dzipper = Expr.unzipperp select.dzipperp
@@ -472,14 +474,11 @@ editorComponent = HK.component \tokens input -> HK.do
             -- tell buffer to deactivate
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false Nothing
-          else if key == "ArrowUp" then do
-            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery upDir
-          else if key == "ArrowDown" then do
-            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery downDir
+          else if isJust (readVerticalDir key) then
+            assert (just "handleKeyboardEvent" $ readVerticalDir key) \dir -> do
+              liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+              elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
+              HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery dir
           else pure unit
         ------------------------------------------------------------------------
         -- CursorState where mode = StringCursorMode
@@ -544,10 +543,10 @@ editorComponent = HK.component \tokens input -> HK.do
             case defaultDerivTerm (derivTermSort dterm) of
               Nothing -> pure unit
               Just dterm' ->  setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
-          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
-          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
-          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
-          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
+          else if isJust (readMoveDir key) then
+            assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
+              liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+              (if shiftKey then moveSelect else moveCursor) dir
           else pure unit
         ------------------------------------------------------------------------
         -- SelectState
@@ -587,10 +586,10 @@ editorComponent = HK.component \tokens input -> HK.do
             -- activate buffer
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
             HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
-          else if key == "ArrowUp" then (if shiftKey then moveSelect else moveCursor) upDir
-          else if key == "ArrowDown" then (if shiftKey then moveSelect else moveCursor) downDir
-          else if key == "ArrowLeft" then (if shiftKey then moveSelect else moveCursor) leftDir
-          else if key == "ArrowRight" then (if shiftKey then moveSelect else moveCursor) rightDir
+          else if isJust (readMoveDir key) then
+            assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
+              liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+              (if shiftKey then moveSelect else moveCursor) dir
           else pure unit
         ------------------------------------------------------------------------
         -- TopState
