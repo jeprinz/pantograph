@@ -233,13 +233,7 @@ editorComponent = HK.component \tokens input -> HK.do
       CursorState cursor -> do
         let path = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
-        let select = (_ $ dir) $ case_
-              # on _up (\_ -> {dzipperp: Expr.Zipperp path (Left mempty) dterm})
-              # on _down (\_ -> {dzipperp: Expr.Zipperp path (Right mempty) dterm})
-              # on _left (\_ -> hole "moveSelect left when CursorState")
-              # on _right (\_ -> hole "moveSelect right when CursorState")
-              # on _prev (\_ -> hole "moveSelect prev when CursorState")
-              # on _next (\_ -> hole "moveSelect next when CursorState")
+        let select = {dzipperp: Expr.Zipperp path (Left mempty) dterm}
         case moveZipperp dir select.dzipperp of
           Nothing -> do
             logM "moveSelect" "failed to enter SelectState"

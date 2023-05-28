@@ -37,6 +37,8 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Data.Variant (case_, on)
+import Data.Zippable (class Zippable)
+import Data.Zippable as Zippable
 import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
@@ -282,6 +284,10 @@ instance IsExprLabel l => Pretty (Zipper l) where
       P.cursor $
         pretty expr
 
+instance Zippable (Zipper l) where
+  zipDowns z = snd <$> zipDowns z
+  zipUp' z = zipUp z <#> \(Tooth _ kidsZip /\ z') -> (ZipList.leftLength kidsZip /\ z')
+
 zipUp :: forall l. Zipper l -> Maybe (Tooth l /\ Zipper l)
 zipUp (Zipper path expr) = case path of
   Path Nil -> Nothing
@@ -386,11 +392,27 @@ instance IsExprLabel l => Pretty (Zipperp l) where
           P.cursor $
             pretty expr
 
+instance Zippable (Zipperp l) where
+  -- focus is at the top
+  zipDowns (Zipperp path (Left sel) expr) = case unstepPath sel of
+    Nothing -> Zippable.zipDowns (Zipperp path (Right mempty) expr)
+    Just (th /\ sel') -> [Zipperp (stepPath th path) (Left sel') (unTooth th expr)]
+  -- focus is at the bottom
+  zipDowns (Zipperp path (Right sel) expr) = do
+    let zs = Zippable.zipDowns (Zipper sel expr)
+    zs <#> \(Zipper sel' expr') -> Zipperp path (Right sel') expr'
+  
+  -- focus is at the top
+  zipUp' (Zipperp path (Left sel) expr) = case unstepPath path of
+    Nothing -> Nothing
+    Just (th /\ path') -> Just $ ZipList.leftLength (toothPath th) /\ Zipperp path' (Left (stepPath th sel)) expr
+  -- focus is at the bottom
+  zipUp' (Zipperp path (Right sel) expr) = case unstepPath sel of 
+    Nothing -> Zippable.zipUp' (Zipperp path (Left mempty) expr)
+    Just (th /\ sel') -> Just $ ZipList.leftLength (toothPath th) /\ Zipperp path (Right sel') (unTooth th expr)
+
 zipperpTopPath :: forall l. Zipperp l -> Path Up l
 zipperpTopPath (Zipperp path _ _) = path
-
--- zipperpTop :: forall l. Zipperp l -> Zipper l
--- zipperpTop (Zipperp path selection expr) = ?a
 
 zipperpBottomPath :: forall l. Zipperp l -> Path Up l
 zipperpBottomPath (Zipperp path selection _) = either reversePath identity selection <> path
