@@ -405,7 +405,7 @@ instance Zippable (Zipperp l) where
   -- focus is at the top
   zipUp' (Zipperp path (Left sel) expr) = case unstepPath path of
     Nothing -> Nothing
-    Just (th /\ path') -> Just $ ZipList.leftLength (toothPath th) /\ Zipperp path' (Left (stepPath th sel)) expr
+    Just (th /\ path') -> Just $ 0 /\ Zipperp path' (Left (stepPath th sel)) expr
   -- focus is at the bottom
   zipUp' (Zipperp path (Right sel) expr) = case unstepPath sel of 
     Nothing -> Zippable.zipUp' (Zipperp path (Left mempty) expr)
