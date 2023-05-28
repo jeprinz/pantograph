@@ -373,6 +373,8 @@ editorComponent = HK.component \tokens input -> HK.do
         -- compute new dzipper
         let dzipper = force lazy_dzipper
         setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
+      SetSSTermAction lazy_ssterm -> 
+        hole "handleAction SetSSTermAction"
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir

@@ -1,7 +1,7 @@
 module Language.Pantograph.Generic.Edit where
 
 import Prelude
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), DerivPath, DerivTerm, DerivTooth, DerivZipper, Rule(..), Sort, defaultDerivTerm, derivPathSort, derivTermSort, derivToothInteriorSort, derivToothSort, isHoleDerivTerm, language, mapDerivLabelSort)
+
 import Control.Plus (empty)
 import Data.Array as Array
 import Data.Enum (enumFromTo)
@@ -13,6 +13,8 @@ import Data.Maybe (Maybe(..))
 import Data.TotalMap as TotalMap
 import Data.Traversable (sequence)
 import Data.Tuple.Nested ((/\))
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), DerivPath, DerivTerm, DerivTooth, DerivZipper, Rule(..), Sort, defaultDerivTerm, derivPathSort, derivTermSort, derivToothInteriorSort, derivToothSort, isHoleDerivTerm, language, mapDerivLabelSort)
+import Language.Pantograph.Generic.Smallstep (SSTerm)
 import Language.Pantograph.Generic.Unification (composeSub, freshen', genFreshener, unify)
 import Text.Pretty (pretty)
 import Type.Direction (Up)
@@ -33,6 +35,7 @@ data EditPreview l r
 
 data Action l r
   = SetCursorAction (Lazy (DerivZipper l r))
+  | SetSSTermAction (Lazy (SSTerm l r))
 
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
 defaultEditsAtDerivZipper topSort dz = 
