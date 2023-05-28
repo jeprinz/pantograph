@@ -4,26 +4,30 @@ import Prelude
 
 import Bug.Assertion (assert, just)
 import Data.Array as Array
+import Data.Bifunctor (bimap)
 import Data.Either (Either)
 import Data.Expr (class ReflectPathDir)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (Lazy)
 import Data.List.Zip as ZipList
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Data.String as String
-import Data.Tuple.Nested (type (/\))
+import Data.Tuple.Nested (type (/\), (/\))
+import Data.Variant (case_, on)
+import Data.Zippable (class Zippable)
+import Data.Zippable as Zippable
 import Effect.Aff (Aff)
 import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML (ComponentHTML) as HH
 import Halogen.Hooks as HK
 import Language.Pantograph.Generic.Edit (Action, Edit, defaultEditsAtDerivZipper, defaultEditsAtHoleInterior)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivPath, DerivTerm, DerivZipper, DerivZipperp, Sort, defaultDerivTerm)
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivPath, DerivTerm, DerivZipper, DerivZipperp, Sort, defaultDerivTerm, isHoleDerivTerm)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
-import Type.Direction (Up, VerticalDir)
+import Type.Direction
 import Type.Proxy (Proxy(..))
 
 type EditorSpec l r =
@@ -136,6 +140,16 @@ instance IsRuleLabel l r => Pretty (HoleyDerivZipper l r) where
   pretty (InjectHoleyDerivZipper dzipper) = pretty dzipper
   pretty (HoleInteriorHoleyDerivZipper dpath sort) = Expr.prettyPath dpath $ "(⌶{?} : " <> pretty sort <> ")"
 
+instance IsRuleLabel l r => Zippable (HoleyDerivZipper l r) where
+  zipDowns (InjectHoleyDerivZipper dz) | Just sort <- isHoleDerivTerm (Expr.zipperExpr dz) = do
+    [HoleInteriorHoleyDerivZipper (Expr.zipperPath dz) sort]
+  zipDowns (InjectHoleyDerivZipper dz) = InjectHoleyDerivZipper <$> Zippable.zipDowns dz
+  zipDowns (HoleInteriorHoleyDerivZipper _ _) = []
+  zipUp' (InjectHoleyDerivZipper dz) = bimap identity InjectHoleyDerivZipper <$> Zippable.zipUp' dz
+  zipUp' (HoleInteriorHoleyDerivZipper dpath sort) = 
+    assert (just "Zippable (HoleyDerivZipper l r) . zipUp'" (defaultDerivTerm sort)) \dterm ->
+      pure $ 0 /\ InjectHoleyDerivZipper (Expr.Zipper dpath dterm)
+
 data HoleyDerivPath dir l r
   = InjectHoleyDerivPath (DerivPath dir l r)
   | HoleInteriorHoleyDerivPath (DerivPath Up l r) -- the path to the Hole
@@ -148,6 +162,15 @@ instance (Show l, Show r) => Show (HoleyDerivPath dir l r) where show x = generi
 instance (IsRuleLabel l r, ReflectPathDir dir) => Pretty (HoleyDerivPath dir l r) where
   pretty (InjectHoleyDerivPath dpath) = pretty dpath
   pretty (HoleInteriorHoleyDerivPath dpath) = Expr.prettyPath dpath $ "(⌶{?} : _)"
+
+moveHoleyDerivZipper :: forall l r. IsRuleLabel l r => MoveDir -> HoleyDerivZipper l r -> Maybe (HoleyDerivZipper l r)
+moveHoleyDerivZipper = case_
+  # on _up (\_ -> Zippable.zipUp)
+  # on _down (\_ -> Zippable.zipDown 0)
+  # on _left (\_ -> Zippable.zipLeft)
+  # on _right (\_ -> Zippable.zipRight)
+  # on _prev (\_ -> Zippable.zipPrev)
+  # on _next (\_ -> Zippable.zipNext 0)
 
 hdzipperDerivPath :: forall l r. HoleyDerivZipper l r -> DerivPath Up l r
 hdzipperDerivPath (InjectHoleyDerivZipper dzipper) = Expr.zipperPath dzipper

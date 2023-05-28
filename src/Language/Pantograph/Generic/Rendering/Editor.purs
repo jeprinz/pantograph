@@ -1,8 +1,7 @@
 module Language.Pantograph.Generic.Rendering.Editor where
 
-import Language.Pantograph.Generic.Rendering.Base (CursorMode(..), EditorLocals, EditorSpec, HoleyDerivPath(..), HoleyDerivZipper(..), Output(..), Query(..), State(..), bufferSlot, cursorClassName, cursorFromHoleyDerivZipper, fromHoleyDerivPathToElementId, fromPathToElementId, hdzipperDerivPath, hdzipperDerivTerm, hdzipperHoleyDerivPath, hdzipperZipper, highlightClassName, isBufferKey, selectBottomClassName, selectTopClassName)
-import Language.Pantograph.Generic.Rendering.Elements (colonElem, interrogativeElem, placeholderCursorNodeElem)
 import Prelude
+
 import Bug (bug)
 import Bug.Assertion (assert, just)
 import Data.Array as Array
@@ -31,10 +30,12 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
-import Language.Pantograph.Generic.Edit (Action(..), EditPreview(..))
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), DerivPath, DerivTerm, defaultDerivTerm, derivTermSort, derivToothInteriorSort, isHoleDerivTerm, isHoleRule)
-import Language.Pantograph.Generic.Rendering.Buffer (bufferComponent)
-import Language.Pantograph.Generic.ZipperMovement (moveZipper, moveZipperp)
+import Language.Pantograph.Generic.Edit
+import Language.Pantograph.Generic.Grammar
+import Language.Pantograph.Generic.Rendering.Base
+import Language.Pantograph.Generic.Rendering.Buffer
+import Language.Pantograph.Generic.Rendering.Elements
+import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
 import Log (logM)
 import Text.Pretty (pretty)
 import Text.Pretty as P
@@ -49,7 +50,6 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
-
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -193,41 +193,22 @@ editorComponent = HK.component \tokens input -> HK.do
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
       getFacade >>= case _ of
-        CursorState cursor@{mode: BufferCursorMode} -> pure unit
+        CursorState {mode: BufferCursorMode} -> pure unit
         CursorState cursor -> do
-          -- Debug.traceM $ "[moveCursor] " <> pretty (CursorState cursor)
-          case cursor.hdzipper of
-            -- if at hole, moving down goes to hole interior
-            InjectHoleyDerivZipper dzipper 
-              | dterm <- Expr.zipperExpr dzipper
-              , isHoleDerivTerm dterm
-              , dir == inj _down Proxy -> do
-                  -- Debug.traceM $ "[moveCursor] at hole; going down to hole interior"
-                  setFacade $ CursorState (cursorFromHoleyDerivZipper (HoleInteriorHoleyDerivZipper (Expr.zipperPath dzipper) (derivTermSort dterm)))
-            InjectHoleyDerivZipper dzipper -> do
-              -- Debug.traceM $ "[moveCursor] at hole; NOT going down to hole interior"
-              case moveZipper dir dzipper of
-                Nothing -> pure unit
-                Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
-            HoleInteriorHoleyDerivZipper dpath sort -> default (pure unit)
-              -- if at hole interior, moving up goes to hole
-              # on _down (\_ -> pure unit)
-              # on _up (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
-              # on _left (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
-              # on _right (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
-              # on _prev (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
-              # on _next (\_ -> assert (just "moveCursor.HoleInteriorHoleyDerivZipper" (defaultDerivTerm sort)) \dterm -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper dpath dterm))))
-              $ dir
+          -- Debug.traceM $ "[moveCursor] at hole; NOT going down to hole interior"
+          case moveHoleyDerivZipper dir cursor.hdzipper of
+            Nothing -> pure unit
+            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         SelectState select -> do
           let dzipper = Expr.unzipperp select.dzipperp
-          case moveZipper dir dzipper of
+          case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
             Nothing -> pure unit
-            Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
+            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         TopState top -> do
           let dzipper = Expr.Zipper mempty top.dterm
-          case moveZipper dir dzipper of
+          case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
             Nothing -> pure unit
-            Just dzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper'))
+            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
 
     moveSelect dir = getFacade >>= case _ of
       CursorState cursor -> do

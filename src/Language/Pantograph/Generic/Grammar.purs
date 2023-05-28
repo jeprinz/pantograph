@@ -1,7 +1,9 @@
 module Language.Pantograph.Generic.Grammar where
 
 import Prelude
+
 import Bug.Assertion (Assertion, assert, assertInput_, assertInterface_, just, makeAssertionBoolean)
+import Control.Plus (empty)
 import Data.Array as Array
 import Data.Enum (class Enum)
 import Data.Expr (class IsExprLabel, class ReflectPathDir, expectedKidsCount, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
@@ -41,11 +43,11 @@ defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ 
 isHoleRule :: forall l r. IsRuleLabel l r => r -> Boolean
 isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap
 
-isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Boolean
-isHoleDerivLabel (DerivLabel r _) = isHoleRule r 
-isHoleDerivLabel (DerivString _) = false
+isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
+isHoleDerivLabel (DerivLabel r sort) | isHoleRule r = pure sort
+isHoleDerivLabel _ = empty
 
-isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Boolean
+isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Maybe (Sort l)
 isHoleDerivTerm (dl % _) = isHoleDerivLabel dl
 
 expectedHypsCount :: forall l r. IsRuleLabel l r => r -> Int

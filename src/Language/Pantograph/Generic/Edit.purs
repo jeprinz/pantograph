@@ -40,9 +40,9 @@ data Action l r
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
 defaultEditsAtDerivZipper topSort dz = 
   Array.concat $
-  (if isHoleDerivTerm (Expr.zipperExpr dz)
-    then []
-    else digEdit dz)
+  (case isHoleDerivTerm (Expr.zipperExpr dz) of
+    Nothing -> []
+    Just _ -> digEdit dz)
   Array.:
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
     let Rule mvars hyps con = TotalMap.lookup r language
