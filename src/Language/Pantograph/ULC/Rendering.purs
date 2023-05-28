@@ -14,8 +14,8 @@ import Halogen.HTML as HH
 import Halogen.Hooks as HK
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar as Grammar
-import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
-import Language.Pantograph.Generic.Rendering as Rendering
+import Language.Pantograph.Generic.Rendering.Base as Rendering
+import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.ULC.Grammar (DerivTerm, SortLabel, MetaExpr, Sort, RuleLabel(..))
 
 type Query = Rendering.Query
@@ -55,4 +55,4 @@ sucVarElem = Rendering.makePuncElem "sucVar" "S"
 type Edit = Edit.Edit SortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper SortLabel RuleLabel
 
-editsAtHoleyDerivZipper = defaultEditsAtHoleyDerivZipper
+editsAtHoleyDerivZipper = Rendering.defaultEditsAtHoleyDerivZipper
