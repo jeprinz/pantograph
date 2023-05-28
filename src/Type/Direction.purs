@@ -77,8 +77,10 @@ nextDir :: forall dirs. Variant (NextDir dirs)
 nextDir = inj _next (Proxy :: Proxy Next)
 
 readMoveDir :: String -> Maybe MoveDir
-readMoveDir "ArrowLeft" = pure prevDir
-readMoveDir "ArrowRight" = pure nextDir
+-- readMoveDir "ArrowLeft" = pure prevDir
+-- readMoveDir "ArrowRight" = pure nextDir
+readMoveDir "ArrowLeft" = pure leftDir
+readMoveDir "ArrowRight" = pure rightDir
 readMoveDir "ArrowUp" = pure upDir
 readMoveDir "ArrowDown" = pure downDir
 readMoveDir _ = empty

@@ -80,6 +80,7 @@ data Output l r
 data Query a
   -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
   = SetBufferEnabledQuery Boolean (Maybe String) a
+  -- | SetBufferStringQuery String a
   | MoveBufferQuery VerticalDir a
   | SubmitBufferQuery a
 
@@ -127,7 +128,7 @@ type Cursor l r =
 
 data CursorMode 
   = NavigationCursorMode
-  | StringCursorMode String
+  -- | StringCursorMode String
   | BufferCursorMode
 
 derive instance Generic CursorMode _
@@ -376,7 +377,7 @@ editorComponent = HK.component \tokens input -> HK.do
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
       getFacade >>= case _ of
-        CursorState cursor@{mode: BufferCursorMode}  -> pure unit
+        CursorState cursor@{mode: BufferCursorMode} -> pure unit
         CursorState cursor -> do
           -- Debug.traceM $ "[moveCursor] " <> pretty (CursorState cursor)
           case cursor.hdzipper of
@@ -481,19 +482,25 @@ editorComponent = HK.component \tokens input -> HK.do
               elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
               HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery dir
           else pure unit
-        ------------------------------------------------------------------------
-        -- CursorState where mode = StringCursorMode
-        ------------------------------------------------------------------------
-        CursorState cursor@{mode: StringCursorMode str} -> do
-          if isBufferKey key then do
-            -- exit StringCursorMode
-            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            setState $ CursorState cursor {mode = NavigationCursorMode}
-          else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
-            -- !TODO modify string
-            pure unit
-          else
-            pure unit
+        -- !TODO no, actually this is all handled in buffer mode
+        -- ------------------------------------------------------------------------
+        -- -- CursorState where mode = StringCursorMode
+        -- ------------------------------------------------------------------------
+        -- CursorState cursor@{mode: StringCursorMode str} -> do
+        --   if isBufferKey key then do
+        --     -- exit StringCursorMode
+        --     Debug.traceM "exiting StringCursorMode"
+        --     liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+        --     setState $ CursorState cursor 
+        --       { mode = NavigationCursorMode
+        --       , hdzipper = InjectHoleyDerivZipper (Expr.Zipper (hdzipperDerivPath cursor.hdzipper) (DerivString str % []))
+        --       }
+        --   -- !TODO dont do this here; actually do this in 
+        --   -- else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
+        --   --   setFacade $ CursorState cursor {mode = StringCursorMode (str <> key)}
+        --   --   pure unit
+        --   else
+        --     pure unit
         ------------------------------------------------------------------------
         -- CursorState where mode = NavigationCursorMode
         ------------------------------------------------------------------------
@@ -527,8 +534,8 @@ editorComponent = HK.component \tokens input -> HK.do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             case hdzipperDerivTerm cursor.hdzipper of
               DerivString str % _ -> do
-                Debug.traceM "entering StringCursorMode"
-                setFacade $ CursorState (cursor {mode = StringCursorMode str})
+                elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
+                HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just str)
               _ -> do
                 -- activate buffer
                 elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
@@ -611,7 +618,7 @@ editorComponent = HK.component \tokens input -> HK.do
       ActionOutput act -> handleAction act
       UpdateFacadeOutput f -> setFacade =<< (f =<< getFacade)
   
-    renderDerivTermKids (Expr.Zipper dpath dterm) kidElems = Debug.trace ("[renderDerivTermKids] dterm = " <> pretty dterm) \_ -> assert (wellformedExpr "renderDerivTermKids" dterm) \_ -> case dterm of
+    renderDerivTermKids (Expr.Zipper dpath dterm) kidElems = assert (wellformedExpr "renderDerivTermKids" dterm) \_ -> case dterm of
       DerivLabel r sort % [] | isHoleRule r -> ["hole"] /\
         [ HH.div [classNames ["subnode", "inner"]]
             [ HH.div [classNames ["subnode", "hole-interior"]] [renderHoleInterior false dpath sort]
@@ -794,33 +801,21 @@ editorComponent = HK.component \tokens input -> HK.do
       DerivTermEditPreview dterm -> renderPreviewDerivZipper (Expr.Zipper mempty dterm)
       DerivToothEditPreview dtooth -> renderPreviewDerivTooth dtooth
 
-    renderEditableString dzipper str = do
-      let elemId = fromPathToElementId (Expr.zipperPath dzipper)
-      let clsNames /\ _ = renderDerivTermKids dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
-      HH.div 
-        [ classNames ["node", "editable-string"]
-        , HP.id elemId
-        ] $
-        [ HH.input
-          [ HP.autofocus true
-          , HP.type_ HP.InputText
-          , HE.onInput \_event -> do
-              Debug.traceM "[string.onInput]"
-          , HP.value str
-          ]
-        ]
-          -- [ [ HH.slot bufferSlot elemId bufferComponent 
-          --     { hdzipper: InjectHoleyDerivZipper dzipper
-          --     , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
-          --       \edit -> renderEditPreview edit.preview /\ edit
-          --     } 
-          --     handleBufferOutput
-          --   ]
-          -- , [ HH.div [classNames ["subnode", "inner"]]
-          --       [ HH.div [classNames ["subnode", "editable-string"]] [HH.text (pretty (Expr.zipperExpr dzipper))] 
-          --       ]
-          --   ]
-          -- ]
+    -- renderEditableString dzipper str = do
+    --   let elemId = fromPathToElementId (Expr.zipperPath dzipper)
+    --   let clsNames /\ _ = renderDerivTermKids dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
+    --   HH.div 
+    --     [ classNames ["node", "editable-string"]
+    --     , HP.id elemId
+    --     ] $
+    --     [ HH.input
+    --       [ HP.autofocus true
+    --       , HP.type_ HP.InputText
+    --       , HE.onInput \_event -> do
+    --           Debug.traceM "[string.onInput]"
+    --       , HP.value str
+    --       ]
+    --     ]
 
   HK.useLifecycleEffect do
     -- initialize
@@ -848,9 +843,9 @@ editorComponent = HK.component \tokens input -> HK.do
                 setHighlightElement Nothing
             ]
             case currentState of
-              CursorState cursor@{mode: StringCursorMode str} -> do
-                let dzipper = hdzipperZipper cursor.hdzipper
-                [renderPath dzipper $ renderEditableString dzipper str]
+              -- CursorState cursor@{mode: StringCursorMode str} -> do
+              --   let dzipper = hdzipperZipper cursor.hdzipper
+              --   [renderPath dzipper $ renderEditableString dzipper str]
               CursorState cursor -> do
                 let dzipper = hdzipperZipper cursor.hdzipper
                 case cursor.hdzipper of
@@ -875,18 +870,32 @@ bufferComponent = HK.component \tokens input -> HK.do
   -- !TODO bufferFocus is actually 2D, since eventually I'll implement cycling
   -- between different edits that have the same label
 
+  let is_string = case input.hdzipper of
+        InjectHoleyDerivZipper (Expr.Zipper _ (DerivString str % _)) -> true
+        _ -> false
+
   let bufferInputRefLabelString = "buffer-input"
 
   edits <- HK.captures {hdzipper: input.hdzipper, bufferString} $ flip HK.useMemo \_ ->
-    input.edits #
-      -- memo fuzzy distances
-      map (map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit)) >>>
-      -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
-      Array.filter (\(_ /\ (FuzzyStr fs /\ _)) -> Rational.fromInt 0 < fs.ratio) >>>
-      -- sort the remaining edits by the fuzzy distance
-      Array.sortBy (\(_ /\ (fuzzyStr1 /\ _)) (_ /\ (fuzzyStr2 /\ _)) -> compare fuzzyStr1 fuzzyStr2) >>>
-      -- forget fuzzy distances
-      map (map snd)
+    if is_string then do
+      let dterm = DerivString bufferString % []
+      let preview = DerivTermEditPreview dterm
+      [ defer (\_ -> HH.text bufferString) /\
+        { label: bufferString
+        , action: SetCursorAction (defer \_ -> 
+            Expr.Zipper (hdzipperDerivPath input.hdzipper) (DerivString bufferString % []))
+        , preview
+        } ]
+    else
+      input.edits #
+        -- memo fuzzy distances
+        map (map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit)) >>>
+        -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
+        Array.filter (\(_ /\ (FuzzyStr fs /\ _)) -> Rational.fromInt 0 < fs.ratio) >>>
+        -- sort the remaining edits by the fuzzy distance
+        Array.sortBy (\(_ /\ (fuzzyStr1 /\ _)) (_ /\ (fuzzyStr2 /\ _)) -> compare fuzzyStr1 fuzzyStr2) >>>
+        -- forget fuzzy distances
+        map (map snd)
 
   let normalBufferFocus = bufferFocus `mod` Array.length edits
 
@@ -918,7 +927,9 @@ bufferComponent = HK.component \tokens input -> HK.do
                   -- initialize string in buffer
                   case InputElement.fromElement (HTMLElement.toElement elem) of
                     Nothing -> bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
-                    Just inputElem -> liftEffect $ InputElement.setValue str inputElem
+                    Just inputElem -> do
+                      liftEffect $ InputElement.setValue str inputElem
+                      HK.put bufferString_id str
           -- update facade to BufferCursorMode
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
             pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper) {mode = BufferCursorMode}
@@ -928,6 +939,10 @@ bufferComponent = HK.component \tokens input -> HK.do
         HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
           pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper)
       pure (Just a)
+    -- SetBufferStringQuery str a -> do
+    --   Debug.traceM $ "SetBufferString str = " <> str
+    --   HK.put bufferString_id str
+    --   pure $ Just a
     MoveBufferQuery qm a -> do
       if isEnabled then do
         (qm # _) $ case_
@@ -954,34 +969,36 @@ bufferComponent = HK.component \tokens input -> HK.do
         ] $ 
         Array.concat
         [ if not isEnabled then [] else
-          [ HH.div [classNames ["inner"]]
-              [ HH.input 
-                [ classNames ["buffer-input"]
-                , HP.autofocus true 
-                , HP.ref $ H.RefLabel "buffer-input"
-                , HP.type_ HP.InputText
-                , HE.onInput \event -> do
-                    bufferString' <- liftEffect $ fromInputEventToTargetValue event
-                    HK.put bufferString_id bufferString'
-                    HK.put bufferFocus_id 0 -- reset bufferFocus
-                    pure unit
+          [ HH.div [classNames ["inner"]] $
+              Array.concat
+              [ [ HH.input 
+                  [ classNames ["buffer-input"]
+                  , HP.autofocus true 
+                  , HP.ref $ H.RefLabel "buffer-input"
+                  , HP.type_ HP.InputText
+                  , HE.onInput \event -> do
+                      bufferString' <- liftEffect $ fromInputEventToTargetValue event
+                      HK.put bufferString_id bufferString'
+                      HK.put bufferFocus_id 0 -- reset bufferFocus
+                      pure unit
+                  ]
                 ]
-              , HH.div
-                [ classNames ["buffer-results"]
-                ] $
-                flip Array.mapWithIndex edits \i (lazy_editHtml /\ edit) -> 
-                  HH.div 
-                    [ classNames $ ["buffer-result"] <> if i == normalBufferFocus then ["buffer-focus"] else []
-                    , HE.onMouseOver \event -> do
-                        liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
-                        HK.put bufferFocus_id i
-                    , HE.onMouseDown \event -> do
-                        liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
-                        -- HK.put bufferFocus_id i
-                        void $ submitBuffer unit
-                    ]
-                    [force lazy_editHtml]
-              ]
+              , if is_string then [] else pure $
+                HH.div
+                  [ classNames ["buffer-results"] ] $
+                  flip Array.mapWithIndex edits \i (lazy_editHtml /\ _edit) -> 
+                    HH.div 
+                      [ classNames $ ["buffer-result"] <> if i == normalBufferFocus then ["buffer-focus"] else []
+                      , HE.onMouseOver \event -> do
+                          liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
+                          HK.put bufferFocus_id i
+                      , HE.onMouseDown \event -> do
+                          liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
+                          -- HK.put bufferFocus_id i
+                          void $ submitBuffer unit
+                      ]
+                      [force lazy_editHtml]
+                ]
           ]
         ]
 
