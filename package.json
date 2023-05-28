@@ -18,6 +18,7 @@
   "scripts": {
     "postinstall": "spago install",
     "clean": "rm -rf node_modules output .spago *.lock .cache",
+    "clean-purscript": "rm -rf output .spago .psc-ide-port .psci_modules",
     "build": "npx spago build --purs-args \"--codegen=sourcemaps,js\"",
     "build-prod": "spago -x spago.production.dhall build --purs-args \"-o output-prod -g sourcemaps --json-errors\"",
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/index.js",

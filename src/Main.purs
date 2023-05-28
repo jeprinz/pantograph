@@ -12,7 +12,13 @@ import Effect.Console (log)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver as VDomDriver
 import Language.Pantograph.Generic.Grammar (SortLabel(..), defaultDerivTerm, (%|-*))
-import Language.Pantograph.Generic.Rendering as Rendering
+import Language.Pantograph.Generic.Rendering.Base as Rendering
+import Language.Pantograph.Generic.Rendering.Editor as Rendering
+
+
+--------------------------------------------------------------------------------
+-- SULC
+--------------------------------------------------------------------------------
 
 import Language.Pantograph.SULC.Grammar
 import Language.Pantograph.SULC.Rendering
@@ -31,6 +37,10 @@ main = HA.runHalogenAff do
     , editsAtHoleyDerivZipper
     , renderDerivTermKids'
     }
+
+-- --------------------------------------------------------------------------------
+-- -- ULC
+-- --------------------------------------------------------------------------------
 
 -- import Language.Pantograph.ULC.Grammar
 -- import Language.Pantograph.ULC.Rendering

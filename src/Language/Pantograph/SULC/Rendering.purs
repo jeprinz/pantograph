@@ -19,8 +19,8 @@ import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar as Grammar
-import Language.Pantograph.Generic.Rendering (defaultEditsAtHoleyDerivZipper)
-import Language.Pantograph.Generic.Rendering as Rendering
+import Language.Pantograph.Generic.Rendering.Base as Rendering
+import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Text.Pretty (pretty)
 
 type Query = Rendering.Query
@@ -62,4 +62,4 @@ nameElem str = HH.span [classNames ["name"]] [HH.text str]
 type Edit = Edit.Edit PreSortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
-editsAtHoleyDerivZipper = defaultEditsAtHoleyDerivZipper
+editsAtHoleyDerivZipper = Rendering.defaultEditsAtHoleyDerivZipper
