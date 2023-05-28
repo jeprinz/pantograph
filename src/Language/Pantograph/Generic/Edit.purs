@@ -56,16 +56,17 @@ defaultEditsAtDerivZipper topSort dz =
             -- Each kid of the tooth is a default deriv
             let tooth0 = freshen' rho $ Expr.Tooth (DerivLabel r con) defaultHypPath
 
-            -- In `isValidTooth`, we do only the necessary computation to check if
-            -- the tooth is valid to wrap around the cursor. In particular, we don't
-            -- yet apply the unifying substitutions to the while program.
+            -- In `isValidTooth`, we do only the necessary computation to check
+            -- if the tooth is valid to wrap around the cursor. In particular,
+            -- we don't yet apply the unifying substitutions to the while
+            -- program.
             let isValidTooth = do
-                  -- Unify sort of the tooth with the sort of the bottom of the path
-                  -- above the cursor
+                  -- Unify sort of the tooth with the sort of the bottom of the
+                  -- path above the cursor
                   _ /\ sigma1 <- unify (derivToothSort tooth0) (derivPathSort topSort (Expr.zipperPath dz))
                   let tooth1 = mapDerivLabelSort (Expr.subMetaExprPartially sigma1) <$> tooth0
-                  -- Unify sort of the tooth interior with the sort of the expression
-                  -- at the cursor
+                  -- Unify sort of the tooth interior with the sort of the
+                  -- expression at the cursor
                   _ /\ sigma2 <- unify (derivToothInteriorSort tooth1) (derivTermSort (Expr.zipperExpr dz))
                   let tooth2 = mapDerivLabelSort (Expr.subMetaExprPartially sigma2) <$> tooth1
 
@@ -73,8 +74,9 @@ defaultEditsAtDerivZipper topSort dz =
 
             -- In `newCursor`, we do the rest of the computations involved in
             -- computing the new cursor, in particular inserting the tooth and
-            -- applying the unifying substitutions to the whole program. It's `Lazy`
-            -- so that we only invoke this when actually _doing_ the action.
+            -- applying the unifying substitutions to the whole program. It's
+            -- `Lazy` so that we only invoke this when actually _doing_ the
+            -- action.
             let newCursor sigma tooth = defer \_ -> do
                   let path = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperPath dz
                   let expr = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperExpr dz
@@ -103,7 +105,8 @@ defaultEditsAtHoleInterior path sort =
             -- Each kid is a hole deriv
             Expr.Expr (DerivLabel r con) defaultHyps
       
-      -- In `isValidFill`, only do computation necessary to check if fill is valid
+      -- In `isValidFill`, only do computation necessary to check if fill is
+      -- valid
       let isValidFill = do
             -- Unify sort of the fill with the sort of the hole
             _ /\ sigma <- unify (derivTermSort fill0) sort
@@ -111,9 +114,9 @@ defaultEditsAtHoleInterior path sort =
 
             pure (sigma /\ fill1)
 
-      -- In `newCursor`, we are lazily doing the rest of the comptuations necessary
-      -- to compute the new cursor, so that we only do this when we are actually
-      -- applying the action.
+      -- In `newCursor`, we are lazily doing the rest of the comptuations
+      -- necessary to compute the new cursor, so that we only do this when we
+      -- are actually applying the action.
       let newCursor sigma fill = defer \_ -> do
             let path' = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> path
             let expr' = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> fill
