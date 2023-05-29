@@ -34,6 +34,15 @@ type EditorSpec l r =
   { hdzipper :: HoleyDerivZipper l r
   , topSort :: Sort l
   , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
+  
+  -- -- the output terms are valid (already checked via unification when generated)
+  -- editsAtHoleInterior :: Sort l -> Array (String /\ Sub l /\ DerivTerm l r)
+  
+  -- -- corresponds to a change where the path is inserted and the topChange is
+  -- -- inserted as a boundary at the top, and likewise for botChange, and them
+  -- -- smallstep figured out the final result
+  -- editsAtCursor :: Sort l -> Array {label :: String, topChange :: Change l r, path :: Path, botChange :: Change}
+  
   , renderDerivTermKids' ::
       (r /\ Sort l /\ Array (DerivTerm l r)) ->
       Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff) -> 
