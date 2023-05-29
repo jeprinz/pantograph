@@ -123,6 +123,11 @@ step t@(Expr.Expr l kids) rules =
          pure $ Expr.Expr l (Array.fromFoldable kids')
      Just t' -> Just t'
 
+stepRepeatedly :: forall l r. SSTerm l r -> List (StepRule l r) -> SSTerm l r
+stepRepeatedly t rules = case step t rules of
+    Nothing -> t
+    Just t' -> stepRepeatedly t rules
+
 
 -------------- Default rules --------------------------------------------
 --type Language l r = TotalMap r (Rule l)
