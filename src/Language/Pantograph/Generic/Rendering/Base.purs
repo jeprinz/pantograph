@@ -36,6 +36,7 @@ type EditorSpec l r =
   , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   , renderDerivTermKids' ::
       (r /\ Sort l /\ Array (DerivTerm l r)) ->
+      -- TODO: To deal with newlines, replace "Array HTML -> ..." with "Array (Maybe Int -> HTML) -> ...". Nothing = same line, Just n = newline with n (additional, relative) tabs
       Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff) -> 
       Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff)
     -- TODO: factor out this type, and add: Grammar.Sorts, Grammar.Derivations, Grammar.Languaage, something for smallstep
