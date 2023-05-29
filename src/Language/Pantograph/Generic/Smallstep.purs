@@ -13,11 +13,13 @@ import Data.Expr ((%), (%<))
 import Data.Expr as Expr
 import Data.List (List(..), (:))
 import Data.List as List
-import Data.Set (Set)
 import Data.List.Rev as Rev
 import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
+import Data.Set (Set)
+import Data.TotalMap (TotalMap)
+import Data.TotalMap as TotalMap
 import Data.TotalMap as TotalMap
 import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
@@ -31,8 +33,6 @@ import Text.Pretty (pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust')
 import Utility ((<$$>))
-import Data.TotalMap (TotalMap)
-import Data.TotalMap as TotalMap
 
 data Direction = Up | Down -- TODO:
 
@@ -50,9 +50,19 @@ addToothToTerm (Expr.Tooth l (ZipList.Path {left, right})) t =
      [t] <>
      Array.fromFoldable (map (map Inject) right)
 
+-- !TODO use Expr.Zipper
 zipperToTerm :: forall l r. Expr.Path Dir.Up (Grammar.DerivLabel l r) -> Grammar.DerivTerm l r -> SSTerm l r
 zipperToTerm (Expr.Path Nil) exp = Expr.Expr Cursor [map Inject exp]
 zipperToTerm (Expr.Path (th : path)) exp = addToothToTerm th (zipperToTerm (Expr.Path path) exp)
+
+setupSSTerm :: forall l r. 
+    Grammar.DerivPath Dir.Up l r -> -- top path
+    Grammar.SortChange l -> -- change that goes between top path and inserted path 
+    Grammar.DerivPath Dir.Up l r -> -- inserted path 
+    Grammar.SortChange l -> -- change the goes between inserted path and bot path
+    Grammar.DerivTerm l r -> -- bot path
+    SSTerm l r
+setupSSTerm = hole "setupSSTerm"
 
 assertJustExpr :: forall l r. SSTerm l r -> Grammar.DerivTerm l r
 assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
@@ -115,6 +125,7 @@ stepSomebody (t : ts) rules = case step t rules of
  Just t' -> Just (t' : ts)
  Nothing -> (:) <$> pure t <*> stepSomebody ts rules
 
+-- when outputs `Nothing`, then done.
 step :: forall l r. SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
 step t@(Expr.Expr l kids) rules =
  case doAnyApply t rules of
