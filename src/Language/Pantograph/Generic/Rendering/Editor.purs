@@ -71,17 +71,17 @@ editorComponent = HK.component \tokens input -> HK.do
   -- highlight path
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
 
-  let 
-    locals :: EditorLocals l r
-    locals = 
-        { input
-        , initState
-        , currentState
-        , state_id
-        , facade_ref
-        , clipboard_ref
-        , maybeHighlightPath_ref
-        }
+  -- let 
+  --   locals :: EditorLocals l r
+  --   locals = 
+  --       { input
+  --       , initState
+  --       , currentState
+  --       , state_id
+  --       , facade_ref
+  --       , clipboard_ref
+  --       , maybeHighlightPath_ref
+  --       }
 
   let
     getElementIdByHoleyDerivPath :: HoleyDerivPath Up l r -> HK.HookM Aff String
@@ -273,29 +273,10 @@ editorComponent = HK.component \tokens input -> HK.do
               elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
               HK.tell tokens.slotToken bufferSlot elemId $ MoveBufferQuery dir
           else pure unit
-        -- !TODO no, actually this is all handled in buffer mode
-        -- ------------------------------------------------------------------------
-        -- -- CursorState where mode = StringCursorMode
-        -- ------------------------------------------------------------------------
-        -- CursorState cursor@{mode: StringCursorMode str} -> do
-        --   if isBufferKey key then do
-        --     -- exit StringCursorMode
-        --     Debug.traceM "exiting StringCursorMode"
-        --     liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-        --     setState $ CursorState cursor 
-        --       { mode = NavigationCursorMode
-        --       , hdzipper = InjectHoleyDerivZipper (Expr.Zipper (hdzipperDerivPath cursor.hdzipper) (DerivString str % []))
-        --       }
-        --   -- !TODO dont do this here; actually do this in 
-        --   -- else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
-        --   --   setFacade $ CursorState cursor {mode = StringCursorMode (str <> key)}
-        --   --   pure unit
-        --   else
-        --     pure unit
         ------------------------------------------------------------------------
         -- CursorState where mode = NavigationCursorMode
         ------------------------------------------------------------------------
-        CursorState cursor -> do
+        CursorState cursor@{mode: NavigationCursorMode} -> do
           let path = hdzipperDerivPath cursor.hdzipper
           let dterm = hdzipperDerivTerm cursor.hdzipper
           -- copy
@@ -342,6 +323,10 @@ editorComponent = HK.component \tokens input -> HK.do
             case defaultDerivTerm (derivTermSort dterm) of
               Nothing -> pure unit
               Just dterm' ->  setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+          else if key == "Escape" then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            -- CursorState --> TopState
+            setFacade $ TopState {dterm: Expr.unzipper (hdzipperZipper cursor.hdzipper)}
           else if isJust (readMoveDir key) then
             assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -393,16 +378,12 @@ editorComponent = HK.component \tokens input -> HK.do
         ------------------------------------------------------------------------
         -- TopState
         ------------------------------------------------------------------------
-        TopState _ -> do
+        TopState top -> do
           if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            -- !TODO top --> cursor
-            -- !TODO activate buffer
-            pure unit
+            setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
           else if isJust (readMoveDir key) then
-            assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
-              liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-              (if shiftKey then moveSelect else moveCursor) dir
+            setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
           else pure unit
 
     handleBufferOutput = case _ of
