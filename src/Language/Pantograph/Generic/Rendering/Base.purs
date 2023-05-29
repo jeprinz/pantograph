@@ -36,12 +36,15 @@ type EditorSpec l r =
   , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   
   -- -- the output terms are valid (already checked via unification when generated)
-  -- editsAtHoleInterior :: Sort l -> Array (String /\ Sub l /\ DerivTerm l r)
+  -- !TODO editsAtHoleInterior :: Sort l -> Array (String /\ Sub l /\ DerivTerm l r)
   
   -- -- corresponds to a change where the path is inserted and the topChange is
   -- -- inserted as a boundary at the top, and likewise for botChange, and them
   -- -- smallstep figured out the final result
-  -- editsAtCursor :: Sort l -> Array {label :: String, topChange :: Change l r, path :: Path, botChange :: Change}
+  -- !TODO editsAtCursor :: Sort l -> Array {label :: String, topChange :: Change l r, path :: Path, botChange :: Change}
+
+  -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
+  -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
   , renderDerivTermKids' ::
       (r /\ Sort l /\ Array (DerivTerm l r)) ->
