@@ -24,7 +24,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities (classNames, fromInputEventToTargetValue)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..))
+import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), derivTermSort)
 import Language.Pantograph.Generic.Rendering.Elements (placeholderCursorNodeElem)
 import Type.Direction (_down, _up)
 import Web.Event.Event as Event
@@ -49,11 +49,17 @@ bufferComponent = HK.component \tokens input -> HK.do
   edits <- HK.captures {hdzipper: input.hdzipper, bufferString} $ flip HK.useMemo \_ ->
     if is_string then do
       let dterm = DerivString bufferString % []
+      let sort = derivTermSort dterm
       -- let preview = DerivTermEditPreview dterm
       [ defer (\_ -> FillEditPreview (HH.text bufferString)) /\
         { label: bufferString
-        , action: SetCursorAction (defer \_ -> 
-            Expr.Zipper (hdzipperDerivPath input.hdzipper) (DerivString bufferString % []))
+        -- , action: SetCursorAction (defer \_ -> 
+        --     Expr.Zipper (hdzipperDerivPath input.hdzipper) (DerivString bufferString % []))
+        , action: defer \_ -> ReplaceAction
+            -- !TODO compute actual change
+            { topChange: Expr.injectExprChange sort
+            , dterm
+            }
         } ]
     else
       input.edits #
@@ -75,7 +81,7 @@ bufferComponent = HK.component \tokens input -> HK.do
             Just (_ /\ edit) -> do
               HK.put isEnabled_id false -- disable query
               HK.put bufferFocus_id 0 -- reset bufferFocus
-              HK.raise tokens.outputToken $ ActionOutput edit.action -- output edit action
+              HK.raise tokens.outputToken $ ActionOutput (force edit.action) -- output edit action
               pure true
         else
           pure false
@@ -169,6 +175,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                       (case force lazy_editPreviewHtml of
                         FillEditPreview html -> [html]
                         WrapEditPreview {before, after} -> before <> [placeholderCursorNodeElem] <> after
+                        ReplaceEditPreview html -> [html]
                       )
                 ]
           ]

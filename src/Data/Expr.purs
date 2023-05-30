@@ -494,6 +494,9 @@ minusChange th ch = Minus th % [ch]
 injectChange :: forall l. l -> Array (Change l) -> Change l
 injectChange l chs = Inject l % chs
 
+injectExprChange :: forall l. Expr l -> Change l
+injectExprChange (l % kids) = Inject l % (injectExprChange <$> kids)
+
 replaceChange :: forall l. Expr l -> Expr l -> Change l
 replaceChange e1 e2 = Replace e1 e2 % []
 

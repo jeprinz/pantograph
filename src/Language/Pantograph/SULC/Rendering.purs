@@ -36,7 +36,7 @@ prerenderDerivTerm {rule, sort, kids} = do
     Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> {classNames: ["var", "suc"], subSymElems: [pure [nameElem str]]}
     -- term
     Ref /\ _ /\ _ -> {classNames: ["term", "ref"], subSymElems: [pure [refElem], Left 0]}
-    Lam /\ _ /\ _ -> {classNames: ["term", "lam"], subSymElems: [pure [Rendering.lparenElem], Left 0, pure [mapstoElem], Left 1, pure [Rendering.rparenElem]]}
+    Lam /\ _ /\ _ -> {classNames: ["term", "lam"], subSymElems: [pure [Rendering.lparenElem, lambdaElem], Left 0, pure [mapstoElem], Left 1, pure [Rendering.rparenElem]]}
     App /\ _ /\ _ -> {classNames: ["term", "app"], subSymElems: [pure [Rendering.lparenElem], Left 0, pure [Rendering.spaceElem], Left 1, pure [Rendering.rparenElem]]}
     -- hole 
     TermHole /\ _ /\ _ -> bug "[ULC.Grammar.prerenderDerivTerm] hole should be handled generically"

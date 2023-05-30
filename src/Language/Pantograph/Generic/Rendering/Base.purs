@@ -1,9 +1,11 @@
 module Language.Pantograph.Generic.Rendering.Base where
 
+import Language.Pantograph.Generic.Edit
+import Language.Pantograph.Generic.Grammar
 import Prelude
 import Type.Direction
 
-import Bug.Assertion (assert, just)
+import Bug.Assertion (Assertion(..), assert, just)
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Either (Either)
@@ -21,13 +23,11 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
 import Data.Zippable (class Zippable)
 import Data.Zippable as Zippable
-import Effect.Aff (Aff)
+import Effect.Aff (Aff, throwError)
 import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML (ComponentHTML) as HH
 import Halogen.Hooks as HK
-import Language.Pantograph.Generic.Edit
-import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Unification (Sub)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
@@ -38,6 +38,7 @@ type EditorHTML l r = HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Que
 data EditPreviewHTML l r
   = FillEditPreview (EditorHTML l r)
   | WrapEditPreview {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
+  | ReplaceEditPreview (EditorHTML l r)
 
 type DerivTermPrerenderer l r = 
   { rule :: r
@@ -137,6 +138,15 @@ type Cursor l r =
 data CursorMode 
   = NavigationCursorMode
   | BufferCursorMode
+
+cursorState :: forall l r. String -> State l r -> Assertion (Cursor l r)
+cursorState source st = Assertion
+  { name: "cursorState"
+  , source
+  , result: case st of
+      CursorState cursor -> pure cursor
+      _ -> throwError "expected to be cursor state"
+  }
 
 derive instance Generic CursorMode _
 instance Show CursorMode where show x = genericShow x

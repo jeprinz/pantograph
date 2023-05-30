@@ -1,5 +1,8 @@
 module Language.Pantograph.Generic.Edit where
 
+import Language.Pantograph.Generic.Grammar
+import Language.Pantograph.Generic.Smallstep
+import Language.Pantograph.Generic.Unification
 import Prelude
 
 import Control.Plus (empty)
@@ -13,9 +16,6 @@ import Data.Maybe (Maybe(..))
 import Data.TotalMap as TotalMap
 import Data.Traversable (sequence)
 import Data.Tuple.Nested ((/\))
-import Language.Pantograph.Generic.Grammar
-import Language.Pantograph.Generic.Smallstep
-import Language.Pantograph.Generic.Unification
 import Text.Pretty (pretty)
 import Type.Direction (Up)
 
@@ -25,21 +25,24 @@ import Type.Direction (Up)
 
 type Edit l r =
   { label :: String
-  , action :: Action l r
+  , action :: Lazy (Action l r)
   }
 
 data Action l r
-  = SetCursorAction (Lazy (DerivZipper l r))
-  | SetSSTermAction (Lazy (SSTerm l r))
-  | Fill {sub :: Sub l, dterm :: DerivTerm l r}
-  | Wrap {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
+  -- = SetCursorAction (Lazy (DerivZipper l r))
+  -- | SetSSTermAction (Lazy (SSTerm l r))
+  = FillAction {sub :: Sub (SortLabel l), dterm :: DerivTerm l r}
+  | ReplaceAction {topChange :: SortChange l, dterm :: DerivTerm l r}
+  | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
 
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
-defaultEditsAtDerivZipper topSort dz = 
+defaultEditsAtDerivZipper topSort dz =
+  let up = Expr.zipperPath dz in
+  let dterm = Expr.zipperExpr dz in
   Array.concat $
-  (case isHoleDerivTerm (Expr.zipperExpr dz) of
+  (case isHoleDerivTerm dterm of
     Nothing -> []
-    Just _ -> digEdit dz)
+    Just _ -> []) -- !TODO digEdit dz)
   Array.:
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
     let Rule mvars hyps con = TotalMap.lookup r language
@@ -72,25 +75,32 @@ defaultEditsAtDerivZipper topSort dz =
 
                   pure (composeSub sigma2 sigma1 /\ tooth2)
 
-            -- In `newCursor`, we do the rest of the computations involved in
-            -- computing the new cursor, in particular inserting the tooth and
-            -- applying the unifying substitutions to the whole program. It's
-            -- `Lazy` so that we only invoke this when actually _doing_ the
-            -- action.
-            let newCursor sigma tooth = defer \_ -> do
-                  let path = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperPath dz
-                  let expr = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperExpr dz
-                  Expr.Zipper (Expr.stepPath tooth path) expr
+            -- !TODO OLD
+            -- -- In `newCursor`, we do the rest of the computations involved in
+            -- -- computing the new cursor, in particular inserting the tooth and
+            -- -- applying the unifying substitutions to the whole program. It's
+            -- -- `Lazy` so that we only invoke this when actually _doing_ the
+            -- -- action.
+            -- let newCursor sigma tooth = defer \_ -> do
+            --       let path = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperPath dz
+            --       let expr = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperExpr dz
+            --       Expr.Zipper (Expr.stepPath tooth path) expr
 
             case isValidTooth of
               Nothing -> []
-              Just (sigma /\ tooth) -> pure
+              Just (_sigma /\ tooth) -> pure
                 { label: pretty r 
-                , action: SetCursorAction (newCursor sigma tooth)
+                , action: defer \_ -> WrapAction
+                    -- - !TODO compute actual changes at the top and bottom
+                    -- - !TODO we ignore `sigma` here since the substitution
+                    --   will be applied just by smallstep propogation
+                    { topChange: Expr.injectExprChange (derivToothSort tooth)
+                    , dpath: Expr.Path (pure tooth)
+                    , botChange: Expr.injectExprChange (derivToothInteriorSort tooth) }
                 }
 
 defaultEditsAtHoleInterior :: forall l r. IsRuleLabel l r => DerivPath Up l r -> Sort l -> Array (Edit l r)
-defaultEditsAtHoleInterior path sort =
+defaultEditsAtHoleInterior up sort =
   -- For each rule, there is an edit that fills the hole with that constructor,
   -- where all the kids are hole derivs
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
@@ -113,27 +123,20 @@ defaultEditsAtHoleInterior path sort =
 
             pure (sigma /\ fill1)
 
-      -- In `newCursor`, we are lazily doing the rest of the comptuations
-      -- necessary to compute the new cursor, so that we only do this when we
-      -- are actually applying the action.
-      let newCursor sigma fill = defer \_ -> do
-            let path' = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> path
-            let expr' = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> fill
-            Expr.Zipper path' expr'
-
       case isValidFill of
         Nothing -> []
         Just (sigma /\ fill) -> pure
           { label: pretty r
-          , action: SetCursorAction (newCursor sigma fill)
+          , action: defer \_ -> FillAction {sub: sigma, dterm: fill}
           }
 
-digEdit :: forall l r. IsRuleLabel l r => DerivZipper l r -> Array (Edit l r)
-digEdit dz = do
-  case defaultDerivTerm (derivTermSort (Expr.zipperExpr dz)) of
-    Nothing -> empty
-    Just dterm -> pure
-      { label: "dig"
-      , action: SetCursorAction $ defer \_ ->
-          Expr.Zipper (Expr.zipperPath dz) dterm
-      }
+-- digEdit :: forall l r. IsRuleLabel l r => DerivZipper l r -> Array (Edit l r)
+-- digEdit dz = do
+--   case defaultDerivTerm ((derivTermSort (Expr.zipperExpr dz)) :: Sort l) of
+--     Nothing -> empty
+--     Just dterm -> pure
+--       { label: "dig"
+--       -- , action: SetCursorAction $ defer \_ ->
+--       --     Expr.Zipper (Expr.zipperPath dz) dterm
+--       , action: defer \_ -> (DigAction :: Action l r)
+--       }

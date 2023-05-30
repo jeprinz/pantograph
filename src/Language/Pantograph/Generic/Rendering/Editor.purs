@@ -10,6 +10,7 @@ import Prelude
 import Bug (bug)
 import Bug.Assertion (assert, just)
 import Data.Array as Array
+import Data.Bifunctor (bimap, lmap)
 import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), either)
 import Data.Either.Nested (type (\/))
@@ -187,14 +188,25 @@ editorComponent = HK.component \tokens input -> HK.do
     getState :: HK.HookM Aff (State l r)
     getState = HK.get state_id
 
+    getCursorState :: String -> HK.HookM Aff (Cursor l r)
+    getCursorState source = do
+      st <- getState
+      assert (cursorState source st) pure
+
     handleAction = case _ of
-      SetCursorAction lazy_dzipper -> do
-        -- compute new dzipper
-        let dzipper = force lazy_dzipper
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
-      SetSSTermAction lazy_ssterm -> 
-        hole "handleAction SetSSTermAction"
-      _ -> hole "TODO: handleAction"
+      -- !TODO use topChange, botChange
+      WrapAction {topChange, dpath, botChange} -> getCursorState "handleAction" >>= \cursor -> do
+        let up = hdzipperDerivPath cursor.hdzipper
+        let dterm = hdzipperDerivTerm cursor.hdzipper
+        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (dpath <> up) dterm)))
+      -- !TODO use sub
+      FillAction {sub, dterm} -> getCursorState "handleAction" >>= \cursor -> do
+        let up = hdzipperDerivPath cursor.hdzipper
+        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
+      -- !TODO use topChange
+      ReplaceAction {topChange, dterm} -> getCursorState "handleAction" >>= \cursor -> do
+        let up = hdzipperDerivPath cursor.hdzipper
+        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
@@ -412,10 +424,9 @@ editorComponent = HK.component \tokens input -> HK.do
           ]
         }
       DerivLabel rule sort % kids -> do
-        -- input.prerenderDerivTerm {rule, sort, kids, kidElems}
-        let {classNames, subElems} = hole "TODO" -- input.prerenderDerivTerm {rule, sort, kids}
+        let {classNames, subSymElems} = input.prerenderDerivTerm {rule, sort, kids}
         { classNames
-        , subElems: Array.concat $ subElems <#> case _ of
+        , subElems: Array.concat $ subSymElems <#> case _ of
             Left kidIx -> assert (just "prerenderDerivZipper" (Array.index kidElems kidIx)) \kidElem -> [kidElem]
             Right elems -> elems
         }
@@ -605,27 +616,34 @@ editorComponent = HK.component \tokens input -> HK.do
       let kidElems = kidDZippers <#> \dzipper -> defer \_ -> renderPhantomDerivTerm dzipper
 
       let renderSubElem = case _ of
-            Left i -> [force $ fromJust' "renderPreviewDerivTooth" (kidElems Array.!! i)]
+            Left i -> [force $ fromJust' "renderPreviewDerivTooth" $ kidElems Array.!! i]
             Right elems -> elems
 
       let {classNames, subSymElems} = input.prerenderDerivTerm {rule, sort, kids: Array.fromFoldable $ ZipList.unpathAround dterm kidsPath}
-      let {before, after} = Array.splitAt (fromJust' "renderPreviewDerivTooth" $ Array.findIndex (hole "TODO") subSymElems) subSymElems
+      let toothInteriorKidIx = ZipList.leftLength kidsPath
+      let isToothInterior = case _ of
+            Left i -> i == toothInteriorKidIx
+            _ -> false
+      let toothInteriorSymElemIx = fromJust' "renderPreviewDerivTooth" $ Array.findIndex isToothInterior subSymElems
+      let before = Array.take toothInteriorSymElemIx subSymElems
+      let after = Array.drop (toothInteriorSymElemIx + 1) subSymElems
+            
       { before: Array.concat $ before <#> renderSubElem
       , after: Array.concat $ after <#> renderSubElem
       }
 
     renderPreviewDerivPath :: DerivPath Up l r -> DerivPath Up l r -> DerivTerm l r -> {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
-    renderPreviewDerivPath up (Expr.Path Nil) dterm = {before: [], after: []}
+    renderPreviewDerivPath _up (Expr.Path Nil) _dterm = {before: [], after: []}
     renderPreviewDerivPath up (Expr.Path (th : ths)) dterm = do
       let next = renderPreviewDerivPath up (Expr.Path ths) (Expr.unTooth th dterm)
       let {before, after} = renderPreviewDerivTooth up th dterm
       {before: next.before <> before, after: after <> next.after}
     
     renderEditPreview :: DerivZipper l r -> Edit l r -> Lazy (EditPreviewHTML l r)
-    
-    renderEditPreview dzipper {action: Fill {dterm}} = defer \_ -> FillEditPreview $ renderPhantomDerivTerm (Expr.Zipper (Expr.zipperPath dzipper) dterm) 
-    renderEditPreview dzipper {action: Wrap {dpath}} = defer \_ -> WrapEditPreview $ renderPreviewDerivPath (Expr.zipperPath dzipper) dpath (Expr.zipperExpr dzipper)
-    renderEditPreview dzipper {action: _} = hole "TODO: renderEditPreview"
+    renderEditPreview dzipper edit = edit.action <#> case _ of
+      FillAction {dterm} -> FillEditPreview $ renderPhantomDerivTerm (Expr.Zipper (Expr.zipperPath dzipper) dterm) 
+      ReplaceAction {dterm} -> ReplaceEditPreview $ renderPhantomDerivTerm (Expr.Zipper (Expr.zipperPath dzipper) dterm) 
+      WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath (Expr.zipperPath dzipper) dpath (Expr.zipperExpr dzipper)
 
   HK.useLifecycleEffect do
     -- initialize
