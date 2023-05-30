@@ -19,7 +19,7 @@ import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar as Grammar
-import Language.Pantograph.Generic.Rendering.Base (DerivTermRenderer)
+import Language.Pantograph.Generic.Rendering.Base (DerivTermPrerenderer)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Text.Pretty (pretty)
@@ -27,7 +27,7 @@ import Text.Pretty (pretty)
 type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
 
-prerenderDerivTerm :: DerivTermRenderer PreSortLabel RuleLabel
+prerenderDerivTerm :: DerivTermPrerenderer PreSortLabel RuleLabel
 prerenderDerivTerm {rule, sort, kids, kidElems} = do
   let kids_kidElems = kids `Array.zip` kidElems
   assert (Expr.wellformedExprF "ULC prerenderDerivTerm" (show <<< fst) (Grammar.DerivLabel rule sort /\ kids_kidElems)) \_ -> case rule /\ sort /\ kids_kidElems of

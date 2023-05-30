@@ -32,7 +32,7 @@ import Type.Proxy (Proxy(..))
 
 type EditorHTML l r = HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff
 
-type DerivTermRenderer l r = 
+type DerivTermPrerenderer l r = 
   { rule :: r
   , sort :: Sort l
   , kids :: Array (DerivTerm l r)
@@ -58,7 +58,7 @@ type EditorSpec l r =
   -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
-  , prerenderDerivTerm :: DerivTermRenderer l r
+  , prerenderDerivTerm :: DerivTermPrerenderer l r
   }
 
 -- Stuff that's defined inside of the editor component
