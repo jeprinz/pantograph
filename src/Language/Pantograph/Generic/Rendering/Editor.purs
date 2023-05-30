@@ -1,5 +1,10 @@
 module Language.Pantograph.Generic.Rendering.Editor where
 
+import Language.Pantograph.Generic.Edit
+import Language.Pantograph.Generic.Grammar
+import Language.Pantograph.Generic.Rendering.Base
+import Language.Pantograph.Generic.Rendering.Buffer
+import Language.Pantograph.Generic.Rendering.Elements
 import Prelude
 
 import Bug (bug)
@@ -30,11 +35,6 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
-import Language.Pantograph.Generic.Edit
-import Language.Pantograph.Generic.Grammar
-import Language.Pantograph.Generic.Rendering.Base
-import Language.Pantograph.Generic.Rendering.Buffer
-import Language.Pantograph.Generic.Rendering.Elements
 import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
 import Log (logM)
 import Text.Pretty (pretty)
@@ -405,8 +405,14 @@ editorComponent = HK.component \tokens input -> HK.do
               ]
           ]
         }
-      DerivLabel rule sort % kids -> 
-        input.prerenderDerivTerm {rule, sort, kids, kidElems}
+      DerivLabel rule sort % kids -> do
+        -- input.prerenderDerivTerm {rule, sort, kids, kidElems}
+        let {classNames, subElems} = input.prerenderDerivTerm {rule, sort, kids}
+        { classNames
+        , subElems: Array.concat $ subElems <#> case _ of
+            Left kidIx -> assert (just "prerenderDerivZipper" (Array.index kidElems kidIx)) \kidElem -> [kidElem]
+            Right elems -> elems
+        }
       DerivString str % [] -> 
         { classNames: ["string"]
         , subElems: [ if String.null str 

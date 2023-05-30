@@ -1,16 +1,19 @@
 module Language.Pantograph.Generic.Rendering.Base where
 
 import Prelude
+import Type.Direction
 
 import Bug.Assertion (assert, just)
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Either (Either)
+import Data.Either.Nested (type (\/))
 import Data.Expr (class ReflectPathDir)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (Lazy)
 import Data.List.Zip as ZipList
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Data.String as String
@@ -27,7 +30,6 @@ import Language.Pantograph.Generic.Edit (Action, Edit, defaultEditsAtDerivZipper
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivPath, DerivTerm, DerivZipper, DerivZipperp, Sort, defaultDerivTerm, isHoleDerivTerm)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
-import Type.Direction
 import Type.Proxy (Proxy(..))
 
 type EditorHTML l r = HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff
@@ -37,10 +39,13 @@ type DerivTermPrerenderer l r =
   , sort :: Sort l
   , kids :: Array (DerivTerm l r)
     -- TODO: To deal with newlines, replace "Array HTML -> ..." with "Array (Maybe Int -> HTML) -> ...". Nothing = same line, Just n = newline with n (additional, relative) tabs
-  , kidElems :: Array (EditorHTML l r) }
+  -- , kidElems :: Array (EditorHTML l r) }
+  }
   -> 
   { classNames :: Array String
-  , subElems :: Array (EditorHTML l r) }
+  -- Each item of the array is either a reference to a rendered kid (via its
+  -- index in `kids`) or an array of any html
+  , subElems :: Array (Int \/ Array (EditorHTML l r)) }
 
 type EditorSpec l r =
   { hdzipper :: HoleyDerivZipper l r
