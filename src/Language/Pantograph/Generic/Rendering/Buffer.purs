@@ -1,7 +1,9 @@
 module Language.Pantograph.Generic.Rendering.Buffer where
 
-import Language.Pantograph.Generic.Rendering.Base (BufferInput, CursorMode(..), HoleyDerivZipper(..), Output(..), Query(..), State(..), cursorFromHoleyDerivZipper, hdzipperDerivPath)
+import Language.Pantograph.Generic.Edit
+import Language.Pantograph.Generic.Rendering.Base
 import Prelude
+
 import Bug (bug)
 import Data.Array as Array
 import Data.Expr ((%))
@@ -22,15 +24,15 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities (classNames, fromInputEventToTargetValue)
-import Language.Pantograph.Generic.Edit (Action(..), EditPreview(..))
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..))
+import Language.Pantograph.Generic.Rendering.Elements (placeholderCursorNodeElem)
 import Type.Direction (_down, _up)
 import Web.Event.Event as Event
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.MouseEvent as MouseEvent
 
-bufferComponent :: forall l r. IsRuleLabel l r => H.Component (Query) (BufferInput l r) (Output l r) Aff
+bufferComponent :: forall l r. IsRuleLabel l r => H.Component Query (BufferInput l r) (Output l r) Aff
 bufferComponent = HK.component \tokens input -> HK.do
   isEnabled /\ isEnabled_id <- HK.useState false
   bufferString /\ bufferString_id <- HK.useState ""
@@ -47,12 +49,11 @@ bufferComponent = HK.component \tokens input -> HK.do
   edits <- HK.captures {hdzipper: input.hdzipper, bufferString} $ flip HK.useMemo \_ ->
     if is_string then do
       let dterm = DerivString bufferString % []
-      let preview = DerivTermEditPreview dterm
-      [ defer (\_ -> HH.text bufferString) /\
+      -- let preview = DerivTermEditPreview dterm
+      [ defer (\_ -> FillEditPreview (HH.text bufferString)) /\
         { label: bufferString
         , action: SetCursorAction (defer \_ -> 
             Expr.Zipper (hdzipperDerivPath input.hdzipper) (DerivString bufferString % []))
-        , preview
         } ]
     else
       input.edits #
@@ -154,7 +155,7 @@ bufferComponent = HK.component \tokens input -> HK.do
               , if is_string then [] else pure $
                 HH.div
                   [ classNames ["buffer-results"] ] $
-                  flip Array.mapWithIndex edits \i (lazy_editHtml /\ _edit) -> 
+                  flip Array.mapWithIndex edits \i (lazy_editPreviewHtml /\ _edit) -> 
                     HH.div 
                       [ classNames $ ["buffer-result"] <> if i == normalBufferFocus then ["buffer-focus"] else []
                       , HE.onMouseOver \event -> do
@@ -165,7 +166,10 @@ bufferComponent = HK.component \tokens input -> HK.do
                           -- HK.put bufferFocus_id i
                           void $ submitBuffer unit
                       ]
-                      [force lazy_editHtml]
+                      (case force lazy_editPreviewHtml of
+                        FillEditPreview html -> [html]
+                        WrapEditPreview {before, after} -> before <> [placeholderCursorNodeElem] <> after
+                      )
                 ]
           ]
         ]

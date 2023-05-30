@@ -5,6 +5,7 @@ import Data.Tuple.Nested
 import Prelude
 
 import Bug as Bug
+import Bug.Assertion (assert, just)
 import Data.Either (Either(..))
 import Data.List (List)
 import Data.List as List
@@ -35,8 +36,7 @@ fromJust (Just x) = x
 fromJust Nothing = Bug.bug "fromJust failed"
 
 fromJust' :: forall a . String -> Maybe a -> a
-fromJust' _ (Just x) = x
-fromJust' msg Nothing = Bug.bug $ "fromJust failed: " <> msg
+fromJust' source mb = assert (just source mb) identity
 
 fromRight :: forall a b. Either a b -> b
 fromRight (Right b) = b

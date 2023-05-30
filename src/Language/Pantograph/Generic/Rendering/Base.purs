@@ -26,13 +26,18 @@ import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML (ComponentHTML) as HH
 import Halogen.Hooks as HK
-import Language.Pantograph.Generic.Edit (Action, Edit, defaultEditsAtDerivZipper, defaultEditsAtHoleInterior)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivPath, DerivTerm, DerivZipper, DerivZipperp, Sort, defaultDerivTerm, isHoleDerivTerm)
+import Language.Pantograph.Generic.Edit
+import Language.Pantograph.Generic.Grammar
+import Language.Pantograph.Generic.Unification (Sub)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
 import Type.Proxy (Proxy(..))
 
-type EditorHTML l r = HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff
+type EditorHTML l r = HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query (Output l r) String) Aff
+
+data EditPreviewHTML l r
+  = FillEditPreview (EditorHTML l r)
+  | WrapEditPreview {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
 
 type DerivTermPrerenderer l r = 
   { rule :: r
@@ -45,7 +50,7 @@ type DerivTermPrerenderer l r =
   { classNames :: Array String
   -- Each item of the array is either a reference to a rendered kid (via its
   -- index in `kids`) or an array of any html
-  , subElems :: Array (Int \/ Array (EditorHTML l r)) }
+  , subSymElems :: Array (Int \/ Array (EditorHTML l r)) }
 
 type EditorSpec l r =
   { hdzipper :: HoleyDerivZipper l r
@@ -53,12 +58,12 @@ type EditorSpec l r =
   , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   
   -- -- the output terms are valid (already checked via unification when generated)
-  -- !TODO editsAtHoleInterior :: Sort l -> Array (String /\ Sub l /\ DerivTerm l r)
+  -- !TODO editsAtHoleInterior :: Sort l -> Array (HoleInteriorEdit l r)
   
   -- -- corresponds to a change where the path is inserted and the topChange is
   -- -- inserted as a boundary at the top, and likewise for botChange, and them
   -- -- smallstep figured out the final result
-  -- !TODO editsAtCursor :: Sort l -> Array {label :: String, topChange :: Change l r, path :: Path, botChange :: Change}
+  -- !TODO editsAtCursor :: Sort l -> Array (CursorEdit l r)
 
   -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
@@ -79,7 +84,7 @@ type EditorLocals l r =
 
 type BufferInput l r =
   { hdzipper :: HoleyDerivZipper l r
-  , edits :: Array (Lazy (EditorHTML l r) /\ Edit l r)
+  , edits :: Array (Lazy (EditPreviewHTML l r) /\ Edit l r)
   }
 
 bufferSlot = Proxy :: Proxy "buffer"

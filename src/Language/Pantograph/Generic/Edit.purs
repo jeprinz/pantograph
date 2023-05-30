@@ -13,9 +13,9 @@ import Data.Maybe (Maybe(..))
 import Data.TotalMap as TotalMap
 import Data.Traversable (sequence)
 import Data.Tuple.Nested ((/\))
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), DerivPath, DerivTerm, DerivTooth, DerivZipper, Rule(..), Sort, defaultDerivTerm, derivPathSort, derivTermSort, derivToothInteriorSort, derivToothSort, isHoleDerivTerm, language, mapDerivLabelSort)
-import Language.Pantograph.Generic.Smallstep (SSTerm)
-import Language.Pantograph.Generic.Unification (composeSub, freshen', genFreshener, unify)
+import Language.Pantograph.Generic.Grammar
+import Language.Pantograph.Generic.Smallstep
+import Language.Pantograph.Generic.Unification
 import Text.Pretty (pretty)
 import Type.Direction (Up)
 
@@ -25,17 +25,14 @@ import Type.Direction (Up)
 
 type Edit l r =
   { label :: String
-  , preview :: EditPreview l r
   , action :: Action l r
   }
-
-data EditPreview l r
-  = DerivTermEditPreview (DerivTerm l r)
-  | DerivToothEditPreview (DerivTooth l r)
 
 data Action l r
   = SetCursorAction (Lazy (DerivZipper l r))
   | SetSSTermAction (Lazy (SSTerm l r))
+  | Fill {sub :: Sub l, dterm :: DerivTerm l r}
+  | Wrap {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
 
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
 defaultEditsAtDerivZipper topSort dz = 
@@ -89,7 +86,6 @@ defaultEditsAtDerivZipper topSort dz =
               Nothing -> []
               Just (sigma /\ tooth) -> pure
                 { label: pretty r 
-                , preview: DerivToothEditPreview tooth
                 , action: SetCursorAction (newCursor sigma tooth)
                 }
 
@@ -129,7 +125,6 @@ defaultEditsAtHoleInterior path sort =
         Nothing -> []
         Just (sigma /\ fill) -> pure
           { label: pretty r
-          , preview: DerivTermEditPreview fill
           , action: SetCursorAction (newCursor sigma fill)
           }
 
@@ -139,7 +134,6 @@ digEdit dz = do
     Nothing -> empty
     Just dterm -> pure
       { label: "dig"
-      , preview: DerivTermEditPreview dterm
       , action: SetCursorAction $ defer \_ ->
           Expr.Zipper (Expr.zipperPath dz) dterm
       }

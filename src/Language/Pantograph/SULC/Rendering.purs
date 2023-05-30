@@ -32,12 +32,12 @@ prerenderDerivTerm :: DerivTermPrerenderer PreSortLabel RuleLabel
 prerenderDerivTerm {rule, sort, kids} = do
   assert (Expr.wellformedExprF "ULC prerenderDerivTerm" pretty (Grammar.DerivLabel rule sort /\ kids)) \_ -> case rule /\ sort /\ kids of
     -- var
-    Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> {classNames: ["var", "zero"], subElems: [pure [nameElem str]]}
-    Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> {classNames: ["var", "suc"], subElems: [pure [nameElem str]]}
+    Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> {classNames: ["var", "zero"], subSymElems: [pure [nameElem str]]}
+    Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> {classNames: ["var", "suc"], subSymElems: [pure [nameElem str]]}
     -- term
-    Ref /\ _ /\ _ -> {classNames: ["term", "ref"], subElems: [pure [refElem], Left 0]}
-    Lam /\ _ /\ _ -> {classNames: ["term", "lam"], subElems: [pure [Rendering.lparenElem], Left 0, pure [mapstoElem], Left 1, pure [Rendering.rparenElem]]}
-    App /\ _ /\ _ -> {classNames: ["term", "app"], subElems: [pure [Rendering.lparenElem], Left 0, pure [Rendering.spaceElem], Left 1, pure [Rendering.rparenElem]]}
+    Ref /\ _ /\ _ -> {classNames: ["term", "ref"], subSymElems: [pure [refElem], Left 0]}
+    Lam /\ _ /\ _ -> {classNames: ["term", "lam"], subSymElems: [pure [Rendering.lparenElem], Left 0, pure [mapstoElem], Left 1, pure [Rendering.rparenElem]]}
+    App /\ _ /\ _ -> {classNames: ["term", "app"], subSymElems: [pure [Rendering.lparenElem], Left 0, pure [Rendering.spaceElem], Left 1, pure [Rendering.rparenElem]]}
     -- hole 
     TermHole /\ _ /\ _ -> bug "[ULC.Grammar.prerenderDerivTerm] hole should be handled generically"
 
