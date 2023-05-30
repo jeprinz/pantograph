@@ -19,6 +19,7 @@ import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar as Grammar
+import Language.Pantograph.Generic.Rendering.Base (DerivTermRenderer)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Text.Pretty (pretty)
@@ -26,26 +27,19 @@ import Text.Pretty (pretty)
 type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
 
-renderDerivTermKids' ::
-  (RuleLabel /\ Sort /\ Array DerivTerm) ->
-  Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff) -> 
-  Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
-renderDerivTermKids' (r /\ sort /\ kids) kidElems = do
+prerenderDerivTerm :: DerivTermRenderer PreSortLabel RuleLabel
+prerenderDerivTerm {rule, sort, kids, kidElems} = do
   let kids_kidElems = kids `Array.zip` kidElems
-  assert (Expr.wellformedExprF "ULC renderDerivTermKids'" (show <<< fst) (Grammar.DerivLabel r sort /\ kids_kidElems)) \_ -> case r /\ sort /\ kids_kidElems of
+  assert (Expr.wellformedExprF "ULC prerenderDerivTerm" (show <<< fst) (Grammar.DerivLabel rule sort /\ kids_kidElems)) \_ -> case rule /\ sort /\ kids_kidElems of
     -- var
-    Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ [] -> ["var", "zero"] /\ 
-      [nameElem str]
-    Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ [_] -> ["var", "suc"] /\ 
-      [nameElem str]
+    Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ [] -> {classNames: ["var", "zero"], subElems: [nameElem str]}
+    Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ [_] -> {classNames: ["var", "suc"], subElems: [nameElem str]}
     -- term
-    Ref /\ _ /\ [_ /\ varElem] -> ["term", "ref"] /\ [refElem, varElem]
-    Lam /\ _ /\ [_ /\ varElem, _ /\ bodElem] -> ["term", "lam"] /\ 
-      [Rendering.lparenElem, lambdaElem, varElem, mapstoElem, bodElem, Rendering.rparenElem]
-    App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
-      [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
+    Ref /\ _ /\ [_ /\ varElem] -> {classNames: ["term", "ref"], subElems: [refElem, varElem]}
+    Lam /\ _ /\ [_ /\ varElem, _ /\ bodElem] -> {classNames: ["term", "lam"], subElems: [Rendering.lparenElem, lambdaElem, varElem, mapstoElem, bodElem, Rendering.rparenElem]}
+    App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> {classNames: ["term", "app"], subElems: [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]}
     -- hole
-    TermHole /\ _ /\ _ -> bug "[ULC.Grammar.renderDerivTermKids'] hole should be handled generically"
+    TermHole /\ _ /\ _ -> bug "[ULC.Grammar.prerenderDerivTerm] hole should be handled generically"
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"

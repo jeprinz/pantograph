@@ -30,6 +30,18 @@ import Text.Pretty as P
 import Type.Direction
 import Type.Proxy (Proxy(..))
 
+type EditorHTML l r = HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff
+
+type DerivTermRenderer l r = 
+  { rule :: r
+  , sort :: Sort l
+  , kids :: Array (DerivTerm l r)
+    -- TODO: To deal with newlines, replace "Array HTML -> ..." with "Array (Maybe Int -> HTML) -> ...". Nothing = same line, Just n = newline with n (additional, relative) tabs
+  , kidElems :: Array (EditorHTML l r)
+  } -> 
+  { classNames :: Array String
+  , subElems :: Array (EditorHTML l r) }
+
 type EditorSpec l r =
   { hdzipper :: HoleyDerivZipper l r
   , topSort :: Sort l
@@ -46,12 +58,7 @@ type EditorSpec l r =
   -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
-  , renderDerivTermKids' ::
-      (r /\ Sort l /\ Array (DerivTerm l r)) ->
-      -- TODO: To deal with newlines, replace "Array HTML -> ..." with "Array (Maybe Int -> HTML) -> ...". Nothing = same line, Just n = newline with n (additional, relative) tabs
-      Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff) -> 
-      Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff)
-    -- TODO: factor out this type, and add: Grammar.Sorts, Grammar.Derivations, Grammar.Languaage, something for smallstep
+  , prerenderDerivTerm :: DerivTermRenderer l r
   }
 
 -- Stuff that's defined inside of the editor component
@@ -67,7 +74,7 @@ type EditorLocals l r =
 
 type BufferInput l r =
   { hdzipper :: HoleyDerivZipper l r
-  , edits :: Array (Lazy (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot (Query) (Output l r) String) Aff) /\ Edit l r)
+  , edits :: Array (Lazy (EditorHTML l r) /\ Edit l r)
   }
 
 bufferSlot = Proxy :: Proxy "buffer"

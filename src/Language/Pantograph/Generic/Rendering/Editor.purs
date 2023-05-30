@@ -390,20 +390,30 @@ editorComponent = HK.component \tokens input -> HK.do
       ActionOutput act -> handleAction act
       UpdateFacadeOutput f -> setFacade =<< (f =<< getFacade)
   
-    renderDerivTermKids (Expr.Zipper dpath dterm) kidElems = assert (wellformedExpr "renderDerivTermKids" dterm) \_ -> case dterm of
-      DerivLabel r sort % [] | isHoleRule r -> ["hole"] /\
-        [ HH.div [classNames ["subnode", "inner"]]
-            [ HH.div [classNames ["subnode", "hole-interior"]] [renderHoleInterior false dpath sort]
-            , colonElem
-            , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-            ]
-        ]
-      DerivLabel r sort % kids -> input.renderDerivTermKids' (r /\ sort /\ kids) kidElems
-      DerivString str % [] -> ["string"] /\ 
-        [ if String.null str 
-            then HH.div [classNames ["subnode", "inner", "empty-string"]] [HH.text "String"]
-            else HH.div [classNames ["subnode", "inner"]] [HH.text str]
-        ]
+    prerenderDerivZipper :: 
+      DerivZipper l r ->
+      Array (EditorHTML l r) ->
+      { classNames :: Array String
+      , subElems :: Array (EditorHTML l r) }
+    prerenderDerivZipper (Expr.Zipper dpath dterm) kidElems = assert (wellformedExpr "prerenderDerivZipper" dterm) \_ -> case dterm of
+      DerivLabel r sort % [] | isHoleRule r ->
+        { classNames: ["hole"]
+        , subElems: [ HH.div [classNames ["subnode", "inner"]]
+              [ HH.div [classNames ["subnode", "hole-interior"]] [renderHoleInterior false dpath sort]
+              , colonElem
+              , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+              ]
+          ]
+        }
+      DerivLabel rule sort % kids -> 
+        input.prerenderDerivTerm {rule, sort, kids, kidElems}
+      DerivString str % [] -> 
+        { classNames: ["string"]
+        , subElems: [ if String.null str 
+              then HH.div [classNames ["subnode", "inner", "empty-string"]] [HH.text "String"]
+              else HH.div [classNames ["subnode", "inner"]] [HH.text str]
+          ]
+        }
 
     {-
     mouse cursoring and selecting:
@@ -447,9 +457,9 @@ editorComponent = HK.component \tokens input -> HK.do
     renderExpr isCursor dzipper = do
       let
         elemId = fromPathToElementId (Expr.zipperPath dzipper)
-        clsNames /\ kidElems = renderDerivTermKids dzipper $ renderExpr false <<< snd <$> Expr.zipDowns dzipper
+        {classNames: cns, subElems} = prerenderDerivZipper dzipper $ renderExpr false <<< snd <$> Expr.zipDowns dzipper
       HH.div
-        [ classNames $ ["node"] <> clsNames <> if isCursor then [cursorClassName] else []
+        [ classNames $ ["node"] <> cns <> if isCursor then [cursorClassName] else []
         , HP.id elemId
         , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
         , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
@@ -462,15 +472,14 @@ editorComponent = HK.component \tokens input -> HK.do
             } 
             handleBufferOutput
           ]
-        , kidElems
+        , subElems
         ]
 
     renderPreviewDerivZipper dzipper = do
-      let
-        clsNames /\ kidElems = renderDerivTermKids dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
+      let {classNames: cns, subElems} = prerenderDerivZipper dzipper $ renderPreviewDerivZipper <<< snd <$> Expr.zipDowns dzipper
       HH.div
-        [classNames $ ["node"] <> clsNames]
-        kidElems
+        [classNames $ ["node"] <> cns]
+        subElems
 
     renderHoleInterior isCursor dpath sort = do
       (\kidElem -> if isCursor then assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
@@ -530,16 +539,16 @@ editorComponent = HK.component \tokens input -> HK.do
           let
             elemId = fromPathToElementId (Expr.zipperPath dzipper2)
             -- _ = Debug.trace ("[renderPath] Expr.zipDownsTooth dzipper2 th = " <> show (pretty <$> Expr.zipDownsTooth dzipper2 th)) \_ -> unit
-            clsNames /\ kidElems = 
-              -- renderDerivTermKids (Expr.unTooth th (Expr.zipperExpr dzipper)) $
-              renderDerivTermKids (Expr.Zipper (Expr.zipperPath dzipper2) (Expr.unTooth th (Expr.zipperExpr dzipper))) $
+            {classNames: cns, subElems} =
+              -- prerenderDerivZipper (Expr.unTooth th (Expr.zipperExpr dzipper)) $
+              prerenderDerivZipper (Expr.Zipper (Expr.zipperPath dzipper2) (Expr.unTooth th (Expr.zipperExpr dzipper))) $
               Array.fromFoldable $
               ZipList.unpathAround interior $ do
                 let kidZippers = Expr.zipDownsTooth dzipper2 th
                 renderExpr false <$> kidZippers
           renderPath dzipper2 $
             HH.div
-              [ classNames $ ["node"] <> clsNames
+              [ classNames $ ["node"] <> cns
               , HP.id elemId
               , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper2))
               , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper2))
@@ -552,22 +561,22 @@ editorComponent = HK.component \tokens input -> HK.do
                   } 
                   handleBufferOutput
                 ]
-              , kidElems
+              , subElems
               ]
 
     renderPreviewDerivTooth dtooth = assert (just "renderPreviewDerivTooth" (defaultDerivTerm (derivToothInteriorSort dtooth))) \dterm -> do
       let
         dzipper = Expr.Zipper mempty (Expr.unTooth dtooth dterm)
 
-        clsNames /\ kidElems =
-          renderDerivTermKids dzipper $
+        {classNames: cns, subElems} =
+          prerenderDerivZipper dzipper $
           Array.fromFoldable $
           ZipList.unpathAround placeholderCursorNodeElem $ do
             let kidDZippers = Expr.zipDownsTooth dzipper dtooth
             renderPreviewDerivZipper <$> kidDZippers
       HH.div
-        [classNames $ ["node"] <> clsNames]
-        kidElems
+        [classNames $ ["node"] <> cns]
+        subElems
 
     renderEditPreview preview = defer \_ -> case preview of
       DerivTermEditPreview dterm -> renderPreviewDerivZipper (Expr.Zipper mempty dterm)

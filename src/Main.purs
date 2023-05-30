@@ -35,7 +35,7 @@ main = HA.runHalogenAff do
     { hdzipper: Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty topTerm)
     , topSort
     , editsAtHoleyDerivZipper
-    , renderDerivTermKids'
+    , prerenderDerivTerm
     }
 
 -- --------------------------------------------------------------------------------
@@ -57,6 +57,6 @@ main = HA.runHalogenAff do
 --     { hdzipper: Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty topTerm)
 --     , topSort
 --     , editsAtHoleyDerivZipper
---     , renderDerivTermKids'
+--     , prerenderDerivTerm
 --     }
 
