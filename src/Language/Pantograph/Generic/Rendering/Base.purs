@@ -37,8 +37,8 @@ type DerivTermPrerenderer l r =
   , sort :: Sort l
   , kids :: Array (DerivTerm l r)
     -- TODO: To deal with newlines, replace "Array HTML -> ..." with "Array (Maybe Int -> HTML) -> ...". Nothing = same line, Just n = newline with n (additional, relative) tabs
-  , kidElems :: Array (EditorHTML l r)
-  } -> 
+  , kidElems :: Array (EditorHTML l r) }
+  -> 
   { classNames :: Array String
   , subElems :: Array (EditorHTML l r) }
 
