@@ -198,10 +198,10 @@ body {
 
 .preview {
   /* display: inline-block; */
-  background-color: rgba(0, 180, 84, 0.5);
+  background-color: rgba(0, 234, 179, 0.379);
   }
 
-.preview.enabled + .subnode {
-  border: 2px solid black;
-  /* display: none; */
+.preview.fill + .subnode, .preview.replace + .subnode {
+  /* border: 2px solid black; */
+  display: none;
 }

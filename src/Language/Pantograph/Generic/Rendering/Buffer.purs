@@ -30,6 +30,7 @@ import Halogen.Utilities (classNames, fromInputEventToTargetValue)
 import Hole (hole)
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), derivTermSort)
 import Language.Pantograph.Generic.Rendering.Elements (placeholderCursorNodeElem)
+import Text.Pretty (pretty)
 import Type.Direction (_down, _up)
 import Web.Event.Event as Event
 import Web.HTML.HTMLElement as HTMLElement
@@ -37,15 +38,13 @@ import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.MouseEvent as MouseEvent
 
 type BufferPreState l r =
-  { input :: BufferInput l r
-  , isEnabled :: Boolean
+  { isEnabled :: Boolean
   , bufferString :: String
   , bufferFocus :: Int
   }
 
 type BufferState l r =
-  { input :: BufferInput l r
-  , isEnabled :: Boolean
+  { isEnabled :: Boolean
   , bufferString :: String
   , bufferFocus :: Int
   , normalBufferFocus :: Int
@@ -54,7 +53,7 @@ type BufferState l r =
   , isString :: Boolean
   }
 
-computeEdits {input, bufferString, isString} = 
+computeEdits input {bufferString, isString} = 
   if isString then do
     let dterm = DerivString bufferString % []
     let sort = derivTermSort dterm
@@ -87,16 +86,15 @@ computeFocussedEdit {isEnabled, normalBufferFocus, edits} = do
     then Array.index edits normalBufferFocus
     else Nothing
 
-computeBufferState :: forall l r. IsRuleLabel l r => BufferPreState l r -> BufferState l r
-computeBufferState preSt@{input, isEnabled, bufferString, bufferFocus} = do
+-- computeBufferState :: forall l r. IsRuleLabel l r => BufferPreState l r -> BufferState l r
+computeBufferState input preSt@{isEnabled, bufferString, bufferFocus} = do
   let isString = case input.hdzipper of
         InjectHoleyDerivZipper (Expr.Zipper _ (DerivString _str % _)) -> true
         _ -> false
-  let edits = computeEdits {input, bufferString, isString}
+  let edits = computeEdits input {bufferString, isString}
   let normalBufferFocus = computeNormalBufferFocus {bufferFocus, edits}
   let focussedEdit = computeFocussedEdit {isEnabled, normalBufferFocus, edits}
-  { input
-  , isEnabled
+  { isEnabled
   , bufferString
   , bufferFocus
   , normalBufferFocus
@@ -106,8 +104,8 @@ computeBufferState preSt@{input, isEnabled, bufferString, bufferFocus} = do
   }
 
 extractBufferPreState :: forall l r. IsRuleLabel l r => BufferState l r -> BufferPreState l r
-extractBufferPreState { input
-  , isEnabled
+extractBufferPreState 
+  { isEnabled
   , bufferString
   , bufferFocus
   , normalBufferFocus
@@ -115,8 +113,7 @@ extractBufferPreState { input
   , focussedEdit
   , isString
   } = 
-  { input
-  , isEnabled
+  { isEnabled
   , bufferString
   , bufferFocus
   }
@@ -136,8 +133,8 @@ bufferComponent = HK.component \tokens input -> HK.do
       bufferString = ""
       bufferFocus = 0
     computeBufferState 
-      { input
-      , isEnabled
+      input
+      { isEnabled
       , bufferString
       , bufferFocus }
 
@@ -151,7 +148,7 @@ bufferComponent = HK.component \tokens input -> HK.do
 
     -- handles computing functionally-dependent parts of bufferState and updating preview
     put _st = do
-      let st = computeBufferState _st
+      let st = computeBufferState input _st
       HK.put bufferState_id st
       -- update preview
       case st.focussedEdit of
@@ -234,13 +231,17 @@ bufferComponent = HK.component \tokens input -> HK.do
         true -> pure $ Just a
 
   HK.pure $
-    -- Debug.trace 
-    --   ("[bufferComponent.render]" <> Array.foldMap ("\n" <> _)
-    --     (map ("  - " <> _)
-    --       [ "dzipper = " <> pretty input.dzipper
-    --       , "isEnabled = " <> show isEnabled
-    --       ]))
-    --   \_ ->
+    Debug.trace 
+      ("[bufferComponent.render]" <> Array.foldMap ("\n" <> _)
+        (map ("  - " <> _)
+          [ "input.hzdipper = " <> pretty input.hdzipper
+          , "isEnabled = " <> show currentBufferState.isEnabled
+          , "bufferString = " <> show currentBufferState.bufferString
+          , "bufferFocus = " <> show currentBufferState.bufferFocus
+          , "normalBufferFocus = " <> show currentBufferState.normalBufferFocus
+          , "isString = " <> show currentBufferState.isString
+          ]))
+      \_ ->
       HH.div
         [ classNames ["subnode", "buffer"]
         ] $ 
