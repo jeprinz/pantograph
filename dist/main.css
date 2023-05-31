@@ -199,6 +199,9 @@ body {
 .preview {
   /* display: inline-block; */
   background-color: rgba(87, 180, 0, 0.7);
+  }
 
+.preview.enabled + .subnode {
+  border: 2px solid black;
+  /* display: none; */
 }
-

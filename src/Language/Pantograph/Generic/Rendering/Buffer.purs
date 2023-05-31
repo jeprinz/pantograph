@@ -18,6 +18,7 @@ import Data.Rational as Rational
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\), type (/\))
 import Data.Variant (case_, on)
+import Debug as Debug
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Halogen as H
@@ -40,7 +41,6 @@ type BufferPreState l r =
   , isEnabled :: Boolean
   , bufferString :: String
   , bufferFocus :: Int
-  , edits :: Array (EditAndPreview l r)
   }
 
 type BufferState l r =
@@ -54,16 +54,7 @@ type BufferState l r =
   , isString :: Boolean
   }
 
-computeEdits :: forall l r. IsRuleLabel l r => 
-  -- { input :: BufferInput l r
-  -- , isString :: Boolean
-  -- , hdzipper :: HoleyDerivZipper l r
-  -- , bufferString :: String
-  -- } ->
-  BufferPreState l r ->
-  Boolean ->
-  Array (EditAndPreview l r)
-computeEdits {input, bufferString} isString = 
+computeEdits {input, bufferString, isString} = 
   if isString then do
     let dterm = DerivString bufferString % []
     let sort = derivTermSort dterm
@@ -82,7 +73,7 @@ computeEdits {input, bufferString} isString =
       -- memo fuzzy distances
       map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
       -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
-      Array.filter (\(FuzzyStr fs /\ item) -> Rational.fromInt 0 < fs.ratio) >>>
+      Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
       -- sort the remaining edits by the fuzzy distance
       Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
       -- forget fuzzy distances
@@ -97,12 +88,13 @@ computeFocussedEdit {isEnabled, normalBufferFocus, edits} = do
     else Nothing
 
 computeBufferState :: forall l r. IsRuleLabel l r => BufferPreState l r -> BufferState l r
-computeBufferState {input, isEnabled, bufferString, bufferFocus, edits} = do
-  let normalBufferFocus = computeNormalBufferFocus {bufferFocus, edits}
-  let focussedEdit = computeFocussedEdit {isEnabled, normalBufferFocus, edits}
+computeBufferState preSt@{input, isEnabled, bufferString, bufferFocus} = do
   let isString = case input.hdzipper of
         InjectHoleyDerivZipper (Expr.Zipper _ (DerivString _str % _)) -> true
         _ -> false
+  let edits = computeEdits {input, bufferString, isString}
+  let normalBufferFocus = computeNormalBufferFocus {bufferFocus, edits}
+  let focussedEdit = computeFocussedEdit {isEnabled, normalBufferFocus, edits}
   { input
   , isEnabled
   , bufferString
@@ -127,7 +119,6 @@ extractBufferPreState { input
   , isEnabled
   , bufferString
   , bufferFocus
-  , edits
   }
 
 
@@ -144,13 +135,11 @@ bufferComponent = HK.component \tokens input -> HK.do
       isEnabled = false
       bufferString = ""
       bufferFocus = 0
-      edits = [] :: Array (EditAndPreview l r)
     computeBufferState 
       { input
       , isEnabled
       , bufferString
-      , bufferFocus
-      , edits }
+      , bufferFocus }
 
   let 
     setPreview Nothing = HK.raise tokens.outputToken $ SetPreviewOutput mempty
@@ -199,6 +188,11 @@ bufferComponent = HK.component \tokens input -> HK.do
 
   HK.useQuery tokens.queryToken case _ of
     SetBufferEnabledQuery isEnabled' mb_str a -> do
+      -- update isEnabled
+      -- !TODO this will recompute edits right away, which is inefficient since
+      -- we are going to compute them again right away if isEnabled' is true
+      void $ modify _ {isEnabled = isEnabled'}
+      
       if isEnabled' then do
           -- focus buffer input tag
           HK.getHTMLElementRef bufferInputRefLabel >>= \mb_elem -> 
@@ -214,17 +208,18 @@ bufferComponent = HK.component \tokens input -> HK.do
                       void $ modify _
                         { bufferString = str
                         , bufferFocus = 0 -- reset bufferFocus
-                        , isEnabled = isEnabled' -- update isEnabled
                         }
-          -- update facade to BufferCursorMode
-          HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
-            pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper) {mode = BufferCursorMode}
+          -- -- update facade to BufferCursorMode
+          -- HK.raise tokens.outputToken $ UpdateStateOutput \_ ->
+          --   pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper) {mode = BufferCursorMode}
+      
       else do
         -- clear preview
         setPreview Nothing
-        -- update facade to CursorState
-        HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
-          pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper)
+        -- -- update facade to CursorState
+        -- HK.raise tokens.outputToken $ UpdateStateOutput \_ ->
+        --   pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper)
+      
       pure (Just a)
     MoveBufferQuery qm a -> do
       st <- get

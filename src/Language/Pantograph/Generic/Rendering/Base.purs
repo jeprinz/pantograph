@@ -36,8 +36,8 @@ import Type.Proxy (Proxy(..))
 type EditorHTML l r = 
   HH.ComponentHTML 
     (HK.HookM Aff Unit)
-    ( buffer :: H.Slot Query (Output l r) String
-    , preview :: H.Slot (PreviewQuery l r) Unit (String /\ HorizontalDir)
+    ( buffer :: H.Slot Query (Output l r) Unit
+    , preview :: H.Slot (PreviewQuery l r) Unit HorizontalDir
     ) 
     Aff
 
@@ -269,7 +269,7 @@ type EditAndPreview l r =
 
 data Output l r
   = ActionOutput (Action l r)
-  | UpdateFacadeOutput (State l r -> HK.HookM Aff (State l r))
+  -- | UpdateStateOutput (State l r -> HK.HookM Aff (State l r))
   | SetPreviewOutput {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
 
 data Query a

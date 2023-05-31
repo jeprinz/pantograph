@@ -35,6 +35,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 previewComponent :: forall l r out. H.Component (PreviewQuery l r) Unit out Aff
 previewComponent = HK.component \tokens _ -> HK.do
   elems /\ elems_id <- HK.useState []
+  let isEnabled = not $ Array.null elems
 
   HK.useQuery tokens.queryToken case _ of
     SetPreviewQuery elems' a -> do
@@ -42,5 +43,5 @@ previewComponent = HK.component \tokens _ -> HK.do
       pure $ Just a
 
   HK.pure do
-    HH.span [classNames ["preview"]]
+    HH.span [classNames $ ["preview"] <> if isEnabled then ["enabled"] else []] do
       elems
