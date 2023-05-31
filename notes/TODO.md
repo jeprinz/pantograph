@@ -1,3 +1,3 @@
 TODO:
 
-- the bug is that im using the wrong buffer id in Editor somehow
+- use RenderingContext to store isCursor in RenderingStyle, rather than isCursor input to rendering functions

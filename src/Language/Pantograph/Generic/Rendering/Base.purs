@@ -8,8 +8,11 @@ import Type.Direction
 import Bug.Assertion (Assertion(..), assert, just)
 import Data.Array as Array
 import Data.Bifunctor (bimap)
+import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either)
 import Data.Either.Nested (type (\/))
+import Data.Enum (class Enum)
+import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Expr (class ReflectPathDir)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
@@ -46,18 +49,48 @@ data EditPreviewHTML l r
   | ReplaceEditPreview (EditorHTML l r)
   | WrapEditPreview {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
 
+type RenderingContext = 
+  { mb_linebreak :: Maybe Linebreak
+  , indentationLevel :: Int
+  , isCursor :: Boolean
+  , isInteractive :: Boolean
+  , isInlined :: Boolean
+  }
+
+data Linebreak
+  = IndentedLinebreak
+  | UnindentedLinebreak
+
+defaultRenderingContext :: RenderingContext
+defaultRenderingContext = 
+  { mb_linebreak: Nothing
+  , indentationLevel: 0
+  , isCursor: false
+  , isInteractive: true
+  , isInlined: false
+  }
+
+previewRenderingContext :: RenderingContext
+previewRenderingContext = 
+  { mb_linebreak: Nothing
+  , indentationLevel: 0
+  , isCursor: false
+  , isInteractive: false
+  , isInlined: true
+  }
+
+
 type DerivTermPrerenderer l r = 
-  { rule :: r
+  { renCtx :: RenderingContext
+  , rule :: r
   , sort :: Sort l
   , kids :: Array (DerivTerm l r)
-    -- TODO: To deal with newlines, replace "Array HTML -> ..." with "Array (Maybe Int -> HTML) -> ...". Nothing = same line, Just n = newline with n (additional, relative) tabs
-  -- , kidElems :: Array (EditorHTML l r) }
-  }
-  -> 
-  { classNames :: Array String
-  -- Each item of the array is either a reference to a rendered kid (via its
-  -- index in `kids`) or an array of any html
-  , subSymElems :: Array (Int \/ Array (EditorHTML l r)) }
+  } -> 
+  Array (PreKid l r)
+
+type PreKid l r = 
+  (RenderingContext /\ Int) \/ -- reference to kid, with kid's rendering context
+  Array (EditorHTML l r) -- static html
 
 type EditorSpec l r =
   { hdzipper :: HoleyDerivZipper l r
@@ -75,7 +108,7 @@ type EditorSpec l r =
   -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
-  , prerenderDerivTerm :: DerivTermPrerenderer l r
+  , arrangeDerivTermSubs :: DerivTermPrerenderer l r
   }
 
 -- Stuff that's defined inside of the editor component
@@ -291,4 +324,3 @@ previewSlot = Proxy :: Proxy "preview"
 
 data PreviewQuery l r a
   = SetPreviewQuery (Maybe (EditPreviewHTML l r)) a
-

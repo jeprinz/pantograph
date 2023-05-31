@@ -66,7 +66,7 @@ data DerivLabel l r
   | DerivString String
   
   -- | TextBox String -- this String s stands for the sort (Name (Str s))
-  -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """prerenderDerivTermKids"""
+  -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """arrangeDerivTermSubsKids"""
   -- alternate idea: any hole of a (Name s) sort is a textbox
 
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r

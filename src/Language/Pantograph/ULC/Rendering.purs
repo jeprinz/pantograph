@@ -21,13 +21,13 @@ import Language.Pantograph.ULC.Grammar (DerivTerm, SortLabel, MetaExpr, Sort, Ru
 type Query = Rendering.Query
 type Output = Rendering.Output SortLabel RuleLabel
 
-prerenderDerivTerm ::
+arrangeDerivTermSubs ::
   (RuleLabel /\ Sort /\ Array DerivTerm) ->
   Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff) -> 
   Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
-prerenderDerivTerm (r /\ sort /\ kids) kidElems = do
+arrangeDerivTermSubs (r /\ sort /\ kids) kidElems = do
   let kids_kidElems = kids `Array.zip` kidElems
-  assert (Expr.wellformedExprF "ULC prerenderDerivTerm" (show <<< fst) (Grammar.DerivLabel r sort /\ kids_kidElems)) \_ -> case r /\ sort /\ kids_kidElems of
+  assert (Expr.wellformedExprF "ULC arrangeDerivTermSubs" (show <<< fst) (Grammar.DerivLabel r sort /\ kids_kidElems)) \_ -> case r /\ sort /\ kids_kidElems of
     -- var
     Zero /\ _ /\ [] -> ["var", "zero"] /\ 
       [zeroVarElem]
@@ -40,7 +40,7 @@ prerenderDerivTerm (r /\ sort /\ kids) kidElems = do
     App /\ _ /\ [_ /\ aplElem, _ /\ argElem] -> ["term", "app"] /\ 
       [Rendering.lparenElem, aplElem, Rendering.spaceElem, argElem, Rendering.rparenElem]
     -- hole
-    Hole /\ _ /\ _ -> bug "[ULC.Grammar.prerenderDerivTerm] hole should be handled generically"
+    Hole /\ _ /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
