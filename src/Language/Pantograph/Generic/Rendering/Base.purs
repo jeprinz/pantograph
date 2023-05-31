@@ -270,7 +270,12 @@ type EditAndPreview l r =
 data Output l r
   = ActionOutput (Action l r)
   -- | UpdateStateOutput (State l r -> HK.HookM Aff (State l r))
-  | SetPreviewOutput {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
+  | SetPreviewOutput (Maybe (EditPreviewHTML l r))
+
+-- data Preview l r
+--   = EmptyPreview
+--   | WrapPreview {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
+--   | ReplacePreview (Array (EditorHTML l r))
 
 data Query a
   -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
@@ -285,5 +290,5 @@ data Query a
 previewSlot = Proxy :: Proxy "preview"
 
 data PreviewQuery l r a
-  = SetPreviewQuery (Array (EditorHTML l r)) a
+  = SetPreviewQuery (Maybe (EditPreviewHTML l r)) a
 

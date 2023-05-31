@@ -142,11 +142,9 @@ bufferComponent = HK.component \tokens input -> HK.do
       , bufferFocus }
 
   let 
-    setPreview Nothing = HK.raise tokens.outputToken $ SetPreviewOutput mempty
-    setPreview (Just lazy_editPreviewHtml) = HK.raise tokens.outputToken $ SetPreviewOutput case force lazy_editPreviewHtml of
-      FillEditPreview elem -> {before: [elem], after: []}
-      ReplaceEditPreview elem -> {before: [elem], after: []}
-      WrapEditPreview {before, after} -> {before, after}
+    -- setPreview Nothing = HK.raise tokens.outputToken $ SetPreviewOutput mempty
+    -- setPreview (Just lazy_editPreviewHtml) = HK.raise tokens.outputToken $ SetPreviewOutput (force lazy_editPreviewHtml)
+    setPreview mb_preview = HK.raise tokens.outputToken $ SetPreviewOutput mb_preview
 
   let 
     get = HK.get bufferState_id
@@ -158,7 +156,7 @@ bufferComponent = HK.component \tokens input -> HK.do
       -- update preview
       case st.focussedEdit of
         Nothing -> setPreview Nothing
-        Just {lazy_preview} -> setPreview (Just lazy_preview)
+        Just {lazy_preview} -> setPreview (Just (force lazy_preview))
       pure st
 
     modify :: (BufferPreState l r -> BufferPreState l r) -> HK.HookM Aff (BufferState l r)
@@ -184,7 +182,7 @@ bufferComponent = HK.component \tokens input -> HK.do
 
   let modifyBufferFocus f = do
         st <- modify \st -> st {bufferFocus = f st.bufferFocus}
-        setPreview (st.focussedEdit <#> _.lazy_preview)
+        setPreview (force <$> (st.focussedEdit <#> _.lazy_preview))
 
   HK.useQuery tokens.queryToken case _ of
     SetBufferEnabledQuery isEnabled' mb_str a -> do

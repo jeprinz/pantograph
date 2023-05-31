@@ -261,7 +261,7 @@ editorComponent = HK.component \tokens input -> HK.do
       cursor <- do
         st <- getFacade
         assert (cursorState "setBufferEnabled" st) pure
-      setState $ CursorState cursor {mode = BufferCursorMode}
+      setState $ CursorState cursor {mode = if isEnabled then BufferCursorMode else NavigationCursorMode}
       HK.tell tokens.slotToken bufferSlot unit $ SetBufferEnabledQuery isEnabled mb_str
 
     handleKeyboardEvent :: KeyboardEvent.KeyboardEvent -> HK.HookM Aff Unit
@@ -409,9 +409,9 @@ editorComponent = HK.component \tokens input -> HK.do
 
     handleBufferOutput = case _ of
       ActionOutput act -> handleAction act
-      SetPreviewOutput {before, after} -> do
-        HK.tell tokens.slotToken previewSlot leftDir $ SetPreviewQuery before
-        HK.tell tokens.slotToken previewSlot rightDir $ SetPreviewQuery after
+      SetPreviewOutput mb_preview -> do
+        HK.tell tokens.slotToken previewSlot leftDir $ SetPreviewQuery mb_preview
+        HK.tell tokens.slotToken previewSlot rightDir $ SetPreviewQuery mb_preview
   
     prerenderDerivZipper :: 
       DerivZipper l r ->
@@ -493,11 +493,11 @@ editorComponent = HK.component \tokens input -> HK.do
                   , edit }
             } 
             handleBufferOutput
-        , HH.slot_ previewSlot leftDir previewComponent unit
+        , HH.slot_ previewSlot leftDir previewComponent leftDir
         ]
       , subElems
       , if not isCursor then [] else
-        [ HH.slot_ previewSlot rightDir previewComponent unit ]
+        [ HH.slot_ previewSlot rightDir previewComponent rightDir ]
       ]
 
     renderExpr :: Boolean -> DerivZipper l r -> EditorHTML l r
