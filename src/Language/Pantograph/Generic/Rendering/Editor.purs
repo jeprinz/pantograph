@@ -529,23 +529,6 @@ editorComponent = HK.component \tokens input -> HK.do
 
     renderHoleExterior :: DerivPath Up l r -> Sort l -> EditorHTML l r -> EditorHTML l r
     renderHoleExterior dpath sort holeInteriorElem = assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
-      -- let
-      --   dzipper = Expr.Zipper dpath dterm
-      --   elemId = fromPathToElementId dpath
-      --   clsNames = ["hole"]
-      -- HH.div
-      --   [ classNames $ ["node"] <> clsNames
-      --   , HP.id elemId
-      --   , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
-      --   , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
-      --   ] $
-      --   renderNodeSubElems isCursor dzipper
-      --   [ HH.div [classNames ["subnode", "inner"]]
-      --     [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem]
-      --     , colonElem
-      --     , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-      --     ]
-      --   ]
       let
         dzipper = Expr.Zipper dpath dterm
         elemId = fromPathToElementId dpath
@@ -557,7 +540,6 @@ editorComponent = HK.component \tokens input -> HK.do
         , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
         , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
         ] $
-        -- renderNodeSubElems isCursor dzipper subElems
         subElems
 
     renderHoleInterior :: Boolean -> DerivPath Up l r -> Sort l -> EditorHTML l r
