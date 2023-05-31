@@ -46,7 +46,7 @@ arrangeDerivTermSubs {renCtx, rule, sort, kids} = do
     -- format
     FormatRule (Newline enabled) /\ _ /\ _ ->
       Array.concat
-        [ if enabled then [pure [Rendering.newlineElem]] else []
+        [ if enabled then [pure [Rendering.spaceElem, Rendering.newlineElem]] else []
         , [Left (renCtx /\ 0)] ]
     -- hole 
     TermHole /\ _ /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"

@@ -475,7 +475,7 @@ editorComponent = HK.component \tokens input -> HK.do
 
     arrangeHoleExterior :: Sort l -> (RenderingContext -> EditorHTML l r) -> RenderingContext -> Array (EditorHTML l r)
     arrangeHoleExterior sort holeInteriorElem renCtx =
-      [ HH.div [classNames ["subnode", "inner"]]
+      [ HH.div [classNames ["subnode", "holeExterior-inner"]]
         [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
         , colonElem
         , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
@@ -576,7 +576,7 @@ editorComponent = HK.component \tokens input -> HK.do
         , HE.onMouseOver (onMouseOver hdzipper)
         ] $
         arrangeNodeSubElems isCursor hdzipper
-          [ HH.div [classNames ["subnode", "inner"]]
+          [ HH.div [classNames ["subnode", "holeInterior-inner"]]
             [interrogativeElem]
           ]
           renCtx

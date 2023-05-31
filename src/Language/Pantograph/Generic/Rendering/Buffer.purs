@@ -247,7 +247,7 @@ bufferComponent = HK.component \tokens input -> HK.do
         ] $ 
         Array.concat
         [ if not currentBufferState.isEnabled then [] else
-          [ HH.div [classNames ["inner"]] $
+          [ HH.div [classNames ["buffer-inner"]] $
               Array.concat
               [ [ HH.input 
                   [ classNames ["buffer-input"]

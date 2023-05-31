@@ -54,9 +54,7 @@ body {
   box-shadow: 0 0 0 2px blue;
 }
 
-.node.hole {
-}
-.node.hole > .subnode.inner {
+.subnode.holeExterior-inner {
   padding: 0 0.4rem;
   border-radius: 1rem 1rem / 2rem;
   background-color: rgba(255, 139, 50, 0.1);
@@ -65,10 +63,7 @@ body {
     0 0 2px 0 black;
 }
 
-.node.holeInterior {
-}
-
-.node.holeInterior > .subnode.inner {
+.subnode.holeInterior-inner {
   padding: 0 0.2rem;
   box-shadow: inset 0 0 0 2px rgb(255, 139, 50);
   /* box-shadow: 0 0 0 4px rgb(255, 139, 50) inset; */
@@ -93,13 +88,13 @@ body {
 
 .subnode.hole-interior {}
 
-.node.string>.subnode.inner {
+.subnode.string-inner {
   white-space: pre;
   color: green;
   background-color: rgb(227, 227, 227);
 }
 
-.node.string>.subnode.inner.empty-string {
+.subnode.string-inner.empty-string {
   color: gray;
   font-style: italic;
   padding: 0 0.4rem;
@@ -151,7 +146,7 @@ body {
   position: relative;
 }
 
-.subnode.buffer>.inner {
+.subnode.buffer>.buffer-inner {
   position: absolute;
   left: 0;
   top: 2rem;
@@ -160,21 +155,18 @@ body {
   border-radius: 0.2rem;
 }
 
-.subnode.buffer>.inner>.buffer-results {
-}
-
-.subnode.buffer>.inner>.buffer-results>.buffer-result {
+.subnode.buffer>.buffer-inner>.buffer-results>.buffer-result {
   /* min-width: 200px; */
   white-space: nowrap;
   overflow: hidden;
   padding: 0.2rem;
 }
 
-.subnode.buffer>.inner>.buffer-results>.buffer-result.buffer-focus {
+.subnode.buffer>.buffer-inner>.buffer-results>.buffer-result.buffer-focus {
   background-color: rgb(98, 98, 245, 0.25);
 }
 
-.subnode.buffer>.inner>.buffer-input {
+.subnode.buffer>.buffer-inner>.buffer-input {
   outline: none;
 }
 
@@ -184,7 +176,7 @@ body {
 
 }
 
-.node.placeholder-cursor > .subnode.inner {
+.node.placeholderCcursor > .subnode.placeholderCursor-inner {
   padding: 0 0.4rem;
   border-radius: 1rem 1rem / 2rem;
   background-color: rgba(255, 139, 50, 0.1);

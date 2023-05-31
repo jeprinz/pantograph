@@ -22,14 +22,13 @@ interrogativeElem = makePuncElem "interrogative" "?"
 newlineElem :: forall w i. HH.HTML w i
 newlineElem = HH.br_
 
-
 ibeamElem :: forall w i. HH.HTML w i
 ibeamElem = makePuncElem "ibeam" "⌶"
 
 placeholderCursorNodeElem :: forall w i. HH.HTML w i
 placeholderCursorNodeElem =
-  HH.div [classNames ["node", "placeholder-cursor"]]
-    [ HH.div [classNames ["subnode", "inner"]]
+  HH.div [classNames ["node", "placeholderCursor"]]
+    [ HH.div [classNames ["subnode", "placeholderCursor-inner"]]
         -- [ibeamElem]
         [spaceElem]
     ]
