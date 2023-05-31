@@ -206,7 +206,7 @@ body {
 /* comment */
 
 .commentBegin,
-.commendEnd,
+.commentEnd,
 .commentBegin+.node>.subnode.string-inner {
   font-style: italic;
   color: gray !important;
