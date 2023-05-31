@@ -37,7 +37,6 @@ data Action l r
 
 defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
 defaultEditsAtDerivZipper topSort dz =
-  let up = Expr.zipperPath dz in
   let dterm = Expr.zipperExpr dz in
   Array.concat $
   (case isHoleDerivTerm dterm of

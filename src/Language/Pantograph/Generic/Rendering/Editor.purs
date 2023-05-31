@@ -282,7 +282,7 @@ editorComponent = HK.component \tokens input -> HK.do
         ------------------------------------------------------------------------
         -- CursorState where mode = BufferCursorMode
         ------------------------------------------------------------------------
-        CursorState cursor@{mode: BufferCursorMode} -> do
+        CursorState {mode: BufferCursorMode} -> do
           if isBufferKey key then do
             -- exit BufferCursorMode
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -290,8 +290,6 @@ editorComponent = HK.component \tokens input -> HK.do
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
-            elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            Debug.traceM $ "[handleKeyboardEvent] deactivate buffer from BufferCursorMode; elemId = " <> elemId
             setBufferEnabled false Nothing
           else if isJust (readVerticalDir key) then
             assert (just "handleKeyboardEvent" $ readVerticalDir key) \dir -> do
@@ -333,8 +331,6 @@ editorComponent = HK.component \tokens input -> HK.do
               DerivString str % _ -> pure (Just str)
               _ -> pure Nothing
             -- activate buffer
-            elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            Debug.traceM $ "[handleKeyboardEvent] activate buffer fron NavigationCursorMode; elemId = " <> elemId
             setBufferEnabled true mb_str
           else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
@@ -475,16 +471,16 @@ editorComponent = HK.component \tokens input -> HK.do
       else do
         setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
 
-    renderNodeSubElems :: Boolean -> DerivZipper l r -> Array (EditorHTML l r) -> Array (EditorHTML l r)
-    renderNodeSubElems isCursor dzipper subElems = Array.concat
+    renderNodeSubElems :: Boolean -> HoleyDerivZipper l r -> Array (EditorHTML l r) -> Array (EditorHTML l r)
+    renderNodeSubElems isCursor hdzipper subElems = Array.concat
       [ if not isCursor then [] else 
         [ HH.slot bufferSlot unit bufferComponent 
-            { hdzipper: InjectHoleyDerivZipper dzipper
-            , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
+            { hdzipper
+            , edits: input.editsAtHoleyDerivZipper input.topSort hdzipper <#>
                 \edit -> 
-                  { lazy_preview: renderEditPreview dzipper edit
+                  { lazy_preview: renderEditPreview hdzipper edit
                   , edit }
-            } 
+            }
             handleBufferOutput
         , HH.slot_ previewSlot leftDir previewComponent leftDir
         ]
@@ -504,7 +500,7 @@ editorComponent = HK.component \tokens input -> HK.do
         , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
         , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
         ] $
-        renderNodeSubElems isCursor dzipper subElems
+        renderNodeSubElems isCursor (InjectHoleyDerivZipper dzipper) subElems
 
     renderPhantomDerivTerm dzipper = do
       let {classNames: cns, subElems} = prerenderDerivZipper dzipper $ renderPhantomDerivTerm <<< snd <$> Expr.zipDowns dzipper
@@ -543,16 +539,16 @@ editorComponent = HK.component \tokens input -> HK.do
         subElems
 
     renderHoleInterior :: Boolean -> DerivPath Up l r -> Sort l -> EditorHTML l r
-    renderHoleInterior isCursor dpath sort = assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
-      let dzipper = Expr.Zipper dpath dterm
+    renderHoleInterior isCursor dpath sort = do
+      let hdzipper = HoleInteriorHoleyDerivZipper dpath sort
       let elemId = fromHoleyDerivPathToElementId (HoleInteriorHoleyDerivPath dpath)
       HH.div
         [ classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []
         , HP.id elemId
-        , HE.onMouseDown (onMouseDown (HoleInteriorHoleyDerivZipper dpath sort))
-        , HE.onMouseOver (onMouseOver (HoleInteriorHoleyDerivZipper dpath sort))
+        , HE.onMouseDown (onMouseDown hdzipper)
+        , HE.onMouseOver (onMouseOver hdzipper)
         ] $
-        renderNodeSubElems isCursor dzipper
+        renderNodeSubElems isCursor hdzipper
         [ HH.div [classNames ["subnode", "inner"]]
           [interrogativeElem]
         ]
@@ -578,7 +574,7 @@ editorComponent = HK.component \tokens input -> HK.do
               , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper2))
               , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper2))
               ] $
-              renderNodeSubElems false dzipper2 subElems
+              renderNodeSubElems false (InjectHoleyDerivZipper dzipper2) subElems
 
     renderPreviewDerivTooth :: DerivPath Up l r -> DerivTooth l r -> DerivTerm l r -> {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
     renderPreviewDerivTooth up dtooth@(Expr.Tooth dl kidsPath) dterm = do
@@ -616,11 +612,11 @@ editorComponent = HK.component \tokens input -> HK.do
       let {before, after} = renderPreviewDerivTooth up th dterm
       {before: next.before <> before, after: after <> next.after}
     
-    renderEditPreview :: DerivZipper l r -> Edit l r -> Lazy (EditPreviewHTML l r)
-    renderEditPreview dzipper edit = edit.action <#> case _ of
-      FillAction {dterm} -> FillEditPreview $ renderPhantomDerivTerm (Expr.Zipper (Expr.zipperPath dzipper) dterm) 
-      ReplaceAction {dterm} -> ReplaceEditPreview $ renderPhantomDerivTerm (Expr.Zipper (Expr.zipperPath dzipper) dterm) 
-      WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath (Expr.zipperPath dzipper) dpath (Expr.zipperExpr dzipper)
+    renderEditPreview :: HoleyDerivZipper l r -> Edit l r -> Lazy (EditPreviewHTML l r)
+    renderEditPreview hdzipper edit = edit.action <#> case _ of
+      FillAction {dterm} -> FillEditPreview $ renderPhantomDerivTerm (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
+      ReplaceAction {dterm} -> ReplaceEditPreview $ renderPhantomDerivTerm (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
+      WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath (hdzipperDerivPath hdzipper) dpath (hdzipperDerivTerm hdzipper)
 
   HK.useLifecycleEffect do
     -- initialize
