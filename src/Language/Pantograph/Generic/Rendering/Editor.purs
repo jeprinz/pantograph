@@ -420,14 +420,7 @@ editorComponent = HK.component \tokens input -> HK.do
       , subElems :: Array (EditorHTML l r) }
     prerenderDerivZipper (Expr.Zipper dpath dterm) kidElems = assert (wellformedExpr "prerenderDerivZipper" dterm) \_ -> case dterm of
       DerivLabel r sort % [] | isHoleRule r ->
-        { classNames: ["hole"]
-        , subElems: [ HH.div [classNames ["subnode", "inner"]]
-              [ HH.div [classNames ["subnode", "hole-interior"]] [renderHoleInterior Nothing dpath sort]
-              , colonElem
-              , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-              ]
-          ]
-        }
+        prerenderHoleExterior sort (renderHoleInterior false dpath sort)
       DerivLabel rule sort % kids -> do
         let {classNames, subSymElems} = input.prerenderDerivTerm {rule, sort, kids}
         { classNames
@@ -500,11 +493,11 @@ editorComponent = HK.component \tokens input -> HK.do
         [ HH.slot_ previewSlot rightDir previewComponent rightDir ]
       ]
 
-    renderExpr :: Boolean -> DerivZipper l r -> EditorHTML l r
-    renderExpr isCursor dzipper = do
+    renderDerivTerm :: Boolean -> DerivZipper l r -> EditorHTML l r
+    renderDerivTerm isCursor dzipper = do
       let
         elemId = fromPathToElementId (Expr.zipperPath dzipper)
-        {classNames: cns, subElems} = prerenderDerivZipper dzipper $ renderExpr false <<< snd <$> Expr.zipDowns dzipper
+        {classNames: cns, subElems} = prerenderDerivZipper dzipper $ renderDerivTerm false <<< snd <$> Expr.zipDowns dzipper
       HH.div
         [ classNames $ ["node"] <> cns <> if isCursor then [cursorClassName] else []
         , HP.id elemId
@@ -519,47 +512,68 @@ editorComponent = HK.component \tokens input -> HK.do
         [classNames $ ["node"] <> cns]
         subElems
 
-    -- Nothing = not cursor
-    -- Just (Left unit) = cursor, but not inside
-    -- Just (Right unit) = cursor, and inside
-    renderHoleInterior :: Maybe (Either Unit Unit) -> DerivPath Up l r -> Sort l -> EditorHTML l r
-    renderHoleInterior isCursorInside dpath sort = assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
-      let dzipper = Expr.Zipper dpath dterm
-      -- let hdzipper = HoleInteriorHoleyDerivZipper dpath sort
-      (\kidElem -> do
-        let isCursor = isCursorInside == Just (Left unit)
-        if isCursor then do
-          let
-            elemId = fromPathToElementId dpath
-            clsNames = ["hole"]
-          HH.div
-            [ classNames $ ["node"] <> clsNames
-            , HP.id elemId
-            , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
-            , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
-            ] $
-            renderNodeSubElems isCursor dzipper
-            [ HH.div [classNames ["subnode", "inner"]]
-              [ HH.div [classNames ["subnode", "hole-interior"]] [kidElem]
-              , colonElem
-              , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-              ]
-            ]
-        else
-          kidElem
-      ) do
-        let isCursor = isCursorInside == Just (Right unit)
-        let elemId = fromHoleyDerivPathToElementId (HoleInteriorHoleyDerivPath dpath)
-        HH.div
-          [ classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []
-          , HP.id elemId
-          , HE.onMouseDown (onMouseDown (HoleInteriorHoleyDerivZipper dpath sort))
-          , HE.onMouseOver (onMouseOver (HoleInteriorHoleyDerivZipper dpath sort))
-          ] $
-          renderNodeSubElems isCursor dzipper
+    prerenderHoleExterior :: 
+      Sort l -> EditorHTML l r ->
+      { classNames :: Array String
+      , subElems :: Array (EditorHTML l r) }
+    prerenderHoleExterior sort holeInteriorElem =
+      { classNames: ["hole"]
+      , subElems: 
           [ HH.div [classNames ["subnode", "inner"]]
-            [interrogativeElem]
+            [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem]
+            , colonElem
+            , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+            ]
           ]
+      }
+
+    renderHoleExterior :: DerivPath Up l r -> Sort l -> EditorHTML l r -> EditorHTML l r
+    renderHoleExterior dpath sort holeInteriorElem = assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
+      -- let
+      --   dzipper = Expr.Zipper dpath dterm
+      --   elemId = fromPathToElementId dpath
+      --   clsNames = ["hole"]
+      -- HH.div
+      --   [ classNames $ ["node"] <> clsNames
+      --   , HP.id elemId
+      --   , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
+      --   , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
+      --   ] $
+      --   renderNodeSubElems isCursor dzipper
+      --   [ HH.div [classNames ["subnode", "inner"]]
+      --     [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem]
+      --     , colonElem
+      --     , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+      --     ]
+      --   ]
+      let
+        dzipper = Expr.Zipper dpath dterm
+        elemId = fromPathToElementId dpath
+        -- {classNames: cns, subElems} = prerenderDerivZipper dzipper $ renderDerivTerm false <<< snd <$> Expr.zipDowns dzipper
+        {classNames: cns, subElems} = prerenderHoleExterior sort holeInteriorElem
+      HH.div
+        [ classNames $ ["node"] <> cns
+        , HP.id elemId
+        , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
+        , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
+        ] $
+        -- renderNodeSubElems isCursor dzipper subElems
+        subElems
+
+    renderHoleInterior :: Boolean -> DerivPath Up l r -> Sort l -> EditorHTML l r
+    renderHoleInterior isCursor dpath sort = assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
+      let dzipper = Expr.Zipper dpath dterm
+      let elemId = fromHoleyDerivPathToElementId (HoleInteriorHoleyDerivPath dpath)
+      HH.div
+        [ classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []
+        , HP.id elemId
+        , HE.onMouseDown (onMouseDown (HoleInteriorHoleyDerivZipper dpath sort))
+        , HE.onMouseOver (onMouseOver (HoleInteriorHoleyDerivZipper dpath sort))
+        ] $
+        renderNodeSubElems isCursor dzipper
+        [ HH.div [classNames ["subnode", "inner"]]
+          [interrogativeElem]
+        ]
 
     renderPath dzipper interior  = do
       case Expr.zipUp dzipper of
@@ -574,7 +588,7 @@ editorComponent = HK.component \tokens input -> HK.do
               Array.fromFoldable $
               ZipList.unpathAround interior $ do
                 let kidZippers = Expr.zipDownsTooth dzipper2 th
-                renderExpr false <$> kidZippers
+                renderDerivTerm false <$> kidZippers
           renderPath dzipper2 $
             HH.div
               [ classNames $ ["node"] <> cns
@@ -655,8 +669,8 @@ editorComponent = HK.component \tokens input -> HK.do
               CursorState cursor -> do
                 let dzipper = hdzipperZipper cursor.hdzipper
                 case cursor.hdzipper of
-                  InjectHoleyDerivZipper _ -> [renderPath dzipper $ renderExpr true dzipper]
-                  HoleInteriorHoleyDerivZipper dpath sort -> [renderPath dzipper $ renderHoleInterior (Just (Right unit)) dpath sort]
+                  InjectHoleyDerivZipper _ -> [renderPath dzipper $ renderDerivTerm true dzipper]
+                  HoleInteriorHoleyDerivZipper dpath sort -> [renderPath dzipper $ renderHoleExterior dpath sort $ renderHoleInterior true dpath sort]
               SelectState _st -> hole "render SelectState"
               TopState _st -> hole "render TopState"
           ]
