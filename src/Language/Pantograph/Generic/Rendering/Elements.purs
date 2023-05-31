@@ -24,6 +24,9 @@ newlineElem = HH.br_
 indentElem :: forall w i. HH.HTML w i
 indentElem = makePuncElem "indent" "  "
 
+commentBeginElem = makePuncElem "commentBegin" " /* "
+commentEndElem = makePuncElem "commentEnd" " */ "
+
 ibeamElem :: forall w i. HH.HTML w i
 ibeamElem = makePuncElem "ibeam" "⌶"
 

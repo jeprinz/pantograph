@@ -50,8 +50,7 @@ data EditPreviewHTML l r
   | WrapEditPreview {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
 
 type RenderingContext = 
-  { mb_linebreak :: Maybe Linebreak
-  , indentationLevel :: Int
+  { indentationLevel :: Int
   , isCursor :: Boolean
   , isInteractive :: Boolean
   , isInlined :: Boolean
@@ -66,8 +65,7 @@ data Linebreak
 
 defaultRenderingContext :: RenderingContext
 defaultRenderingContext = 
-  { mb_linebreak: Nothing
-  , indentationLevel: 0
+  { indentationLevel: 0
   , isCursor: false
   , isInteractive: true
   , isInlined: false
@@ -75,8 +73,7 @@ defaultRenderingContext =
 
 previewRenderingContext :: RenderingContext
 previewRenderingContext = 
-  { mb_linebreak: Nothing
-  , indentationLevel: 0
+  { indentationLevel: 0
   , isCursor: false
   , isInteractive: false
   , isInlined: true

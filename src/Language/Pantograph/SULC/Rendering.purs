@@ -46,12 +46,17 @@ arrangeDerivTermSubs {renCtx, rule, sort, kids} = do
       let renCtx' = incremementIndentationLevel renCtx in
       [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
     -- format
-    FormatRule (Newline enabled) /\ _ /\ _ ->
-      let renCtx' = if enabled then incremementIndentationLevel renCtx else renCtx in
+    FormatRule Newline /\ _ /\ _ ->
+      let renCtx' = incremementIndentationLevel renCtx in
       Array.concat
-        [ if not enabled || renCtx.isInlined then [] else
+        [ if renCtx.isInlined then [] else
           [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
         , [Left (renCtx' /\ 0)] ]
+    FormatRule Comment /\ _ /\ _ ->
+      [ pure [Rendering.commentBeginElem]
+      , Left (renCtx /\ 0)
+      , pure [Rendering.commentEndElem]
+      , Left (renCtx /\ 1)]
     -- hole 
     TermHole /\ _ /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"
 

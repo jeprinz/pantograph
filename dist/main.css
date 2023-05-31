@@ -8,10 +8,13 @@ body {
   padding: 1rem;
 }
 
-.program {  
-  -webkit-user-select: none; /* Safari */
-  -ms-user-select: none; /* IE 10 and IE 11 */
-  user-select: none; /* Standard syntax */
+.program {
+  -webkit-user-select: none;
+  /* Safari */
+  -ms-user-select: none;
+  /* IE 10 and IE 11 */
+  user-select: none;
+  /* Standard syntax */
 
   font-family: monospace;
 }
@@ -58,7 +61,7 @@ body {
   padding: 0 0.4rem;
   border-radius: 1rem 1rem / 2rem;
   background-color: rgba(255, 139, 50, 0.1);
-  box-shadow: 
+  box-shadow:
     inset 0 0 0 2px rgb(255, 139, 50),
     0 0 2px 0 black;
 }
@@ -100,7 +103,7 @@ body {
   padding: 0 0.4rem;
   border-radius: 1rem 1rem / 2rem;
   background-color: rgba(255, 139, 50, 0.1);
-  box-shadow: 
+  box-shadow:
     inset 0 0 0 2px rgb(255, 139, 50),
     0 0 2px 0 black;
 }
@@ -174,15 +177,13 @@ body {
 
 /* placeholder-cursor */
 
-.node.placeholder-cursor {
+.node.placeholder-cursor {}
 
-}
-
-.node.placeholderCcursor > .subnode.placeholderCursor-inner {
+.node.placeholderCcursor>.subnode.placeholderCursor-inner {
   padding: 0 0.4rem;
   border-radius: 1rem 1rem / 2rem;
   background-color: rgba(255, 139, 50, 0.1);
-  box-shadow: 
+  box-shadow:
     0 0 0 2px blue,
     /* inset 0 0 2px 2px black; */
     inset 0 0 2px 1px black;
@@ -193,9 +194,20 @@ body {
 .preview {
   /* display: inline-block; */
   background-color: rgba(0, 234, 179, 0.379);
-  }
+}
 
-.preview.fill + .subnode, .preview.replace + .subnode {
+.preview.fill+.subnode,
+.preview.replace+.subnode {
   /* border: 2px solid black; */
   display: none;
+}
+
+
+/* comment */
+
+.commentBegin,
+.commendEnd,
+.commentBegin+.node>.subnode.string-inner {
+  font-style: italic;
+  color: gray !important;
 }

@@ -97,10 +97,12 @@ instance Pretty RuleLabel where
   pretty App = "app"
   pretty Ref = "ref"
   pretty TermHole = "?"
-  pretty (FormatRule (Newline enabled)) = "<newline:" <> show enabled <> ">"
+  pretty (FormatRule Newline) = "<newline>"
+  pretty (FormatRule Comment) = "<comment>"
 
 data Format
-  = Newline Boolean
+  = Newline
+  | Comment
 
 derive instance Generic Format _
 derive instance Eq Format
@@ -128,7 +130,8 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ []) = "?"
-  prettyExprF'_unsafe_RuleLabel (FormatRule f /\ [a]) = pretty (FormatRule f) <+> a
+  prettyExprF'_unsafe_RuleLabel (FormatRule Newline /\ [a]) = "<newline> " <> a
+  prettyExprF'_unsafe_RuleLabel (FormatRule Comment /\ [str, a]) = " /* " <> str <> "*/ " <> a
 
   language = language
 
@@ -179,8 +182,14 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  FormatRule (Newline _enabled) -> Grammar.makeRule ["gamma"] \[gamma] ->
+  FormatRule Newline -> Grammar.makeRule ["gamma"] \[gamma] ->
     [ TermSort %|-* [gamma] ]
+    /\ --------
+    ( TermSort %|-* [gamma] )
+
+  FormatRule Comment -> Grammar.makeRule ["comment", "gamma"] \[comment, gamma] ->
+    [ Grammar.NameSortLabel %* [comment]
+    , TermSort %|-* [gamma] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
