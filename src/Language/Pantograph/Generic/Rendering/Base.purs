@@ -33,12 +33,18 @@ import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
 import Type.Proxy (Proxy(..))
 
-type EditorHTML l r = HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query (Output l r) String) Aff
+type EditorHTML l r = 
+  HH.ComponentHTML 
+    (HK.HookM Aff Unit)
+    ( buffer :: H.Slot Query (Output l r) String
+    , preview :: H.Slot (PreviewQuery l r) Unit (String /\ HorizontalDir)
+    ) 
+    Aff
 
 data EditPreviewHTML l r
   = FillEditPreview (EditorHTML l r)
-  | WrapEditPreview {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
   | ReplaceEditPreview (EditorHTML l r)
+  | WrapEditPreview {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
 
 type DerivTermPrerenderer l r = 
   { rule :: r
@@ -82,27 +88,6 @@ type EditorLocals l r =
   , maybeHighlightPath_ref :: Ref.Ref (Maybe (HoleyDerivPath Up l r))
   , state_id :: HK.StateId (State l r)
   }
-
-type BufferInput l r =
-  { hdzipper :: HoleyDerivZipper l r
-  , edits :: Array (Lazy (EditPreviewHTML l r) /\ Edit l r)
-  }
-
-bufferSlot = Proxy :: Proxy "buffer"
-
-isBufferKey :: String -> Boolean
-isBufferKey = (_ `Array.elem` [" ", "Enter"])
-
-data Output l r
-  = ActionOutput (Action l r)
-  | UpdateFacadeOutput (State l r -> HK.HookM Aff (State l r))
-
-data Query a
-  -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
-  = SetBufferEnabledQuery Boolean (Maybe String) a
-  -- | SetBufferStringQuery String a
-  | MoveBufferQuery VerticalDir a
-  | SubmitBufferQuery a
 
 data State l r
   = CursorState (Cursor l r)
@@ -264,3 +249,41 @@ cursorClassName = "cursor" :: String
 highlightClassName = "highlight" :: String
 selectTopClassName = "select-top" :: String
 selectBottomClassName = "select-bottom" :: String
+
+-- | Buffer
+
+type BufferInput l r =
+  { hdzipper :: HoleyDerivZipper l r
+  , edits :: Array (EditAndPreview l r)
+  }
+
+bufferSlot = Proxy :: Proxy "buffer"
+
+isBufferKey :: String -> Boolean
+isBufferKey = (_ `Array.elem` [" ", "Enter"])
+
+type EditAndPreview l r = 
+  { edit :: Edit l r
+  , lazy_preview :: Lazy (EditPreviewHTML l r)
+  }
+
+data Output l r
+  = ActionOutput (Action l r)
+  | UpdateFacadeOutput (State l r -> HK.HookM Aff (State l r))
+  | SetPreviewOutput {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
+
+data Query a
+  -- = KeyboardEvent KeyboardEvent.KeyboardEvent a
+  = SetBufferEnabledQuery Boolean (Maybe String) a
+  -- | SetBufferStringQuery String a
+  | MoveBufferQuery VerticalDir a
+  | SubmitBufferQuery a
+
+
+-- | Preview
+
+previewSlot = Proxy :: Proxy "preview"
+
+data PreviewQuery l r a
+  = SetPreviewQuery (Array (EditorHTML l r)) a
+

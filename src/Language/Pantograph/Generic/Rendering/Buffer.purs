@@ -5,16 +5,18 @@ import Language.Pantograph.Generic.Rendering.Base
 import Prelude
 
 import Bug (bug)
+import Bug.Assertion (assert, just)
+import Control.Alternative (guard)
 import Data.Array as Array
 import Data.Expr ((%))
 import Data.Expr as Expr
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
-import Data.Lazy (defer, force)
+import Data.Lazy (Lazy, defer, force)
 import Data.Maybe (Maybe(..))
 import Data.Rational as Rational
-import Data.Tuple (snd)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple (fst, snd)
+import Data.Tuple.Nested ((/\), type (/\))
 import Data.Variant (case_, on)
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
@@ -24,6 +26,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities (classNames, fromInputEventToTargetValue)
+import Hole (hole)
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), derivTermSort)
 import Language.Pantograph.Generic.Rendering.Elements (placeholderCursorNodeElem)
 import Type.Direction (_down, _up)
@@ -32,97 +35,203 @@ import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.MouseEvent as MouseEvent
 
+type BufferPreState l r =
+  { input :: BufferInput l r
+  , isEnabled :: Boolean
+  , bufferString :: String
+  , bufferFocus :: Int
+  , edits :: Array (EditAndPreview l r)
+  }
+
+type BufferState l r =
+  { input :: BufferInput l r
+  , isEnabled :: Boolean
+  , bufferString :: String
+  , bufferFocus :: Int
+  , normalBufferFocus :: Int
+  , edits :: Array (EditAndPreview l r)
+  , focussedEdit :: Maybe (EditAndPreview l r)
+  , isString :: Boolean
+  }
+
+computeEdits :: forall l r. IsRuleLabel l r => 
+  -- { input :: BufferInput l r
+  -- , isString :: Boolean
+  -- , hdzipper :: HoleyDerivZipper l r
+  -- , bufferString :: String
+  -- } ->
+  BufferPreState l r ->
+  Boolean ->
+  Array (EditAndPreview l r)
+computeEdits {input, bufferString} isString = 
+  if isString then do
+    let dterm = DerivString bufferString % []
+    let sort = derivTermSort dterm
+    [ { edit: 
+          { label: bufferString
+          , action: defer \_ -> ReplaceAction
+              -- !TODO compute actual change
+              { topChange: Expr.injectExprChange sort
+              , dterm
+              }
+          }
+      , lazy_preview: defer (\_ -> FillEditPreview (HH.text bufferString))
+      } ]
+  else
+    input.edits #
+      -- memo fuzzy distances
+      map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
+      -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
+      Array.filter (\(FuzzyStr fs /\ item) -> Rational.fromInt 0 < fs.ratio) >>>
+      -- sort the remaining edits by the fuzzy distance
+      Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
+      -- forget fuzzy distances
+      map snd
+
+computeNormalBufferFocus {bufferFocus, edits} = 
+  bufferFocus `mod` Array.length edits
+
+computeFocussedEdit {isEnabled, normalBufferFocus, edits} = do
+  if isEnabled
+    then Array.index edits normalBufferFocus
+    else Nothing
+
+computeBufferState :: forall l r. IsRuleLabel l r => BufferPreState l r -> BufferState l r
+computeBufferState {input, isEnabled, bufferString, bufferFocus, edits} = do
+  let normalBufferFocus = computeNormalBufferFocus {bufferFocus, edits}
+  let focussedEdit = computeFocussedEdit {isEnabled, normalBufferFocus, edits}
+  let isString = case input.hdzipper of
+        InjectHoleyDerivZipper (Expr.Zipper _ (DerivString _str % _)) -> true
+        _ -> false
+  { input
+  , isEnabled
+  , bufferString
+  , bufferFocus
+  , normalBufferFocus
+  , edits 
+  , focussedEdit
+  , isString
+  }
+
+extractBufferPreState :: forall l r. IsRuleLabel l r => BufferState l r -> BufferPreState l r
+extractBufferPreState { input
+  , isEnabled
+  , bufferString
+  , bufferFocus
+  , normalBufferFocus
+  , edits 
+  , focussedEdit
+  , isString
+  } = 
+  { input
+  , isEnabled
+  , bufferString
+  , bufferFocus
+  , edits
+  }
+
+
+bufferInputRefLabelString = "buffer-input" :: String
+bufferInputRefLabel = H.RefLabel bufferInputRefLabelString :: H.RefLabel
+
 bufferComponent :: forall l r. IsRuleLabel l r => H.Component Query (BufferInput l r) (Output l r) Aff
 bufferComponent = HK.component \tokens input -> HK.do
-  isEnabled /\ isEnabled_id <- HK.useState false
-  bufferString /\ bufferString_id <- HK.useState ""
-  bufferFocus /\ bufferFocus_id <- HK.useState 0
-  -- !TODO bufferFocus is actually 2D, since eventually I'll implement cycling
-  -- between different edits that have the same label
+  
+-- !TODO bufferFocus is actually 2D, since eventually I'll implement cycling
+-- between different edits that have the same label
+  currentBufferState /\ bufferState_id <- HK.useState do
+    let 
+      isEnabled = false
+      bufferString = ""
+      bufferFocus = 0
+      edits = [] :: Array (EditAndPreview l r)
+    computeBufferState 
+      { input
+      , isEnabled
+      , bufferString
+      , bufferFocus
+      , edits }
 
-  let is_string = case input.hdzipper of
-        InjectHoleyDerivZipper (Expr.Zipper _ (DerivString str % _)) -> true
-        _ -> false
+  let 
+    setPreview Nothing = HK.raise tokens.outputToken $ SetPreviewOutput mempty
+    setPreview (Just lazy_editPreviewHtml) = HK.raise tokens.outputToken $ SetPreviewOutput case force lazy_editPreviewHtml of
+      FillEditPreview elem -> {before: [elem], after: []}
+      ReplaceEditPreview elem -> {before: [elem], after: []}
+      WrapEditPreview {before, after} -> {before, after}
 
-  let bufferInputRefLabelString = "buffer-input"
+  let 
+    get = HK.get bufferState_id
 
-  edits <- HK.captures {hdzipper: input.hdzipper, bufferString} $ flip HK.useMemo \_ ->
-    if is_string then do
-      let dterm = DerivString bufferString % []
-      let sort = derivTermSort dterm
-      -- let preview = DerivTermEditPreview dterm
-      [ defer (\_ -> FillEditPreview (HH.text bufferString)) /\
-        { label: bufferString
-        -- , action: SetCursorAction (defer \_ -> 
-        --     Expr.Zipper (hdzipperDerivPath input.hdzipper) (DerivString bufferString % []))
-        , action: defer \_ -> ReplaceAction
-            -- !TODO compute actual change
-            { topChange: Expr.injectExprChange sort
-            , dterm
-            }
-        } ]
-    else
-      input.edits #
-        -- memo fuzzy distances
-        map (map (\edit -> Fuzzy.matchStr false bufferString edit.label /\ edit)) >>>
-        -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
-        Array.filter (\(_ /\ (FuzzyStr fs /\ _)) -> Rational.fromInt 0 < fs.ratio) >>>
-        -- sort the remaining edits by the fuzzy distance
-        Array.sortBy (\(_ /\ (fuzzyStr /\ _)) (_ /\ (fuzzyStr2 /\ _)) -> compare fuzzyStr fuzzyStr2) >>>
-        -- forget fuzzy distances
-        map (map snd)
+    -- handles computing functionally-dependent parts of bufferState and updating preview
+    put _st = do
+      let st = computeBufferState _st
+      HK.put bufferState_id st
+      -- update preview
+      case st.focussedEdit of
+        Nothing -> setPreview Nothing
+        Just {lazy_preview} -> setPreview (Just lazy_preview)
+      pure st
 
-  let normalBufferFocus = bufferFocus `mod` Array.length edits
+    modify :: (BufferPreState l r -> BufferPreState l r) -> HK.HookM Aff (BufferState l r)
+    modify f = do
+      st <- extractBufferPreState <$> get
+      let st' = f st
+      put st'
 
+  -- | Yields whether or not submission was successful
   let submitBuffer _ = do
-        if isEnabled then do
-          case Array.index edits normalBufferFocus of
-            Nothing -> bug $ "[bufferComponent.SubmitBufferQuery] attempted to submit buffer, but bufferFocus is out of range: \n  - length edits = " <> show (Array.length edits) <> "\n  - bufferFocus = " <> show bufferFocus 
-            Just (_ /\ edit) -> do
-              HK.put isEnabled_id false -- disable query
-              HK.put bufferFocus_id 0 -- reset bufferFocus
-              HK.raise tokens.outputToken $ ActionOutput (force edit.action) -- output edit action
-              pure true
-        else
-          pure false
+        st <- get
+        case st.isEnabled /\ st.focussedEdit of
+          true /\ Just {edit} -> do
+            void $ modify _
+              { isEnabled = false -- disable buffer
+              , bufferFocus = 0 -- reset bufferFocus
+              }
+            setPreview Nothing
+            -- output edit action
+            HK.raise tokens.outputToken $ ActionOutput (force edit.action)
+            pure true
+          _ -> pure false
+
+  let modifyBufferFocus f = do
+        st <- modify \st -> st {bufferFocus = f st.bufferFocus}
+        setPreview (st.focussedEdit <#> _.lazy_preview)
 
   HK.useQuery tokens.queryToken case _ of
     SetBufferEnabledQuery isEnabled' mb_str a -> do
-      HK.put isEnabled_id isEnabled' -- update isEnabled
-      HK.put bufferFocus_id 0 -- reset bufferFocus
       if isEnabled' then do
           -- focus buffer input tag
-          HK.getHTMLElementRef (H.RefLabel bufferInputRefLabelString) >>= case _ of 
-            Nothing -> bug $ "[bufferComponent.useQuery] could not find element with ref ExprLabel: " <> bufferInputRefLabelString
-            Just elem -> do
+          HK.getHTMLElementRef bufferInputRefLabel >>= \mb_elem -> 
+            assert (just ("could not find element with ref ExprLabel: " <> bufferInputRefLabelString) $ mb_elem) \elem -> do
               liftEffect $ HTMLElement.focus elem
               case mb_str of
                 Nothing -> pure unit
-                Just str -> do
-                  -- initialize string in buffer
-                  case InputElement.fromElement (HTMLElement.toElement elem) of
-                    Nothing -> bug "The element referenced by `bufferInputRefLabelString` wasn't an HTML input element."
-                    Just inputElem -> do
+                Just str ->
+                  assert (just ("could not find element with ref ExprLabel: " <> bufferInputRefLabelString) $ 
+                    InputElement.fromElement (HTMLElement.toElement elem)) \inputElem -> do
+                      -- initialize string in buffer
                       liftEffect $ InputElement.setValue str inputElem
-                      HK.put bufferString_id str
+                      void $ modify _
+                        { bufferString = str
+                        , bufferFocus = 0 -- reset bufferFocus
+                        , isEnabled = isEnabled' -- update isEnabled
+                        }
           -- update facade to BufferCursorMode
           HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
             pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper) {mode = BufferCursorMode}
-          pure unit
-      else
+      else do
+        -- clear preview
+        setPreview Nothing
         -- update facade to CursorState
         HK.raise tokens.outputToken $ UpdateFacadeOutput \_ ->
           pure $ CursorState (cursorFromHoleyDerivZipper input.hdzipper)
       pure (Just a)
-    -- SetBufferStringQuery str a -> do
-    --   Debug.traceM $ "SetBufferString str = " <> str
-    --   HK.put bufferString_id str
-    --   pure $ Just a
     MoveBufferQuery qm a -> do
-      if isEnabled then do
+      st <- get
+      if st.isEnabled then do
         (qm # _) $ case_
-          # on _up (\_ -> HK.modify_ bufferFocus_id (_ - 1))
-          # on _down (\_ -> HK.modify_ bufferFocus_id (_ + 1))
+          # on _up (\_ -> modifyBufferFocus (_ - 1))
+          # on _down (\_ -> modifyBufferFocus (_ + 1))
         pure $ Just a
       else
         pure Nothing
@@ -143,36 +252,37 @@ bufferComponent = HK.component \tokens input -> HK.do
         [ classNames ["subnode", "buffer"]
         ] $ 
         Array.concat
-        [ if not isEnabled then [] else
+        [ if not currentBufferState.isEnabled then [] else
           [ HH.div [classNames ["inner"]] $
               Array.concat
               [ [ HH.input 
                   [ classNames ["buffer-input"]
                   , HP.autofocus true 
-                  , HP.ref $ H.RefLabel "buffer-input"
+                  , HP.ref $ bufferInputRefLabel
                   , HP.type_ HP.InputText
                   , HE.onInput \event -> do
                       bufferString' <- liftEffect $ fromInputEventToTargetValue event
-                      HK.put bufferString_id bufferString'
-                      HK.put bufferFocus_id 0 -- reset bufferFocus
-                      pure unit
+                      void $ modify _
+                        { bufferString = bufferString' -- update bufferString
+                        , bufferFocus = 0 -- reset bufferFocus
+                        }
                   ]
                 ]
-              , if is_string then [] else pure $
+              , if currentBufferState.isString then [] else pure $
                 HH.div
                   [ classNames ["buffer-results"] ] $
-                  flip Array.mapWithIndex edits \i (lazy_editPreviewHtml /\ _edit) -> 
+                  flip Array.mapWithIndex currentBufferState.edits \i {lazy_preview} -> 
                     HH.div 
-                      [ classNames $ ["buffer-result"] <> if i == normalBufferFocus then ["buffer-focus"] else []
+                      [ classNames $ ["buffer-result"] <> if i == currentBufferState.normalBufferFocus then ["buffer-focus"] else []
                       , HE.onMouseOver \event -> do
                           liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
-                          HK.put bufferFocus_id i
+                          void $ modify _ {bufferFocus = i}
                       , HE.onMouseDown \event -> do
                           liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
-                          -- HK.put bufferFocus_id i
+                          void $ modify _ {bufferFocus = i}
                           void $ submitBuffer unit
                       ]
-                      (case force lazy_editPreviewHtml of
+                      (case force lazy_preview of
                         FillEditPreview html -> [html]
                         WrapEditPreview {before, after} -> before <> [placeholderCursorNodeElem] <> after
                         ReplaceEditPreview html -> [html]

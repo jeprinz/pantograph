@@ -193,3 +193,12 @@ body {
     /* inset 0 0 2px 2px black; */
     inset 0 0 2px 1px black;
 }
+
+/* preview */
+
+.preview {
+  /* display: inline-block; */
+  background-color: rgba(87, 180, 0, 0.7);
+
+}
+

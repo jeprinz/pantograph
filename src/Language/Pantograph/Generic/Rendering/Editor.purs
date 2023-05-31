@@ -33,18 +33,19 @@ import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
 import Halogen as H
-import Halogen.HTML (div, slot, text) as HH
+import Halogen.HTML (div, slot, slot_, text) as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
+import Language.Pantograph.Generic.Rendering.Preview (previewComponent)
 import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
 import Log (logM)
 import Text.Pretty (pretty)
 import Text.Pretty as P
-import Type.Direction (Up, _down, _left, _next, _prev, _right, _up, readMoveDir, readVerticalDir)
+import Type.Direction (Up, _down, _left, _next, _prev, _right, _up, leftDir, readMoveDir, readVerticalDir, rightDir)
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.DOM as DOM
@@ -256,6 +257,10 @@ editorComponent = HK.component \tokens input -> HK.do
             Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
             Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
 
+    setBufferEnabled :: String -> Boolean -> Maybe String -> HK.HookM Aff Unit
+    setBufferEnabled elemId isEnabled mb_str = do
+      HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery isEnabled mb_str
+
     handleKeyboardEvent :: KeyboardEvent.KeyboardEvent -> HK.HookM Aff Unit
     handleKeyboardEvent event = do
       -- Console.log $ "[event.key] " <> KeyboardEvent.key event
@@ -284,7 +289,7 @@ editorComponent = HK.component \tokens input -> HK.do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery false Nothing
+            setBufferEnabled elemId false Nothing
           else if isJust (readVerticalDir key) then
             assert (just "handleKeyboardEvent" $ readVerticalDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -325,17 +330,17 @@ editorComponent = HK.component \tokens input -> HK.do
             case hdzipperDerivTerm cursor.hdzipper of
               DerivString str % _ -> do
                 elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-                HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just str)
+                setBufferEnabled elemId true (Just str)
               _ -> do
                 -- activate buffer
                 elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-                HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true Nothing
+                setBufferEnabled elemId true Nothing
           else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
+            setBufferEnabled elemId true (Just key)
           else if key == "Backspace" then do
             -- replace dterm with default deriv
             case defaultDerivTerm (derivTermSort dterm) of
@@ -378,7 +383,7 @@ editorComponent = HK.component \tokens input -> HK.do
             setFacade $ CursorState cursor
             -- activate buffer
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true Nothing
+            setBufferEnabled elemId true Nothing
           else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -387,7 +392,7 @@ editorComponent = HK.component \tokens input -> HK.do
             setFacade $ CursorState cursor
             -- activate buffer
             elemId <- getElementIdByHoleyDerivPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            HK.tell tokens.slotToken bufferSlot elemId $ SetBufferEnabledQuery true (Just key)
+            setBufferEnabled elemId true (Just key)
           else if isJust (readMoveDir key) then
             assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -404,9 +409,12 @@ editorComponent = HK.component \tokens input -> HK.do
             setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
           else pure unit
 
-    handleBufferOutput = case _ of
+    handleBufferOutput elemId = case _ of
       ActionOutput act -> handleAction act
       UpdateFacadeOutput f -> setFacade =<< (f =<< getFacade)
+      SetPreviewOutput {before, after} -> do
+        HK.tell tokens.slotToken previewSlot (elemId /\ leftDir) $ SetPreviewQuery before
+        HK.tell tokens.slotToken previewSlot (elemId /\ rightDir) $ SetPreviewQuery after
   
     prerenderDerivZipper :: 
       DerivZipper l r ->
@@ -477,6 +485,22 @@ editorComponent = HK.component \tokens input -> HK.do
       else do
         setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
 
+    renderNodeSubElems :: String -> DerivZipper l r -> Array (EditorHTML l r) -> Array (EditorHTML l r)
+    renderNodeSubElems elemId dzipper subElems = Array.concat
+      [ [ HH.slot bufferSlot elemId bufferComponent 
+            { hdzipper: InjectHoleyDerivZipper dzipper
+            , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
+                \edit -> 
+                  { lazy_preview: renderEditPreview dzipper edit
+                  , edit }
+            } 
+            (handleBufferOutput elemId)
+        , HH.slot_ previewSlot (elemId /\ leftDir) previewComponent unit
+        ]
+      , subElems
+      , [HH.slot_ previewSlot (elemId /\ rightDir) previewComponent unit]
+      ]
+
     renderExpr :: Boolean -> DerivZipper l r -> EditorHTML l r
     renderExpr isCursor dzipper = do
       let
@@ -488,16 +512,7 @@ editorComponent = HK.component \tokens input -> HK.do
         , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
         , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
         ] $
-        Array.concat
-        [ [ HH.slot bufferSlot elemId bufferComponent 
-            { hdzipper: InjectHoleyDerivZipper dzipper
-            , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
-                \edit -> renderEditPreview dzipper edit /\ edit
-            } 
-            handleBufferOutput
-          ]
-        , subElems
-        ]
+        renderNodeSubElems elemId dzipper subElems
 
     renderPhantomDerivTerm dzipper = do
       let {classNames: cns, subElems} = prerenderDerivZipper dzipper $ renderPhantomDerivTerm <<< snd <$> Expr.zipDowns dzipper
@@ -507,7 +522,7 @@ editorComponent = HK.component \tokens input -> HK.do
 
     renderHoleInterior isCursor dpath sort = assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm -> do
       let dzipper = Expr.Zipper dpath dterm
-      let hdzipper = HoleInteriorHoleyDerivZipper dpath sort
+      -- let hdzipper = HoleInteriorHoleyDerivZipper dpath sort
       (\kidElem -> 
         if isCursor then do
           let
@@ -519,19 +534,13 @@ editorComponent = HK.component \tokens input -> HK.do
             , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper))
             , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper))
             ] $
-            Array.concat
-            [ [ HH.slot bufferSlot elemId bufferComponent 
-                { hdzipper: InjectHoleyDerivZipper dzipper
-                , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper) <#>
-                  \edit -> renderEditPreview dzipper edit /\ edit
-                } 
-                handleBufferOutput
-              ]
-            , [ HH.div [classNames ["subnode", "inner"]]
-                  [ HH.div [classNames ["subnode", "hole-interior"]] [kidElem]
-                  , colonElem
-                  , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-                  ]
+            -- !TODO there used to be a buffer here, but pretty sure i dont need
+            -- a buffer on the outside of the hole if there's already one
+            -- rendered inside the hole
+            [ HH.div [classNames ["subnode", "inner"]]
+              [ HH.div [classNames ["subnode", "hole-interior"]] [kidElem]
+              , colonElem
+              , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
               ]
             ]
       else
@@ -544,18 +553,10 @@ editorComponent = HK.component \tokens input -> HK.do
           , HE.onMouseDown (onMouseDown (HoleInteriorHoleyDerivZipper dpath sort))
           , HE.onMouseOver (onMouseOver (HoleInteriorHoleyDerivZipper dpath sort))
           ] $
-          Array.concat
-          [ [ HH.slot bufferSlot elemId bufferComponent
-                { hdzipper
-                , edits: input.editsAtHoleyDerivZipper input.topSort hdzipper <#>
-                    \edit -> renderEditPreview dzipper edit /\ edit
-                }
-                handleBufferOutput
-            ]
-          , [ HH.div [classNames ["subnode", "inner"]]
+          renderNodeSubElems elemId dzipper
+            [ HH.div [classNames ["subnode", "inner"]]
               [interrogativeElem]
             ]
-          ]
 
     renderPath dzipper interior  = do
       case Expr.zipUp dzipper of
@@ -578,30 +579,7 @@ editorComponent = HK.component \tokens input -> HK.do
               , HE.onMouseDown (onMouseDown (InjectHoleyDerivZipper dzipper2))
               , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper2))
               ] $
-              Array.concat
-              [ [ HH.slot bufferSlot elemId bufferComponent 
-                  { hdzipper: InjectHoleyDerivZipper dzipper2
-                  , edits: input.editsAtHoleyDerivZipper input.topSort (InjectHoleyDerivZipper dzipper2) <#>
-                    \edit -> renderEditPreview dzipper edit /\ edit
-                  } 
-                  handleBufferOutput
-                ]
-              , subElems
-              ]
-
-    -- renderPreviewDerivTooth dtooth = assert (just "renderPreviewDerivTooth" (defaultDerivTerm (derivToothInteriorSort dtooth))) \dterm -> do
-    --   let
-    --     dzipper = Expr.Zipper mempty (Expr.unTooth dtooth dterm)
-
-    --     {classNames: cns, subElems} =
-    --       prerenderDerivZipper dzipper $
-    --       Array.fromFoldable $
-    --       ZipList.unpathAround placeholderCursorNodeElem $ do
-    --         let kidDZippers = Expr.zipDownsTooth dzipper dtooth
-    --         renderPhantomDerivTerm <$> kidDZippers
-    --   HH.div
-    --     [classNames $ ["node"] <> cns]
-    --     subElems
+              renderNodeSubElems elemId dzipper2 subElems
 
     renderPreviewDerivTooth :: DerivPath Up l r -> DerivTooth l r -> DerivTerm l r -> {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
     renderPreviewDerivTooth up dtooth@(Expr.Tooth dl kidsPath) dterm = do
