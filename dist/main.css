@@ -109,7 +109,9 @@ body {
   .subnode.punctuation
 */
 
-.subnode.punctuation {}
+.subnode.punctuation {
+  white-space: pre;
+}
 
 .subnode.punctuation.lambda {
   margin-right: 0.2rem;

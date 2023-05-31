@@ -57,6 +57,9 @@ type RenderingContext =
   , isInlined :: Boolean
   }
 
+incremementIndentationLevel :: RenderingContext -> RenderingContext
+incremementIndentationLevel ctx = ctx {indentationLevel = ctx.indentationLevel + 1}
+
 data Linebreak
   = IndentedLinebreak
   | UnindentedLinebreak
@@ -79,8 +82,7 @@ previewRenderingContext =
   , isInlined: true
   }
 
-
-type DerivTermPrerenderer l r = 
+type ArrangeDerivTermSubs l r = 
   { renCtx :: RenderingContext
   , rule :: r
   , sort :: Sort l
@@ -108,7 +110,7 @@ type EditorSpec l r =
   -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
-  , arrangeDerivTermSubs :: DerivTermPrerenderer l r
+  , arrangeDerivTermSubs :: ArrangeDerivTermSubs l r
   }
 
 -- Stuff that's defined inside of the editor component

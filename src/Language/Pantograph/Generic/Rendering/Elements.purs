@@ -21,6 +21,8 @@ interrogativeElem :: forall w i. HH.HTML w i
 interrogativeElem = makePuncElem "interrogative" "?"
 newlineElem :: forall w i. HH.HTML w i
 newlineElem = HH.br_
+indentElem :: forall w i. HH.HTML w i
+indentElem = makePuncElem "indent" "  "
 
 ibeamElem :: forall w i. HH.HTML w i
 ibeamElem = makePuncElem "ibeam" "⌶"

@@ -20,7 +20,7 @@ import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar as Grammar
-import Language.Pantograph.Generic.Rendering.Base (DerivTermPrerenderer)
+import Language.Pantograph.Generic.Rendering.Base (ArrangeDerivTermSubs, incremementIndentationLevel)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Text.Pretty (pretty)
@@ -28,7 +28,7 @@ import Text.Pretty (pretty)
 type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
 
-arrangeDerivTermSubs :: DerivTermPrerenderer PreSortLabel RuleLabel
+arrangeDerivTermSubs :: ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs {renCtx, rule, sort, kids} = do
   assert (Expr.wellformedExprF "ULC arrangeDerivTermSubs" pretty (Grammar.DerivLabel rule sort /\ kids)) \_ -> case rule /\ sort /\ kids of
     -- var
@@ -40,14 +40,18 @@ arrangeDerivTermSubs {renCtx, rule, sort, kids} = do
     Ref /\ _ /\ _ -> 
       [pure [refElem], Left (renCtx /\ 0)]
     Lam /\ _ /\ _ -> 
-      [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [mapstoElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
-    App /\ _ /\ _ -> 
-      [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.spaceElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
+      let renCtx' = incremementIndentationLevel renCtx in
+      [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [mapstoElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
+    App /\ _ /\ _ ->
+      let renCtx' = incremementIndentationLevel renCtx in
+      [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
     -- format
     FormatRule (Newline enabled) /\ _ /\ _ ->
+      let renCtx' = if enabled then incremementIndentationLevel renCtx else renCtx in
       Array.concat
-        [ if enabled then [pure [Rendering.spaceElem, Rendering.newlineElem]] else []
-        , [Left (renCtx /\ 0)] ]
+        [ if not enabled || renCtx.isInlined then [] else
+          [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
+        , [Left (renCtx' /\ 0)] ]
     -- hole 
     TermHole /\ _ /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"
 
