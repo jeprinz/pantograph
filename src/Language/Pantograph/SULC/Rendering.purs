@@ -38,6 +38,13 @@ prerenderDerivTerm {rule, sort, kids} = do
     Ref /\ _ /\ _ -> {classNames: ["term", "ref"], subSymElems: [pure [refElem], Left 0]}
     Lam /\ _ /\ _ -> {classNames: ["term", "lam"], subSymElems: [pure [Rendering.lparenElem, lambdaElem], Left 0, pure [mapstoElem], Left 1, pure [Rendering.rparenElem]]}
     App /\ _ /\ _ -> {classNames: ["term", "app"], subSymElems: [pure [Rendering.lparenElem], Left 0, pure [Rendering.spaceElem], Left 1, pure [Rendering.rparenElem]]}
+    -- format
+    Format (Newline enabled) /\ _ /\ _ ->
+      { classNames: ["term", "format", "newline"]
+      , subSymElems: Array.concat
+          [ if enabled then [pure [Rendering.newlineElem]] else []
+          , [Left 0] ]
+      }
     -- hole 
     TermHole /\ _ /\ _ -> bug "[ULC.Grammar.prerenderDerivTerm] hole should be handled generically"
 

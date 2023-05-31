@@ -19,6 +19,9 @@ turnstileElem :: forall w i. HH.HTML w i
 turnstileElem = makePuncElem "turnstile" "⊢"
 interrogativeElem :: forall w i. HH.HTML w i
 interrogativeElem = makePuncElem "interrogative" "?"
+newlineElem :: forall w i. HH.HTML w i
+newlineElem = HH.br_
+
 
 ibeamElem :: forall w i. HH.HTML w i
 ibeamElem = makePuncElem "ibeam" "⌶"

@@ -16,6 +16,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
+import Data.Variant (Variant)
 import Hole (hole)
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
@@ -76,6 +77,21 @@ data RuleLabel
   | App
   | Ref
   | TermHole
+  | Format FormatData
+
+data FormatData
+  = Newline Boolean
+
+derive instance Generic FormatData _
+derive instance Eq FormatData
+derive instance Ord FormatData
+instance Show FormatData where show x = genericShow x
+instance Enum FormatData where
+  pred x = genericPred x
+  succ x = genericSucc x
+instance Bounded FormatData where
+  bottom = genericBottom
+  top = genericTop
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -95,6 +111,7 @@ instance Pretty RuleLabel where
   pretty App = "app"
   pretty Ref = "ref"
   pretty TermHole = "?"
+  pretty (Format (Newline enabled)) = "<newline:" <> show enabled <> ">"
 
 --------------------------------------------------------------------------------
 -- Language
@@ -104,12 +121,13 @@ type Language = Grammar.Language PreSortLabel RuleLabel
 type Rule = Grammar.Rule PreSortLabel
 
 instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
-  prettyExprF'_unsafe_RuleLabel (Zero /\ []) = "Z"
-  prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = "S" <> x
+  prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
+  prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = pretty Suc <> x
   prettyExprF'_unsafe_RuleLabel (Lam /\ [x, b]) = P.parens $ "λ" <+> x <+> "↦" <+> b
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ []) = "?"
+  prettyExprF'_unsafe_RuleLabel (Format f /\ [a]) = pretty (Format f) <+> a
 
   language = language
 
@@ -157,6 +175,11 @@ language = TotalMap.makeTotalMap case _ of
 
   TermHole -> Grammar.makeRule ["gamma"] \[gamma] ->
     [ ]
+    /\ --------
+    ( TermSort %|-* [gamma] )
+
+  Format (Newline _enabled) -> Grammar.makeRule ["gamma"] \[gamma] ->
+    [ TermSort %|-* [gamma] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
