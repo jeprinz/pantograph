@@ -209,6 +209,9 @@ derivPathSort _ path@(Expr.Path (th : _)) = reflectPathDir path #
     # on _down (\_ -> derivToothSort th)
   )
 
+derivZipperSort :: forall l r. IsRuleLabel l r => DerivZipper l r -> Sort l
+derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
+
 --------------------------------------------------------------------------------
 -- Rule
 --------------------------------------------------------------------------------

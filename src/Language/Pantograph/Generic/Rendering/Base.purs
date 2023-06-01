@@ -91,26 +91,30 @@ type PreKid l r =
   (RenderingContext /\ Int) \/ -- reference to kid, with kid's rendering context
   Array (EditorHTML l r) -- static html
 
--- !TODO editor spec shouldn't know about HoleyDerivZipper, so need two
--- "editsAt..." types
 type EditorSpec l r =
-  { hdzipper :: HoleyDerivZipper l r
-  , topSort :: Sort l
-  , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
+  -- { hdzipper :: HoleyDerivZipper l r
+  { dterm :: DerivTerm l r
+  -- , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   
-  -- -- the output terms are valid (already checked via unification when generated)
-  -- !TODO editsAtHoleInterior :: Sort l -> Array (HoleInteriorEdit l r)
+  -- The output terms are valid (already checked via unification when
+  -- generated).
+  , editsAtHoleInterior :: Sort l -> Array (Edit l r)
   
-  -- -- corresponds to a change where the path is inserted and the topChange is
-  -- -- inserted as a boundary at the top, and likewise for botChange, and them
-  -- -- smallstep figured out the final result
-  -- !TODO editsAtCursor :: Sort l -> Array (CursorEdit l r)
+  -- Corresponds to a change where the path is inserted and the topChange is
+  -- inserted as a boundary at the top, and likewise for botChange, and them
+  -- smallstep figured out the final result.
+  , editsAtCursor :: Sort l -> Array (Edit l r)
 
   -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
   , arrangeDerivTermSubs :: ArrangeDerivTermSubs l r
   }
+
+editsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Array (Edit l r)
+editsAtHoleyDerivZipper spec hdzipper = case hdzipper of
+  InjectHoleyDerivZipper dz -> spec.editsAtCursor (derivZipperSort dz)
+  HoleInteriorHoleyDerivZipper _ sort -> spec.editsAtHoleInterior sort
 
 -- Stuff that's defined inside of the editor component
 type EditorLocals l r = 
@@ -259,8 +263,8 @@ escapeHoleInterior cursor = do
 
 defaultEditsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
 defaultEditsAtHoleyDerivZipper topSort = case _ of
-  InjectHoleyDerivZipper dz -> defaultEditsAtDerivZipper topSort dz
-  HoleInteriorHoleyDerivZipper p sort -> defaultEditsAtHoleInterior p sort
+  InjectHoleyDerivZipper dz -> defaultEditsAtCursor (derivPathSort topSort (Expr.zipperPath dz))
+  HoleInteriorHoleyDerivZipper _ sort -> defaultEditsAtHoleInterior sort
 
 _verbose_path_element_ids :: Boolean
 _verbose_path_element_ids = true

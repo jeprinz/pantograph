@@ -35,14 +35,9 @@ data Action l r
   | ReplaceAction {topChange :: SortChange l, dterm :: DerivTerm l r}
   | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
 
-defaultEditsAtDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> DerivZipper l r -> Array (Edit l r)
-defaultEditsAtDerivZipper topSort dz =
-  let dterm = Expr.zipperExpr dz in
+defaultEditsAtCursor :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)
+defaultEditsAtCursor sort =
   Array.concat $
-  (case isHoleDerivTerm dterm of
-    Nothing -> []
-    Just _ -> []) -- !TODO digEdit dz)
-  Array.:
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do
     let Rule mvars hyps con = TotalMap.lookup r language
     -- For each hyp, there is an edit that wraps with a tooth into that hyp,
@@ -63,27 +58,12 @@ defaultEditsAtDerivZipper topSort dz =
             -- we don't yet apply the unifying substitutions to the while
             -- program.
             let isValidTooth = do
-                  -- Unify sort of the tooth with the sort of the bottom of the
-                  -- path above the cursor
-                  _ /\ sigma1 <- unify (derivToothSort tooth0) (derivPathSort topSort (Expr.zipperPath dz))
+                  _ /\ sigma1 <- unify (derivToothSort tooth0) sort
                   let tooth1 = mapDerivLabelSort (Expr.subMetaExprPartially sigma1) <$> tooth0
-                  -- Unify sort of the tooth interior with the sort of the
-                  -- expression at the cursor
-                  _ /\ sigma2 <- unify (derivToothInteriorSort tooth1) (derivTermSort (Expr.zipperExpr dz))
+                  _ /\ sigma2 <- unify (derivToothInteriorSort tooth1) sort
                   let tooth2 = mapDerivLabelSort (Expr.subMetaExprPartially sigma2) <$> tooth1
 
                   pure (composeSub sigma2 sigma1 /\ tooth2)
-
-            -- !TODO OLD
-            -- -- In `newCursor`, we do the rest of the computations involved in
-            -- -- computing the new cursor, in particular inserting the tooth and
-            -- -- applying the unifying substitutions to the whole program. It's
-            -- -- `Lazy` so that we only invoke this when actually _doing_ the
-            -- -- action.
-            -- let newCursor sigma tooth = defer \_ -> do
-            --       let path = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperPath dz
-            --       let expr = mapDerivLabelSort (Expr.subMetaExprPartially sigma) <$> Expr.zipperExpr dz
-            --       Expr.Zipper (Expr.stepPath tooth path) expr
 
             case isValidTooth of
               Nothing -> []
@@ -98,8 +78,8 @@ defaultEditsAtDerivZipper topSort dz =
                     , botChange: Expr.injectExprChange (derivToothInteriorSort tooth) }
                 }
 
-defaultEditsAtHoleInterior :: forall l r. IsRuleLabel l r => DerivPath Up l r -> Sort l -> Array (Edit l r)
-defaultEditsAtHoleInterior up sort =
+defaultEditsAtHoleInterior :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)
+defaultEditsAtHoleInterior sort =
   -- For each rule, there is an edit that fills the hole with that constructor,
   -- where all the kids are hole derivs
   flip Array.foldMap (enumFromTo bottom top :: Array r) \r -> do

@@ -62,7 +62,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
   H.Component q (EditorSpec l r) Unit Aff
-editorComponent = HK.component \tokens input -> HK.do
+editorComponent = HK.component \tokens spec -> HK.do
 
   ------------------------------------------------------------------------------
   -- initialize state and refs
@@ -70,7 +70,7 @@ editorComponent = HK.component \tokens input -> HK.do
 
   let
     initState = CursorState
-      (cursorFromHoleyDerivZipper input.hdzipper)
+      (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty spec.dterm)))
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
@@ -83,18 +83,6 @@ editorComponent = HK.component \tokens input -> HK.do
 
   -- highlight path
   _ /\ maybeHighlightPath_ref <- HK.useRef Nothing
-
-  -- let 
-  --   locals :: EditorLocals l r
-  --   locals = 
-  --       { input
-  --       , initState
-  --       , currentState
-  --       , state_id
-  --       , facade_ref
-  --       , clipboard_ref
-  --       , maybeHighlightPath_ref
-  --       }
 
   let
 
@@ -522,7 +510,7 @@ editorComponent = HK.component \tokens input -> HK.do
       DerivLabel r sort % [] | isHoleRule r ->
         arrangeHoleExterior sort (renderHoleInterior false dpath sort) renCtx
       DerivLabel rule sort % kids -> do
-        let subCtxSymElems = input.arrangeDerivTermSubs {renCtx, rule, sort, kids}
+        let subCtxSymElems = spec.arrangeDerivTermSubs {renCtx, rule, sort, kids}
         Array.concat $ subCtxSymElems <#> case _ of
           Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems kidIx)) \kidElem -> [kidElem renCtx']
           Right elems -> elems
@@ -540,7 +528,7 @@ editorComponent = HK.component \tokens input -> HK.do
       [ if not isCursor then [] else 
         [ HH.slot bufferSlot unit bufferComponent 
             { hdzipper
-            , edits: input.editsAtHoleyDerivZipper input.topSort hdzipper <#>
+            , edits: editsAtHoleyDerivZipper spec hdzipper <#>
                 \edit -> 
                   { lazy_preview: renderEditPreview hdzipper edit
                   , edit }
@@ -661,7 +649,7 @@ editorComponent = HK.component \tokens input -> HK.do
             Left (_renCtx' /\ i) -> [force $ fromJust' "renderPreviewDerivTooth" $ kidElems Array.!! i]
             Right elems -> elems
 
-      let subCtxSymElems = input.arrangeDerivTermSubs {renCtx: previewRenderingContext, rule, sort, kids: Array.fromFoldable $ ZipList.unpathAround dterm kidsPath}
+      let subCtxSymElems = spec.arrangeDerivTermSubs {renCtx: previewRenderingContext, rule, sort, kids: Array.fromFoldable $ ZipList.unpathAround dterm kidsPath}
       let toothInteriorKidIx = ZipList.leftLength kidsPath
       let isToothInterior = case _ of
             Left (_renCtx' /\ i) -> i == toothInteriorKidIx

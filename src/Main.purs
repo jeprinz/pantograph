@@ -29,34 +29,12 @@ main = HA.runHalogenAff do
   body <- HA.awaitBody
   VDomDriver.runUI Rendering.editorComponent spec body
   where
-  topSort = TermSort %|-* [CtxNilSort %|-* []]
-  topTerm = assert (just "main.topTerm" (defaultDerivTerm topSort)) identity
+  sort = TermSort %|-* [CtxNilSort %|-* []]
+  dterm = assert (just "main.topTerm" (defaultDerivTerm sort)) identity
   spec =
-    { hdzipper: Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty topTerm)
-    , topSort
-    , editsAtHoleyDerivZipper
+    { dterm
+    , editsAtCursor
+    , editsAtHoleInterior
     , arrangeDerivTermSubs
     }
-
--- --------------------------------------------------------------------------------
--- -- ULC
--- --------------------------------------------------------------------------------
-
--- import Language.Pantograph.ULC.Grammar
--- import Language.Pantograph.ULC.Rendering
-
--- main :: Effect Unit
--- main = HA.runHalogenAff do
---   Console.log "[main]"
---   body <- HA.awaitBody
---   VDomDriver.runUI Rendering.editorComponent spec body
---   where
---   topSort = TermSort %|-* []
---   topTerm = assert (just "main.topTerm" (defaultDerivTerm topSort)) identity
---   spec =
---     { hdzipper: Rendering.InjectHoleyDerivZipper (Expr.Zipper mempty topTerm)
---     , topSort
---     , editsAtHoleyDerivZipper
---     , arrangeDerivTermSubs
---     }
 

@@ -75,6 +75,6 @@ nameElem str = HH.span [classNames ["name"]] [HH.text str]
 type Edit = Edit.Edit PreSortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
-editsAtHoleyDerivZipper topSort = case _ of
-  Rendering.InjectHoleyDerivZipper dz -> Edit.defaultEditsAtDerivZipper topSort dz
-  Rendering.HoleInteriorHoleyDerivZipper p sort -> Edit.defaultEditsAtHoleInterior p sort
+editsAtHoleInterior = Edit.defaultEditsAtHoleInterior
+editsAtCursor = Edit.defaultEditsAtCursor
+

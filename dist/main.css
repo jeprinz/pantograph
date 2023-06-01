@@ -40,7 +40,7 @@ body {
 .node.ref {}
 
 .node.highlight {
-  box-shadow: 0 0 0 2px blue;
+  box-shadow: 0 0 0 2px rgb(190, 190, 255);
 }
 
 .node.select-top {
@@ -94,7 +94,7 @@ body {
 .subnode.string-inner {
   white-space: pre;
   color: green;
-  background-color: rgb(227, 227, 227);
+  /* background-color: rgb(227, 227, 227); */
 }
 
 .subnode.string-inner.empty-string {
