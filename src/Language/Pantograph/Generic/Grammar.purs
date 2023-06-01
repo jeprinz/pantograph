@@ -102,7 +102,8 @@ instance Freshenable (DerivLabel l r) where
   freshen rho (DerivString str) = DerivString str
 
 subDerivLabel :: forall l r. IsRuleLabel l r => SortSub l -> DerivLabel l r -> DerivLabel l r
-subDerivLabel = hole "subDerivLabel"
+subDerivLabel sub (DerivLabel r s) = DerivLabel r (Expr.subMetaExprPartially sub s)
+subDerivLabel _ other = other
 
 --------------------------------------------------------------------------------
 -- AsExprLabel

@@ -55,30 +55,33 @@ zipperToTerm :: forall l r. Expr.Path Dir.Up (Grammar.DerivLabel l r) -> Grammar
 zipperToTerm (Expr.Path Nil) exp = Expr.Expr Cursor [map Inject exp]
 zipperToTerm (Expr.Path (th : path)) exp = addToothToTerm th (zipperToTerm (Expr.Path path) exp)
 
--- setupSSTerm :: forall l r. 
---     Grammar.DerivPath Dir.Up l r -> -- top path
---     Grammar.SortChange l -> -- change that goes between top path and inserted path 
---     Grammar.DerivPath Dir.Up l r -> -- inserted path 
---     Grammar.SortChange l -> -- change the goes between inserted path and bot path
---     Grammar.DerivTerm l r -> -- bot path
---     SSTerm l r
--- setupSSTerm = hole "setupSSTerm"
+termToSSTerm :: forall l r. Grammar.DerivTerm l r -> SSTerm l r
+termToSSTerm = map Inject
 
-setupSSTermFromWrapAction :: forall l r. 
+wrapCursor :: forall l r. SSTerm l r -> SSTerm l r
+wrapCursor t = Expr.Expr Cursor [t]
+
+wrapPath :: forall l r. Grammar.DerivPath Dir.Up l r -> SSTerm l r -> SSTerm l r
+wrapPath (Expr.Path Nil) t = t
+wrapPath (Expr.Path (th : path)) t = addToothToTerm th (wrapPath (Expr.Path path) t)
+
+setupSSTermFromWrapAction :: forall l r.
     Grammar.DerivPath Dir.Up l r -> -- top path
     Grammar.SortChange l -> -- change that goes between top path and inserted path 
     Grammar.DerivPath Dir.Up l r -> -- inserted path 
     Grammar.SortChange l -> -- change the goes between inserted path and bot path
-    Grammar.DerivTerm l r -> -- bot path
+    Grammar.DerivTerm l r -> -- bot term
     SSTerm l r
-setupSSTermFromWrapAction = hole "setupSSTermFromWrapAction"
+setupSSTermFromWrapAction topPath topCh insertedPath bottomCh botTerm =
+    wrapPath topPath $ wrapBoundary Up topCh $ wrapPath insertedPath $ wrapCursor $ wrapBoundary Down bottomCh $ termToSSTerm botTerm
 
 setupSSTermFromReplaceAction :: forall l r. 
     Grammar.DerivPath Dir.Up l r -> -- top path
     Grammar.SortChange l -> -- change that goes between top path and inserted path 
     Grammar.DerivTerm l r -> -- new term to replace with
     SSTerm l r
-setupSSTermFromReplaceAction = hole "setupSSTermFromReplaceAction"
+setupSSTermFromReplaceAction topPath ch newTerm =
+    wrapPath topPath $ wrapBoundary Up ch $ wrapCursor $ termToSSTerm newTerm
 
 assertJustExpr :: forall l r. SSTerm l r -> Grammar.DerivTerm l r
 assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
