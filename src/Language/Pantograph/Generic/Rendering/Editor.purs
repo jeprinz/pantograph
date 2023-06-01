@@ -154,7 +154,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           setSelectBottomElement (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp))) Nothing
         TopState _top -> do
           setHighlightElement Nothing
-        SmallStepState ss -> do
+        SmallStepState _ss -> do
           setHighlightElement Nothing
 
     -- | Sets the facade state, which updates all the corresponding UI elements.
@@ -177,7 +177,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           setSelectBottomElement Nothing (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp)))
         TopState _top -> do
           pure unit
-        SmallStepState ss -> do
+        SmallStepState _ss -> do
           pure unit
       liftEffect (Ref.write st facade_ref)
 
@@ -503,17 +503,8 @@ editorComponent = HK.component \tokens spec -> HK.do
       else do
         setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
 
-    arrangeHoleExterior :: Sort l -> (RenderingContext -> EditorHTML l r) -> RenderingContext -> Array (EditorHTML l r)
-    arrangeHoleExterior sort holeInteriorElem renCtx =
-      [ HH.div [classNames ["subnode", "holeExterior-inner"]]
-        [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
-        , colonElem
-        , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-        ]
-      ]
-
     ------------------------------------------------------------------------------
-    -- arrange derive term subs
+    -- arrange
     ------------------------------------------------------------------------------
 
     arrangeDerivTermSubs ::
@@ -523,7 +514,7 @@ editorComponent = HK.component \tokens spec -> HK.do
       Array (EditorHTML l r)
     arrangeDerivTermSubs (Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
       DerivLabel r sort % [] | isHoleRule r ->
-        arrangeHoleExterior sort (renderHoleInterior false dpath sort) renCtx
+        arrangeHoleExterior sort (const (renderHoleInterior false dpath sort)) renCtx
       DerivLabel rule sort % kids -> do
         let subCtxSymElems = spec.arrangeDerivTermSubs {renCtx, rule, sort, kids}
         Array.concat $ subCtxSymElems <#> case _ of
@@ -534,12 +525,8 @@ editorComponent = HK.component \tokens spec -> HK.do
             then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.text "String"]
             else HH.div [classNames ["subnode", "string-inner"]] [HH.text str] ]
 
-    ------------------------------------------------------------------------------
-    -- arrange node subs
-    ------------------------------------------------------------------------------
-
-    arrangeNodeSubElems :: Boolean -> HoleyDerivZipper l r -> Array (EditorHTML l r) -> RenderingContext -> Array (EditorHTML l r)
-    arrangeNodeSubElems isCursor hdzipper subElems renCtx = Array.concat
+    arrangeNodeSubs :: Boolean -> HoleyDerivZipper l r -> Array (EditorHTML l r) -> Array (EditorHTML l r)
+    arrangeNodeSubs isCursor hdzipper subElems = Array.concat
       [ if not isCursor then [] else 
         [ HH.slot bufferSlot unit bufferComponent 
             { hdzipper
@@ -555,6 +542,16 @@ editorComponent = HK.component \tokens spec -> HK.do
       , if not isCursor then [] else
         [ HH.slot_ previewSlot rightDir previewComponent rightDir ]
       ]
+
+    arrangeHoleExterior :: Sort l -> (RenderingContext -> EditorHTML l r) -> RenderingContext -> Array (EditorHTML l r)
+    arrangeHoleExterior sort holeInteriorElem renCtx =
+      [ HH.div [classNames ["subnode", "holeExterior-inner"]]
+        [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
+        , colonElem
+        , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+        ]
+      ]
+
 
     ------------------------------------------------------------------------------
     -- render term
@@ -574,7 +571,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             , HE.onMouseOver (onMouseOver (InjectHoleyDerivZipper dzipper)) 
             ]
           ]) $
-        arrangeNodeSubElems isCursor (InjectHoleyDerivZipper dzipper) subElems renCtx
+        arrangeNodeSubs isCursor (InjectHoleyDerivZipper dzipper) subElems
 
     ------------------------------------------------------------------------------
     -- render hole exterior and interior
@@ -595,8 +592,8 @@ editorComponent = HK.component \tokens spec -> HK.do
         ] $
         subElems
 
-    renderHoleInterior :: Boolean -> DerivPath Up l r -> Sort l -> RenderingContext -> EditorHTML l r
-    renderHoleInterior isCursor dpath sort renCtx = do
+    renderHoleInterior :: Boolean -> DerivPath Up l r -> Sort l -> EditorHTML l r
+    renderHoleInterior isCursor dpath sort = do
       let hdzipper = HoleInteriorHoleyDerivZipper dpath sort
       let elemId = fromHoleyDerivPathToElementId (HoleInteriorHoleyDerivPath dpath)
       HH.div
@@ -605,11 +602,10 @@ editorComponent = HK.component \tokens spec -> HK.do
         , HE.onMouseDown (onMouseDown hdzipper)
         , HE.onMouseOver (onMouseOver hdzipper)
         ] $
-        arrangeNodeSubElems isCursor hdzipper
+        arrangeNodeSubs isCursor hdzipper
           [ HH.div [classNames ["subnode", "holeInterior-inner"]]
             [interrogativeElem]
           ]
-          renCtx
 
     ------------------------------------------------------------------------------
     -- render path
@@ -638,7 +634,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                           let kidZippers = Expr.zipDownsTooth dzipper2 th
                           kidZippers <#> renderDerivTerm false )
                       renCtx
-                arrangeNodeSubElems false (InjectHoleyDerivZipper dzipper2) subElems renCtx
+                arrangeNodeSubs false (InjectHoleyDerivZipper dzipper2) subElems
             )
 
     ------------------------------------------------------------------------------
@@ -745,10 +741,10 @@ editorComponent = HK.component \tokens spec -> HK.do
                   HoleInteriorHoleyDerivZipper dpath sort -> 
                     [ renderPath dzipper 
                         (renderHoleExterior dpath sort
-                            (renderHoleInterior true dpath sort))
+                            (const (renderHoleInterior true dpath sort)))
                         defaultRenderingContext
                     ]
               SelectState _select -> hole "render SelectState"
               TopState _top -> hole "render TopState"
-              SmallStepState ss -> hole "render SmallStepState"
+              SmallStepState _ss -> hole "render SmallStepState"
           ]
