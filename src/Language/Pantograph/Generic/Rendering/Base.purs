@@ -92,9 +92,7 @@ type PreKid l r =
   Array (EditorHTML l r) -- static html
 
 type EditorSpec l r =
-  -- { hdzipper :: HoleyDerivZipper l r
   { dterm :: DerivTerm l r
-  -- , editsAtHoleyDerivZipper :: Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
   
   -- The output terms are valid (already checked via unification when
   -- generated).
