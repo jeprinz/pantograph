@@ -31,6 +31,7 @@ import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML (ComponentHTML) as HH
 import Halogen.Hooks as HK
+import Language.Pantograph.Generic.Smallstep (StepRule)
 import Language.Pantograph.Generic.Unification (Sub)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
@@ -107,6 +108,9 @@ type EditorSpec l r =
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
   , arrangeDerivTermSubs :: ArrangeDerivTermSubs l r
+
+  , stepRules :: Array (StepRule l r)
+  
   }
 
 editsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Array (Edit l r)
@@ -114,16 +118,16 @@ editsAtHoleyDerivZipper spec hdzipper = case hdzipper of
   InjectHoleyDerivZipper dz -> spec.editsAtCursor (derivZipperSort dz)
   HoleInteriorHoleyDerivZipper _ sort -> spec.editsAtHoleInterior sort
 
--- Stuff that's defined inside of the editor component
-type EditorLocals l r = 
-  { clipboard_ref :: Ref.Ref (Maybe (Either (DerivPath Up l r) (DerivTerm l r)))
-  , currentState :: State l r
-  , facade_ref :: Ref.Ref (State l r)
-  , initState :: State l r
-  , input :: EditorSpec l r
-  , maybeHighlightPath_ref :: Ref.Ref (Maybe (HoleyDerivPath Up l r))
-  , state_id :: HK.StateId (State l r)
-  }
+-- -- Stuff that's defined inside of the editor component
+-- type EditorLocals l r = 
+--   { clipboard_ref :: Ref.Ref (Maybe (Either (DerivPath Up l r) (DerivTerm l r)))
+--   , currentState :: State l r
+--   , facade_ref :: Ref.Ref (State l r)
+--   , initState :: State l r
+--   , input :: EditorSpec l r
+--   , maybeHighlightPath_ref :: Ref.Ref (Maybe (HoleyDerivPath Up l r))
+--   , state_id :: HK.StateId (State l r)
+--   }
 
 data State l r
   = CursorState (Cursor l r)
