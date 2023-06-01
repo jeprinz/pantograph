@@ -23,6 +23,7 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (ArrangeDerivTermSubs, incremementIndentationLevel)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
+import Language.Pantograph.Generic.Smallstep as SmallStep
 import Text.Pretty (pretty)
 
 type Query = Rendering.Query
@@ -77,3 +78,15 @@ type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 editsAtHoleInterior = Edit.defaultEditsAtHoleInterior
 editsAtCursor = Edit.defaultEditsAtCursor
 
+--------------------------------------------------------------------------------
+-- StepRules
+--------------------------------------------------------------------------------
+
+type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
+
+stepRules :: Array StepRule
+stepRules = do
+  let chLang = SmallStep.langToChLang language
+  [ SmallStep.defaultDown chLang
+  , SmallStep.defaultUp chLang
+  ]
