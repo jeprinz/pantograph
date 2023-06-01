@@ -139,22 +139,22 @@ oneOrNone (x : xs) f = case f x of
      in
      Right (Nil /\ a /\ bs2)
 
-termToZipper :: forall l r. SSTerm l r -> (Expr.Path Dir.Up (Grammar.DerivLabel l r) /\ Grammar.DerivTerm l r)
+termToZipper :: forall l r. SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
 termToZipper (Expr.Expr Cursor [kid]) =
- Expr.Path Nil /\ (assertJustExpr kid)
+ Expr.Zipper (Expr.Path Nil) (assertJustExpr kid)
 termToZipper (Expr.Expr (Inject l) kids) =
- let kids' = List.fromFoldable $ map termToZipper kids in
+ let kids' = (\(Expr.Zipper p t) -> p /\ t) <$> (List.fromFoldable $ map termToZipper kids) in
  let isPath (p /\ e) = case p of
          (Expr.Path Nil) -> Right e
          _ -> Left (p /\ e) in
  let pathOrNot = oneOrNone kids' isPath in
  case pathOrNot of
      -- child didn't have cursor
-     Left kids'' -> Expr.Path Nil /\ Expr.Expr l (Array.fromFoldable (kids''))
+     Left kids'' -> Expr.Zipper (Expr.Path Nil) (Expr.Expr l (Array.fromFoldable (kids'')))
      -- child has exactly one cursor
      Right (leftKids /\ (Expr.Path p /\ e) /\ rightKids) ->
-         let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
-         Expr.Path (newTooth : p) /\ e
+        let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
+        Expr.Zipper (Expr.Path (newTooth : p)) e
 --    let
 termToZipper _ = Bug.bug "shouldn't happen"
 

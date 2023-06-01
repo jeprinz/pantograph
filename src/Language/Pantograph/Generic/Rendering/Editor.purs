@@ -4,6 +4,7 @@ import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Rendering.Base
 import Prelude
+
 import Bug (bug)
 import Bug.Assertion (assert, just)
 import Data.CodePoint.Unicode as Unicode
@@ -27,7 +28,9 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
+import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleExterior, renderHoleInterior, renderPath, renderSSTerm)
 import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
+import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
 import Log (logM)
 import Text.Pretty (pretty)
@@ -42,7 +45,6 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
-import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleExterior, renderHoleInterior, renderPath)
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -431,9 +433,11 @@ editorComponent = HK.component \tokens spec -> HK.do
         ------------------------------------------------------------------------
         -- SmallStepState
         ------------------------------------------------------------------------
-        SmallStepState _ -> do
-          if key == "Space" then do
-            hole "TODO: small step forwards"
+        SmallStepState ss -> do
+          if key == " " then do
+            case SmallStep.step ss.ssterm spec.stepRules of
+              Nothing -> setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper ss.ssterm)))
+              Just ssterm -> setState $ SmallStepState ss {ssterm = ssterm}
           else
             pure unit
 
@@ -555,6 +559,11 @@ editorComponent = HK.component \tokens spec -> HK.do
                     ]
               SelectState _select -> hole "render SelectState"
               TopState _top -> hole "render TopState"
-              SmallStepState _ss -> hole "render SmallStepState"
+              SmallStepState ss -> 
+                [HH.div
+                  [ classNames ["smallstep-program"] ]
+                  [ renderSSTerm locs ss.ssterm 
+                      defaultRenderingContext
+                  ]]
           ]
 

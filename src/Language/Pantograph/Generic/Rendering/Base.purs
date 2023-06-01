@@ -17,6 +17,7 @@ import Data.Expr (class ReflectPathDir)
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (Lazy)
+import Data.List (List)
 import Data.List.Zip as ZipList
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -111,7 +112,7 @@ type EditorSpec l r =
   
   , arrangeDerivTermSubs :: Unit -> ArrangeDerivTermSubs l r
 
-  , stepRules :: Array (StepRule l r)
+  , stepRules :: List (StepRule l r)
   
   }
 

@@ -211,3 +211,32 @@ body {
   font-style: italic;
   color: gray !important;
 }
+
+/* small-step */
+
+.smallstep-program {
+  background-color: rgba(166, 0, 255, 0.263);
+}
+
+.node.smallstep {}
+
+.node.smallstep.hole {
+  padding: 0 0.4rem;
+  border-radius: 1rem 1rem / 2rem;
+  box-shadow:
+    inset 0 0 0 2px rgb(255, 139, 50),
+    0 0 2px 0 black;
+  box-shadow:
+    inset 0 0 0 2px rgb(255, 139, 50),
+    0 0 2px 0 black;
+}
+
+.node.smallstep.string {}
+
+.node.smallstep.cursor {}
+
+.node.smallstep.boundary {}
+
+.subnode.smallstep.changeDirection {}
+
+.subnode.smallstep.sortChange {}

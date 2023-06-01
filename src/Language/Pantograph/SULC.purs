@@ -14,6 +14,8 @@ import Data.Eq.Generic (genericEq)
 import Data.Expr (class IsExprLabel, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
+import Data.List (List)
+import Data.List as List
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
@@ -283,9 +285,10 @@ editsAtCursor = Edit.defaultEditsAtCursor
 
 type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
 
-stepRules :: Array StepRule
+stepRules :: List StepRule
 stepRules = do
   let chLang = SmallStep.langToChLang language
-  [ SmallStep.defaultDown chLang
-  , SmallStep.defaultUp chLang
-  ]
+  List.fromFoldable
+    [ SmallStep.defaultDown chLang
+    , SmallStep.defaultUp chLang
+    ]
