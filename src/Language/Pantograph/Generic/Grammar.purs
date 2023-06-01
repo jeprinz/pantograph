@@ -20,8 +20,9 @@ import Data.TotalMap as TotalMap
 import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
+import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
-import Language.Pantograph.Generic.Unification (class Freshenable, freshen')
+import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen')
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, pretty)
 import Type.Direction (_down, _up)
@@ -100,6 +101,9 @@ instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
   freshen rho (DerivString str) = DerivString str
 
+subDerivLabel :: forall l r. IsRuleLabel l r => SortSub l -> DerivLabel l r -> DerivLabel l r
+subDerivLabel = hole "subDerivLabel"
+
 --------------------------------------------------------------------------------
 -- AsExprLabel
 --------------------------------------------------------------------------------
@@ -168,6 +172,8 @@ instance IsExprLabel l => IsExprLabel (SortLabel l) where
     InjectSortLabel l -> expectedKidsCount l
     NameSortLabel -> 1
     StringSortLabel _ -> 0
+
+type SortSub l = Sub (SortLabel l)
 
 --------------------------------------------------------------------------------
 -- DerivTerm

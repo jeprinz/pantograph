@@ -277,6 +277,7 @@ derive instance Generic (Zipper l) _
 derive instance Eq l => Eq (Zipper l)
 derive instance Ord l => Ord (Zipper l)
 instance Show l => Show (Zipper l) where show x = genericShow x
+derive instance Functor Zipper
 
 instance IsExprLabel l => Pretty (Zipper l) where
   pretty (Zipper path expr) = 

@@ -91,6 +91,8 @@ type PreKid l r =
   (RenderingContext /\ Int) \/ -- reference to kid, with kid's rendering context
   Array (EditorHTML l r) -- static html
 
+-- !TODO editor spec shouldn't know about HoleyDerivZipper, so need two
+-- "editsAt..." types
 type EditorSpec l r =
   { hdzipper :: HoleyDerivZipper l r
   , topSort :: Sort l

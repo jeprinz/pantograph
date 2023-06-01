@@ -6,6 +6,7 @@ import Language.Pantograph.Generic.Rendering.Base
 import Language.Pantograph.Generic.Rendering.Buffer
 import Language.Pantograph.Generic.Rendering.Elements
 import Prelude
+
 import Bug (bug)
 import Bug.Assertion (assert, just)
 import Data.Array as Array
@@ -40,6 +41,7 @@ import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
 import Language.Pantograph.Generic.Rendering.Preview (previewComponent)
+import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
 import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
 import Log (logM)
 import Text.Pretty (pretty)
@@ -209,17 +211,42 @@ editorComponent = HK.component \tokens input -> HK.do
 
     handleAction = case _ of
       -- !TODO use topChange, botChange
-      WrapAction {topChange: _, dpath, botChange: _} -> getCursorState "handleAction" >>= \cursor -> do
+      WrapAction {topChange, dpath, botChange} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
+
+        let ssterm = setupSSTermFromWrapAction 
+              up
+              topChange 
+              dpath 
+              botChange 
+              dterm
+
+        -- !TODO
+        -- use `step` to get the new term
+        -- repeatedly apply `step`
+        -- yields `Nothing` when done
+        -- to finally turn it back into a DerivTerm, use `termToZipper`
+
         setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (dpath <> up) dterm)))
       -- !TODO use sub
-      FillAction {sub: _, dterm} -> getCursorState "handleAction" >>= \cursor -> do
+      FillAction {sub, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
+
+        let dzipper0 = Expr.Zipper up dterm
+        let dzipper1 = subDerivLabel sub <$> dzipper0
+
+        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1))
       -- !TODO use topChange
-      ReplaceAction {topChange: _, dterm} -> getCursorState "handleAction" >>= \cursor -> do
+      ReplaceAction {topChange, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
+
+        -- !TODO us this, same way as in WrapAction
+        let ssterm = setupSSTermFromReplaceAction 
+              up
+              topChange
+              dterm
+
         setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
 
     moveCursor dir = do

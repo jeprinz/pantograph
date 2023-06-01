@@ -55,14 +55,30 @@ zipperToTerm :: forall l r. Expr.Path Dir.Up (Grammar.DerivLabel l r) -> Grammar
 zipperToTerm (Expr.Path Nil) exp = Expr.Expr Cursor [map Inject exp]
 zipperToTerm (Expr.Path (th : path)) exp = addToothToTerm th (zipperToTerm (Expr.Path path) exp)
 
-setupSSTerm :: forall l r. 
+-- setupSSTerm :: forall l r. 
+--     Grammar.DerivPath Dir.Up l r -> -- top path
+--     Grammar.SortChange l -> -- change that goes between top path and inserted path 
+--     Grammar.DerivPath Dir.Up l r -> -- inserted path 
+--     Grammar.SortChange l -> -- change the goes between inserted path and bot path
+--     Grammar.DerivTerm l r -> -- bot path
+--     SSTerm l r
+-- setupSSTerm = hole "setupSSTerm"
+
+setupSSTermFromWrapAction :: forall l r. 
     Grammar.DerivPath Dir.Up l r -> -- top path
     Grammar.SortChange l -> -- change that goes between top path and inserted path 
     Grammar.DerivPath Dir.Up l r -> -- inserted path 
     Grammar.SortChange l -> -- change the goes between inserted path and bot path
     Grammar.DerivTerm l r -> -- bot path
     SSTerm l r
-setupSSTerm = hole "setupSSTerm"
+setupSSTermFromWrapAction = hole "setupSSTermFromWrapAction"
+
+setupSSTermFromReplaceAction :: forall l r. 
+    Grammar.DerivPath Dir.Up l r -> -- top path
+    Grammar.SortChange l -> -- change that goes between top path and inserted path 
+    Grammar.DerivTerm l r -> -- new term to replace with
+    SSTerm l r
+setupSSTermFromReplaceAction = hole "setupSSTermFromReplaceAction"
 
 assertJustExpr :: forall l r. SSTerm l r -> Grammar.DerivTerm l r
 assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
