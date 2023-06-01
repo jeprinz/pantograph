@@ -78,7 +78,7 @@ class (Eq l, Ord l, Show l, Pretty l) <= IsExprLabel l where
   prettyExprF'_unsafe :: Partial => ExprF l String -> String
   expectedKidsCount :: l -> Int
 
-wellformedExprF :: forall l kid. String -> (kid -> String) -> IsExprLabel l => ExprF l kid -> Assertion Unit
+wellformedExprF :: forall l kid. IsExprLabel l => String -> (kid -> String) -> ExprF l kid -> Assertion Unit
 wellformedExprF source showKid (l /\ kids) = Assertion
   { name: "wellformedExprF"
   , source

@@ -7,21 +7,19 @@ import Halogen.Utilities (classNames)
 makePuncElem :: forall w i. String -> String -> HH.HTML w i
 makePuncElem className symbol = HH.div [classNames ["subnode", "punctuation", className]] [HH.text symbol]
 
-spaceElem :: forall w i. HH.HTML w i
 spaceElem = makePuncElem "space" " "
-lparenElem :: forall w i. HH.HTML w i
 lparenElem = makePuncElem "lparen" "("
-rparenElem :: forall w i. HH.HTML w i
 rparenElem = makePuncElem "rparen" ")"
-colonElem :: forall w i. HH.HTML w i
+lbraceElem = makePuncElem "lbrace" "{"
+rbraceElem = makePuncElem "rbrace" "}"
+lbracketElem = makePuncElem "lbracket" "["
+rbracketElem = makePuncElem "rbracket" "]"
 colonElem = makePuncElem "colon" ":"
-turnstileElem :: forall w i. HH.HTML w i
 turnstileElem = makePuncElem "turnstile" "⊢"
-interrogativeElem :: forall w i. HH.HTML w i
 interrogativeElem = makePuncElem "interrogative" "?"
-newlineElem :: forall w i. HH.HTML w i
+upArrowElem = makePuncElem "upArrow" "↑"
+downArrowElem = makePuncElem "downArrow" "↓"
 newlineElem = HH.br_
-indentElem :: forall w i. HH.HTML w i
 indentElem = makePuncElem "indent" "  "
 
 commentBeginElem = makePuncElem "commentBegin" " /* "

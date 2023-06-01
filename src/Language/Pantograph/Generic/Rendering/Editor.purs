@@ -187,10 +187,12 @@ editorComponent = HK.component \tokens spec -> HK.do
       assert (cursorState source st) pure
 
     handleAction = case _ of
-      -- !TODO use topChange, botChange
       WrapAction {topChange, dpath, botChange} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
+
+        -- TODO: this is old, doesn't even do smallstep
+        -- setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (dpath <> up) dterm)))
 
         let ssterm = setupSSTermFromWrapAction 
               up
@@ -204,27 +206,28 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- repeatedly apply `step`
         -- yields `Nothing` when done
         -- to finally turn it back into a DerivTerm, use `termToZipper`
+        setState $ SmallStepState {ssterm}
 
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (dpath <> up) dterm)))
-      -- !TODO use sub
       FillAction {sub, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
-
         let dzipper0 = Expr.Zipper up dterm
         let dzipper1 = subDerivLabel sub <$> dzipper0
-
         setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1))
+
       -- !TODO use topChange
       ReplaceAction {topChange, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
+
+        -- TODO: this is old, doesn't even do smallstep
+        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
 
         -- !TODO us this, same way as in WrapAction
         let ssterm = setupSSTermFromReplaceAction 
               up
               topChange
               dterm
-
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
+        
+        setState $ SmallStepState {ssterm}
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
@@ -547,7 +550,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                   HoleInteriorHoleyDerivZipper dpath sort -> 
                     [ renderPath locs dzipper 
                         (renderHoleExterior locs dpath sort
-                            (const (renderHoleInterior locs true dpath sort)))
+                            (renderHoleInterior locs true dpath sort))
                         defaultRenderingContext
                     ]
               SelectState _select -> hole "render SelectState"

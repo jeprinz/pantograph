@@ -229,36 +229,35 @@ languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey 
 type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
 
-arrangeDerivTermSubs :: Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs {renCtx, rule, sort, kids} = do
-  assert (Expr.wellformedExprF "ULC arrangeDerivTermSubs" pretty (Grammar.DerivLabel rule sort /\ kids)) \_ -> case rule /\ sort /\ kids of
-    -- var
-    Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> 
-      [pure [nameElem str]]
-    Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> 
-      [pure [nameElem str]]
-    -- term
-    Ref /\ _ /\ _ -> 
-      [pure [refElem], Left (renCtx /\ 0)]
-    Lam /\ _ /\ _ -> 
-      let renCtx' = Rendering.incremementIndentationLevel renCtx in
-      [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [mapstoElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
-    App /\ _ /\ _ ->
-      let renCtx' = Rendering.incremementIndentationLevel renCtx in
-      [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
-    -- format
-    FormatRule Newline /\ _ /\ _ ->
-      Array.concat
-        [ if renCtx.isInlined then [] else
-          [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
-        , [Left (renCtx /\ 0)] ]
-    FormatRule Comment /\ _ /\ _ ->
-      [ pure [Rendering.commentBeginElem]
-      , Left (renCtx /\ 0)
-      , pure [Rendering.commentEndElem]
-      , Left (renCtx /\ 1)]
-    -- hole 
-    TermHole /\ _ /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"
+arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
+arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
+  -- var
+  Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) -> 
+    [pure [nameElem str]]
+  Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) -> 
+    [pure [nameElem str]]
+  -- term
+  Ref /\ _ -> 
+    [pure [refElem], Left (renCtx /\ 0)]
+  Lam /\ _ -> 
+    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [mapstoElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
+  App /\ _ ->
+    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
+  -- format
+  FormatRule Newline /\ _ ->
+    Array.concat
+      [ if renCtx.isInlined then [] else
+        [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
+      , [Left (renCtx /\ 0)] ]
+  FormatRule Comment /\ _ ->
+    [ pure [Rendering.commentBeginElem]
+    , Left (renCtx /\ 0)
+    , pure [Rendering.commentEndElem]
+    , Left (renCtx /\ 1)]
+  -- hole 
+  TermHole /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"

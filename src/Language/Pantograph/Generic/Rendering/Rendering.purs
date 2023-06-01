@@ -10,7 +10,7 @@ import Bug (bug)
 import Bug.Assertion (assert, assertInput_, just)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Expr (wellformedExpr, (%))
+import Data.Expr (wellformedExpr, wellformedExprF, (%))
 import Data.Expr as Expr
 import Data.Lazy (Lazy, defer, force)
 import Data.List (List(..), (:))
@@ -19,7 +19,7 @@ import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple.Nested ((/\))
 import Data.Zippable as Zippable
-import Halogen.HTML (div, slot, slot_, text) as HH
+import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Utilities (classNames)
@@ -27,6 +27,7 @@ import Hole (hole)
 import Language.Pantograph.Generic.Rendering.Buffer (bufferComponent)
 import Language.Pantograph.Generic.Rendering.Preview (previewComponent)
 import Language.Pantograph.Generic.Smallstep (SSTerm, StepExprLabel(..))
+import Language.Pantograph.Generic.Smallstep as SmallStep
 import Text.Pretty (pretty)
 import Type.Direction (Up, leftDir, rightDir)
 import Util (fromJust')
@@ -42,10 +43,10 @@ arrangeDerivTermSubs :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   Array (EditorHTML l r)
 arrangeDerivTermSubs locs (Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
-  DerivLabel r sort % [] | isHoleRule r ->
+  DerivLabel rule sort % [] | isHoleRule rule ->
     arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
-  DerivLabel rule sort % kids -> do
-    let subCtxSymElems = locs.spec.arrangeDerivTermSubs {renCtx, rule, sort, kids}
+  DerivLabel rule sort % kids | not (isHoleRule rule) -> do
+    let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort}
     Array.concat $ subCtxSymElems <#> case _ of
       Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems kidIx)) \kidElem -> [kidElem renCtx']
       Right elems -> elems
@@ -66,7 +67,7 @@ arrangeNodeSubs locs isCursor hdzipper subElems = Array.concat
         { hdzipper
         , edits: editsAtHoleyDerivZipper locs.spec hdzipper <#>
             \edit -> 
-              { lazy_preview: renderEditPreview locs hdzipper edit
+              { lazy_preview: renderPreview locs hdzipper edit
               , edit }
         }
         locs.handleBufferOutput
@@ -206,6 +207,29 @@ renderPath locs dzipper interior =
 -- render preview
 ------------------------------------------------------------------------------
 
+renderPreview :: forall l r. IsRuleLabel l r =>
+  EditorLocals l r ->
+  HoleyDerivZipper l r ->
+  Edit l r ->
+  Lazy (EditPreviewHTML l r)
+renderPreview locs hdzipper edit = edit.action <#> case _ of
+  FillAction {dterm} -> FillEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
+  ReplaceAction {dterm} -> ReplaceEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
+  WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath locs (hdzipperDerivPath hdzipper) dpath (hdzipperDerivTerm hdzipper)
+
+renderPreviewDerivPath :: forall l r. IsRuleLabel l r =>
+  EditorLocals l r ->
+  DerivPath Up l r ->
+  DerivPath Up l r ->
+  DerivTerm l r ->
+  {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
+renderPreviewDerivPath locs _up (Expr.Path Nil) _dterm = {before: [], after: []}
+renderPreviewDerivPath locs up (Expr.Path (th : ths)) dterm = do
+  let next = renderPreviewDerivPath locs up (Expr.Path ths) (Expr.unTooth th dterm)
+  let {before, after} = renderPreviewDerivTooth locs up th dterm
+  {before: next.before <> before, after: after <> next.after}
+
+
 -- !TODO maybe someday have this use rendering context
 renderPreviewDerivTooth :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
@@ -230,7 +254,10 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
         Left (_renCtx' /\ i) -> [force $ fromJust' "renderPreviewDerivTooth" $ kidElems Array.!! i]
         Right elems -> elems
 
-  let subCtxSymElems = locs.spec.arrangeDerivTermSubs {renCtx: previewRenderingContext, rule, sort, kids: Array.fromFoldable $ ZipList.unpathAround dterm kidsPath}
+  -- let subCtxSymElems = locs.spec.arrangeDerivTermSubs {renCtx: previewRenderingContext, rule, sort, kids: Array.fromFoldable $ ZipList.unpathAround dterm kidsPath}
+  let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
+  let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sort /\ kids)) \_ -> 
+        locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx: previewRenderingContext, rule, sort}
   let toothInteriorKidIx = ZipList.leftLength kidsPath
   let isToothInterior = case _ of
         Left (_renCtx' /\ i) -> i == toothInteriorKidIx
@@ -242,28 +269,6 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   { before: Array.concat $ before <#> renderSubElem
   , after: Array.concat $ after <#> renderSubElem
   }
-
-renderPreviewDerivPath :: forall l r. IsRuleLabel l r =>
-  EditorLocals l r ->
-  DerivPath Up l r ->
-  DerivPath Up l r ->
-  DerivTerm l r ->
-  {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
-renderPreviewDerivPath locs _up (Expr.Path Nil) _dterm = {before: [], after: []}
-renderPreviewDerivPath locs up (Expr.Path (th : ths)) dterm = do
-  let next = renderPreviewDerivPath locs up (Expr.Path ths) (Expr.unTooth th dterm)
-  let {before, after} = renderPreviewDerivTooth locs up th dterm
-  {before: next.before <> before, after: after <> next.after}
-
-renderEditPreview :: forall l r. IsRuleLabel l r =>
-  EditorLocals l r ->
-  HoleyDerivZipper l r ->
-  Edit l r ->
-  Lazy (EditPreviewHTML l r)
-renderEditPreview locs hdzipper edit = edit.action <#> case _ of
-  FillAction {dterm} -> FillEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
-  ReplaceAction {dterm} -> ReplaceEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
-  WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath locs (hdzipperDerivPath hdzipper) dpath (hdzipperDerivTerm hdzipper)
 
 renderPreviewDerivTerm :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
@@ -277,15 +282,53 @@ renderPreviewDerivTerm locs dzipper =
       (Zippable.zipDowns dzipper <#> \kidDZipper _ -> renderPreviewDerivTerm locs kidDZipper) 
       previewRenderingContext)
 
+------------------------------------------------------------------------------
+-- render small-step
+------------------------------------------------------------------------------
+
 renderSSTerm :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
   SSTerm l r ->
+  RenderingContext ->
   EditorHTML l r
-renderSSTerm locs = assertInput_ (wellformedExpr "renderSSTerm") case _ of
-  Inject dl % kids -> hole "TODO"
+renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm") case _ of
+  Inject (DerivLabel rule sort) % [] | isHoleRule rule ->
+    HH.div
+      [classNames ["node", "smallstep", "hole"]]
+      [ interrogativeElem
+      , colonElem
+      , HH.text $ pretty sort
+      ]
+  Inject (DerivString str) % [] -> 
+    HH.div
+      [classNames ["node", "smallstep", "string"]]
+      [ interrogativeElem
+      , colonElem
+      , HH.text str
+      ]
+  Inject (DerivLabel rule sort) % kids | not (isHoleRule rule) ->
+    HH.div
+      [classNames ["node", "smallstep"]]
+      let kidElems = renderSSTerm locs <$> kids in
+      (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort} <#> case _ of
+        Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [kid renCtx']
+        Right elems -> elems)
   Cursor % [kid] -> do
-    let kidElem = renderSSTerm locs kid
     HH.div
       [classNames ["node", "smallstep", "cursor"]]
-      [kidElem]
-  Boundary dir sortCh % [kid] -> hole "TODO"
+      [renderSSTerm locs kid renCtx]
+  Boundary dir sortCh % [kid] -> 
+    HH.div
+      [classNames ["node", "smallstep", "boundary"]]
+      [ HH.span [classNames ["subnode", "smallstep", "changeDirection"]] 
+          [case dir of
+            SmallStep.Up -> upArrowElem
+            SmallStep.Down -> downArrowElem]
+      , lbracketElem
+      , HH.span [classNames ["subnode", "smallstep", "sortChange"]] [HH.text $ pretty sortCh]
+      , rbracketElem
+      , lbraceElem
+      , renderSSTerm locs kid renCtx
+      , rbraceElem
+      ]
+

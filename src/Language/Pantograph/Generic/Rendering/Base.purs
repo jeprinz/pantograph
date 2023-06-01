@@ -81,11 +81,12 @@ previewRenderingContext =
   , isInlined: true
   }
 
-type ArrangeDerivTermSubs l r = 
-  { renCtx :: RenderingContext
+type ArrangeDerivTermSubs l r =
+  Partial =>
+  { mb_parent :: Maybe (DerivTooth l r)
+  , renCtx :: RenderingContext
   , rule :: r
   , sort :: Sort l
-  , kids :: Array (DerivTerm l r)
   } -> 
   Array (PreKid l r)
 
@@ -108,7 +109,7 @@ type EditorSpec l r =
   -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
   -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
   
-  , arrangeDerivTermSubs :: ArrangeDerivTermSubs l r
+  , arrangeDerivTermSubs :: Unit -> ArrangeDerivTermSubs l r
 
   , stepRules :: Array (StepRule l r)
   
