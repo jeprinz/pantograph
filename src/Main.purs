@@ -1,22 +1,15 @@
 module Main where
 
-import Language.Pantograph.SULC.Grammar
-import Language.Pantograph.SULC.Rendering
 import Prelude
 
+import Language.Pantograph.SULC
 import Bug.Assertion (assert, just)
-import Data.Expr ((%), (%*))
-import Data.Expr as Expr
-import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Class.Console as Console
-import Effect.Console (log)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver as VDomDriver
-import Hole (hole)
-import Language.Pantograph.Generic.Grammar (SortLabel(..), defaultDerivTerm, (%|-*))
-import Language.Pantograph.Generic.Rendering.Base as Rendering
-import Language.Pantograph.Generic.Rendering.Editor as Rendering
+import Language.Pantograph.Generic.Grammar (defaultDerivTerm, (%|-*))
+import Language.Pantograph.Generic.Rendering.Editor (editorComponent) as Rendering
 
 main :: Effect Unit
 main = HA.runHalogenAff do
@@ -31,6 +24,6 @@ main = HA.runHalogenAff do
     , editsAtCursor
     , editsAtHoleInterior
     , arrangeDerivTermSubs
-    , stepRules: [hole "stepRules"]
+    , stepRules
     }
 

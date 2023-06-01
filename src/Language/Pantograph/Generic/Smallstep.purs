@@ -156,8 +156,7 @@ step t@(Expr.Expr l kids) rules =
 stepRepeatedly :: forall l r. SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules = case step t rules of
     Nothing -> t
-    Just t' -> stepRepeatedly t rules
-
+    Just t' -> stepRepeatedly t' rules
 
 -------------- Default rules --------------------------------------------
 --type Language l r = TotalMap r (Rule l)
@@ -170,21 +169,21 @@ stepRepeatedly t rules = case step t rules of
 --  | NameSortLabel
 --  | StringSortLabel String
 
-type ChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
-data ChangeRule l = ChangeRule (Set Expr.MetaVar) (Array (ChangeSort l)) (ChangeSort l)
+type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
+data SSChangeRule l = SSChangeRule (Set Expr.MetaVar) (Array (SSChangeSort l)) (SSChangeSort l)
 
 -- The sorts in these are Expr (Meta (ChangeLabel (Meta l)).
 -- the out Meta is the one that comes from the normal rules. The (ChangeLabel (Meta l))
 -- corresponds with the changes in the boundaries, which are Expr (ChangeLabel (Meta l))
---type ChLanguage l r = Grammar.Language (Expr.ChangeLabel (Expr.Meta l)) r
-type ChLanguage l r = TotalMap r (ChangeRule l)
+--type SSChLanguage l r = Grammar.Language (Expr.ChangeLabel (Expr.Meta l)) r
+type SSChLanguage l r = TotalMap r (SSChangeRule l)
 
 metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeLabel (Expr.Meta l))
 metaInject e = map (map (Expr.Inject <<< Expr.Meta <<< Right)) e
 
-langToChLang :: forall l r. IsRuleLabel l r => Grammar.Language l r -> ChLanguage l r
+langToChLang :: forall l r. IsRuleLabel l r => Grammar.Language l r -> SSChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
-      -> ChangeRule vars (map metaInject kids) (metaInject parent)) lang
+      -> SSChangeRule vars (map metaInject kids) (metaInject parent)) lang
 --     -> hole "TODO: handle SortLabel, or keep generic?") lang
 -- langToChLang lang = TotalMap.makeTotalMap case _ of
 --     Hole -> Hole.hole "!TODO langToChLang rule for Hole"
@@ -201,9 +200,9 @@ wrapBoundary :: forall l r. Direction -> Grammar.SortChange l{-Expr.MetaChange l
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
-defaultDown :: forall l r. Ord r => Expr.IsExprLabel l => ChLanguage l r -> StepRule l r
+defaultDown :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
 defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids]) =
- let (ChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
+ let (SSChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
  let freshener = genFreshener metaVars in
  let kidGSorts = map (freshen freshener) crustyKidGSorts in
  let parentGSort = freshen freshener crustyParentGSort in
@@ -228,9 +227,9 @@ getFirst (x : xs) f = case f x of
         pure $ ((x : ts1) /\ a /\ ts2)
  Just a -> Just (Nil /\ a /\ xs)
 
-defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => ChLanguage l r -> StepRule l r
+defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
 defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
- let (ChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
+ let (SSChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
  let freshener = genFreshener metaVars in
  let kidGSorts = map (freshen freshener) crustyKidGSorts in
  let parentGSort = freshen freshener crustyParentGSort in

@@ -1,9 +1,11 @@
-module Language.Pantograph.SULC.Grammar where
+module Language.Pantograph.SULC where
 
 import Prelude
 
 import Bug (bug)
+import Bug.Assertion (assert)
 import Control.Plus (empty)
+import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
 import Data.Enum (class Enum)
@@ -17,9 +19,15 @@ import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple.Nested ((/\))
 import Data.Variant (Variant)
+import Halogen.HTML as HH
+import Halogen.Utilities (classNames)
 import Hole (hole)
+import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
+import Language.Pantograph.Generic.Rendering.Base as Rendering
+import Language.Pantograph.Generic.Rendering.Elements as Rendering
+import Language.Pantograph.Generic.Smallstep as SmallStep
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 
@@ -213,3 +221,72 @@ languageChanges :: LanguageChanges
 languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
   _ -> identity
 
+--------------------------------------------------------------------------------
+-- Rendering
+--------------------------------------------------------------------------------
+
+
+type Query = Rendering.Query
+type Output = Rendering.Output PreSortLabel RuleLabel
+
+arrangeDerivTermSubs :: Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
+arrangeDerivTermSubs {renCtx, rule, sort, kids} = do
+  assert (Expr.wellformedExprF "ULC arrangeDerivTermSubs" pretty (Grammar.DerivLabel rule sort /\ kids)) \_ -> case rule /\ sort /\ kids of
+    -- var
+    Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> 
+      [pure [nameElem str]]
+    Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) /\ _ -> 
+      [pure [nameElem str]]
+    -- term
+    Ref /\ _ /\ _ -> 
+      [pure [refElem], Left (renCtx /\ 0)]
+    Lam /\ _ /\ _ -> 
+      let renCtx' = Rendering.incremementIndentationLevel renCtx in
+      [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [mapstoElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
+    App /\ _ /\ _ ->
+      let renCtx' = Rendering.incremementIndentationLevel renCtx in
+      [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
+    -- format
+    FormatRule Newline /\ _ /\ _ ->
+      Array.concat
+        [ if renCtx.isInlined then [] else
+          [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
+        , [Left (renCtx /\ 0)] ]
+    FormatRule Comment /\ _ /\ _ ->
+      [ pure [Rendering.commentBeginElem]
+      , Left (renCtx /\ 0)
+      , pure [Rendering.commentEndElem]
+      , Left (renCtx /\ 1)]
+    -- hole 
+    TermHole /\ _ /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"
+
+lambdaElem = Rendering.makePuncElem "lambda" "λ"
+mapstoElem = Rendering.makePuncElem "mapsto" "↦"
+refElem = Rendering.makePuncElem "ref" "#"
+zeroVarElem = Rendering.makePuncElem "zeroVar" "Z"
+sucVarElem = Rendering.makePuncElem "sucVar" "S"
+
+nameElem str = HH.span [classNames ["name"]] [HH.text str]
+
+--------------------------------------------------------------------------------
+-- Edit
+--------------------------------------------------------------------------------
+
+type Edit = Edit.Edit PreSortLabel RuleLabel
+type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
+
+editsAtHoleInterior = Edit.defaultEditsAtHoleInterior
+editsAtCursor = Edit.defaultEditsAtCursor
+
+--------------------------------------------------------------------------------
+-- StepRules
+--------------------------------------------------------------------------------
+
+type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
+
+stepRules :: Array StepRule
+stepRules = do
+  let chLang = SmallStep.langToChLang language
+  [ SmallStep.defaultDown chLang
+  , SmallStep.defaultUp chLang
+  ]
