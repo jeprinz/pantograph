@@ -93,13 +93,13 @@ instance (Show l, Show r) => Show (DerivLabel l r) where show x = genericShow x
 derive instance (Eq l, Eq r) => Eq (DerivLabel l r)
 derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 
-instance IsRuleLabel l r => Pretty (DerivLabel l r) where
+instance (IsExprLabel l, Pretty r) => Pretty (DerivLabel l r) where
   pretty (DerivLabel r ix) = pretty r <> "(" <> pretty ix <> ")"
   pretty (DerivString str) = "String(" <> str <> ")"
 
 instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
-  freshen rho (DerivString str) = DerivString str
+  freshen _rho (DerivString str) = DerivString str
 
 subDerivLabel :: forall l r. IsRuleLabel l r => SortSub l -> DerivLabel l r -> DerivLabel l r
 subDerivLabel sub (DerivLabel r s) = DerivLabel r (Expr.subMetaExprPartially sub s)

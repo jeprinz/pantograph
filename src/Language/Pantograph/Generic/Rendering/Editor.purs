@@ -154,6 +154,8 @@ editorComponent = HK.component \tokens spec -> HK.do
           setSelectBottomElement (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp))) Nothing
         TopState _top -> do
           setHighlightElement Nothing
+        SmallStepState ss -> do
+          setHighlightElement Nothing
 
     -- | Sets the facade state, which updates all the corresponding UI elements.
     setFacade :: State l r -> HK.HookM Aff Unit
@@ -174,6 +176,8 @@ editorComponent = HK.component \tokens spec -> HK.do
           setSelectTopElement Nothing (Just (InjectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp)))
           setSelectBottomElement Nothing (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp)))
         TopState _top -> do
+          pure unit
+        SmallStepState ss -> do
           pure unit
       liftEffect (Ref.write st facade_ref)
 
@@ -255,6 +259,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
+        SmallStepState _ -> pure unit
 
     moveSelect dir = getFacade >>= case _ of
       CursorState cursor -> do
@@ -283,6 +288,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             Nothing -> pure unit
             Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
             Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
+      SmallStepState _ -> pure unit
 
     setBufferEnabled :: Boolean -> Maybe String -> HK.HookM Aff Unit
     setBufferEnabled isEnabled mb_str = do
@@ -434,6 +440,14 @@ editorComponent = HK.component \tokens spec -> HK.do
           else if isJust (readMoveDir key) then
             setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
           else pure unit
+        ------------------------------------------------------------------------
+        -- SmallStepState
+        ------------------------------------------------------------------------
+        SmallStepState _ -> do
+          if key == "Space" then do
+            hole "TODO: small step forwards"
+          else
+            pure unit
 
     ------------------------------------------------------------------------------
     -- handle buffer output
@@ -484,6 +498,7 @@ editorComponent = HK.component \tokens spec -> HK.do
               Nothing -> pure unit
               Just dzipperp -> setFacade (SelectState {dzipperp})
           TopState _top -> pure unit
+          SmallStepState _ -> pure unit
         setHighlightElement Nothing
       else do
         setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
@@ -733,6 +748,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                             (renderHoleInterior true dpath sort))
                         defaultRenderingContext
                     ]
-              SelectState _st -> hole "render SelectState"
-              TopState _st -> hole "render TopState"
+              SelectState _select -> hole "render SelectState"
+              TopState _top -> hole "render TopState"
+              SmallStepState ss -> hole "render SmallStepState"
           ]

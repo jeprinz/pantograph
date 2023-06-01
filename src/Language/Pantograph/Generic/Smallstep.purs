@@ -9,15 +9,19 @@ import Bug as Bug
 import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Expr ((%), (%<))
+import Data.Eq.Generic (genericEq)
+import Data.Expr (class IsExprLabel, (%), (%<))
 import Data.Expr as Expr
+import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.List.Rev as Rev
 import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
+import Data.Ord.Generic (genericCompare)
 import Data.Set (Set)
+import Data.Show.Generic (genericShow)
 import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
 import Data.TotalMap as TotalMap
@@ -29,17 +33,43 @@ import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, isHoleDerivLabel, isHoleDerivTerm)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Partial.Unsafe (unsafeCrashWith)
-import Text.Pretty (pretty)
+import Text.Pretty (class Pretty, braces, brackets, pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust')
 import Utility ((<$$>))
 
 data Direction = Up | Down -- TODO:
 
+derive instance Generic Direction _
+instance Show Direction where show x = genericShow x
+instance Eq Direction where eq x y = genericEq x y
+instance Ord Direction where compare x y = genericCompare x y
+instance Pretty Direction where
+    pretty Up = "↑"
+    pretty Down = "↓"
+
 data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
 type StepRule l r = SSTerm l r -> Maybe (SSTerm l r)
+
+derive instance Generic (StepExprLabel l r) _
+instance (Show l, Show r) => Show (StepExprLabel l r) where show x = genericShow x
+instance (Eq l, Eq r) => Eq (StepExprLabel l r) where eq x y = genericEq x y
+instance (Ord l, Ord r) => Ord (StepExprLabel l r) where compare x y = genericCompare x y
+instance (IsExprLabel l, Pretty r) => Pretty (StepExprLabel l r) where
+    pretty (Inject dl) = pretty dl
+    pretty Cursor = "⌶"
+    pretty (Boundary dir sortCh) = pretty dir <> brackets (pretty sortCh)
+
+instance IsRuleLabel l r => Expr.IsExprLabel (StepExprLabel l r) where
+    prettyExprF'_unsafe (Inject dl /\ kids) = Expr.prettyExprF'_unsafe (dl /\ kids)
+    prettyExprF'_unsafe (sel@Cursor /\ [kid]) = pretty sel <> braces kid
+    prettyExprF'_unsafe (sel@(Boundary _ _) /\ [kid]) = pretty sel <> braces kid
+    
+    expectedKidsCount (Inject dl) = Expr.expectedKidsCount dl
+    expectedKidsCount Cursor = 1
+    expectedKidsCount (Boundary _ _) = 1
 
 -- ---------- Code for converting zippers to terms and back ------------------------------------------
 

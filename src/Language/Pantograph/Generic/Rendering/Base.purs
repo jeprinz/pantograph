@@ -31,7 +31,7 @@ import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML (ComponentHTML) as HH
 import Halogen.Hooks as HK
-import Language.Pantograph.Generic.Smallstep (StepRule)
+import Language.Pantograph.Generic.Smallstep (StepRule, SSTerm)
 import Language.Pantograph.Generic.Unification (Sub)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
@@ -133,6 +133,7 @@ data State l r
   = CursorState (Cursor l r)
   | SelectState (Select l r)
   | TopState (Top l r)
+  | SmallStepState (SmallStepState l r) 
 
 derive instance Generic (State l r) _
 instance (Show l, Show r) => Show (State l r) where show x = genericShow x
@@ -153,6 +154,12 @@ instance (Expr.IsExprLabel l, IsRuleLabel l r) => Pretty (State l r) where
       ]
     TopState _top -> Array.intercalate "\n"
       [ "top:"
+      ]
+    SmallStepState ssstate -> Array.intercalate "\n"
+      [ "small stepping:"
+      , P.indent $ P.newlines
+          [ "- ssterm = " <> pretty ssstate.ssterm
+          ]
       ]
 
 type Cursor l r =
@@ -188,6 +195,10 @@ type Select l r =
 
 type Top l r =
   { dterm :: DerivTerm l r
+  }
+
+type SmallStepState l r =
+  { ssterm :: SSTerm l r
   }
 
 data HoleyDerivZipper l r
