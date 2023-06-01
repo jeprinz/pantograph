@@ -36,6 +36,7 @@ import Language.Pantograph.Generic.Unification (Sub)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
 import Type.Proxy (Proxy(..))
+import Web.UIEvent.MouseEvent as MouseEvent
 
 type EditorHTML l r = 
   HH.ComponentHTML 
@@ -300,6 +301,17 @@ cursorClassName = "cursor" :: String
 highlightClassName = "highlight" :: String
 selectTopClassName = "select-top" :: String
 selectBottomClassName = "select-bottom" :: String
+
+------------------------------------------------------------------------------
+-- Editor local functions
+------------------------------------------------------------------------------
+
+type EditorLocals l r = 
+  { spec :: EditorSpec l r
+  , handleBufferOutput :: Output l r -> HK.HookM Aff Unit
+  , onMouseDown :: HoleyDerivZipper l r -> MouseEvent.MouseEvent -> HK.HookM Aff Unit
+  , onMouseOver :: HoleyDerivZipper l r -> MouseEvent.MouseEvent -> HK.HookM Aff Unit
+  }
 
 -- | Buffer
 
