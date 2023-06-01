@@ -368,7 +368,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- CursorState --> TopState
-            setFacade $ TopState {dterm: Expr.unzipper (hdzipperZipper cursor.hdzipper)}
+            setFacade $ TopState {dterm: Expr.unzipper (hdzipperDerivZipper cursor.hdzipper)}
           else if isJust (readMoveDir key) then
             assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -472,11 +472,11 @@ editorComponent = HK.component \tokens spec -> HK.do
     -- I delay that check to when you try to do an action e.g. delete/cut
     onMouseOver hdzipper event = do
       H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-      let dzipper = (hdzipperZipper hdzipper)
+      let dzipper = (hdzipperDerivZipper hdzipper)
       if MouseEvent.buttons event Bits..&. 1 /= 0 then do
         getFacade >>= case _ of
           CursorState cursor -> do
-            case Expr.zipperpFromTo (hdzipperZipper cursor.hdzipper) dzipper of
+            case Expr.zipperpFromTo (hdzipperDerivZipper cursor.hdzipper) dzipper of
               Nothing -> pure unit
               Just dzipperp -> setFacade (SelectState {dzipperp})
           SelectState select -> do
@@ -537,7 +537,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             ]
             case currentState of
               CursorState cursor -> do
-                let dzipper = hdzipperZipper cursor.hdzipper
+                let dzipper = hdzipperDerivZipper cursor.hdzipper
                 case cursor.hdzipper of
                   InjectHoleyDerivZipper _ -> 
                     [ renderPath locs dzipper 

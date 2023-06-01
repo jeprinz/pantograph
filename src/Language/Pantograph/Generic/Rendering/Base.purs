@@ -263,8 +263,8 @@ hdzipperDerivTerm (HoleInteriorHoleyDerivZipper dpath sort) = assert (just "hdzi
   -- Expr.unzipper $ Expr.Zipper dpath dterm
   dterm
 
-hdzipperZipper :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivZipper l r
-hdzipperZipper hdzipper = do
+hdzipperDerivZipper :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivZipper l r
+hdzipperDerivZipper hdzipper = do
   let path = hdzipperDerivPath hdzipper
   let dterm = hdzipperDerivTerm hdzipper
   Expr.Zipper path dterm
