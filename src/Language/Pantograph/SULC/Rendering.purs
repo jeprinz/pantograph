@@ -47,11 +47,10 @@ arrangeDerivTermSubs {renCtx, rule, sort, kids} = do
       [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
     -- format
     FormatRule Newline /\ _ /\ _ ->
-      let renCtx' = incremementIndentationLevel renCtx in
       Array.concat
         [ if renCtx.isInlined then [] else
           [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
-        , [Left (renCtx' /\ 0)] ]
+        , [Left (renCtx /\ 0)] ]
     FormatRule Comment /\ _ /\ _ ->
       [ pure [Rendering.commentBeginElem]
       , Left (renCtx /\ 0)
