@@ -37,6 +37,7 @@ import Text.Pretty (class Pretty, braces, brackets, pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust')
 import Utility ((<$$>))
+import Debug (trace)
 
 data Direction = Up | Down -- TODO:
 
@@ -295,8 +296,15 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r topSort) (ZipLi
     let crustyKidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
     let freshener = genFreshener vars in
     let kidChange = freshen freshener crustyKidChange in
+    trace ("kidChange is: " <> pretty kidChange) \_ ->
+    trace ("kidChange is also: " <> show kidChange) \_ ->
     let leftType = snd $ endpoints kidChange in
+    trace ("leftType is: " <> pretty leftType) \_ ->
     let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType topSort in
+    trace ("sub is: " <> show sub) \_ ->
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
     let kidChange' = subSomeMetaChange sub kidChange in
-    compose kidChange' (getPathChange lang (Expr.Path path) bottomSort)
+    trace ("kidChange' is: " <> pretty kidChange') \_ ->
+    trace ("bottomSort is: " <> pretty bottomSort) \_ ->
+    trace ("getPathChange ... is: " <> pretty ((getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))))) \_ ->
+    compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))

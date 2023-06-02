@@ -113,7 +113,7 @@ compose :: forall l. IsExprLabel l => Change l -> Change l -> Change l
 compose c1 c2 = 
     assert (wellformedExpr "compose.c1" c1) \_ ->
     assert (wellformedExpr "compose.c2" c2) \_ ->
-    assert (matchingEndpoints "ChangeAlgebra.compose" ("Change composition is only defined when endpoints match. Endpoitns are: " <> pretty c1 <> " and " <> pretty c2) c1 c2) \_ ->
+    assert (matchingEndpoints "ChangeAlgebra.compose" ("Change composition is only defined when endpoints match. Changes are: " <> pretty c1 <> " and " <> pretty c2) c1 c2) \_ ->
     case c1 /\ c2 of
         (Expr (Plus l1) [c1']) /\ (Expr (Minus l2) [c2']) | l1 == l2 -> compose c1' c2'
         (Expr (Minus l1) [c1']) /\ (Expr (Plus l2) [c2']) | l1 == l2 ->

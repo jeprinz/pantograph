@@ -284,8 +284,8 @@ nameElem str = HH.span [classNames ["name"]] [HH.text str]
 type Edit = Edit.Edit PreSortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
-makeEditFromPath :: DerivPath Up /\ Sort -> Sort -> Maybe Edit
-makeEditFromPath (path /\ bottomOfPathSort) cursorSort = do
+makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
+makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
     let pathTopSort = Grammar.derivPathSort path bottomOfPathSort
     -- unify the top sort of the path with cursorSort
     -- make a downchange but no upchange
@@ -293,7 +293,7 @@ makeEditFromPath (path /\ bottomOfPathSort) cursorSort = do
     let pathSubbed = map (Grammar.subDerivLabel sub) path
     let bottomOfPathSortSubbed = Expr.subMetaExprPartially sub bottomOfPathSort
     let change = SmallStep.getPathChange languageChanges pathSubbed bottomOfPathSortSubbed
-    pure $ { label : "test"
+    pure $ { label : name
     , action : defer \_ -> Edit.WrapAction
     {
         topChange : ChangeAlgebra.inject pathTopSortSubbed
@@ -304,7 +304,7 @@ makeEditFromPath (path /\ bottomOfPathSort) cursorSort = do
 
 editsAtHoleInterior _ = [] -- Edit.defaultEditsAtHoleInterior
 editsAtCursor cursorSort = Array.mapMaybe identity
-    [makeEditFromPath (newPathFromRule Lam 1) cursorSort]
+    [makeEditFromPath (newPathFromRule Lam 1) "lambda" cursorSort]
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 
 --------------------------------------------------------------------------------

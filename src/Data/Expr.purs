@@ -51,6 +51,7 @@ import Text.Pretty as P
 import Text.Pretty as Pretty
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
+import Debug (trace)
 
 -- | Expr
 
