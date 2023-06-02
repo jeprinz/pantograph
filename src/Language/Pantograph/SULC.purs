@@ -19,7 +19,7 @@ import Data.List as List
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
-import Data.Tuple.Nested ((/\))
+import Data.Tuple.Nested
 import Data.Variant (Variant)
 import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
@@ -32,6 +32,9 @@ import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
+import Type.Direction (Up)
+import Language.Pantograph.Generic.Edit (newPathFromRule)
+import Language.Pantograph.Generic.Edit (newPathFromRule)
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -276,8 +279,15 @@ nameElem str = HH.span [classNames ["name"]] [HH.text str]
 type Edit = Edit.Edit PreSortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
+makeEditFromPath :: Sort -> Sort -> DerivPath Up -> Edit
+makeEditFromPath cursorSort bottomOfPathSort path =
+    let generalChange = SmallStep.getPathChange languageChanges path bottomOfPathSort in
+    -- unify the top sort of the path with cursorSort
+    -- make a downchange but no upchange
+    hole ""
+
 editsAtHoleInterior = Edit.defaultEditsAtHoleInterior
-editsAtCursor = Edit.defaultEditsAtCursor
+editsAtCursor = [] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 
 --------------------------------------------------------------------------------
 -- StepRules

@@ -15,9 +15,11 @@ import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.TotalMap as TotalMap
 import Data.Traversable (sequence)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple.Nested ((/\), type (/\))
 import Text.Pretty (pretty)
 import Type.Direction (Up)
+import Bug (bug)
+import Hole (hole)
 
 --------------------------------------------------------------------------------
 -- Edit, Action
@@ -34,6 +36,22 @@ data Action l r
   = FillAction {sub :: Sub (SortLabel l), dterm :: DerivTerm l r}
   | ReplaceAction {topChange :: SortChange l, dterm :: DerivTerm l r}
   | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
+
+newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
+newPathFromRule = hole "newPathFromRule"
+--newPathFromRule r whatthChild = do
+--    let Rule mvars hyps con = TotalMap.lookup r language
+--    case ZipList.zipAt whatthChild (List.fromFoldable hyps) of
+--      Nothing -> bug "didn't have that child"
+--      -- `hyp` is what _would_ be at the bottom of the tooth
+--      Just hypPath -> do
+--        let rho = genFreshener mvars
+--        case sequence (?defaultDerivTerm <$> hypPath) of
+--          Nothing -> bug "Some child sort didn't have a default derivation"
+--          Just (defaultHypPath /\ _) -> do
+--            -- Each kid of the tooth is a default deriv
+--            let tooth0 = freshen' rho $ Expr.Tooth (DerivLabel r con) defaultHypPath
+--            ?h
 
 defaultEditsAtCursor :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)
 defaultEditsAtCursor sort =

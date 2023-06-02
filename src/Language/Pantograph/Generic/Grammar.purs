@@ -145,10 +145,10 @@ For example, in SULC, where sorts have scopes:
 type Sort l = Expr.MetaExpr (SortLabel l)
 type SortChange l = Expr.MetaChange (SortLabel l)
 
-data SortLabel l 
+data SortLabel l  -- l is language specific sort labels, and SortLabel adds on generic ones that exist for every language
   = InjectSortLabel l
-  | NameSortLabel
-  | StringSortLabel String
+  | NameSortLabel -- NOTE: can generalize to "TypeOf sort label"
+  | StringSortLabel String -- NOTE: can generalize to DataSortLabel
 
 derive instance Generic (SortLabel l) _
 instance Show l => Show (SortLabel l) where show x = genericShow x
@@ -180,7 +180,7 @@ type SortSub l = Sub (SortLabel l)
 -- DerivTerm
 --------------------------------------------------------------------------------
 type DerivTerm l r = Expr.Expr (DerivLabel l r)
-type DerivPath dir l r = Expr.Path dir (DerivLabel l r)
+type DerivPath dir l r = Expr.Path dir (DerivLabel l r) -- (Sort l) -- interior sort, regardless of dir
 type DerivTooth l r = Expr.Tooth (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
@@ -195,13 +195,14 @@ derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
   Expr.Tooth (DerivLabel _r sort) _ -> sort
 
--- NOTE from jacob: it seems wrong that this doesn't use the sort parameter of DerivLabel. All this returns is the generic inner sort with metavariables, but really it should get a substitution by unifying the sort with the parent sort from the Rule.
+-- NOTE: This function can't be written how we currently have teeth defined. There simply isn't the information available.
 derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothInteriorSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
-  Expr.Tooth (DerivLabel r _) kidsPath -> do
+  Expr.Tooth (DerivLabel r sort) kidsPath -> do
     let Rule _mvars hyps _con = TotalMap.lookup r language
     assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
 
+-- NOTE: This function is nonsense
 derivPathSort :: forall dir l r. IsRuleLabel l r => ReflectPathDir dir => Sort l -> DerivPath dir l r -> Sort l
 derivPathSort topSort (Expr.Path Nil) = topSort
 derivPathSort _ path@(Expr.Path (th : _)) = reflectPathDir path # 
@@ -220,9 +221,9 @@ derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
 -- | A `Rule` has the form 
 -- | ```
 -- |   [∀ «MetaVar»]*
--- |   [«MetaExpr»] -- kids
+-- |   [«Sort»] -- kids
 -- |   --------------------
--- |   «MetaExpr» -- parent
+-- |   «Sort» -- parent
 -- | ```
 data Rule l = 
   Rule
