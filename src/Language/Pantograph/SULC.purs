@@ -34,6 +34,12 @@ import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
 import Language.Pantograph.Generic.Edit (newPathFromRule)
+import Data.Lazy (defer)
+import Data.Maybe (Maybe)
+import Data.Maybe as Maybe
+import Language.Pantograph.Generic.Unification (unify)
+import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
+import Util (fromJust)
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -278,15 +284,28 @@ nameElem str = HH.span [classNames ["name"]] [HH.text str]
 type Edit = Edit.Edit PreSortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
-makeEditFromPath :: Sort -> Sort -> DerivPath Up -> Edit
-makeEditFromPath cursorSort bottomOfPathSort path =
-    let generalChange = SmallStep.getPathChange languageChanges path bottomOfPathSort in
+makeEditFromPath :: DerivPath Up /\ Sort -> Sort -> Maybe Edit
+makeEditFromPath (path /\ bottomOfPathSort) cursorSort = do
+    let pathTopSort = Grammar.derivPathSort path bottomOfPathSort
     -- unify the top sort of the path with cursorSort
     -- make a downchange but no upchange
-    hole ""
+    pathTopSortSubbed /\ sub <- unify cursorSort pathTopSort
+    let pathSubbed = map (Grammar.subDerivLabel sub) path
+    let bottomOfPathSortSubbed = Expr.subMetaExprPartially sub bottomOfPathSort
+    let change = SmallStep.getPathChange languageChanges pathSubbed bottomOfPathSortSubbed
+    pure $ { label : "test"
+    , action : defer \_ -> Edit.WrapAction
+    {
+        topChange : ChangeAlgebra.inject pathTopSortSubbed
+        , dpath : pathSubbed -- DerivPath Up l r
+        , botChange : ChangeAlgebra.invert change -- SortChange l
+    }
+    }
 
 editsAtHoleInterior _ = [] -- Edit.defaultEditsAtHoleInterior
-editsAtCursor _ = [] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
+editsAtCursor cursorSort = Array.mapMaybe identity
+    [makeEditFromPath (newPathFromRule Lam 1) cursorSort]
+--    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 
 --------------------------------------------------------------------------------
 -- StepRules

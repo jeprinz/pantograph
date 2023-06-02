@@ -284,22 +284,19 @@ defaultUp _ _ = Nothing
 
 -------------- Other typechange related functions ---------------------
 
+-- the input sort is the bottom sort
 getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.IsRuleLabel l r => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Grammar.Sort l -> Grammar.SortChange l
-getPathChange _lang (Expr.Path Nil) sort = inject sort
+getPathChange _lang (Expr.Path Nil) bottomSort = inject bottomSort
 ---- getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivHole sort1) (ZipList.Path {left})) : path)) sort = unsafeCrashWith "Holes aren't paths"
 ----getPathChange lang (Expr.Path ((Expr.Tooth dlabel (ZipList.Path {left})) : path)) sort | isHoleDerivLabel dlabel = unsafeCrashWith "Holes aren't paths"
 getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivString _) _) : _)) _ = unsafeCrashWith "Strings aren't paths"
-getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sort1) (ZipList.Path {left})) : path)) sort =
-  assert  (makeAssertionBoolean { condition: sort1 == sort -- injectMetaHoleyExpr sort
-                                 , source: "getPathChange"
-                                 , name: "matchingSorts"
-                                 , message: "The sort of the current tooth's derivation label (sort) should match the input sort (sort1).\n  - sort = " <> pretty sort <> "\n  - sort1 = " <> pretty sort1}) \_ ->
+getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r topSort) (ZipList.Path {left})) : path)) bottomSort =
     let Grammar.ChangeRule vars crustyKidChanges = TotalMap.lookup r lang in
     let crustyKidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
     let freshener = genFreshener vars in
     let kidChange = freshen freshener crustyKidChange in
     let leftType = snd $ endpoints kidChange in
-    let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType sort in
+    let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType topSort in
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
     let kidChange' = subSomeMetaChange sub kidChange in
-    compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))
+    compose kidChange' (getPathChange lang (Expr.Path path) bottomSort)
