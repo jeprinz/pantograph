@@ -34,7 +34,6 @@ import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
 import Language.Pantograph.Generic.Edit (newPathFromRule)
-import Language.Pantograph.Generic.Edit (newPathFromRule)
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -286,8 +285,8 @@ makeEditFromPath cursorSort bottomOfPathSort path =
     -- make a downchange but no upchange
     hole ""
 
-editsAtHoleInterior = Edit.defaultEditsAtHoleInterior
-editsAtCursor = [] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
+editsAtHoleInterior _ = [] -- Edit.defaultEditsAtHoleInterior
+editsAtCursor _ = [] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 
 --------------------------------------------------------------------------------
 -- StepRules

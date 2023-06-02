@@ -53,6 +53,7 @@ newPathFromRule = hole "newPathFromRule"
 --            let tooth0 = freshen' rho $ Expr.Tooth (DerivLabel r con) defaultHypPath
 --            ?h
 
+{-
 defaultEditsAtCursor :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)
 defaultEditsAtCursor sort =
   Array.concat $
@@ -127,13 +128,14 @@ defaultEditsAtHoleInterior sort =
           , action: defer \_ -> FillAction {sub: sigma, dterm: fill}
           }
 
--- digEdit :: forall l r. IsRuleLabel l r => DerivZipper l r -> Array (Edit l r)
--- digEdit dz = do
---   case defaultDerivTerm ((derivTermSort (Expr.zipperExpr dz)) :: Sort l) of
---     Nothing -> empty
---     Just dterm -> pure
---       { label: "dig"
---       -- , action: SetCursorAction $ defer \_ ->
---       --     Expr.Zipper (Expr.zipperPath dz) dterm
---       , action: defer \_ -> (DigAction :: Action l r)
---       }
+digEdit :: forall l r. IsRuleLabel l r => DerivZipper l r -> Array (Edit l r)
+digEdit dz = do
+  case defaultDerivTerm ((derivTermSort (Expr.zipperExpr dz)) :: Sort l) of
+    Nothing -> empty
+    Just dterm -> pure
+      { label: "dig"
+      -- , action: SetCursorAction $ defer \_ ->
+      --     Expr.Zipper (Expr.zipperPath dz) dterm
+      , action: defer \_ -> (DigAction :: Action l r)
+      }
+-}

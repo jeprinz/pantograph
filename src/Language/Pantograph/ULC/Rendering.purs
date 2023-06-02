@@ -55,4 +55,4 @@ sucVarElem = Rendering.makePuncElem "sucVar" "S"
 type Edit = Edit.Edit SortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper SortLabel RuleLabel
 
-editsAtHoleyDerivZipper = Rendering.defaultEditsAtHoleyDerivZipper
+-- editsAtHoleyDerivZipper = Rendering.defaultEditsAtHoleyDerivZipper

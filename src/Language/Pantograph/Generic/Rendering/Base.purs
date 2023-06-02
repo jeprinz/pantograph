@@ -277,10 +277,12 @@ escapeHoleInterior cursor = do
   let dterm = hdzipperDerivTerm cursor.hdzipper
   cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm))
 
+{-
 defaultEditsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
 defaultEditsAtHoleyDerivZipper topSort = case _ of
   InjectHoleyDerivZipper dz -> defaultEditsAtCursor (derivPathSort topSort (Expr.zipperPath dz))
   HoleInteriorHoleyDerivZipper _ sort -> defaultEditsAtHoleInterior sort
+-}
 
 _verbose_path_element_ids :: Boolean
 _verbose_path_element_ids = true
