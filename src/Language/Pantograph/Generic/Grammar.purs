@@ -195,6 +195,7 @@ derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
   Expr.Tooth (DerivLabel _r sort) _ -> sort
 
+-- NOTE from jacob: it seems wrong that this doesn't use the sort parameter of DerivLabel. All this returns is the generic inner sort with metavariables, but really it should get a substitution by unifying the sort with the parent sort from the Rule.
 derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothInteriorSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
   Expr.Tooth (DerivLabel r _) kidsPath -> do
