@@ -35,6 +35,9 @@ assert (Assertion ass) = \k -> case ass.result of
   Right a -> unsafePartial (k a)
   Left msg -> bug $ renderFailedAssertion (Assertion ass) msg
 
+assertI :: forall a. Assertion a -> a
+assertI ass = assert ass identity
+
 assert_ :: forall a. Assertion a -> Unit
 assert_ ass = assert ass \_ -> unit
 

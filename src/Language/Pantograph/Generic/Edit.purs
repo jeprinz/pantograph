@@ -5,9 +5,12 @@ import Language.Pantograph.Generic.Smallstep
 import Language.Pantograph.Generic.Unification
 import Prelude
 
+import Bug (bug)
+import Bug.Assertion (assert, assertI, just)
 import Control.Plus (empty)
 import Data.Array as Array
 import Data.Enum (enumFromTo)
+import Data.Expr ((%<))
 import Data.Expr as Expr
 import Data.Lazy (Lazy, defer)
 import Data.List as List
@@ -15,11 +18,11 @@ import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
 import Data.TotalMap as TotalMap
 import Data.Traversable (sequence)
+import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\), type (/\))
+import Hole (hole)
 import Text.Pretty (pretty)
 import Type.Direction (Up)
-import Bug (bug)
-import Hole (hole)
 
 --------------------------------------------------------------------------------
 -- Edit, Action
@@ -38,20 +41,19 @@ data Action l r
   | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
 
 newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
-newPathFromRule = hole "newPathFromRule"
---newPathFromRule r whatthChild = do
---    let Rule mvars hyps con = TotalMap.lookup r language
---    case ZipList.zipAt whatthChild (List.fromFoldable hyps) of
---      Nothing -> bug "didn't have that child"
---      -- `hyp` is what _would_ be at the bottom of the tooth
---      Just hypPath -> do
---        let rho = genFreshener mvars
---        case sequence (?defaultDerivTerm <$> hypPath) of
---          Nothing -> bug "Some child sort didn't have a default derivation"
---          Just (defaultHypPath /\ _) -> do
---            -- Each kid of the tooth is a default deriv
---            let tooth0 = freshen' rho $ Expr.Tooth (DerivLabel r con) defaultHypPath
---            ?h
+newPathFromRule r kidIx = do
+  let Rule mvars hyps con = TotalMap.lookup r language
+  -- `hypSort` is the sort of what should got at position `kidIx`
+  let hypSortPath /\ hypSort = assertI $ just "newPathFromRule.hpySortPath" $ 
+        ZipList.zipAt kidIx (List.fromFoldable hyps)
+  let rho = genFreshener mvars
+  let defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $ 
+        sequence (defaultDerivTerm <$> hypSortPath)
+  -- Each kid of the tooth is a default deriv
+  let con' = freshen' rho con
+  let defaultHypDerivPath' = freshen' rho defaultHypDerivPath
+  let hypSort' = freshen' rho hypSort
+  Expr.Path (List.singleton (DerivLabel r con' %< defaultHypDerivPath')) /\ hypSort'
 
 {-
 defaultEditsAtCursor :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)
