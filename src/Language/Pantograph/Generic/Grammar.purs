@@ -202,14 +202,13 @@ derivToothInteriorSort = assertInterface_ (Expr.wellformedTooth "derivToothSort"
     let Rule _mvars hyps _con = TotalMap.lookup r language
     assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
 
--- NOTE: This function is nonsense
-derivPathSort :: forall dir l r. IsRuleLabel l r => ReflectPathDir dir => Sort l -> DerivPath dir l r -> Sort l
-derivPathSort topSort (Expr.Path Nil) = topSort
-derivPathSort _ path@(Expr.Path (th : _)) = reflectPathDir path # 
-  (case_
-    # on _up (\_ -> derivToothInteriorSort th)
-    # on _down (\_ -> derivToothSort th)
-  )
+-- | Get the top sort of a path (given its bottom sort)
+derivPathSort :: forall dir l r. IsRuleLabel l r => ReflectPathDir dir => DerivPath dir l r -> Sort l -> Sort l
+derivPathSort dpath botSort = do
+  let dpath' = Expr.toDownPath dpath
+  case dpath' of
+    Expr.Path Nil -> botSort
+    Expr.Path (th : _) -> derivToothSort th
 
 derivZipperSort :: forall l r. IsRuleLabel l r => DerivZipper l r -> Sort l
 derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
