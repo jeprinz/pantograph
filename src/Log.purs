@@ -3,7 +3,7 @@ module Log where
 import Prelude
 
 _logging :: Boolean
-_logging = true
+_logging = false
 
 foreign import _log :: forall x a. String -> x -> (Unit -> a) -> a
 

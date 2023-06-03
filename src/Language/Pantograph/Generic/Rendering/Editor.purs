@@ -32,7 +32,7 @@ import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderH
 import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
-import Log (logM)
+import Log (log, logM)
 import Text.Pretty (pretty)
 import Text.Pretty as P
 import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir)
@@ -531,8 +531,8 @@ editorComponent = HK.component \tokens spec -> HK.do
   ------------------------------------------------------------------------------
 
   HK.pure $
-    Debug.trace 
-      ("[editorComponent.render]" <> P.bullets
+    log "editorComponent.render"
+      (P.bullets
         [ "currentState = " <> pretty currentState
         ]) \_ ->
           HH.div [classNames ["editor"]]

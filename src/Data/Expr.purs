@@ -440,8 +440,8 @@ derive instance Ord l => Ord (ChangeLabel l)
 instance Show l => Show (ChangeLabel l) where show x = genericShow x
 
 instance IsExprLabel l => Pretty (ChangeLabel l) where
-  pretty (Plus th) = "(+ " <> prettyTooth th "{}" <> ")"
-  pretty (Minus th) = "(- " <> prettyTooth  th "{}" <> ")"
+  pretty (Plus th) = "(+ " <> prettyTooth th "⌶" <> ")"
+  pretty (Minus th) = "(- " <> prettyTooth  th "⌶" <> ")"
   pretty (Inject l) = pretty l
   pretty (Replace e1 e2) = "(" <> pretty e1 <> "~~> " <> pretty e2 <> ")"
 

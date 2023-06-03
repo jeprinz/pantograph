@@ -30,6 +30,7 @@ import Halogen.Utilities (classNames, fromInputEventToTargetValue)
 import Hole (hole)
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), derivTermSort)
 import Language.Pantograph.Generic.Rendering.Elements (placeholderCursorNodeElem)
+import Log (log)
 import Text.Pretty (bullets, pretty)
 import Type.Direction (_down, _up)
 import Web.Event.Event as Event
@@ -231,9 +232,8 @@ bufferComponent = HK.component \tokens input -> HK.do
         true -> pure $ Just a
 
   HK.pure $
-    Debug.trace 
-      ("[bufferComponent.render]" <>
-        bullets
+    log "bufferComponent.render"
+      (bullets
           [ "input.hzdipper = " <> pretty input.hdzipper
           , "isEnabled = " <> show currentBufferState.isEnabled
           , "bufferString = " <> show currentBufferState.bufferString
