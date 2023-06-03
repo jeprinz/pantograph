@@ -44,7 +44,7 @@ invert = map case _ of
 
 -- NOTE: this is NOT the same as asking if the change has equal endpoints (a loop in the groupoid), it computes if its an identity under composition
 isId :: forall l. Change l -> Boolean
-isId (Expr _l kids) = Array.all isId kids
+isId (Expr (Inject _) kids) = Array.all isId kids
 isId _ = false
 
 collectMatches :: forall l. Eq l => Change l -> MetaExpr l -> Maybe (Map MetaVar (Set (Change l)))

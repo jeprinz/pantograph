@@ -40,6 +40,7 @@ import Data.Maybe as Maybe
 import Language.Pantograph.Generic.Unification (unify)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Util (fromJust)
+import Debug (traceM)
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -293,6 +294,7 @@ makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
     let pathSubbed = map (Grammar.subDerivLabel sub) path
     let bottomOfPathSortSubbed = Expr.subMetaExprPartially sub bottomOfPathSort
     let change = SmallStep.getPathChange languageChanges pathSubbed bottomOfPathSortSubbed
+    traceM ("change is: " <> show change)
     pure $ { label : name
     , action : defer \_ -> Edit.WrapAction
     {
