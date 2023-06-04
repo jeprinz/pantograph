@@ -30,6 +30,8 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Exception.Unsafe (unsafeThrow)
 import Hole as Hole
 import Text.Pretty (pretty)
+import Debug (trace)
+import Debug (traceM)
 
 inject :: forall l. Expr l -> Change l
 inject = map Inject
@@ -140,15 +142,21 @@ Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
 -}
 
 doOperation :: forall l. IsExprLabel l => Change l -> Expr (Meta (ChangeLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
-doOperation c1 c2 = do
+doOperation c1 c2 =
+--    trace ("doOperation called with c1 = " <> show c1 <> " and c2 = " <> show c2) \_ ->
+--    trace ("or to put it another way, c1 = " <> pretty c1 <> " and c2 = " <> pretty c2) \_ ->
+    do
     matches <- getMatches c2 c1
+--    traceM ("matches is: " <> show matches)
     -- TODO: could this be written better
     let sub = map (foldNonempty (\c1 c2 -> do x <- c1
                                               y <- c2
                                               lub x y))
                 (map (Set.map Just) matches)
     sub2 <- sequence sub
+--    traceM ("sub2 is: " <> show sub2)
     let subc2 = subMetaExpr sub2 c2
+--    traceM ("subc2 is: " <> show subc2)
     pure $ (sub2 /\ compose (invert c1) subc2)
 
 {-

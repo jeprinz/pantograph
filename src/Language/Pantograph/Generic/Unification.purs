@@ -26,6 +26,7 @@ import Data.Traversable (traverse)
 import Data.Tuple.Nested (type (/\), (/\))
 import Text.Pretty (pretty, quotes)
 import Util (lookup', union')
+import Debug (trace)
 
 {-
 
@@ -146,8 +147,8 @@ unifyLists _ _ = Bug.bug "[unifyLists] shouldn't happen"
 
 ------------- Another operation I need for typechanges stuff ------------------
 
-getMatches :: forall l. Eq l => Ord l => Expr.MetaExpr l -> Expr.Expr l -> Maybe (MultiMap Expr.MetaVar (Expr.Expr l))
-getMatches (Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr l2 kids2) =
+getMatches :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.Expr l -> Maybe (MultiMap Expr.MetaVar (Expr.Expr l))
+getMatches e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr l2 kids2) =
     case l1 of
         Left x -> Just $ MultiMap.insert x e2 (MultiMap.empty)
         Right l | l == l2 -> foldl (lift2 MultiMap.union) (Just MultiMap.empty) (getMatches <$> kids1 <*> kids2)

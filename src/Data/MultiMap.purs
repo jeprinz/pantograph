@@ -6,6 +6,7 @@ import Data.Map (Map)
 import Data.Set as Set
 import Data.Set (Set)
 import Data.Maybe (Maybe(..))
+import Util as Util
 
 type MultiMap k v = Map k (Set v)
 
@@ -18,4 +19,4 @@ empty :: forall k v. MultiMap k v
 empty = Map.empty
 
 union :: forall k v. Ord k => Ord v => MultiMap k v -> MultiMap k v -> MultiMap k v
-union m1 m2 = Set.union <$> m1 <*> m2
+union m1 m2 = Util.threeCaseUnion (\s -> s) (\s -> s) Set.union m1 m2
