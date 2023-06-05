@@ -51,7 +51,7 @@ isId _ = false
 
 collectMatches :: forall l. Eq l => Change l -> MetaExpr l -> Maybe (Map MetaVar (Set (Change l)))
 collectMatches (Expr (Inject l1) kids1) (Expr (Meta (Right l2)) kids2) | l1 == l2 =
-    let subs = collectMatches <$> kids1 <*> kids2 in
+    let subs = Array.zipWith collectMatches kids1 kids2 in
 --    let combine c1 c2 = if isId c1 then Just c2 else if isId c2 then Just c1 else if c1 == c2 then Just c1 else Nothing in
 --    let
 --    Array.fold subs
@@ -93,7 +93,7 @@ lub c1 c2 =
     assert (wellformedExpr "lub.c1" c1) \_ -> 
     assert (wellformedExpr "lub.c2" c2) \_ -> 
     case c1 /\ c2 of
-        Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (lub <$> kids1 <*> kids2) -- Oh no I've become a haskell programmer
+        Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
         Expr (Inject _l1) _kids1 /\ Expr (Inject _l2) _kids2 -> Nothing
         Expr (Plus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
         Expr (Plus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
@@ -127,7 +127,7 @@ compose c1 c2 =
         _ /\ (Expr (Plus l) [c2']) -> Expr (Plus l) [compose c1 c2']
         (Expr (Minus l) [c1']) /\ _ -> Expr (Minus l) [compose c1' c2]
         (Expr (Inject l1) kids1) /\ (Expr (Inject l2) kids2) | l1 == l2 ->
-            Expr (Inject l1) (compose <$> kids1 <*> kids2)
+            Expr (Inject l1) (Array.zipWith compose kids1 kids2)
         _ -> do
             let left1 /\ _right1 = endpoints c1
             let _left2 /\ right2 = endpoints c2
@@ -178,7 +178,7 @@ diff e1@(Expr l1 kids1) e2@(Expr l2 kids2) =
         Just ch -> ch
         Nothing -> case isPostfix e2 e1 of
                         Just ch -> invert ch
-                        Nothing -> if l1 == l2 then Expr (Inject l1) (diff <$> kids1 <*> kids2) else Expr (Replace e1 e2) []
+                        Nothing -> if l1 == l2 then Expr (Inject l1) (Array.zipWith diff kids1 kids2) else Expr (Replace e1 e2) []
 
 isPostfix :: forall l. Eq l => Expr l -> Expr l -> Maybe (Change l)
 isPostfix e1 e2 | e1 == e2 = Just $ map Inject e1

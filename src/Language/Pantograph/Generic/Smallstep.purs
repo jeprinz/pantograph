@@ -243,7 +243,7 @@ defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.Deriv
  do
      sub /\ chBackUp <- doOperation ch parentGSort
      let kidGSorts' = map (Expr.subMetaExpr sub) kidGSorts
-     let kidsWithBoundaries = (\ch' kid -> wrapBoundary Down ch' kid) <$> kidGSorts' <*> kids
+     let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
      let newSort = fst (endpoints chBackUp)
      -- pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
      pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel newSort)) kidsWithBoundaries
@@ -300,4 +300,7 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r topSort) (ZipLi
     let (_ /\ sub) = fromJust' "unification shouldn't fail here: type error" $ unify leftType topSort in
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
     let kidChange' = subSomeMetaChange sub kidChange in
-    compose kidChange' (getPathChange lang (Expr.Path path) (snd (endpoints kidChange')))
+    let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
+    trace ("in getPathChange, calling compose with " <> pretty kidChange' <> " and " <> pretty restOfPathChange) \_ ->
+    trace ("to put it another way, calling with " <> show kidChange' <> " and " <> show restOfPathChange) \_ ->
+    compose kidChange' restOfPathChange
