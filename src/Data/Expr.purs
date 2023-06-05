@@ -475,8 +475,8 @@ derive instance Traversable ChangeLabel
 --   sequence fa = sequenceDefault fa
 
 instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
-  prettyExprF'_unsafe (Plus th /\ [kid]) = prettyTooth th kid
-  prettyExprF'_unsafe (Minus th /\ [kid]) = prettyTooth th kid
+  prettyExprF'_unsafe (Plus th /\ [kid]) = P.parens $ "+" <> prettyTooth th kid
+  prettyExprF'_unsafe (Minus th /\ [kid]) = P.parens $ "-" <> prettyTooth th kid
   prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)
   prettyExprF'_unsafe (Replace e1 e2 /\ []) = P.parens (pretty e1 <> " ~~> " <> pretty e2)
 

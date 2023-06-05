@@ -1,12 +1,72 @@
+/* 
+  fonts
+*/
+
+/* @font-face {
+  font-family: 'Iosevka Curly';
+  src: url(./assets/fonts/iosevka-curly.ttc) format('truetype');
+} */
+
+@font-face {
+  font-family: 'FiraCode';
+  src: url(./assets/fonts/FiraCode-Regular.ttf) format('truetype');
+}
+
+/* 
+  html
+*/
+
 html,
 body {
   margin: 0;
   padding: 0;
 }
 
+/* 
+  .editor
+*/
+
 .editor {
   padding: 1rem;
+  font-size: 12pt;
 }
+
+/* 
+  status
+*/
+
+.status {
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  font-size: 80%;
+  background-color: rgb(213, 213, 213);
+}
+
+/* .status tr {
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+} */
+
+.status td {
+  padding: 0.2rem 0.5rem;
+}
+
+.status td:first-child {
+  border-right: 1px solid black;
+  text-align: right;
+}
+
+.status td:last-child {
+  text-align: left;
+}
+
+.status table, .status tr, .status td {
+  border-collapse: collapse;
+}
+
+/* 
+  .program
+*/
 
 .program {
   -webkit-user-select: none;
@@ -16,7 +76,11 @@ body {
   user-select: none;
   /* Standard syntax */
 
-  font-family: monospace;
+  /* font-family: 'Iosevka Curly'; */
+  font-family: 'FiraCode', monospace;
+
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
 }
 
 /* 
@@ -193,7 +257,40 @@ body {
 
 .preview {
   /* display: inline-block; */
+  border-radius: 1rem 1rem / 2rem;
   background-color: rgba(0, 234, 179, 0.379);
+}
+
+.preview.wrap.before {
+  margin-right: 0.1rem;
+}
+
+.preview.wrap.before:after {
+  border-radius: 1rem 1rem / 2rem;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  position: relative;
+  display: inline-block;
+  content: 'X';
+
+  background-color: white;
+  color: white;
+}
+
+.preview.wrap.after {
+  margin-left: 0.1rem;
+}
+
+.preview.wrap.after:before {
+  border-radius: 1rem 1rem / 2rem;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  position: relative;
+  display: inline-block;
+  content: 'X';
+
+  background-color: white;
+  color: white;
 }
 
 .preview.fill+.subnode,
@@ -215,7 +312,7 @@ body {
 /* small-step */
 
 .smallstep-program {
-  background-color: rgba(166, 0, 255, 0.263);
+  background-color: rgba(166, 0, 255, 0.105);
 }
 
 .node.smallstep {}

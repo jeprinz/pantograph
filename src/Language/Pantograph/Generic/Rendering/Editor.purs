@@ -22,7 +22,7 @@ import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
 import Halogen as H
-import Halogen.HTML (div) as HH
+import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
@@ -536,7 +536,17 @@ editorComponent = HK.component \tokens spec -> HK.do
         [ "currentState = " <> pretty currentState
         ]) \_ ->
           HH.div [classNames ["editor"]]
-          [ HH.div 
+          [ HH.div
+            [ classNames ["status"] ]
+            [ HH.table_
+              [ HH.tr_ [HH.td_ [HH.text "mode"], HH.td_ [HH.text case currentState of
+                  CursorState _ -> "cursor"
+                  SelectState _ -> "cursor"
+                  TopState _ -> "cursor"
+                  SmallStepState _ -> "smallstep"] ]
+              ]
+            ]
+          , HH.div 
             [ classNames ["program"]
             , HE.onMouseLeave \event -> do
                 H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event

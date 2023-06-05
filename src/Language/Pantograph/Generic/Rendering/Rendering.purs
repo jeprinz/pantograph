@@ -302,9 +302,11 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
   Inject (DerivString str) % [] -> 
     HH.div
       [classNames ["node", "smallstep", "string"]]
-      [ interrogativeElem
+      [ lparenElem
+      , interrogativeElem
       , colonElem
       , HH.text $ "String " <> show str
+      , rparenElem
       ]
   Inject (DerivLabel rule sort) % kids | not (isHoleRule rule) ->
     HH.div
