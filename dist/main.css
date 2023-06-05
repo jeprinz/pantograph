@@ -7,10 +7,10 @@
   src: url(./assets/fonts/iosevka-curly.ttc) format('truetype');
 } */
 
-@font-face {
+/* @font-face {
   font-family: 'FiraCode';
   src: url(./assets/fonts/FiraCode-Regular.ttf) format('truetype');
-}
+} */
 
 /* 
   html
@@ -77,7 +77,7 @@ body {
   /* Standard syntax */
 
   /* font-family: 'Iosevka Curly'; */
-  font-family: 'FiraCode', monospace;
+  font-family: monospace;
 
   margin-bottom: 1rem;
   padding: 0.5rem 0;

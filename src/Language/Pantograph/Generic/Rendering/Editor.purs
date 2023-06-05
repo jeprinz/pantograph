@@ -33,7 +33,7 @@ import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setu
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
 import Log (log, logM)
-import Text.Pretty (pretty)
+import Text.Pretty (bullets, pretty)
 import Text.Pretty as P
 import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir)
 import Web.DOM as DOM
@@ -339,6 +339,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             case defaultDerivTerm (derivTermSort dterm) of
               Nothing -> pure unit
               Just dterm' -> do
+                liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
                 -- update clipboard
                 liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
                 -- replace cursor with default deriv
@@ -347,11 +348,21 @@ editorComponent = HK.component \tokens spec -> HK.do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
               Just (Left path') -> do
+                liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
                 -- paste a path
                 setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (path' <> path) dterm)))
               Just (Right dterm') -> do
+                liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
                 -- paste an dterm
                 setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+          else if cmdKey && key == "s" then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            Debug.traceM $ pretty $ 
+              "[print sort]" <> bullets
+                [ "path = " <> pretty path
+                , "dterm = " <> pretty dterm
+                , "sort = " <> pretty (derivTermSort dterm)
+                ]
           else if isBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
@@ -369,7 +380,9 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- replace dterm with default deriv
             case defaultDerivTerm (derivTermSort dterm) of
               Nothing -> pure unit
-              Just dterm' ->  setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+              Just dterm' -> do
+                liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- CursorState --> TopState
