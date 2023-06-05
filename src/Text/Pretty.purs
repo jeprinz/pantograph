@@ -6,6 +6,7 @@ import Data.Array (concat, foldMap, intercalate)
 import Data.Functor.Compose (Compose(..))
 import Data.List as List
 import Data.List.Rev as Rev
+import Data.Map as Map
 import Data.Maybe (Maybe, maybe)
 import Data.String (Pattern(..))
 import Data.String as String
@@ -20,6 +21,10 @@ instance Pretty a => Pretty (List.List a) where pretty xs = "[" <> List.intercal
 instance Pretty a => Pretty (Array a) where pretty xs = "[" <> intercalate ", " (pretty <$> xs) <> "]"
 instance Pretty a => Pretty (Maybe a) where pretty = maybe "NOTHING" pretty
 instance (Pretty a, Pretty b) => Pretty (Tuple a b) where pretty (Tuple a b) = pretty a <> ", " <> pretty b
+instance (Pretty k, Pretty v) => Pretty (Map.Map k v) where 
+  pretty m =
+    "map:" <>
+    indent (bullets (Map.toUnfoldable m <#> \(Tuple k v) -> pretty k <> " ↦ " <> pretty v))
 
 {-
 -- | Pretty `a` that takes an argument of type `b`.
