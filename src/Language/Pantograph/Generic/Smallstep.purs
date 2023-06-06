@@ -227,28 +227,6 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 --         let Grammar.Rule vars kids parent = TotalMap.lookup r lang
 --         Grammar.Rule vars (map metaInject kids) (metaInject parent)
 
---data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
---type SSTerm l r = Expr.Expr (StepExprLabel l r)
-getSSTermSort :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSTerm l r -> Grammar.Sort l
-getSSTermSort (Expr.Expr (Inject l) _) = Grammar.derivLabelSort l
-getSSTermSort (Expr.Expr Cursor kids) = getSSTermSort (assertSingleton kids)
-getSSTermSort (Expr.Expr (Boundary dir ch) _) =
-    let left /\ right = endpoints ch in
-    case dir of
-        Up -> left
-        Down -> right
-
--- Ideally we wouldn't need this function if we setup DerivTerms correctly - DerivTerms should have a mapping of metavars
--- from the typing rule to sorts instead of just having a sort of the parent. However, we can recover one presentation from
--- the other.
-getSubstitution :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r =>
-   r -> Grammar.Sort l -> Array (SSTerm l r) -> Map Expr.MetaVar (Grammar.Sort l)
-getSubstitution rule parentSort kids =
-    let (Grammar.Rule vars gKidSorts gParentSort) = TotalMap.lookup rule Grammar.language in
-    let _ /\ sub = fromJust' "bla" $ unifyLists
-            (gParentSort : List.fromFoldable gKidSorts)
-            (parentSort : List.fromFoldable (map getSSTermSort kids))
-    in sub
 
 -- wraps a boundary unless the change is the identity, in which case so is this function
 wrapBoundary :: forall l r. Direction -> Grammar.SortChange l{-Expr.MetaChange l-} -> SSTerm l r -> SSTerm l r
