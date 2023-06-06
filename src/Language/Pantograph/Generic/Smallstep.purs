@@ -25,6 +25,8 @@ import Data.Show.Generic (genericShow)
 import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
 import Data.TotalMap as TotalMap
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Hole (hole)
@@ -35,9 +37,10 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, braces, brackets, pretty)
 import Type.Direction as Dir
-import Util (lookup', fromJust')
+import Util (lookup', fromJust', assertSingleton)
 import Utility ((<$$>))
 import Debug (trace)
+import Debug (traceM)
 
 data Direction = Up | Down -- TODO:
 
@@ -223,26 +226,55 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 --         let Grammar.Rule vars kids parent = TotalMap.lookup r lang
 --         Grammar.Rule vars (map metaInject kids) (metaInject parent)
 
--- TODO: everywhere that a boundary is introduced, I should have a function which does that, and only introduces it
--- if the change is not the identity.
+--data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
+--type SSTerm l r = Expr.Expr (StepExprLabel l r)
+getSSTermSort :: forall l r. Expr.IsExprLabel l => SSTerm l r -> Grammar.Sort l
+getSSTermSort (Expr.Expr (Inject l) _) = Grammar.derivLabelSort l
+getSSTermSort (Expr.Expr Cursor kids) = getSSTermSort (assertSingleton kids)
+getSSTermSort (Expr.Expr (Boundary dir ch) _) =
+    let left /\ right = endpoints ch in
+    case dir of
+        Up -> left
+        Down -> right
+
+-- Ideally we wouldn't need this function if we setup DerivTerms correctly - DerivTerms should have a mapping of metavars
+-- from the typing rule to sorts instead of just having a sort of the parent. However, we can recover one presentation from
+-- the other.
+getSubstitution :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r =>
+   r -> Grammar.Sort l -> Array (SSTerm l r) -> Map Expr.MetaVar (Grammar.Sort l)
+getSubstitution rule parentSort kids =
+    let (Grammar.Rule vars gKidSorts gParentSort) = TotalMap.lookup rule Grammar.language in
+    let _ /\ sub = fromJust' "bla" $ unifyLists
+            (gParentSort : List.fromFoldable gKidSorts)
+            (parentSort : List.fromFoldable (map getSSTermSort kids))
+    in sub
 
 -- wraps a boundary unless the change is the identity, in which case so is this function
 wrapBoundary :: forall l r. Direction -> Grammar.SortChange l{-Expr.MetaChange l-} -> SSTerm l r -> SSTerm l r
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
-defaultDown :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
+defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
 defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids]) =
- let (SSChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
- let freshener = genFreshener metaVars in
- let kidGSorts = map (freshen freshener) crustyKidGSorts in
- let parentGSort = freshen freshener crustyParentGSort in
+-- let (SSChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
+-- let freshener = genFreshener metaVars in
+-- let kidGSorts = map (freshen freshener) crustyKidGSorts in
+-- let parentGSort = freshen freshener crustyParentGSort in
+ let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  -- TODO: is this the right check?
  -- if not (injectMetaHoleyExpr (fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
  if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
  do
+     traceM ("In defaultDown, ch is: " <> pretty ch <> " and parentGSort is: " <> pretty parentGSort)
      sub /\ chBackUp <- doOperation ch parentGSort
-     let kidGSorts' = map (Expr.subMetaExpr sub) kidGSorts
+     traceM ("sub is: " <> pretty sub)
+     let subFull = getSubstitution ruleLabel sort kids
+     traceM ("subFull is: " <> pretty subFull)
+     -- union preferres values from the left
+     let sub' = Map.union sub (map (map Expr.Inject) subFull)
+     traceM ("sub' is: " <> pretty sub')
+     traceM ("kidGSorts is: " <> pretty kidGSorts)
+     let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
      let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
      let newSort = fst (endpoints chBackUp)
      -- pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
@@ -301,6 +333,4 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r topSort) (ZipLi
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
     let kidChange' = subSomeMetaChange sub kidChange in
     let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
-    trace ("in getPathChange, calling compose with " <> pretty kidChange' <> " and " <> pretty restOfPathChange) \_ ->
-    trace ("to put it another way, calling with " <> show kidChange' <> " and " <> show restOfPathChange) \_ ->
     compose kidChange' restOfPathChange

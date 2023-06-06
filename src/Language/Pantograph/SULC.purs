@@ -293,9 +293,7 @@ makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
     pathTopSortSubbed /\ sub <- unify cursorSort pathTopSort
     let pathSubbed = map (Grammar.subDerivLabel sub) path
     let bottomOfPathSortSubbed = Expr.subMetaExprPartially sub bottomOfPathSort
-    traceM ("calling getPathChange with: " <> pretty pathSubbed <> " and " <> pretty bottomOfPathSortSubbed)
     let change = SmallStep.getPathChange languageChanges pathSubbed bottomOfPathSortSubbed
-    traceM ("change is: " <> show change)
     pure $ { label : name
     , action : defer \_ -> Edit.WrapAction
     {
