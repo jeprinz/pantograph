@@ -158,7 +158,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TermHole -> true
     _ -> false
 
-  defaultDerivTerm' sort@(Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma]) = pure $ (TermHole %|- sort) % []
+  defaultDerivTerm' sort@(Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma]) = pure $ (Grammar.makeLabel TermHole [sort]) % []
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x]) = empty
   defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % []
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort

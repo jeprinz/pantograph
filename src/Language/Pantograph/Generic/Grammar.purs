@@ -17,6 +17,8 @@ import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Traversable (class Foldable, class Traversable)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
@@ -44,8 +46,20 @@ defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ 
 isHoleRule :: forall l r. IsRuleLabel l r => r -> Boolean
 isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap
 
+-- Here are some functions that will help with dealing with the sub in DerivLabel
+getSortFromSub :: forall l r. IsRuleLabel l r => r -> Expr.MetaVarSub (Sort l) -> Sort l
+getSortFromSub r sub =
+    let (Rule _vars _kidSorts parentSort) = TotalMap.lookup r language in
+    Expr.subMetaExprPartially sub parentSort
+
+makeLabel :: forall l r. IsRuleLabel l r => r -> Array (Sort l) -> DerivLabel l r
+makeLabel ruleLabel values =
+    let (Rule vars _ _) = TotalMap.lookup ruleLabel language in
+    let varsValues = Array.zip vars values in
+    DerivLabel ruleLabel (Map.fromFoldable varsValues)
+
 isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
-isHoleDerivLabel (DerivLabel r sort) | isHoleRule r = pure sort
+isHoleDerivLabel (DerivLabel r sub) | isHoleRule r = pure (getSortFromSub r sub)
 isHoleDerivLabel _ = empty
 
 isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Maybe (Sort l)
@@ -60,26 +74,20 @@ expectedHypsCount r = do
 -- DerivLabel
 --------------------------------------------------------------------------------
 
--- !TODO Removed: DerivHole (Sort l) -- TODO: get rid of this, instead have "isHole : r -> Boolean"
-
-data DerivLabel l r 
-  = DerivLabel r (Sort l)
+data DerivLabel l r
+  = DerivLabel r (Expr.MetaVarSub (Sort l)) -- NOTE: the domain of this substitution is the set of MetaVars in the Rule for r
   | DerivString String
-  
-  -- | TextBox String -- this String s stands for the sort (Name (Str s))
-  -- | DerivIndent??? Jacob note: I think its better to have the renderer give information about newlines, put it in """arrangeDerivTermSubsKids"""
-  -- alternate idea: any hole of a (Name s) sort is a textbox
 
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRule (DerivLabel r _) = Just r
 derivLabelRule (DerivString _) = Nothing
 
-derivLabelSort :: forall l r. DerivLabel l r -> Sort l
-derivLabelSort (DerivLabel _ s) = s
+derivLabelSort :: forall l r. IsRuleLabel l r => DerivLabel l r -> Sort l
+derivLabelSort (DerivLabel r sub) = getSortFromSub r sub
 derivLabelSort (DerivString str) = NameSortLabel %* [StringSortLabel str %* []]
 
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
-mapDerivLabelSort f (DerivLabel r sort) = DerivLabel r (f sort)
+mapDerivLabelSort f (DerivLabel r sub) = DerivLabel r (map f sub)
 mapDerivLabelSort _ (DerivString str) = DerivString str
 
 infix 8 DerivLabel as %|-
@@ -102,7 +110,7 @@ instance Freshenable (DerivLabel l r) where
   freshen _rho (DerivString str) = DerivString str
 
 subDerivLabel :: forall l r. IsRuleLabel l r => SortSub l -> DerivLabel l r -> DerivLabel l r
-subDerivLabel sub (DerivLabel r s) = DerivLabel r (Expr.subMetaExprPartially sub s)
+subDerivLabel sub (DerivLabel r s) = DerivLabel r (map (Expr.subMetaExprPartially sub) s)
 subDerivLabel _ other = other
 
 --------------------------------------------------------------------------------
@@ -123,7 +131,7 @@ instance IsRuleLabel l r => Expr.IsExprLabel (AsExprLabel r) where
 instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   -- NOTE: This implementation ignores the expression label and metaexpression,
   -- but maybe we want to print those at some point for debugging?
-  prettyExprF'_unsafe (DerivLabel r (Expr.Expr _l _metaExpr) /\ kids) = Expr.prettyExprF (AsExprLabel r /\ kids)
+  prettyExprF'_unsafe (DerivLabel r _sub /\ kids) = Expr.prettyExprF (AsExprLabel r /\ kids)
   prettyExprF'_unsafe (DerivString str /\ []) = "Text(" <> str <> ")"
 
   expectedKidsCount (DerivLabel r _) = Expr.expectedKidsCount (AsExprLabel r)
@@ -185,7 +193,7 @@ type DerivTooth l r = Expr.Tooth (DerivLabel l r)
 type DerivZipper l r = Expr.Zipper (DerivLabel l r)
 type DerivZipperp l r = Expr.Zipperp (DerivLabel l r)
 
-derivTermSort :: forall l r. DerivTerm l r -> Sort l
+derivTermSort :: forall l r. IsRuleLabel l r => DerivTerm l r -> Sort l
 derivTermSort (dl % _) = derivLabelSort dl
 
 derivTermRuleLabel :: forall l r. DerivTerm l r -> Maybe r
@@ -193,7 +201,7 @@ derivTermRuleLabel (dl % _) = derivLabelRule dl
 
 derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
 derivToothSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
-  Expr.Tooth (DerivLabel _r sort) _ -> sort
+  Expr.Tooth (DerivLabel r sub) _ -> getSortFromSub r sub
 
 -- NOTE: This function can't be written how we currently have teeth defined. There simply isn't the information available.
 derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
@@ -226,7 +234,7 @@ derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
 -- | ```
 data Rule l = 
   Rule
-    (Set Expr.MetaVar)
+    (Array Expr.MetaVar)
     (Array (Sort l))
     (Sort l)
 
@@ -250,7 +258,7 @@ makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar st
   let mxs = Expr.freshMetaVar <$> strs
   let es = Expr.fromMetaVar <$> mxs
   let hyps /\ con = f es
-  Rule (Set.fromFoldable mxs) hyps con
+  Rule mxs hyps con
 
 makeRule :: forall l. 
   Array String ->
@@ -277,7 +285,7 @@ defaultLanguageChanges = map \(Rule mvars kids parent) ->
 
 -- | A `ChangeRule` is oriented from parent to kid i.e. it describes the changes
 -- to apply to the parent's kids.
-data ChangeRule l = ChangeRule (Set Expr.MetaVar) (Array (Expr.MetaChange (SortLabel l)))
+data ChangeRule l = ChangeRule (Array Expr.MetaVar) (Array (Expr.MetaChange (SortLabel l)))
 
 derive instance Functor ChangeRule
 derive instance Foldable ChangeRule
