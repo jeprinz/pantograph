@@ -63,7 +63,7 @@ makeLabel ruleLabel values =
     let sigma = Map.fromFoldable (lmap RuleMetaVar <$> values) in
     assert (equal "makeLabel" 
       ( "Given substitution must have same vars as quantified in rule:" <> 
-        bullets ["ruleLabel = " <> pretty ruleLabel, "values = " <> pretty values] )
+        bullets ["ruleLabel = " <> pretty ruleLabel, "value keys = " <> pretty values] )
       vars (Map.keys sigma)) \_ ->
     DerivLabel ruleLabel sigma
 
