@@ -76,6 +76,14 @@ try (Assertion ass) = ass.result # either (const Nothing) Just
 test :: forall a. Assertion a -> Boolean
 test ass = isJust (try ass)
 
+equal :: forall a. Eq a => String -> String -> a -> a -> Assertion Unit
+equal source msg a1 a2 = Assertion
+  { name: "equal"
+  , source
+  , result: if a1 == a2 then Right unit else Left msg
+  }
+
+
 positif :: String -> Int -> Assertion Int
 positif source x = Assertion
   { name: "positif"

@@ -1,5 +1,6 @@
 module Language.Pantograph.SULC where
 
+import Data.Tuple.Nested
 import Prelude
 
 import Bug (bug)
@@ -14,33 +15,32 @@ import Data.Eq.Generic (genericEq)
 import Data.Expr (class IsExprLabel, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
+import Data.Lazy (defer)
 import Data.List (List)
 import Data.List as List
+import Data.Maybe (Maybe)
+import Data.Maybe as Maybe
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
-import Data.Tuple.Nested
 import Data.Variant (Variant)
+import Debug (traceM)
 import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
 import Hole (hole)
+import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
+import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as SmallStep
+import Language.Pantograph.Generic.Unification (unify)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
-import Language.Pantograph.Generic.Edit (newPathFromRule)
-import Data.Lazy (defer)
-import Data.Maybe (Maybe)
-import Data.Maybe as Maybe
-import Language.Pantograph.Generic.Unification (unify)
-import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Util (fromJust)
-import Debug (traceM)
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -158,7 +158,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TermHole -> true
     _ -> false
 
-  defaultDerivTerm' sort@(Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma]) = pure $ (Grammar.makeLabel TermHole [sort]) % []
+  defaultDerivTerm' sort@(Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma] % [])
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x]) = empty
   defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % []
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort

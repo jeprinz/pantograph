@@ -2,24 +2,27 @@ module Language.Pantograph.Generic.Grammar where
 
 import Prelude
 
-import Bug.Assertion (Assertion, assert, assertInput_, assertInterface_, just, makeAssertionBoolean)
+import Bug (bug)
+import Bug.Assertion (Assertion, assert, assertInput_, assertInterface_, equal, just, makeAssertionBoolean)
 import Control.Plus (empty)
 import Data.Array as Array
+import Data.Bifunctor (lmap)
 import Data.Enum (class Enum)
-import Data.Expr (class IsExprLabel, class ReflectPathDir, expectedKidsCount, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
+import Data.Expr (class IsExprLabel, class ReflectPathDir, MetaVar(..), expectedKidsCount, freshMetaVar, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List.Zip as ZipList
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Traversable (class Foldable, class Traversable)
+import Data.Tuple (fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
 import Hole (hole)
@@ -46,17 +49,21 @@ defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ 
 isHoleRule :: forall l r. IsRuleLabel l r => r -> Boolean
 isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap
 
+-- freshDerivLabelSub :: forall l r. IsRuleLabel r -> Expr.MetaVarSub (Sort l) 
+
 -- Here are some functions that will help with dealing with the sub in DerivLabel
 getSortFromSub :: forall l r. IsRuleLabel l r => r -> Expr.MetaVarSub (Sort l) -> Sort l
 getSortFromSub r sub =
     let (Rule _vars _kidSorts parentSort) = TotalMap.lookup r language in
     Expr.subMetaExprPartially sub parentSort
 
-makeLabel :: forall l r. IsRuleLabel l r => r -> Array (Sort l) -> DerivLabel l r
+makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> DerivLabel l r
 makeLabel ruleLabel values =
     let (Rule vars _ _) = TotalMap.lookup ruleLabel language in
-    let varsValues = Array.zip vars values in
-    DerivLabel ruleLabel (Map.fromFoldable varsValues)
+    let sigma = Map.fromFoldable (lmap RuleMetaVar <$> values) in
+    assert (equal "makeLabel" "Given substitution must have same vars as quantified in rule." 
+              vars (Map.keys sigma)) \_ ->
+    DerivLabel ruleLabel sigma
 
 isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
 isHoleDerivLabel (DerivLabel r sub) | isHoleRule r = pure (getSortFromSub r sub)
@@ -184,6 +191,14 @@ instance IsExprLabel l => IsExprLabel (SortLabel l) where
 
 type SortSub l = Sub (SortLabel l)
 
+freshenRuleMetaVars :: forall l. Set.Set MetaVar -> SortSub l
+freshenRuleMetaVars mvars = 
+  Map.fromFoldable $
+  flip map (Set.toUnfoldable mvars :: Array _) $
+  case _ of
+    RuleMetaVar str -> RuleMetaVar str /\ Expr.fromMetaVar (freshMetaVar str)
+    _ -> bug "[freshenRuleMetaVars] Shouldn't use this on non-RuleMetaVars"
+
 --------------------------------------------------------------------------------
 -- DerivTerm
 --------------------------------------------------------------------------------
@@ -234,7 +249,7 @@ derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
 -- | ```
 data Rule l = 
   Rule
-    (Array Expr.MetaVar)
+    (Set.Set Expr.MetaVar)
     (Array (Sort l))
     (Sort l)
 
@@ -255,10 +270,10 @@ makeRule' :: forall l.
   (Array (Sort l) -> Array (Sort l) /\ Sort l) -> 
   Rule l
 makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f -> do
-  let mxs = Expr.freshMetaVar <$> strs
+  let mxs = Expr.RuleMetaVar <$> strs
   let es = Expr.fromMetaVar <$> mxs
   let hyps /\ con = f es
-  Rule mxs hyps con
+  Rule (Set.fromFoldable mxs) hyps con
 
 makeRule :: forall l. 
   Array String ->
@@ -285,7 +300,7 @@ defaultLanguageChanges = map \(Rule mvars kids parent) ->
 
 -- | A `ChangeRule` is oriented from parent to kid i.e. it describes the changes
 -- to apply to the parent's kids.
-data ChangeRule l = ChangeRule (Array Expr.MetaVar) (Array (Expr.MetaChange (SortLabel l)))
+data ChangeRule l = ChangeRule (Set.Set Expr.MetaVar) (Array (Expr.MetaChange (SortLabel l)))
 
 derive instance Functor ChangeRule
 derive instance Foldable ChangeRule

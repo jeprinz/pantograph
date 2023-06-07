@@ -43,9 +43,11 @@ arrangeDerivTermSubs :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   Array (EditorHTML l r)
 arrangeDerivTermSubs locs (Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
-  DerivLabel rule sort % [] | isHoleRule rule ->
+  DerivLabel rule sigma % [] | isHoleRule rule -> do
+    let sort = getSortFromSub rule sigma
     arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
-  DerivLabel rule sort % kids | not (isHoleRule rule) -> do
+  DerivLabel rule sigma % kids | not (isHoleRule rule) -> do
+    let sort = getSortFromSub rule sigma
     let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort}
     Array.concat $ subCtxSymElems <#> case _ of
       Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems kidIx)) \kidElem -> [kidElem renCtx']
@@ -238,8 +240,8 @@ renderPreviewDerivTooth :: forall l r. IsRuleLabel l r =>
   DerivTerm l r ->
   {before :: Array (EditorHTML l r), after :: Array (EditorHTML l r)}
 renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
-  let rule /\ sort = case dl of
-        DerivLabel rule sort -> rule /\ sort
+  let rule /\ sigma = case dl of
+        DerivLabel rule sigma -> rule /\ sigma
         DerivString _ -> bug "in `renderPreviewDerivTooth`: should not have a tooth with a non-DerivLabel DerivLabel"
 
   let dzipper = Expr.Zipper up (Expr.unTooth dtooth dterm)
@@ -254,9 +256,9 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
         Left (_renCtx' /\ i) -> [force $ fromJust' "renderPreviewDerivTooth" $ kidElems Array.!! i]
         Right elems -> elems
 
-  -- let subCtxSymElems = locs.spec.arrangeDerivTermSubs {renCtx: previewRenderingContext, rule, sort, kids: Array.fromFoldable $ ZipList.unpathAround dterm kidsPath}
   let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
-  let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sort /\ kids)) \_ -> 
+  let sort = getSortFromSub rule sigma
+  let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sigma /\ kids)) \_ -> 
         locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx: previewRenderingContext, rule, sort}
   let toothInteriorKidIx = ZipList.leftLength kidsPath
   let isToothInterior = case _ of
@@ -308,11 +310,11 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
       , HH.text $ "String " <> show str
       , rparenElem
       ]
-  Inject (DerivLabel rule sort) % kids | not (isHoleRule rule) ->
+  Inject (DerivLabel rule sigma) % kids | not (isHoleRule rule) ->
     HH.div
       [classNames ["node", "smallstep"]]
       let kidElems = renderSSTerm locs <$> kids in
-      (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort} <#> case _ of
+      (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma} <#> case _ of
         Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [kid renCtx']
         Right elems -> elems)
   Cursor % [kid] -> do

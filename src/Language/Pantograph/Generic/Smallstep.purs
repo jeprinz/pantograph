@@ -205,7 +205,7 @@ stepRepeatedly t rules = case step t rules of
 --  | StringSortLabel String
 
 type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
-data SSChangeRule l = SSChangeRule (Array Expr.MetaVar) (Array (SSChangeSort l)) (SSChangeSort l)
+data SSChangeRule l = SSChangeRule (Set.Set Expr.MetaVar) (Array (SSChangeSort l)) (SSChangeSort l)
 
 -- The sorts in these are Expr (Meta (ChangeLabel (Meta l)).
 -- the out Meta is the one that comes from the normal rules. The (ChangeLabel (Meta l))
@@ -306,9 +306,22 @@ getPathChange _lang (Expr.Path Nil) bottomSort = inject bottomSort
 getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivString _) _) : _)) _ = unsafeCrashWith "Strings aren't paths"
 getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.Path {left})) : path)) bottomSort =
     let Grammar.ChangeRule vars crustyKidChanges = TotalMap.lookup r lang in
-    let crustyKidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
-    let freshener = genFreshener (Set.fromFoldable vars) in
-    let kidChange = freshen freshener crustyKidChange in
+    
+    ----------------------------------------------------------------------------
+    -- -- [HENRY] I commented this out because you don't have to freshen here,
+    -- -- but im not sure if my translation below is correct, so i left the
+    -- -- original for you to check against
+    -- let crustyKidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
+    -- let freshener = genFreshener (Set.fromFoldable vars) in
+    -- let kidChange = freshen freshener crustyKidChange in
+    -- let leftType = snd $ endpoints kidChange in
+    -- -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
+    -- let kidChange' = subSomeMetaChange sub kidChange in
+    -- let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
+    -- compose kidChange' restOfPathChange
+    ----------------------------------------------------------------------------
+
+    let kidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
     let leftType = snd $ endpoints kidChange in
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
     let kidChange' = subSomeMetaChange sub kidChange in

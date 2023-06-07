@@ -28,6 +28,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Newtype as Newtype
 import Data.Ord (class Ord1, compare1)
 import Data.Ord.Generic (genericCompare)
+import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.TotalMap (hasKey)
@@ -39,6 +40,7 @@ import Data.UUID as UUID
 import Data.Variant (case_, on)
 import Data.Zippable (class Zippable)
 import Data.Zippable as Zippable
+import Debug (trace)
 import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
@@ -51,7 +53,6 @@ import Text.Pretty as P
 import Text.Pretty as Pretty
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
-import Debug (trace)
 
 -- | Expr
 
@@ -104,25 +105,29 @@ instance IsExprLabel l => Pretty (Expr l) where
 
 -- | MetaVar
 
-newtype MetaVar = MetaVar (Maybe String /\ UUID)
+data MetaVar 
+  = MetaVar (Maybe String) UUID
+  | RuleMetaVar String
 
-derive newtype instance Show MetaVar
-derive newtype instance Eq MetaVar
-derive newtype instance Ord MetaVar
--- instance Pretty MetaVar where pretty (MetaVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
-instance Pretty MetaVar where 
-  pretty (MetaVar (Nothing /\ uuid)) = "?" <> String.take 2 (UUID.toString uuid)
-  pretty (MetaVar (Just str /\ uuid)) = "?" <> str <> "~" <> String.take 2 (UUID.toString uuid)
-
-showMetaVar :: MetaVar -> String
-showMetaVar (MetaVar str) = show str
+derive instance Generic MetaVar _
+instance Show MetaVar where show x = genericShow x
+instance Eq MetaVar where eq x y = genericEq x y
+instance Ord MetaVar where compare x y = genericCompare x y
+instance Pretty MetaVar where
+  pretty (MetaVar Nothing uuid) = "?" <> String.take 2 (UUID.toString uuid)
+  pretty (MetaVar (Just str) uuid) = "?" <> str <> "~" <> String.take 2 (UUID.toString uuid)
+  pretty (RuleMetaVar str) = "??" <> str
 
 freshMetaVar :: String -> MetaVar
-freshMetaVar str = MetaVar (Just str /\ unsafePerformEffect (UUID.genUUID))
+freshMetaVar str = MetaVar (Just str) (unsafePerformEffect (UUID.genUUID))
 
 freshMetaVar' :: Unit -> MetaVar 
-freshMetaVar' _ = MetaVar (Nothing /\ unsafePerformEffect (UUID.genUUID))
+freshMetaVar' _ = MetaVar Nothing (unsafePerformEffect (UUID.genUUID))
 
+freshenMetaVar :: MetaVar -> MetaVar
+freshenMetaVar (MetaVar (Just str) _) = freshMetaVar str
+freshenMetaVar (MetaVar Nothing _) = freshMetaVar' unit
+freshenMetaVar (RuleMetaVar _str) = bug "[freshenMetaVar] Should never try to freshen a RuleMetaVar, since it should be substituted away in any instantiated Rule i.e. Derivation"
 newtype Meta a = Meta (MetaVar \/ a)
 
 derive instance Newtype (Meta a) _

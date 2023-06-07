@@ -15,6 +15,7 @@ import Data.Expr as Expr
 import Data.Lazy (Lazy, defer)
 import Data.List as List
 import Data.List.Zip as ZipList
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.TotalMap as TotalMap
 import Data.Traversable (sequence)
@@ -42,18 +43,24 @@ data Action l r
 
 newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
 newPathFromRule r kidIx = do
-  let Rule mvars hyps con = TotalMap.lookup r language
+  let Rule mvars hyps _con = TotalMap.lookup r language
+  
   -- `hypSort` is the sort of what should got at position `kidIx`
   let hypSortPath /\ hypSort = assertI $ just "newPathFromRule.hpySortPath" $ 
         ZipList.zipAt kidIx (List.fromFoldable hyps)
-  let rho = genFreshener mvars
-  let defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $ 
-        sequence (defaultDerivTerm <$> hypSortPath)
+
   -- Each kid of the tooth is a default deriv
-  let con' = freshen' rho con
-  let defaultHypDerivPath' = freshen' rho defaultHypDerivPath
-  let hypSort' = freshen' rho hypSort
-  Expr.Path (List.singleton (DerivLabel r con' %< defaultHypDerivPath')) /\ hypSort'
+  let defaultHypDerivPath :: _ (DerivTerm l r)
+      defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $ 
+        sequence (defaultDerivTerm <$> hypSortPath)
+
+  -- !TODO don't have to freshen?  
+  -- let rho = genFreshener mvars
+  -- let sigma' = freshen' rho <$> ?a
+  -- let defaultHypDerivPath' = freshen' rho defaultHypDerivPath
+  -- let hypSort' = freshen' rho hypSort
+
+  Expr.Path (List.singleton (DerivLabel r (freshenRuleMetaVars mvars) %< defaultHypDerivPath)) /\ hypSort
 
 {-
 defaultEditsAtCursor :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)

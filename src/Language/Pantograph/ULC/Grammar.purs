@@ -105,7 +105,8 @@ instance Grammar.IsRuleLabel SortLabel RuleLabel where
     Hole -> true
     _ -> false
 
-  defaultDerivTerm' sort = pure $ (Hole %|- sort) % []
+  defaultDerivTerm' sort = pure (Grammar.makeLabel Hole ["sort" /\ sort] % [])
+  -- pure $ (Hole %|- ?sort) % []
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of

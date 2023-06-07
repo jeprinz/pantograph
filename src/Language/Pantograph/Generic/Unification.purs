@@ -60,13 +60,9 @@ It seems wierd to have an change with both "change metavariables" and "expressio
 
 type Ren = Expr.MetaVarSub Expr.MetaVar
 
-freshenMetaVar :: Expr.MetaVar -> Expr.MetaVar
-freshenMetaVar (Expr.MetaVar (Just str /\ _)) = Expr.freshMetaVar str
-freshenMetaVar (Expr.MetaVar (Nothing /\ _)) = Expr.freshMetaVar' unit
-
 genFreshener :: Set Expr.MetaVar -> Ren
 genFreshener vars = foldl
-    (\acc x -> Map.insert x (freshenMetaVar x) acc)
+    (\acc x -> Map.insert x (Expr.freshenMetaVar x) acc)
     Map.empty vars
 
 class Freshenable t where

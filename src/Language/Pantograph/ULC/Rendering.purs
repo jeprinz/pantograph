@@ -22,7 +22,7 @@ type Query = Rendering.Query
 type Output = Rendering.Output SortLabel RuleLabel
 
 arrangeDerivTermSubs ::
-  (RuleLabel /\ Sort /\ Array DerivTerm) ->
+  (RuleLabel /\ Expr.MetaVarSub Sort /\ Array DerivTerm) ->
   Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff) -> 
   Array String /\ Array (HH.ComponentHTML (HK.HookM Aff Unit) (buffer :: H.Slot Query Output String) Aff)
 arrangeDerivTermSubs (r /\ sort /\ kids) kidElems = do
