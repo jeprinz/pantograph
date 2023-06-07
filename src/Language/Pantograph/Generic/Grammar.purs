@@ -29,7 +29,7 @@ import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
 import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen')
 import Partial.Unsafe (unsafePartial)
-import Text.Pretty (class Pretty, pretty)
+import Text.Pretty (class Pretty, bullets, pretty)
 import Type.Direction (_down, _up)
 
 --------------------------------------------------------------------------------
@@ -59,10 +59,12 @@ getSortFromSub r sub =
 
 makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> DerivLabel l r
 makeLabel ruleLabel values =
-    let (Rule vars _ _) = TotalMap.lookup ruleLabel language in
+    let Rule vars _ _ = TotalMap.lookup ruleLabel language in
     let sigma = Map.fromFoldable (lmap RuleMetaVar <$> values) in
-    assert (equal "makeLabel" "Given substitution must have same vars as quantified in rule." 
-              vars (Map.keys sigma)) \_ ->
+    assert (equal "makeLabel" 
+      ( "Given substitution must have same vars as quantified in rule:" <> 
+        bullets ["ruleLabel = " <> pretty ruleLabel, "values = " <> pretty values] )
+      vars (Map.keys sigma)) \_ ->
     DerivLabel ruleLabel sigma
 
 isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
