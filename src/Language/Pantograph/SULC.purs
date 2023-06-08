@@ -158,9 +158,10 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TermHole -> true
     _ -> false
 
-  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma] % [])
+  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = pure (Grammar.makeLabel TermHole [] ["gamma" /\ gamma] % [])
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x]) = empty
-  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_name]) = pure $ Grammar.DerivString "" % []
+  -- NOTE from jacob: I made it only work if given (Name (String _)) and not (Name ?x) because the latter shouldn't appear in programs.
+  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [Expr.Meta (Right (Grammar.StringSortLabel _str)) % []]) = pure $ Grammar.DerivString "" % []
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
 ctxCons x gamma = CtxConsSort %|-* [x, gamma]
@@ -169,44 +170,44 @@ infixl 7 ctxCons as %:
 language :: Language
 language = TotalMap.makeTotalMap case _ of
 
-  Zero -> Grammar.makeRule ["gamma", "x"] \[gamma, x] ->
+  Zero -> Grammar.makeRule [] ["gamma", "x"] \[gamma, x] ->
     []
     /\ --------
     ( VarSort %|-* [x %: gamma, x] )
 
-  Suc -> Grammar.makeRule ["gamma", "x", "y"] \[gamma, x, y] ->
+  Suc -> Grammar.makeRule [] ["gamma", "x", "y"] \[gamma, x, y] ->
     [ VarSort %|-* [gamma, x] ]
     /\ --------
     ( VarSort %|-* [(y %: gamma), x] )
 
-  Lam -> Grammar.makeRule ["gamma", "x"] \[gamma, x] ->
+  Lam -> Grammar.makeRule ["x"] ["gamma"] \[x, gamma] ->
     [ Grammar.NameSortLabel %* [x]
     , TermSort %|-* [x %: gamma] ]
     /\ --------
     ( TermSort %|-* [gamma])
 
-  App -> Grammar.makeRule ["gamma"] \[gamma] ->
+  App -> Grammar.makeRule [] ["gamma"] \[gamma] ->
     [ TermSort %|-* [gamma]
     , TermSort %|-* [gamma] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  Ref -> Grammar.makeRule ["gamma", "x"] \[gamma, x] -> 
+  Ref -> Grammar.makeRule [] ["gamma", "x"] \[gamma, x] ->
     [ VarSort %|-* [gamma, x] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  TermHole -> Grammar.makeRule ["gamma"] \[gamma] ->
+  TermHole -> Grammar.makeRule [] ["gamma"] \[gamma] ->
     [ ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  FormatRule Newline -> Grammar.makeRule ["gamma"] \[gamma] ->
+  FormatRule Newline -> Grammar.makeRule [] ["gamma"] \[gamma] ->
     [ TermSort %|-* [gamma] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  FormatRule Comment -> Grammar.makeRule ["comment", "gamma"] \[comment, gamma] ->
+  FormatRule Comment -> Grammar.makeRule [] ["comment", "gamma"] \[comment, gamma] ->
     [ Grammar.NameSortLabel %* [comment]
     , TermSort %|-* [gamma] ]
     /\ --------
@@ -287,13 +288,20 @@ type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
 makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
 makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
+--    let bottomOfPathSort = Grammar.concretizeSort bottomOfPathSort'
+    traceM ("got here 1")
     let pathTopSort = Grammar.derivPathSort path bottomOfPathSort
     -- unify the top sort of the path with cursorSort
     -- make a downchange but no upchange
+    traceM ("got here 2. cursorSort is: " <> pretty cursorSort <> " and pathTopSort is: " <> pretty pathTopSort)
     pathTopSortSubbed /\ sub <- unify cursorSort pathTopSort
+    traceM ("got here 3")
     let pathSubbed = map (Grammar.subDerivLabel sub) path
     let bottomOfPathSortSubbed = Expr.subMetaExprPartially sub bottomOfPathSort
+    traceM ("calling getPathChange with" <> pretty pathSubbed <> " and " <> pretty bottomOfPathSortSubbed)
+    traceM ("more specifically, " <> show pathSubbed)
     let change = SmallStep.getPathChange languageChanges pathSubbed bottomOfPathSortSubbed
+    traceM ("it returned " <> pretty change)
     pure $ { label : name
     , action : defer \_ -> Edit.WrapAction
     {

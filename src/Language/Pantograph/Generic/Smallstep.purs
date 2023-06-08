@@ -271,7 +271,7 @@ getFirst (x : xs) f = case f x of
  Just a -> Just (Nil /\ a /\ xs)
 
 defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
-defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
+--defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
 -- let (SSChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
 -- let freshener = genFreshener (Set.fromFoldable metaVars) in
 -- let kidGSorts = map (freshen freshener) crustyKidGSorts in
@@ -293,7 +293,6 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
 --             -- (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr (fst (endpoints chBackDown)))))
 --             (Inject (Grammar.DerivLabel ruleLabel (fst (endpoints chBackDown))))
 --             (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
-    Hole.hole "defaultUp"
 defaultUp _ _ = Nothing
 
 -------------- Other typechange related functions ---------------------
@@ -324,6 +323,7 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.P
     let kidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
     let leftType = snd $ endpoints kidChange in
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
+    trace ("in getPathChange, calling subSomeMetaChange with sub:" <> pretty sub <> " and kidChange " <> pretty kidChange) \_ ->
     let kidChange' = subSomeMetaChange sub kidChange in
     let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
     compose kidChange' restOfPathChange

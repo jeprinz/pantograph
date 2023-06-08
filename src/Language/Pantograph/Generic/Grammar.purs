@@ -31,6 +31,7 @@ import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen'
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, bullets, pretty)
 import Type.Direction (_down, _up)
+import Data.Either as Either
 
 --------------------------------------------------------------------------------
 -- IsRuleLabel
@@ -42,9 +43,20 @@ class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleL
   isHoleRuleTotalMap :: TotalMap r Boolean
   defaultDerivTerm' :: Partial => Sort l -> Maybe (DerivTerm l r)
 
+-- NOTE: if the given sort is (Name ?x), then it will return a term of sort (Name ""). So it doesn't always return
+-- a term with the sort you gave it. On the other hand, if you give it a sort that is allowed to appear in the
+-- program, then it will always return a term with the given sort. So we should think of what the exact criteria is here.
 defaultDerivTerm :: forall l r. IsRuleLabel l r => Sort l -> Maybe (DerivTerm l r)
 defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ -> 
   defaultDerivTerm' sort
+
+-- replaces (Name ?x) with (Name (Str ""))
+concretizeSort :: forall l. Sort l -> Sort l
+--concretizeSort (Expr.Expr (Expr.Meta (Either.Right NameSortLabel)) [Expr.Expr (Expr.Meta (Either.Left _metavar)) []])
+--    = Expr.Expr (Expr.Meta (Either.Right NameSortLabel)) [Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []]
+concretizeSort (Expr.Expr (Expr.Meta (Either.Left (Expr.RuleMetaVar true _))) [])
+    = Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []
+concretizeSort (Expr.Expr l kids) = Expr.Expr l (map concretizeSort kids)
 
 isHoleRule :: forall l r. IsRuleLabel l r => r -> Boolean
 isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap
@@ -57,10 +69,10 @@ getSortFromSub r sub =
     let (Rule _vars _kidSorts parentSort) = TotalMap.lookup r language in
     Expr.subMetaExprPartially sub parentSort
 
-makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> DerivLabel l r
-makeLabel ruleLabel values =
+makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> Array (String /\ Sort l) -> DerivLabel l r
+makeLabel ruleLabel datavalues values =
     let Rule vars _ _ = TotalMap.lookup ruleLabel language in
-    let sigma = Map.fromFoldable (lmap RuleMetaVar <$> values) in
+    let sigma = Map.fromFoldable ((lmap (RuleMetaVar true) <$> datavalues) <> (lmap (RuleMetaVar false) <$> values)) in
     assert (equal "makeLabel" 
       ( "Given substitution must have same vars as quantified in rule:" <> 
         bullets ["ruleLabel = " <> pretty ruleLabel, "value keys = " <> pretty values] )
@@ -198,7 +210,8 @@ freshenRuleMetaVars mvars =
   Map.fromFoldable $
   flip map (Set.toUnfoldable mvars :: Array _) $
   case _ of
-    RuleMetaVar str -> RuleMetaVar str /\ Expr.fromMetaVar (freshMetaVar str)
+    RuleMetaVar false str -> RuleMetaVar false str /\ Expr.fromMetaVar (freshMetaVar str)
+    RuleMetaVar true str -> RuleMetaVar true str /\ Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []
     _ -> bug "[freshenRuleMetaVars] Shouldn't use this on non-RuleMetaVars"
 
 --------------------------------------------------------------------------------
@@ -268,20 +281,22 @@ nonDuplicateArray source message arr = makeAssertionBoolean
   }
 
 makeRule' :: forall l. 
-  Array String ->
-  (Array (Sort l) -> Array (Sort l) /\ Sort l) -> 
+  Array String -> -- Data metavariables
+  Array String -> -- Regular metavariables
+  (Array (Sort l) -> Array (Sort l) /\ Sort l) ->
   Rule l
-makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f -> do
-  let mxs = Expr.RuleMetaVar <$> strs
+makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \datastrs strs f -> do
+  let mxs = (Expr.RuleMetaVar true <$> datastrs) <> (Expr.RuleMetaVar false <$> strs)
   let es = Expr.fromMetaVar <$> mxs
   let hyps /\ con = f es
   Rule (Set.fromFoldable mxs) hyps con
 
 makeRule :: forall l. 
-  Array String ->
-  (Partial => Array (Sort l) -> Array (Sort l) /\ Sort l) -> 
+  Array String -> -- Data metavariables
+  Array String -> -- Regular metavariables
+  (Partial => Array (Sort l) -> Array (Sort l) /\ Sort l) ->
   Rule l
-makeRule = \strs f -> makeRule' strs (unsafePartial f)
+makeRule = \datastrs strs f -> makeRule' datastrs strs (unsafePartial f)
 
 --------------------------------------------------------------------------------
 -- Language

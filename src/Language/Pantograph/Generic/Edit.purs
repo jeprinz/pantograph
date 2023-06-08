@@ -24,6 +24,7 @@ import Data.Tuple.Nested ((/\), type (/\))
 import Hole (hole)
 import Text.Pretty (pretty)
 import Type.Direction (Up)
+import Debug (traceM)
 
 --------------------------------------------------------------------------------
 -- Edit, Action
@@ -43,8 +44,9 @@ data Action l r
 
 newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
 newPathFromRule r kidIx = do
-  let Rule mvars hyps _con = TotalMap.lookup r language
-  
+  let Rule mvars hyps' _con = TotalMap.lookup r language
+  let hyps = concretizeSort <$> hyps'
+
   -- `hypSort` is the sort of what should got at position `kidIx`
   let hypSortPath /\ hypSort = assertI $ just "newPathFromRule.hpySortPath" $ 
         ZipList.zipAt kidIx (List.fromFoldable hyps)
@@ -53,12 +55,6 @@ newPathFromRule r kidIx = do
   let defaultHypDerivPath :: _ (DerivTerm l r)
       defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $ 
         sequence (defaultDerivTerm <$> hypSortPath)
-
-  -- !TODO don't have to freshen?  
-  -- let rho = genFreshener mvars
-  -- let sigma' = freshen' rho <$> ?a
-  -- let defaultHypDerivPath' = freshen' rho defaultHypDerivPath
-  -- let hypSort' = freshen' rho hypSort
 
   Expr.Path (List.singleton (DerivLabel r (freshenRuleMetaVars mvars) %< defaultHypDerivPath)) /\ hypSort
 

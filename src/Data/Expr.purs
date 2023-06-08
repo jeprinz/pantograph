@@ -107,7 +107,7 @@ instance IsExprLabel l => Pretty (Expr l) where
 
 data MetaVar 
   = MetaVar (Maybe String) UUID
-  | RuleMetaVar String
+  | RuleMetaVar Boolean String -- the Boolean is: is this a data-metavariable, used only for Strings inside Names (or more general if we ever make that more general)
 
 derive instance Generic MetaVar _
 instance Show MetaVar where show x = genericShow x
@@ -116,7 +116,7 @@ instance Ord MetaVar where compare x y = genericCompare x y
 instance Pretty MetaVar where
   pretty (MetaVar Nothing uuid) = "?" <> String.take 2 (UUID.toString uuid)
   pretty (MetaVar (Just str) uuid) = "?" <> str <> "~" <> String.take 2 (UUID.toString uuid)
-  pretty (RuleMetaVar str) = "??" <> str
+  pretty (RuleMetaVar isDataMV str) = (if isDataMV then "data??" else "??") <> str
 
 freshMetaVar :: String -> MetaVar
 freshMetaVar str = MetaVar (Just str) (unsafePerformEffect (UUID.genUUID))
@@ -127,7 +127,7 @@ freshMetaVar' _ = MetaVar Nothing (unsafePerformEffect (UUID.genUUID))
 freshenMetaVar :: MetaVar -> MetaVar
 freshenMetaVar (MetaVar (Just str) _) = freshMetaVar str
 freshenMetaVar (MetaVar Nothing _) = freshMetaVar' unit
-freshenMetaVar (RuleMetaVar _str) = bug "[freshenMetaVar] Should never try to freshen a RuleMetaVar, since it should be substituted away in any instantiated Rule i.e. Derivation"
+freshenMetaVar (RuleMetaVar _ _str) = bug "[freshenMetaVar] Should never try to freshen a RuleMetaVar, since it should be substituted away in any instantiated Rule i.e. Derivation"
 newtype Meta a = Meta (MetaVar \/ a)
 
 derive instance Newtype (Meta a) _
