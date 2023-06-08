@@ -50,13 +50,11 @@ defaultDerivTerm :: forall l r. IsRuleLabel l r => Sort l -> Maybe (DerivTerm l 
 defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ -> 
   defaultDerivTerm' sort
 
--- replaces (Name ?x) with (Name (Str ""))
-concretizeSort :: forall l. Sort l -> Sort l
---concretizeSort (Expr.Expr (Expr.Meta (Either.Right NameSortLabel)) [Expr.Expr (Expr.Meta (Either.Left _metavar)) []])
---    = Expr.Expr (Expr.Meta (Either.Right NameSortLabel)) [Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []]
-concretizeSort (Expr.Expr (Expr.Meta (Either.Left (Expr.RuleMetaVar true _))) [])
-    = Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []
-concretizeSort (Expr.Expr l kids) = Expr.Expr l (map concretizeSort kids)
+---- replaces (Name ?x) with (Name (Str ""))
+--concretizeSort :: forall l. Sort l -> Sort l
+--concretizeSort (Expr.Expr (Expr.Meta (Either.Left (Expr.RuleMetaVar true _))) [])
+--    = Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []
+--concretizeSort (Expr.Expr l kids) = Expr.Expr l (map concretizeSort kids)
 
 isHoleRule :: forall l r. IsRuleLabel l r => r -> Boolean
 isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap

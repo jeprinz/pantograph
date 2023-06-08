@@ -45,7 +45,9 @@ data Action l r
 newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
 newPathFromRule r kidIx = do
   let Rule mvars hyps' _con = TotalMap.lookup r language
-  let hyps = concretizeSort <$> hyps'
+  let sub = freshenRuleMetaVars mvars
+--  let hyps = concretizeSort <$> hyps'
+  let hyps = Expr.subMetaExprPartially sub <$> hyps'
 
   -- `hypSort` is the sort of what should got at position `kidIx`
   let hypSortPath /\ hypSort = assertI $ just "newPathFromRule.hpySortPath" $ 
@@ -56,7 +58,7 @@ newPathFromRule r kidIx = do
       defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $ 
         sequence (defaultDerivTerm <$> hypSortPath)
 
-  Expr.Path (List.singleton (DerivLabel r (freshenRuleMetaVars mvars) %< defaultHypDerivPath)) /\ hypSort
+  Expr.Path (List.singleton (DerivLabel r sub %< defaultHypDerivPath)) /\ hypSort
 
 {-
 defaultEditsAtCursor :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)
