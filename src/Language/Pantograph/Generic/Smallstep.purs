@@ -98,7 +98,7 @@ wrapCursor t = Expr.Expr Cursor [t]
 
 wrapPath :: forall l r. Grammar.DerivPath Dir.Up l r -> SSTerm l r -> SSTerm l r
 wrapPath (Expr.Path Nil) t = t
-wrapPath (Expr.Path (th : path)) t = addToothToTerm th (wrapPath (Expr.Path path) t)
+wrapPath (Expr.Path (th : path)) t = (wrapPath (Expr.Path path) (addToothToTerm th t))
 
 setupSSTermFromWrapAction :: forall l r.
     Grammar.DerivPath Dir.Up l r -> -- top path
