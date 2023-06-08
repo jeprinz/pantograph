@@ -289,19 +289,13 @@ type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
 makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
 --    let bottomOfPathSort = Grammar.concretizeSort bottomOfPathSort'
-    traceM ("got here 1")
     let pathTopSort = Grammar.derivPathSort path bottomOfPathSort
     -- unify the top sort of the path with cursorSort
     -- make a downchange but no upchange
-    traceM ("got here 2. cursorSort is: " <> pretty cursorSort <> " and pathTopSort is: " <> pretty pathTopSort)
     pathTopSortSubbed /\ sub <- unify cursorSort pathTopSort
-    traceM ("got here 3")
     let pathSubbed = map (Grammar.subDerivLabel sub) path
     let bottomOfPathSortSubbed = Expr.subMetaExprPartially sub bottomOfPathSort
-    traceM ("calling getPathChange with" <> pretty pathSubbed <> " and " <> pretty bottomOfPathSortSubbed)
-    traceM ("more specifically, " <> show pathSubbed)
     let change = SmallStep.getPathChange languageChanges pathSubbed bottomOfPathSortSubbed
-    traceM ("it returned " <> pretty change)
     pure $ { label : name
     , action : defer \_ -> Edit.WrapAction
     {

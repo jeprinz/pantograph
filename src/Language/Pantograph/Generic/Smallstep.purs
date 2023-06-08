@@ -256,9 +256,9 @@ defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.Deriv
      traceM ("kidGSorts is: " <> pretty kidGSorts)
      let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
      let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
-     let newSort = fst (endpoints chBackUp)
+--     let newSort = fst (endpoints chBackUp)
      -- pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
-     pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) subFull))) kidsWithBoundaries
+     pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
 defaultDown _ _ = Nothing
 
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
@@ -323,7 +323,6 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.P
     let kidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
     let leftType = snd $ endpoints kidChange in
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
-    trace ("in getPathChange, calling subSomeMetaChange with sub:" <> pretty sub <> " and kidChange " <> pretty kidChange) \_ ->
     let kidChange' = subSomeMetaChange sub kidChange in
     let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
     compose kidChange' restOfPathChange
