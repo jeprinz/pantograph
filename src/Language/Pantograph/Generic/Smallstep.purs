@@ -232,35 +232,6 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 wrapBoundary :: forall l r. Direction -> Grammar.SortChange l{-Expr.MetaChange l-} -> SSTerm l r -> SSTerm l r
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
--- Down rule that steps boundary through form - defined generically for every typing rule!
-defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
-defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids]) =
--- let (SSChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
--- let freshener = genFreshener metaVars in
--- let kidGSorts = map (freshen freshener) crustyKidGSorts in
--- let parentGSort = freshen freshener crustyParentGSort in
- let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
- -- TODO: is this the right check?
- -- if not (injectMetaHoleyExpr (fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
- let sort = Grammar.getSortFromSub ruleLabel sub in
- if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
- do
-     traceM ("In defaultDown, ch is: " <> pretty ch <> " and parentGSort is: " <> pretty parentGSort)
-     chSub /\ chBackUp <- doOperation ch parentGSort
-     traceM ("chSub is: " <> pretty chSub)
-     let subFull = map (map Expr.Inject) sub
---     traceM ("subFull is: " <> pretty subFull)
-     -- union preferres values from the left
-     let sub' = Map.union chSub subFull
-     traceM ("sub' is: " <> pretty sub')
-     traceM ("kidGSorts is: " <> pretty kidGSorts)
-     let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
-     let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
---     let newSort = fst (endpoints chBackUp)
-     -- pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr newSort))) kidsWithBoundaries
-     pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
-defaultDown _ _ = Nothing
-
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
 getFirst :: forall t a. List t -> (t -> Maybe a) -> Maybe (List t /\ a /\ List t)
 getFirst Nil _f = Nothing
@@ -270,29 +241,42 @@ getFirst (x : xs) f = case f x of
         pure $ ((x : ts1) /\ a /\ ts2)
  Just a -> Just (Nil /\ a /\ xs)
 
+-- Down rule that steps boundary through form - defined generically for every typing rule!
+defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
+defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids]) =
+ let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
+ let sort = Grammar.getSortFromSub ruleLabel sub in
+ if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
+ do
+     chSub /\ chBackUp <- doOperation ch parentGSort
+     let subFull = map (map Expr.Inject) sub
+     let sub' = Map.union chSub subFull
+     let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
+     let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
+     pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
+defaultDown _ _ = Nothing
+
 defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
---defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sort)) kids) =
--- let (SSChangeRule metaVars crustyKidGSorts crustyParentGSort) = TotalMap.lookup ruleLabel lang in
--- let freshener = genFreshener (Set.fromFoldable metaVars) in
--- let kidGSorts = map (freshen freshener) crustyKidGSorts in
--- let parentGSort = freshen freshener crustyParentGSort in
--- let findUpBoundary = case _ of
---         Expr.Expr (Boundary Up ch) [kid] /\ sort1 -> Just (ch /\ kid /\ sort1)
---         _ /\ _ -> Nothing
--- in
--- do
---     (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
---         <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
---     sub /\ chBackDown <- doOperation ch gSort
---     let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (Expr.subMetaExpr sub gSort1) kid1
---     let leftKids = map wrapKid leftKidsAndSorts
---     let rightKids = map wrapKid rightKidsAndSorts
---     let parentBoundary node = wrapBoundary Up (Expr.subMetaExpr sub parentGSort) node
---     pure $ parentBoundary
---         (Expr.Expr
---             -- (Inject (Grammar.DerivLabel ruleLabel (injectMetaHoleyExpr (fst (endpoints chBackDown)))))
---             (Inject (Grammar.DerivLabel ruleLabel (fst (endpoints chBackDown))))
---             (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
+defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
+ let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
+ let findUpBoundary = case _ of
+         Expr.Expr (Boundary Up ch) [kid] /\ sort1 -> Just (ch /\ kid /\ sort1)
+         _ /\ _ -> Nothing
+ in
+ do
+     (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
+         <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
+     chSub /\ chBackDown <- doOperation ch gSort
+     let subFull = map (map Expr.Inject) sub
+     let sub' = Map.union chSub subFull
+     let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (Expr.subMetaExpr sub' gSort1) kid1
+     let leftKids = map wrapKid leftKidsAndSorts
+     let rightKids = map wrapKid rightKidsAndSorts
+     let parentBoundary node = wrapBoundary Up (Expr.subMetaExpr chSub parentGSort) node
+     pure $ parentBoundary
+         (Expr.Expr
+             (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub')))
+             (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
 defaultUp _ _ = Nothing
 
 -------------- Other typechange related functions ---------------------

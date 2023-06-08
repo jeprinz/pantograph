@@ -45,6 +45,7 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
+import Debug as Debug
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -220,15 +221,15 @@ editorComponent = HK.component \tokens spec -> HK.do
       ReplaceAction {topChange, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
 
-        -- TODO: this is old, doesn't even do smallstep
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
+--         TODO: this is old, doesn't even do smallstep
+--        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
 
         -- !TODO us this, same way as in WrapAction
-        let ssterm = setupSSTermFromReplaceAction 
+        let ssterm = setupSSTermFromReplaceAction
               up
               topChange
               dterm
-        
+
         setState $ SmallStepState {ssterm}
 
     moveCursor dir = do
