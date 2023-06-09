@@ -107,7 +107,9 @@ instance IsExprLabel l => Pretty (Expr l) where
 
 data MetaVar 
   = MetaVar (Maybe String) UUID
-  | RuleMetaVar Boolean String -- the Boolean is: is this a data-metavariable, used only for Strings inside Names (or more general if we ever make that more general)
+  | RuleMetaVar 
+      Boolean -- ^ is this a data-metavariable, used only for Strings inside Names (or more general if we ever make that more general)
+      String
 
 derive instance Generic MetaVar _
 instance Show MetaVar where show x = genericShow x
