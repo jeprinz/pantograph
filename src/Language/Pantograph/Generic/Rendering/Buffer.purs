@@ -1,6 +1,7 @@
 module Language.Pantograph.Generic.Rendering.Buffer where
 
 import Language.Pantograph.Generic.Edit
+import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Rendering.Base
 import Prelude
 
@@ -8,7 +9,7 @@ import Bug (bug)
 import Bug.Assertion (assert, just)
 import Control.Alternative (guard)
 import Data.Array as Array
-import Data.Expr ((%))
+import Data.Expr ((%), (%*))
 import Data.Expr as Expr
 import Data.Fuzzy (FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
@@ -28,7 +29,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities (classNames, fromInputEventToTargetValue)
 import Hole (hole)
-import Language.Pantograph.Generic.Grammar (class IsRuleLabel, DerivLabel(..), derivTermSort)
 import Language.Pantograph.Generic.Rendering.Elements (placeholderCursorNodeElem)
 import Log (log)
 import Text.Pretty (bullets, pretty)
@@ -51,33 +51,38 @@ type BufferState l r =
   , normalBufferFocus :: Int
   , edits :: Array (EditAndPreview l r)
   , focussedEdit :: Maybe (EditAndPreview l r)
-  , isString :: Boolean
+  , mb_oldString :: Maybe String
   }
 
-computeEdits input {bufferString, isString} = 
-  if isString then do
-    let dterm = DerivString bufferString % []
-    let sort = derivTermSort dterm
-    [ { edit: 
-          { label: bufferString
-          , action: defer \_ -> ReplaceAction
-              -- !TODO compute actual change
-              { topChange: Expr.injectExprChange sort
-              , dterm
-              }
-          }
-      , lazy_preview: defer (\_ -> FillEditPreview (HH.text bufferString))
-      } ]
-  else
-    input.edits #
-      -- memo fuzzy distances
-      map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
-      -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
-      Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
-      -- sort the remaining edits by the fuzzy distance
-      Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
-      -- forget fuzzy distances
-      map snd
+computeEdits :: forall l r. IsRuleLabel l r => BufferInput l r -> _ -> Array (EditAndPreview l r)
+computeEdits input {bufferString, mb_oldString} = 
+  case mb_oldString of
+    Just oldString -> do
+      [ { edit: 
+            { label: bufferString
+            , action: defer \_ -> ReplaceAction
+                -- !TODO compute actual change
+                -- OLD: Expr.injectExprChange sort
+                { topChange: 
+                    Expr.injectChange (pure NameSortLabel) 
+                      [Expr.replaceChange 
+                        (StringSortLabel oldString %* [])
+                        (StringSortLabel bufferString %* [])]
+                , dterm: DerivString bufferString % []
+                }
+            }
+        , lazy_preview: defer (\_ -> FillEditPreview (HH.text bufferString))
+        } ]
+    Nothing ->
+      input.edits #
+        -- memo fuzzy distances
+        map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
+        -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
+        Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
+        -- sort the remaining edits by the fuzzy distance
+        Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
+        -- forget fuzzy distances
+        map snd
 
 computeNormalBufferFocus {bufferFocus, edits} = 
   bufferFocus `mod` Array.length edits
@@ -87,12 +92,12 @@ computeFocussedEdit {isEnabled, normalBufferFocus, edits} = do
     then Array.index edits normalBufferFocus
     else Nothing
 
--- computeBufferState :: forall l r. IsRuleLabel l r => BufferPreState l r -> BufferState l r
+computeBufferState :: forall l r. IsRuleLabel l r => BufferInput l r -> BufferPreState l r -> BufferState l r
 computeBufferState input preSt@{isEnabled, bufferString, bufferFocus} = do
-  let isString = case input.hdzipper of
-        InjectHoleyDerivZipper (Expr.Zipper _ (DerivString _str % _)) -> true
-        _ -> false
-  let edits = computeEdits input {bufferString, isString}
+  let mb_oldString = case input.hdzipper of
+        InjectHoleyDerivZipper (Expr.Zipper _ (DerivString str % _)) -> Just str
+        _ -> Nothing
+  let edits = computeEdits input {bufferString, mb_oldString}
   let normalBufferFocus = computeNormalBufferFocus {bufferFocus, edits}
   let focussedEdit = computeFocussedEdit {isEnabled, normalBufferFocus, edits}
   { isEnabled
@@ -101,7 +106,7 @@ computeBufferState input preSt@{isEnabled, bufferString, bufferFocus} = do
   , normalBufferFocus
   , edits 
   , focussedEdit
-  , isString
+  , mb_oldString
   }
 
 extractBufferPreState :: forall l r. IsRuleLabel l r => BufferState l r -> BufferPreState l r
@@ -112,7 +117,7 @@ extractBufferPreState
   , normalBufferFocus
   , edits 
   , focussedEdit
-  , isString
+  , mb_oldString
   } = 
   { isEnabled
   , bufferString
@@ -239,7 +244,7 @@ bufferComponent = HK.component \tokens input -> HK.do
           , "bufferString = " <> show currentBufferState.bufferString
           , "bufferFocus = " <> show currentBufferState.bufferFocus
           , "normalBufferFocus = " <> show currentBufferState.normalBufferFocus
-          , "isString = " <> show currentBufferState.isString
+          , "mb_oldString = " <> show currentBufferState.mb_oldString
           ])
       \_ ->
       HH.div
@@ -262,25 +267,27 @@ bufferComponent = HK.component \tokens input -> HK.do
                         }
                   ]
                 ]
-              , if currentBufferState.isString then [] else pure $
-                HH.div
-                  [ classNames ["buffer-results"] ] $
-                  flip Array.mapWithIndex currentBufferState.edits \i {lazy_preview} -> 
-                    HH.div 
-                      [ classNames $ ["buffer-result"] <> if i == currentBufferState.normalBufferFocus then ["buffer-focus"] else []
-                      , HE.onMouseOver \event -> do
-                          liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
-                          void $ modify _ {bufferFocus = i}
-                      , HE.onMouseDown \event -> do
-                          liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
-                          void $ modify _ {bufferFocus = i}
-                          void $ submitBuffer unit
-                      ]
-                      (case force lazy_preview of
-                        FillEditPreview html -> [html]
-                        WrapEditPreview {before, after} -> before <> [placeholderCursorNodeElem] <> after
-                        ReplaceEditPreview html -> [html]
-                      )
+              , case currentBufferState.mb_oldString of
+                  Just _ -> []
+                  Nothing -> pure $
+                    HH.div
+                      [ classNames ["buffer-results"] ] $
+                      flip Array.mapWithIndex currentBufferState.edits \i {lazy_preview} -> 
+                        HH.div 
+                          [ classNames $ ["buffer-result"] <> if i == currentBufferState.normalBufferFocus then ["buffer-focus"] else []
+                          , HE.onMouseOver \event -> do
+                              liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
+                              void $ modify _ {bufferFocus = i}
+                          , HE.onMouseDown \event -> do
+                              liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
+                              void $ modify _ {bufferFocus = i}
+                              void $ submitBuffer unit
+                          ]
+                          (case force lazy_preview of
+                            FillEditPreview html -> [html]
+                            WrapEditPreview {before, after} -> before <> [placeholderCursorNodeElem] <> after
+                            ReplaceEditPreview html -> [html]
+                          )
                 ]
           ]
         ]
