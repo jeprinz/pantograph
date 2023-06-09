@@ -100,7 +100,7 @@ wrapPath :: forall l r. Grammar.DerivPath Dir.Up l r -> SSTerm l r -> SSTerm l r
 wrapPath (Expr.Path Nil) t = t
 wrapPath (Expr.Path (th : path)) t = (wrapPath (Expr.Path path) (addToothToTerm th t))
 
-setupSSTermFromWrapAction :: forall l r.
+setupSSTermFromWrapAction :: forall l r. IsExprLabel l =>
     Grammar.DerivPath Dir.Up l r -> -- top path
     Grammar.SortChange l -> -- change that goes between top path and inserted path 
     Grammar.DerivPath Dir.Up l r -> -- inserted path 
@@ -110,7 +110,7 @@ setupSSTermFromWrapAction :: forall l r.
 setupSSTermFromWrapAction topPath topCh insertedPath bottomCh botTerm =
     wrapPath topPath $ wrapBoundary Up topCh $ wrapPath insertedPath $ wrapCursor $ wrapBoundary Down bottomCh $ termToSSTerm botTerm
 
-setupSSTermFromReplaceAction :: forall l r. 
+setupSSTermFromReplaceAction :: forall l r. IsExprLabel l =>
     Grammar.DerivPath Dir.Up l r -> -- top path
     Grammar.SortChange l -> -- change that goes between top path and inserted path 
     Grammar.DerivTerm l r -> -- new term to replace with
@@ -229,7 +229,7 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 
 
 -- wraps a boundary unless the change is the identity, in which case so is this function
-wrapBoundary :: forall l r. Direction -> Grammar.SortChange l{-Expr.MetaChange l-} -> SSTerm l r -> SSTerm l r
+wrapBoundary :: forall l r. IsExprLabel l => Direction -> Grammar.SortChange l{-Expr.MetaChange l-} -> SSTerm l r -> SSTerm l r
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
@@ -272,7 +272,7 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
      let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (Expr.subMetaExpr sub' gSort1) kid1
      let leftKids = map wrapKid leftKidsAndSorts
      let rightKids = map wrapKid rightKidsAndSorts
-     let parentBoundary node = wrapBoundary Up (Expr.subMetaExpr chSub parentGSort) node
+     let parentBoundary node = wrapBoundary Up (Expr.subMetaExpr sub' parentGSort) node
      pure $ parentBoundary
          (Expr.Expr
              (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub')))

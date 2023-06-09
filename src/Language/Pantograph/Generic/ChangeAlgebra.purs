@@ -45,8 +45,9 @@ invert = map case _ of
   Replace e1 e2 -> Replace e2 e1
 
 -- NOTE: this is NOT the same as asking if the change has equal endpoints (a loop in the groupoid), it computes if its an identity under composition
-isId :: forall l. Change l -> Boolean
+isId :: forall l. IsExprLabel l => Change l -> Boolean
 isId (Expr (Inject _) kids) = Array.all isId kids
+isId (Expr (Replace e1 e2) []) = e1 == e2 -- NOTE: I'm not sure if this should be considered an identity, but if not then something needs to be done about (doOperation (Replace a b) ?x)
 isId _ = false
 
 collectMatches :: forall l. Eq l => Change l -> MetaExpr l -> Maybe (Map MetaVar (Set (Change l)))
@@ -143,20 +144,21 @@ Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
 
 doOperation :: forall l. IsExprLabel l => Change l -> Expr (Meta (ChangeLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
 doOperation c1 c2 =
---    trace ("doOperation called with c1 = " <> show c1 <> " and c2 = " <> show c2) \_ ->
---    trace ("or to put it another way, c1 = " <> pretty c1 <> " and c2 = " <> pretty c2) \_ ->
+--    trace ("doOperation called with c1 = " <> pretty c1 <> " and c2 = " <> pretty c2) \_ ->
     do
     matches <- getMatches c2 c1
---    traceM ("matches is: " <> show matches)
+--    traceM ("matches is: " <> pretty matches)
     -- TODO: could this be written better
     let sub = map (foldNonempty (\c1 c2 -> do x <- c1
                                               y <- c2
                                               lub x y))
                 (map (Set.map Just) matches)
     sub2 <- sequence sub
---    traceM ("sub2 is: " <> show sub2)
+--    traceM ("sub2 is: " <> pretty sub2)
     let subc2 = subMetaExpr sub2 c2
---    traceM ("subc2 is: " <> show subc2)
+--    traceM ("subc2 is: " <> pretty subc2)
+--    traceM ("invert c1 is" <> pretty (invert c1))
+--    traceM ("compose (invert c1) subc2 is" <> pretty (compose (invert c1) subc2))
     pure $ (sub2 /\ compose (invert c1) subc2)
 
 {-

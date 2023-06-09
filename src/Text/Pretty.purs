@@ -7,6 +7,7 @@ import Data.Functor.Compose (Compose(..))
 import Data.List as List
 import Data.List.Rev as Rev
 import Data.Map as Map
+import Data.Set as Set
 import Data.Maybe (Maybe, maybe)
 import Data.String (Pattern(..))
 import Data.String as String
@@ -25,6 +26,8 @@ instance (Pretty k, Pretty v) => Pretty (Map.Map k v) where
   pretty m =
     "map:" <>
     indent (bullets (Map.toUnfoldable m <#> \(Tuple k v) -> pretty k <> " ↦ " <> pretty v))
+instance (Pretty t) => Pretty (Set.Set t) where
+  pretty s = "{" <> List.intercalate ", " (Set.map pretty s) <> "}"
 
 {-
 -- | Pretty `a` that takes an argument of type `b`.
