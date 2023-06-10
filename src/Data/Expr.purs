@@ -53,6 +53,8 @@ import Text.Pretty as P
 import Text.Pretty as Pretty
 import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
+import Util (fromJust')
+import Util as Util
 
 -- | Expr
 
@@ -543,3 +545,52 @@ subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially"
       Just mexpr -> mexpr
     Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
 
+
+
+--- Custom defined pattern matching for Exprs, since purescript pattern matching can be very verbose
+
+data MatchLabel l = InjectMatchLabel l | Match
+
+derive instance Generic (MatchLabel l) _
+derive instance Eq l => Eq (MatchLabel l)
+derive instance Ord l => Ord (MatchLabel l)
+instance Show l => Show (MatchLabel l) where show x = genericShow x
+
+-- Henry how am I supposed to organize these? Why are there two pretty functions?
+instance IsExprLabel l => Pretty (MatchLabel l) where
+  pretty Match = "[*]"
+  pretty (InjectMatchLabel l) = pretty l
+
+derive instance Functor MatchLabel
+derive instance Foldable MatchLabel
+derive instance Traversable MatchLabel
+
+instance IsExprLabel l => IsExprLabel (MatchLabel l) where
+  prettyExprF'_unsafe (Match /\ _kids) = "[*]"
+  prettyExprF'_unsafe (InjectMatchLabel l /\ kids) = prettyExprF (l /\ kids)
+
+  expectedKidsCount Match = 0
+  expectedKidsCount (InjectMatchLabel l) = expectedKidsCount l
+
+slot :: forall l. Expr (MatchLabel l)
+slot = Match % []
+
+injectMatchExpr :: forall l. l -> Array (Expr (MatchLabel l)) -> Expr (MatchLabel l)
+injectMatchExpr l kids = (InjectMatchLabel l) % kids
+
+infixl 7 injectMatchExpr as %$
+
+--  (Partial => Array (Sort l) -> Array (Sort l) /\ Sort l) ->
+--  Rule l
+matchExprImpl :: forall l. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> Maybe (Array (Expr l))
+matchExprImpl (l1 % kids1) (InjectMatchLabel l2 % kids2) | l1 == l2 =
+    Array.concat <$> sequence (Array.zipWith matchExprImpl kids1 kids2)
+matchExprImpl e2 (Match % []) = Just [e2]
+matchExprImpl _ _ = Nothing
+
+matchExpr :: forall l out. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out) -> out
+matchExpr e eMatch f = unsafePartial f (fromJust' "in matchExpr, expressions didn't match" $ matchExprImpl e eMatch)
+
+--matchExprs :: forall l out. IsExprLabel l => Expr l -> Array (Expr (MatchLabel l) /\ (Partial => Array (Expr l) -> out)) -> out
+--matchExprs e cases = fst <<< fromJust' "matchExprs - didn't match any cases" $ Util.findWithIndex
+--    (\(eMatch /\ f) -> unsafePartial f <$> matchExprImpl e eMatch) cases

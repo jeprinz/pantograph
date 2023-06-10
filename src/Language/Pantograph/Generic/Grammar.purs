@@ -185,6 +185,9 @@ derive instance Functor SortLabel
 derive instance Foldable SortLabel
 derive instance Traversable SortLabel
 
+sor :: forall l. l -> Expr.Meta (SortLabel l)
+sor l = pure (InjectSortLabel l)
+
 instance Pretty l => Pretty (SortLabel l) where
   pretty (InjectSortLabel l) = pretty l
   pretty NameSortLabel = "NameSort"

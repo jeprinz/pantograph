@@ -12,11 +12,11 @@ import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, (%), (%*))
+import Data.Expr (class IsExprLabel, (%), (%*), slot, (%$))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (defer)
-import Data.List (List)
+import Data.List (List(..), (:))
 import Data.List as List
 import Data.Maybe (Maybe)
 import Data.Maybe as Maybe
@@ -31,7 +31,7 @@ import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
-import Language.Pantograph.Generic.Grammar ((%|-), (%|-*))
+import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
@@ -41,6 +41,7 @@ import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
 import Util (fromJust)
+import Effect.Exception.Unsafe (unsafeThrow)
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -304,6 +305,28 @@ makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
         , botChange : ChangeAlgebra.invert change -- SortChange l
     }
     }
+
+--assertHasVarSort :: Sort -> Sort /\ Sort
+--assertHasVarSort (VarSort %|-* []) = ?h
+
+makeVarEdit :: List String -> Int -> Edit
+makeVarEdit ctx index =
+    let makeVarDeriv :: List String -> Int -> DerivTerm
+        makeVarDeriv (y : rest) n =
+            if n == 0
+                then Grammar.makeLabel Zero [] [
+                    "gamma" /\ hole "makeVarEdit" -- ?gamma
+                    , "x" /\ Grammar.StringSortLabel y %* []] % []
+                else let next = makeVarDeriv rest (n - 1) in
+                     Expr.matchExpr (Grammar.derivTermSort next) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
+                     Grammar.makeLabel Suc [] [
+                        "gamma" /\ gamma
+                        , "x" /\ x
+                        , "y" /\ Grammar.NameSortLabel %* [Grammar.StringSortLabel y %* []]]
+                     % [next]
+        makeVarDeriv _ _ = unsafeThrow "shouldn't happen"
+    in
+    hole "makeVarEdit"
 
 editsAtHoleInterior _ = [] -- Edit.defaultEditsAtHoleInterior
 editsAtCursor cursorSort = Array.mapMaybe identity
