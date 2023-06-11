@@ -56,7 +56,9 @@ import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Util as Util
 
--- | Expr
+--------------------------------------------------------------------------------
+-- Expr
+--------------------------------------------------------------------------------
 
 data Expr l = Expr l (Array (Expr l))
 type ExprF l kid = l /\ Array kid
@@ -76,6 +78,10 @@ instance Ord l => Ord (Expr l) where compare x y = genericCompare x y
 derive instance Functor Expr
 derive instance Foldable Expr
 derive instance Traversable Expr
+
+--------------------------------------------------------------------------------
+-- IsExprLabel
+--------------------------------------------------------------------------------
 
 class (Eq l, Ord l, Show l, Pretty l) <= IsExprLabel l where
   -- !TODO rename to prettyExprF_unsafe
@@ -105,7 +111,9 @@ prettyExprF e@(l /\ es) = assert (wellformedExprF "prettyExprF" identity e) \_ -
 instance IsExprLabel l => Pretty (Expr l) where
   pretty (Expr l es) = prettyExprF (l /\ (pretty <$> es))
 
--- | MetaVar
+--------------------------------------------------------------------------------
+-- MetaVar
+--------------------------------------------------------------------------------
 
 data MetaVar 
   = MetaVar (Maybe String) UUID
@@ -152,7 +160,9 @@ instance IsExprLabel l => IsExprLabel (Meta l) where
   expectedKidsCount (Meta (Left _)) = 0
   expectedKidsCount (Meta (Right l)) = expectedKidsCount l
 
--- | Tooth
+--------------------------------------------------------------------------------
+-- Tooth
+--------------------------------------------------------------------------------
 
 data Tooth l = Tooth l (ZipList.Path (Expr l))
 
@@ -195,7 +205,9 @@ showTooth (l %< p) = show l <> " " <> intercalate " " (ZipList.unpathAround "{}"
 
 prettyTooth (l %< p) str = prettyExprF (l /\ Array.fromFoldable (ZipList.unpathAround str (pretty <$> p)))
 
--- | Path
+--------------------------------------------------------------------------------
+-- Path
+--------------------------------------------------------------------------------
 
 newtype Path (dir :: Symbol) l = Path (List (Tooth l))
 
@@ -276,7 +288,9 @@ instance Semigroup (Path dir l) where
 instance Monoid (Path dir l) where
   mempty = Path Nil
 
--- | Zipper
+--------------------------------------------------------------------------------
+-- Zipper
+--------------------------------------------------------------------------------
 
 data Zipper l = Zipper (Path Dir.Up l) (Expr l)
 
@@ -386,7 +400,9 @@ zipperFromUpTo begin end = do
   selectionTooths <- List.stripPrefix (Pattern endTooths) beginTooths
   pure $ Zipperp (zipperPath end) (Right (Path selectionTooths)) (zipperExpr begin)
 
--- | Zipperp
+--------------------------------------------------------------------------------
+-- Zipperp
+--------------------------------------------------------------------------------
 
 data Zipperp l = Zipperp (Path Dir.Up l) (Path Dir.Down l \/ Path Dir.Up l) (Expr l)
 
@@ -433,7 +449,9 @@ unzipperp (Zipperp path selection expr) = case selection of
   Left downPath -> Zipper (reversePath downPath <> path) expr
   Right upPath -> Zipper path (unPath upPath expr)
 
--- | Change
+--------------------------------------------------------------------------------
+-- Change
+--------------------------------------------------------------------------------
 
 type Change l = Expr (ChangeLabel l)
 
@@ -511,7 +529,9 @@ injectExprChange (l % kids) = Inject l % (injectExprChange <$> kids)
 replaceChange :: forall l. Expr l -> Expr l -> Change l
 replaceChange e1 e2 = Replace e1 e2 % []
 
--- | MetaExpr
+--------------------------------------------------------------------------------
+-- MetaExpr
+--------------------------------------------------------------------------------
 
 type MetaExpr l = Expr (Meta l)
 
@@ -523,7 +543,9 @@ pureMetaExpr l = (pure l % _)
 
 infixl 7 pureMetaExpr as %*
 
--- | Substitution
+--------------------------------------------------------------------------------
+-- Substitution
+--------------------------------------------------------------------------------
 
 type MetaVarSub a = Map.Map MetaVar a
 
@@ -545,7 +567,9 @@ subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially"
       Just mexpr -> mexpr
     Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
 
-
+--------------------------------------------------------------------------------
+-- Pattern Matching
+--------------------------------------------------------------------------------
 
 --- Custom defined pattern matching for Exprs, since purescript pattern matching can be very verbose
 
