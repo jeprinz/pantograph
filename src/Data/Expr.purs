@@ -571,7 +571,8 @@ subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially"
 -- Pattern Matching
 --------------------------------------------------------------------------------
 
---- Custom defined pattern matching for Exprs, since purescript pattern matching can be very verbose
+-- Custom defined pattern matching for Exprs, since purescript pattern matching
+-- can be very verbose.
 
 data MatchLabel l = InjectMatchLabel l | Match
 
