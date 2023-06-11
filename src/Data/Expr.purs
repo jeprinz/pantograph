@@ -591,7 +591,7 @@ derive instance Foldable MatchLabel
 derive instance Traversable MatchLabel
 
 instance IsExprLabel l => IsExprLabel (MatchLabel l) where
-  prettyExprF'_unsafe (Match /\ _kids) = "[*]"
+  prettyExprF'_unsafe (Match /\ []) = "[*]"
   prettyExprF'_unsafe (InjectMatchLabel l /\ kids) = prettyExprF (l /\ kids)
 
   expectedKidsCount Match = 0
@@ -616,6 +616,8 @@ matchExprImpl _ _ = Nothing
 matchExpr :: forall l out. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out) -> out
 matchExpr e eMatch f = unsafePartial f (fromJust' "in matchExpr, expressions didn't match" $ matchExprImpl e eMatch)
 
---matchExprs :: forall l out. IsExprLabel l => Expr l -> Array (Expr (MatchLabel l) /\ (Partial => Array (Expr l) -> out)) -> out
---matchExprs e cases = fst <<< fromJust' "matchExprs - didn't match any cases" $ Util.findWithIndex
---    (\(eMatch /\ f) -> unsafePartial f <$> matchExprImpl e eMatch) cases
+matchExprs :: forall l out. IsExprLabel l => Expr l -> Array (Expr (MatchLabel l) /\ (Partial => Array (Expr l) -> out)) -> out
+matchExprs e cases = fst <<< fromJust' "matchExprs - didn't match any cases" $ Util.findWithIndex
+  (\(eMatch /\ f) -> f <$> matchExprImpl e eMatch)
+  (rmap unsafePartial <$> cases)
+

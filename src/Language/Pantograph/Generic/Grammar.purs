@@ -185,6 +185,7 @@ derive instance Functor SortLabel
 derive instance Foldable SortLabel
 derive instance Traversable SortLabel
 
+-- JACOB: please give this a better name or at least an explanation
 sor :: forall l. l -> Expr.Meta (SortLabel l)
 sor l = pure (InjectSortLabel l)
 
