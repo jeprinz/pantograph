@@ -24,7 +24,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Variant (Variant)
-import Debug (traceM)
+import Debug (traceM, trace)
 import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
 import Hole (hole)
@@ -287,6 +287,7 @@ nameElem str = HH.span [classNames ["name"]] [HH.text str]
 type Edit = Edit.Edit PreSortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
+-- Makes an edit that inserts a path, and propagates the context change downwards
 makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
 makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
 --    let bottomOfPathSort = Grammar.concretizeSort bottomOfPathSort'
@@ -309,26 +310,55 @@ makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
 --assertHasVarSort :: Sort -> Sort /\ Sort
 --assertHasVarSort (VarSort %|-* []) = ?h
 
-makeVarEdit :: List String -> Int -> Edit
-makeVarEdit ctx index =
-    let makeVarDeriv :: List String -> Int -> DerivTerm
-        makeVarDeriv (y : rest) n =
-            if n == 0
-                then Grammar.makeLabel Zero [] [
-                    "gamma" /\ hole "makeVarEdit" -- ?gamma
-                    , "x" /\ Grammar.StringSortLabel y %* []] % []
-                else let next = makeVarDeriv rest (n - 1) in
-                     Expr.matchExpr (Grammar.derivTermSort next) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
-                     Grammar.makeLabel Suc [] [
-                        "gamma" /\ gamma
-                        , "x" /\ x
-                        , "y" /\ Grammar.NameSortLabel %* [Grammar.StringSortLabel y %* []]]
-                     % [next]
-        makeVarDeriv _ _ = unsafeThrow "shouldn't happen"
-    in
-    hole "makeVarEdit"
+-- returns a list of all indices in the context
+getIndices :: Sort -> List DerivTerm
+getIndices ctx = Expr.matchExpr2 ctx
+    (sor CtxConsSort %$ [slot, slot]) (\[name, ctx'] ->
+        let wrapInSuc var =
+             Expr.matchExpr (Grammar.derivTermSort var) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
+             Grammar.makeLabel Suc [] [ "gamma" /\ gamma , "x" /\ x , "y" /\ name]
+             % [var]
+        in
+        -- new var
+        (Grammar.makeLabel Zero [] ["gamma" /\ ctx', "x" /\ name] % [])
+        -- wrap vars from ctx' in a Suc
+        : map wrapInSuc (getIndices ctx')
+    )
+    (sor CtxNilSort %$ []) (\[] ->
+        Nil
+    )
 
-editsAtHoleInterior _ = [] -- Edit.defaultEditsAtHoleInterior
+getVarEdits :: {-sort-}Sort -> List Edit
+getVarEdits sort =
+    Expr.matchExpr2 sort (sor TermSort %$ [slot]) (\[ctx] ->
+            let wrapInRef index =
+                 Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
+                 Grammar.makeLabel Ref [] [ "gamma" /\ gamma , "x" /\ x]
+                 % [index]
+            in
+            let indices = getIndices ctx in
+            let makeEdit index =
+                    Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot]) \[_ctx2, name] ->
+                    let var = wrapInRef index in
+                    trace ("var is: " <> pretty var) \_ ->
+                    trace ("var sort is: " <> pretty (Grammar.derivTermSort var)) \_ ->
+                    {
+                        label: Grammar.matchStringLabel name
+                        , action: defer \_ -> Edit.ReplaceAction {
+                            topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
+                            , dterm: var
+--                            topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
+--                            , dterm: Grammar.makeLabel TermHole [] ["gamma" /\ ctx] % []
+                        }
+                    }
+            in
+            map makeEdit indices
+        )
+        -- If its not a TermSort, then there are no var edits
+        slot \[_] -> Nil
+
+editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
+    <> []
 editsAtCursor cursorSort = Array.mapMaybe identity
     [makeEditFromPath (newPathFromRule Lam 1) "lambda" cursorSort,
     makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort]

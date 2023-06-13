@@ -621,3 +621,12 @@ matchExprs e cases = fst <<< fromJust' "matchExprs - didn't match any cases" $ U
   (\(eMatch /\ f) -> f <$> matchExprImpl e eMatch)
   (rmap unsafePartial <$> cases)
 
+-- I couldn't get matchExprs to work, so I have this for now:
+matchExpr2 :: forall l out. IsExprLabel l => Expr l
+    -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out)
+    -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out)
+    -> out
+matchExpr2 e eMatch1 f1 eMatch2 f2
+    = case matchExprImpl e eMatch1 of
+        Just args -> unsafePartial f1 args
+        Nothing -> matchExpr e eMatch2 f2

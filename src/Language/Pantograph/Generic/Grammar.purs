@@ -189,6 +189,16 @@ derive instance Traversable SortLabel
 sor :: forall l. l -> Expr.Meta (SortLabel l)
 sor l = pure (InjectSortLabel l)
 
+-- assert that a label is a name and return the string
+matchNameLabel :: forall l. Sort l -> String
+matchNameLabel (Expr.Expr (Expr.Meta (Either.Right NameSortLabel)) [Expr.Expr (Expr.Meta (Either.Right (StringSortLabel s))) []]) = s
+matchNameLabel _ = bug "wasn't name"
+
+-- assert that a label is a string and return the string
+matchStringLabel :: forall l. Sort l -> String
+matchStringLabel (Expr.Expr (Expr.Meta (Either.Right (StringSortLabel s))) []) = s
+matchStringLabel _ = bug "wasn't stringlabel"
+
 instance Pretty l => Pretty (SortLabel l) where
   pretty (InjectSortLabel l) = pretty l
   pretty NameSortLabel = "NameSort"
