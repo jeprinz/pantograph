@@ -613,8 +613,46 @@ matchExprImpl (l1 % kids1) (InjectMatchLabel l2 % kids2) | l1 == l2 =
 matchExprImpl e2 (Match % []) = Just [e2]
 matchExprImpl _ _ = Nothing
 
+-- helper function for matchChange
+matchTeeth :: forall l. IsExprLabel l =>
+    Tooth l -> Tooth (MatchLabel l)
+    -> Maybe (Array (Expr l))
+matchTeeth (Tooth l1 (ZipList.Path {left: left1, right: right1}))
+           (Tooth (InjectMatchLabel l2) (ZipList.Path {left: left2, right: right2})) =
+    if not (l1 == l2 && List.length right1 == List.length right2) then Nothing else do
+    leftMatches <- sequence $ List.zipWith matchExprImpl (RevList.unreverse left1) (RevList.unreverse left2)
+    rightMatches <- sequence $ List.zipWith matchExprImpl right1 right2
+    let concatMatches = foldl (<>) []
+    pure $ concatMatches leftMatches <> concatMatches rightMatches
+matchTeeth (Tooth l1 a) (Tooth Match y) = bug "what even is this case? I guess it shouldn't happen since Match has zero children, and therefore can't be a tooth?"
+
+matchChange :: forall l. IsExprLabel l =>
+    -- Two kinds of slots: those in change positions, and those in expression postions
+    Change l -> Expr (ChangeLabel (MatchLabel l))
+    -- Two kinds out outputs: expressions and changes
+    -> Maybe (Array (Expr l) /\ Array (Change l))
+matchChange c (Inject Match % []) = Just ([] /\ [c])
+matchChange (Inject l1 % kids1) (Inject (InjectMatchLabel l2) % kids2) =
+    foldl (\(a/\b) (c/\d) -> (a <> c) /\ (b <> d)) ([] /\ []) <$> sequence (Array.zipWith matchChange kids1 kids2)
+matchChange (Plus th1 % [kid1]) ((Plus th2) % [kid2]) = do
+    toothMatches <- matchTeeth th1 th2
+    es /\ cs <- matchChange kid1 kid2
+    pure $ (toothMatches <> es) /\ cs
+matchChange (Minus th1 % [kid1]) ((Minus th2) % [kid2]) = do
+    toothMatches <- matchTeeth th1 th2
+    es /\ cs <- matchChange kid1 kid2
+    pure $ (toothMatches <> es) /\ cs
+matchChange (Replace a1 b1 % []) (Replace a2 b2 % []) = do
+    matches1 <- (matchExprImpl a1 a2)
+    matches2 <- (matchExprImpl b1 b2)
+    pure $ (matches1 <> matches2) /\ []
+matchChange _ _ = Nothing
+
 matchExpr :: forall l out. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out) -> out
 matchExpr e eMatch f = unsafePartial f (fromJust' "in matchExpr, expressions didn't match" $ matchExprImpl e eMatch)
+
+matchExprMaybe :: forall l out. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out) -> Maybe out
+matchExprMaybe e eMatch f = unsafePartial f <$> matchExprImpl e eMatch
 
 matchExprs :: forall l out. IsExprLabel l => Expr l -> Array (Expr (MatchLabel l) /\ (Partial => Array (Expr l) -> out)) -> out
 matchExprs e cases = fst <<< fromJust' "matchExprs - didn't match any cases" $ Util.findWithIndex

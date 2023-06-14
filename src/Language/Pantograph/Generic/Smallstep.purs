@@ -42,6 +42,7 @@ import Util (lookup', fromJust', assertSingleton)
 import Utility ((<$$>))
 import Debug (trace)
 import Debug (traceM)
+import Data.List.Rev as RevList
 
 data Direction = Up | Down -- TODO:
 
@@ -310,3 +311,36 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.P
     let kidChange' = subSomeMetaChange sub kidChange in
     let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
     compose kidChange' restOfPathChange
+
+
+------------------------------------- Functions for creating custom smallstep rules -----------------------------------
+
+type MatchSortChange l = Expr.Expr (Expr.MatchLabel (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
+type MatchSort l = Expr.Expr (Expr.MatchLabel (Expr.Meta (Grammar.SortLabel l)))
+
+--type SSTerm l r = Expr.Expr (StepExprLabel l r)
+makeDownRule :: forall l r. Grammar.SortChange l
+    -> MatchSortChange l -- match the change going down
+    -> Expr.Expr (Expr.MatchLabel (StepExprLabel l r)) -- match the expression within the boundary
+    -> (Partial => Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
+    -> StepRule l r
+makeDownRule = Hole.hole "bla" -- ?h
+
+injectChangeMatchExpr :: forall l. l -> Array (MatchSortChange l) -> MatchSortChange l
+injectChangeMatchExpr l kids = (Expr.InjectMatchLabel (Expr.Inject (pure (Grammar.InjectSortLabel l)))) % kids
+
+infixl 7 injectChangeMatchExpr as %+-
+
+injectChangeMatchExprPlus :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
+injectChangeMatchExprPlus l leftKids inside rightKids = Hole.hole "a"
+--    (Expr.InjectMatchLabel (Expr.Plus (Expr.Tooth (pure (Grammar.InjectSortLabel l))
+--        (ZipList.Path {left: ?h, right: ?h})))) % [inside]
+
+
+{-
+
+Big problem with this plan:
+we need to be able to match something like (+A -> B), where both A and B are variables that we would like to find.
+But the issue is that A is a type while B is a change.
+
+-}

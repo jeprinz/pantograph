@@ -42,6 +42,7 @@ import Text.Pretty as P
 import Type.Direction (Up)
 import Util (fromJust)
 import Effect.Exception.Unsafe (unsafeThrow)
+import Language.Pantograph.Generic.Smallstep (StepExprLabel(..))
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -367,6 +368,13 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 --------------------------------------------------------------------------------
 -- StepRules
 --------------------------------------------------------------------------------
+
+-- down{i}_(VarSort (+ x, ctx) y) -> Suc i
+--insertSucRule :: StepRule
+--insertSucRule t = Expr.matchExprMaybe t (Expr.Expr (Expr.InjectMatchLabel (Boundary ?h ?h)) []) \[] ->
+--    ?h
+--    Expr.Expr (Boundary dir ch) [t]
+
 
 type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
 
