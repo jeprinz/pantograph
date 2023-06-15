@@ -25,6 +25,8 @@ import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Variant (Variant)
 import Debug (traceM, trace)
+import Debug as Debug
+import Effect.Exception.Unsafe (unsafeThrow)
 import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
 import Hole (hole)
@@ -35,14 +37,13 @@ import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
+import Language.Pantograph.Generic.Smallstep (StepExprLabel(..))
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.Unification (unify)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
 import Util (fromJust)
-import Effect.Exception.Unsafe (unsafeThrow)
-import Language.Pantograph.Generic.Smallstep (StepExprLabel(..))
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -243,6 +244,18 @@ languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey 
 type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
 
+{-
+( Expr (Right (InjectSortLabel VarSort)) 
+  [ ( Expr (Right (InjectSortLabel CtxConsSort)) 
+      [ (Expr (Right (StringSortLabel "x")) [])
+      , (Expr (Right (InjectSortLabel CtxNilSort)) []) 
+      ]
+    )
+  , (Expr (Right (StringSortLabel "x")) []) 
+  ]
+)
+-}
+
 arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   -- var
@@ -271,7 +284,12 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     , pure [Rendering.commentEndElem]
     , Left (renCtx /\ 1)]
   -- hole 
-  TermHole /\ _ -> bug "[ULC.Grammar.arrangeDerivTermSubs] hole should be handled generically"
+  TermHole /\ _ -> bug $
+    "[ULC.Grammar.arrangeDerivTermSubs] `TermHole` should be handled generically instead of here"
+  _ -> bug $ 
+    "[ULC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
+    "  - rule = " <> pretty rule <> "\n" <>
+    "  - sort = " <> show sort
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
