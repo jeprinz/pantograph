@@ -258,14 +258,14 @@ type Output = Rendering.Output PreSortLabel RuleLabel
 
 arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
-  -- var
-  Zero /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) -> 
-    [pure [nameElem str]]
-  Suc /\ (Expr.Meta (Right Grammar.NameSortLabel) % [_gamma, Expr.Meta (Right (Grammar.StringSortLabel str)) % []]) -> 
+  _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % 
+    [ _gamma
+    , Expr.Meta (Right (Grammar.StringSortLabel str)) % [] ]) -> 
     [pure [nameElem str]]
   -- term
   Ref /\ _ -> 
     [pure [refElem], Left (renCtx /\ 0)]
+
   Lam /\ _ -> 
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [mapstoElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
