@@ -359,8 +359,6 @@ getVarEdits sort =
             let makeEdit index =
                     Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot]) \[_ctx2, name] ->
                     let var = wrapInRef index in
-                    trace ("var is: " <> pretty var) \_ ->
-                    trace ("var sort is: " <> pretty (Grammar.derivTermSort var)) \_ ->
                     {
                         label: Grammar.matchStringLabel name
                         , action: defer \_ -> Edit.ReplaceAction {

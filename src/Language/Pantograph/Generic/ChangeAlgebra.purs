@@ -90,16 +90,21 @@ endpoints ch =
 -- if you have changes where Plus and Minus DONT cancel each other out, then changes form a category without inverses.
 -- this function returns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
 lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
-lub c1 c2 = 
+lub c1 c2 =
+--    trace ("lub called with: c1 is " <> pretty c1 <> " and c2 is " <> pretty c2) \_ ->
     assert (wellformedExpr "lub.c1" c1) \_ -> 
     assert (wellformedExpr "lub.c2" c2) \_ -> 
+--    trace ("got here") \_ ->
     case c1 /\ c2 of
         Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
-        Expr (Inject _l1) _kids1 /\ Expr (Inject _l2) _kids2 -> Nothing
-        Expr (Plus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
-        Expr (Plus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
-        Expr (Minus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
-        Expr (Minus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
+--        Expr (Inject _l1) _kids1 /\ Expr (Inject _l2) _kids2 -> Nothing
+--        Expr (Plus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
+--        Expr (Plus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
+--        Expr (Minus _th1) [_] /\ Expr (Plus _th2) [_] -> Nothing
+--        Expr (Minus _th1) [_] /\ Expr (Minus _th2) [_] -> Nothing
+        c1 /\ c2@(Expr (Replace e1 e2) []) | isId c1 -> Just c2 -- This case seems to be necessary to deal with variable renaming in Z case, but its wierd that it has a replace
+        c1@(Expr (Replace e1 e2) []) /\ c2 | isId c2 -> Just c1 -- Reverse of previous case, probably should think how to not have code repitition
+        _ -> Nothing
 
 matchingEndpoints :: forall l. IsExprLabel l => String -> String -> Change l -> Change l -> Assertion Unit
 matchingEndpoints source message c1 c2 = makeAssertionBoolean

@@ -145,7 +145,7 @@ oneOrNone (x : xs) f = case f x of
      in
      Right (Nil /\ a /\ bs2)
 
-termToZipper :: forall l r. SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
+termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
 termToZipper (Expr.Expr Cursor [kid]) =
  Expr.Zipper (Expr.Path Nil) (assertJustExpr kid)
 termToZipper (Expr.Expr (Inject l) kids) =
@@ -162,7 +162,7 @@ termToZipper (Expr.Expr (Inject l) kids) =
         let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
         Expr.Zipper (Expr.Path (newTooth : p)) e
 --    let
-termToZipper _ = Bug.bug "shouldn't happen"
+termToZipper t = Bug.bug ("shouldn't happen in termToZipper: t was " <> pretty t)
 
 --------------------------------------------------------------------------------
 
@@ -244,7 +244,7 @@ getFirst (x : xs) f = case f x of
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
 defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
-defaultDown lang (Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids]) =
+defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids]) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let sort = Grammar.getSortFromSub ruleLabel sub in
  if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
@@ -320,9 +320,9 @@ type MatchSort l = Expr.Expr (Expr.MatchLabel (Expr.Meta (Grammar.SortLabel l)))
 
 --type SSTerm l r = Expr.Expr (StepExprLabel l r)
 makeDownRule :: forall l r. Grammar.SortChange l
-    -> MatchSortChange l -- match the change going down
+    -> MatchSortChange l -- match the change going down, resulting in both sorts and sort changes that get matches
     -> Expr.Expr (Expr.MatchLabel (StepExprLabel l r)) -- match the expression within the boundary
-    -> (Partial => Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
+    -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
     -> StepRule l r
 makeDownRule = Hole.hole "bla" -- ?h
 
