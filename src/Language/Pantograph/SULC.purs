@@ -61,10 +61,7 @@ instance Eq PreSortLabel where eq x = genericEq x
 instance Ord PreSortLabel where compare x y = genericCompare x y
 
 instance Pretty PreSortLabel where
-  pretty VarSort = "Var"
-  pretty TermSort = "Term"
-  pretty CtxConsSort = "CtxCons"
-  pretty CtxNilSort = "CtxNil"
+  pretty = show
 
 instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (VarSort /\ [gamma, x]) = "Var" <+> parens gamma <+> x
@@ -113,14 +110,7 @@ instance Bounded RuleLabel where
   top = genericTop
 
 instance Pretty RuleLabel where
-  pretty Zero = "z"
-  pretty Suc = "s"
-  pretty Lam = "lam"
-  pretty App = "app"
-  pretty Ref = "ref"
-  pretty TermHole = "?"
-  pretty (FormatRule Newline) = "<newline>"
-  pretty (FormatRule Comment) = "<comment>"
+  pretty = show
 
 data Format
   = Newline
@@ -136,7 +126,6 @@ instance Enum Format where
 instance Bounded Format where
   bottom = genericBottom
   top = genericTop
-
 
 --------------------------------------------------------------------------------
 -- Language
@@ -240,21 +229,8 @@ languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey 
 -- Rendering
 --------------------------------------------------------------------------------
 
-
 type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
-
-{-
-( Expr (Right (InjectSortLabel VarSort)) 
-  [ ( Expr (Right (InjectSortLabel CtxConsSort)) 
-      [ (Expr (Right (StringSortLabel "x")) [])
-      , (Expr (Right (InjectSortLabel CtxNilSort)) []) 
-      ]
-    )
-  , (Expr (Right (StringSortLabel "x")) []) 
-  ]
-)
--}
 
 arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
@@ -390,7 +366,6 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 --insertSucRule t = Expr.matchExprMaybe t (Expr.Expr (Expr.InjectMatchLabel (Boundary ?h ?h)) []) \[] ->
 --    ?h
 --    Expr.Expr (Boundary dir ch) [t]
-
 
 type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
 
