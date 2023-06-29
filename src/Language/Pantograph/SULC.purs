@@ -4,7 +4,7 @@ import Data.Tuple.Nested
 import Prelude
 
 import Bug (bug)
-import Bug.Assertion (assert)
+import Bug.Assertion (assert, assertI, just)
 import Control.Plus (empty)
 import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
@@ -35,6 +35,7 @@ import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor)
 import Language.Pantograph.Generic.Grammar as Grammar
+import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep (StepExprLabel(..))
@@ -376,3 +377,18 @@ stepRules = do
     [ SmallStep.defaultDown chLang
     , SmallStep.defaultUp chLang
     ]
+
+--------------------------------------------------------------------------------
+-- EditorSpec
+--------------------------------------------------------------------------------
+
+editorSpec :: EditorSpec PreSortLabel RuleLabel
+editorSpec =
+  { dterm: assertI $ just "SULC dterm" $ 
+      Grammar.defaultDerivTerm (TermSort %|-* [CtxNilSort %|-* []])
+  , editsAtCursor
+  , editsAtHoleInterior
+  , arrangeDerivTermSubs
+  , stepRules
+  }
+

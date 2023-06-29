@@ -1,6 +1,6 @@
 module Main where
 
-import Language.Pantograph.SULC
+import Language.Pantograph.SULC (editorSpec)
 import Prelude
 
 import Bug.Assertion (assert, just)
@@ -16,15 +16,4 @@ main :: Effect Unit
 main = HA.runHalogenAff do
   Console.log "[main]"
   body <- HA.awaitBody
-  VDomDriver.runUI Rendering.editorComponent spec body
-  where
-  sort = TermSort %|-* [CtxNilSort %|-* []]
-  dterm = assert (just "main.topTerm" (defaultDerivTerm sort)) identity
-  spec =
-    { dterm
-    , editsAtCursor
-    , editsAtHoleInterior
-    , arrangeDerivTermSubs
-    , stepRules
-    }
-
+  VDomDriver.runUI Rendering.editorComponent editorSpec body
