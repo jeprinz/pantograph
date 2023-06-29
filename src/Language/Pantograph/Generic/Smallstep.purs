@@ -58,10 +58,9 @@ instance Pretty Direction where
 data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
---injectStepExpr :: forall l r. l -> Array (SSTerm l r) -> SSTerm l r
---injectStepExpr l kids = (Inject (DerivLabel l)) % kids
-
---infixl 7 injectStepExpr as %+--+
+--makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> Array (String /\ Sort l) -> DerivLabel l r
+dTERM :: forall l r. IsRuleLabel l r => r -> Array (String /\ Grammar.Sort l) -> Array (String /\ Grammar.Sort l) -> Array (SSTerm l r) -> SSTerm l r
+dTERM ruleLabel datavalues values kids = (Inject (Grammar.makeLabel ruleLabel datavalues values)) % kids
 
 type StepRule l r = SSTerm l r -> Maybe (SSTerm l r)
 
