@@ -43,6 +43,7 @@ import Utility ((<$$>))
 import Debug (trace)
 import Debug (traceM)
 import Data.List.Rev as RevList
+import Partial.Unsafe (unsafePartial)
 
 data Direction = Up | Down -- TODO:
 
@@ -56,6 +57,11 @@ instance Pretty Direction where
 
 data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
+
+--injectStepExpr :: forall l r. l -> Array (SSTerm l r) -> SSTerm l r
+--injectStepExpr l kids = (Inject (DerivLabel l)) % kids
+
+--infixl 7 injectStepExpr as %+--+
 
 type StepRule l r = SSTerm l r -> Maybe (SSTerm l r)
 
@@ -72,7 +78,7 @@ instance IsRuleLabel l r => Expr.IsExprLabel (StepExprLabel l r) where
     prettyExprF'_unsafe (Inject dl /\ kids) = Expr.prettyExprF'_unsafe (dl /\ kids)
     prettyExprF'_unsafe (sel@Cursor /\ [kid]) = pretty sel <> braces kid
     prettyExprF'_unsafe (sel@(Boundary _ _) /\ [kid]) = pretty sel <> braces kid
-    
+
     expectedKidsCount (Inject dl) = Expr.expectedKidsCount dl
     expectedKidsCount Cursor = 1
     expectedKidsCount (Boundary _ _) = 1
@@ -103,8 +109,8 @@ wrapPath (Expr.Path (th : path)) t = (wrapPath (Expr.Path path) (addToothToTerm 
 
 setupSSTermFromWrapAction :: forall l r. IsExprLabel l =>
     Grammar.DerivPath Dir.Up l r -> -- top path
-    Grammar.SortChange l -> -- change that goes between top path and inserted path 
-    Grammar.DerivPath Dir.Up l r -> -- inserted path 
+    Grammar.SortChange l -> -- change that goes between top path and inserted path
+    Grammar.DerivPath Dir.Up l r -> -- inserted path
     Grammar.SortChange l -> -- change the goes between inserted path and bot path
     Grammar.DerivTerm l r -> -- bot term
     SSTerm l r
@@ -113,7 +119,7 @@ setupSSTermFromWrapAction topPath topCh insertedPath bottomCh botTerm =
 
 setupSSTermFromReplaceAction :: forall l r. IsExprLabel l =>
     Grammar.DerivPath Dir.Up l r -> -- top path
-    Grammar.SortChange l -> -- change that goes between top path and inserted path 
+    Grammar.SortChange l -> -- change that goes between top path and inserted path
     Grammar.DerivTerm l r -> -- new term to replace with
     SSTerm l r
 setupSSTermFromReplaceAction topPath ch newTerm =
@@ -315,32 +321,46 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.P
 
 ------------------------------------- Functions for creating custom smallstep rules -----------------------------------
 
-type MatchSortChange l = Expr.Expr (Expr.MatchLabel (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
+type MatchSortChange l = Expr.Expr (Expr.ChangeLabel (Expr.MatchLabel (Expr.Meta (Grammar.SortLabel l))))
 type MatchSort l = Expr.Expr (Expr.MatchLabel (Expr.Meta (Grammar.SortLabel l)))
 
---type SSTerm l r = Expr.Expr (StepExprLabel l r)
-makeDownRule :: forall l r. Grammar.SortChange l
-    -> MatchSortChange l -- match the change going down, resulting in both sorts and sort changes that get matches
+cSlot :: forall l. MatchSortChange l
+cSlot = Expr.Inject Expr.Match % []
+
+makeDownRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
+       MatchSortChange l -- match the change going down, resulting in both sorts and sort changes that get matches
     -> Expr.Expr (Expr.MatchLabel (StepExprLabel l r)) -- match the expression within the boundary
     -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
     -> StepRule l r
-makeDownRule = Hole.hole "bla" -- ?h
+makeDownRule changeMatch derivMatch output term
+    = case term of
+      (Expr.Expr (Boundary Down inputCh) [inputDeriv]) -> do
+--        traceM ("Calling matchChange with " <> pretty inputCh <> " and " <> pretty changeMatch)
+--        traceM ("result is " <> pretty (Expr.matchChange inputCh changeMatch))
+        sortMatches /\ changeMatches <- Expr.matchChange inputCh changeMatch
+        derivMatches <- Expr.matchExprImpl inputDeriv derivMatch
+        Just $ unsafePartial $ output sortMatches changeMatches derivMatches
+      _ -> Nothing
+
 
 injectChangeMatchExpr :: forall l. l -> Array (MatchSortChange l) -> MatchSortChange l
-injectChangeMatchExpr l kids = (Expr.InjectMatchLabel (Expr.Inject (pure (Grammar.InjectSortLabel l)))) % kids
+injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))) % kids
 
 infixl 7 injectChangeMatchExpr as %+-
 
-injectChangeMatchExprPlus :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
-injectChangeMatchExprPlus l leftKids inside rightKids = Hole.hole "a"
---    (Expr.InjectMatchLabel (Expr.Plus (Expr.Tooth (pure (Grammar.InjectSortLabel l))
---        (ZipList.Path {left: ?h, right: ?h})))) % [inside]
+-- possible convention: names that are intentionally short to make them readable in a DSL are "d" for DSL followed by all caps
+dPLUS :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
+dPLUS l leftKids inside rightKids =
+    Expr.Plus (Expr.Tooth (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))
+        (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
+        % [inside]
 
+--infixl 7 injectChangeMatchExprPlus as %+
 
-{-
+dMINUS :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
+dMINUS l leftKids inside rightKids =
+    Expr.Minus (Expr.Tooth (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))
+        (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
+        % [inside]
 
-Big problem with this plan:
-we need to be able to match something like (+A -> B), where both A and B are variables that we would like to find.
-But the issue is that A is a type while B is a change.
-
--}
+--infixl 7 injectChangeMatchExprMinus as %-

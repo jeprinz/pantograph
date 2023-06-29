@@ -632,7 +632,7 @@ matchChange :: forall l. IsExprLabel l =>
     -- Two kinds out outputs: expressions and changes
     -> Maybe (Array (Expr l) /\ Array (Change l))
 matchChange c (Inject Match % []) = Just ([] /\ [c])
-matchChange (Inject l1 % kids1) (Inject (InjectMatchLabel l2) % kids2) =
+matchChange (Inject l1 % kids1) (Inject (InjectMatchLabel l2) % kids2) | l1 == l2 =
     foldl (\(a/\b) (c/\d) -> (a <> c) /\ (b <> d)) ([] /\ []) <$> sequence (Array.zipWith matchChange kids1 kids2)
 matchChange (Plus th1 % [kid1]) ((Plus th2) % [kid2]) = do
     toothMatches <- matchTeeth th1 th2

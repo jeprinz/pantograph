@@ -31,6 +31,7 @@ import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
+import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint)
 import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor)
@@ -38,8 +39,9 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
-import Language.Pantograph.Generic.Smallstep (StepExprLabel(..))
+import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot)
 import Language.Pantograph.Generic.Smallstep as SmallStep
+import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS{-(%+), (%-)-})
 import Language.Pantograph.Generic.Unification (unify)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
@@ -362,11 +364,14 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 -- StepRules
 --------------------------------------------------------------------------------
 
--- down{i}_(VarSort (+ x, ctx) y) -> Suc i
---insertSucRule :: StepRule
---insertSucRule t = Expr.matchExprMaybe t (Expr.Expr (Expr.InjectMatchLabel (Boundary ?h ?h)) []) \[] ->
---    ?h
---    Expr.Expr (Boundary dir ch) [t]
+-- down{i}_(VarSort (+ y, ctx) x) -> Suc i
+insertSucRule :: StepRule
+insertSucRule = SmallStep.makeDownRule
+    (VarSort %+- [dPLUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot])
+    {-i-}slot
+    (\[y] [ctx, x] [i] ->
+        SmallStep.Inject (Grammar.makeLabel Suc [] ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y]) % [i])
+        -- x is type of var, y is type of thing added to ctx
 
 type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
 
@@ -374,7 +379,9 @@ stepRules :: List StepRule
 stepRules = do
   let chLang = SmallStep.langToChLang language
   List.fromFoldable
-    [ SmallStep.defaultDown chLang
+    [
+    insertSucRule
+    , SmallStep.defaultDown chLang
     , SmallStep.defaultUp chLang
     ]
 

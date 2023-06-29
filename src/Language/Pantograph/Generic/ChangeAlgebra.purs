@@ -32,6 +32,7 @@ import Hole as Hole
 import Text.Pretty (pretty)
 import Debug (trace)
 import Debug (traceM)
+import Data.Tuple (fst, snd)
 
 inject :: forall l. Expr l -> Change l
 inject = map Inject
@@ -83,6 +84,13 @@ endpoints ch =
             let leftKids /\ rightKids = Array.unzip zippedKids
             Expr l leftKids /\ Expr l rightKids
         Expr (Replace e1 e2) [] -> e1 /\ e2
+
+lEndpoint :: forall l. IsExprLabel l => Change l -> Expr l
+lEndpoint = fst <<< endpoints
+
+rEndpoint :: forall l. IsExprLabel l => Change l -> Expr l
+rEndpoint = snd <<< endpoints
+
 
 -- least upper bound
 -- actually, I'm not sure we need this.
