@@ -390,5 +390,7 @@ editorSpec =
   , editsAtHoleInterior
   , arrangeDerivTermSubs
   , stepRules
+  , isValidCursorSort: const true
+  , isValidSelectionSorts: const true
   }
 

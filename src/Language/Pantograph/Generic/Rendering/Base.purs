@@ -107,8 +107,8 @@ type EditorSpec l r =
   -- smallstep figured out the final result.
   , editsAtCursor :: Sort l -> Array (Edit l r)
 
-  -- !TODO isValidCursorSort :: Grammar.Sort l -> Boolean
-  -- !TODO isValidSelectionSorts :: Grammar.Sort l -> Grammar.Sort l -> Boolean
+  , isValidCursorSort :: Sort l -> Boolean
+  , isValidSelectionSorts :: {bottom :: Sort l, top :: Sort l} -> Boolean
   
   , arrangeDerivTermSubs :: Unit -> ArrangeDerivTermSubs l r
 
