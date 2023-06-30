@@ -322,6 +322,14 @@ type EditorLocals l r =
   , onMouseOver :: HoleyDerivZipper l r -> MouseEvent.MouseEvent -> HK.HookM Aff Unit
   }
 
+trivialEditorLocals :: forall l r. EditorSpec l r -> EditorLocals l r
+trivialEditorLocals spec =
+  { spec
+  , handleBufferOutput: \_ -> pure unit
+  , onMouseDown: \_ _ -> pure unit
+  , onMouseOver: \_ _ -> pure unit
+  }
+
 -- | Buffer
 
 type BufferInput l r =
