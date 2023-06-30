@@ -243,7 +243,7 @@ type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
 
 arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx, rule, sort} = logConsole (HH.text "arrangeDerivTermSubs") \_ -> case rule /\ sort of
+arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % 
     [ _gamma
     , Expr.Meta (Right (Grammar.StringSortLabel str)) % [] ]) -> 

@@ -345,8 +345,11 @@ console
 */
 
 .console {
+  position: fixed;
+  bottom: 0;
   padding: 0 0.5rem;
   margin-bottom: 1rem;
+  width: calc(100vw - 3rem);
   font-size: 80%;
   background-color: rgb(213, 213, 213);
 }
