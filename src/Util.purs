@@ -110,3 +110,6 @@ foldNonempty f l = case foldl (\acc el ->
         ) Nothing l of
     Nothing -> Bug.bug "assumption violated in foldNonempty: was empty"
     Just res -> res
+
+-- represents a hole but for types
+data Hole

@@ -39,7 +39,7 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
-import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM)
+import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM, dMTERM)
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS{-(%+), (%-)-})
 import Language.Pantograph.Generic.Unification (unify)
@@ -98,6 +98,7 @@ data RuleLabel
   | Lam
   | App
   | Ref
+  | FreeVar
   | TermHole
   | FormatRule Format
 
@@ -184,6 +185,11 @@ language = TotalMap.makeTotalMap case _ of
   App -> Grammar.makeRule [] ["gamma"] \[gamma] ->
     [ TermSort %|-* [gamma]
     , TermSort %|-* [gamma] ]
+    /\ --------
+    ( TermSort %|-* [gamma] )
+
+  FreeVar -> Grammar.makeRule [] ["gamma", "name"] \[gamma, _name] -> -- Note that name is stored in the FreeVar, but doesn't affect typing rules. This is fine
+    []
     /\ --------
     ( TermSort %|-* [gamma] )
 
@@ -374,6 +380,23 @@ insertSucRule = SmallStep.makeDownRule
     (\[y] [ctx, x] [i] ->
         dTERM Suc [] ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y] [i])
         -- x is type of var, y is type of thing added to ctx
+
+{-
+TODO: how to deal with turning debruin indices into free vars when they are deleted from context?
+One possibility: Have the following rules:
+    down{Z}_{VarSort (- y , ctx) x} ==> up{FreeVar x}_{VarSort ctx' _ ~> TermSort ctx'}
+    S (up {t}_{VarSort ctx ~> TermSort ctx}) ==> {t}_{VarSort (_ , ctx) _ ~> (_ , ctx)}
+    Ref (up {t}_{VarSort ctx _ ~> TermSort ctx}) ==> t
+-}
+--- Rules for converting a var into a FreeVar when it's removed from context
+
+----  down{Z}_{VarSort (- y , ctx) x} ==> up{FreeVar x}_{VarSort ctx' _ ~> TermSort ctx'}
+--deleteZRule :: StepRule
+--deleteZRule = SmallStep.makeDownRule
+--    (VarSort %+- [dMINUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot])
+--    (dMTERM Zero [] ["gamma" /\ ?h, "x" /\ ?h] []) -- TODO: PROBLEM: I both don't have the values for the sorts, plus it doesn't matter. The matchTerm really only cares about where the slots are anyway. So I need to make a function specifically for matching with DerivTerms where it ignores everything except the rule label.
+--    (\[y] [ctx, x] [] ->
+--        SmallStep.wrapBoundary SmallStep.Up ?h ?h)
 
 stepRules :: List StepRule
 stepRules = do
