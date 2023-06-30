@@ -26,13 +26,15 @@ import Data.Newtype (unwrap)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Traversable (sequence)
+import Data.Tuple (fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
-import Effect.Exception.Unsafe (unsafeThrow)
-import Hole as Hole
-import Text.Pretty (pretty)
 import Debug (trace)
 import Debug (traceM)
-import Data.Tuple (fst, snd)
+import Effect.Exception.Unsafe (unsafeThrow)
+import Halogen.HTML as HH
+import Hole as Hole
+import Language.Pantograph.Generic.Rendering.Console (logConsole)
+import Text.Pretty (pretty)
 
 inject :: forall l. Expr l -> Change l
 inject = map Inject
@@ -62,7 +64,7 @@ collectMatches c (Expr (Meta (Left x)) []) = Just $ Map.insert x (Set.singleton 
 collectMatches _ _ = Bug.bug "base case in collectMatches"
 
 endpoints :: forall l. IsExprLabel l => Change l -> Expr l /\ Expr l
-endpoints ch = 
+endpoints ch =
     assert (wellformedExpr "endpoints" ch) \_ ->
     case ch of
         Expr (Plus th) [kid] -> do

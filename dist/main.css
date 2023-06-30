@@ -60,7 +60,9 @@ body {
   text-align: left;
 }
 
-.status table, .status tr, .status td {
+.status table,
+.status tr,
+.status td {
   border-collapse: collapse;
 }
 
@@ -337,3 +339,39 @@ body {
 .subnode.smallstep.changeDirection {}
 
 .subnode.smallstep.sortChange {}
+
+/* 
+console
+*/
+
+.console {
+  padding: 0 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 80%;
+  background-color: rgb(213, 213, 213);
+}
+
+.console-header {
+  padding-top: 0.5rem;
+}
+
+.console-controls {
+  padding: 0.5rem 0;
+}
+.console-controls button {
+  font-size: inherit;
+  border: none;
+  outline: none;
+  background-color: black;
+  color: white;
+}
+
+.console-logs {
+  max-height: 20rem;;
+  overflow-y: scroll;
+}
+
+.console-log {
+  padding: 0.5rem 0;
+  box-shadow: 0 -1px 0 0 black;
+}

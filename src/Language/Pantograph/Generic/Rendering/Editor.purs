@@ -18,6 +18,7 @@ import Data.String as String
 import Data.Tuple.Nested ((/\))
 import Data.Variant (default, on)
 import Debug as Debug
+import Debug as Debug
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
@@ -28,6 +29,7 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
+import Language.Pantograph.Generic.Rendering.Console (_consoleSlot, consoleComponent)
 import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleExterior, renderHoleInterior, renderPath, renderSSTerm)
 import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
 import Language.Pantograph.Generic.Smallstep as SmallStep
@@ -45,7 +47,6 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
-import Debug as Debug
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -544,50 +545,50 @@ editorComponent = HK.component \tokens spec -> HK.do
   -- render
   ------------------------------------------------------------------------------
 
-  HK.pure $
-    log "editorComponent.render"
-      (P.bullets
-        [ "currentState = " <> pretty currentState
-        ]) \_ ->
-          HH.div [classNames ["editor"]]
-          [ HH.div
-            [ classNames ["status"] ]
-            [ HH.table_
-              [ HH.tr_ [HH.td_ [HH.text "mode"], HH.td_ [HH.text case currentState of
-                  CursorState _ -> "cursor"
-                  SelectState _ -> "cursor"
-                  TopState _ -> "cursor"
-                  SmallStepState _ -> "smallstep"] ]
+  HK.pure $ 
+    log "editorComponent.render" (P.bullets 
+      [ "currentState = " <> pretty currentState ]
+    ) \_ ->
+    HH.div [classNames ["editor"]]
+    [ HH.div
+      [ classNames ["status"] ]
+      [ HH.table_
+        [ HH.tr_ [HH.td_ [HH.text "mode"], HH.td_ [HH.text case currentState of
+            CursorState _ -> "cursor"
+            SelectState _ -> "cursor"
+            TopState _ -> "cursor"
+            SmallStepState _ -> "smallstep"] ]
+        ]
+      ]
+    , HH.div 
+      [ classNames ["program"]
+      , HE.onMouseLeave \event -> do
+          H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+          setHighlightElement Nothing
+      ]
+      case currentState of
+        CursorState cursor -> do
+          let dzipper = hdzipperDerivZipper cursor.hdzipper
+          case cursor.hdzipper of
+            InjectHoleyDerivZipper _ -> 
+              [ renderPath locs dzipper 
+                    (renderDerivTerm locs true dzipper)
+                  defaultRenderingContext
               ]
-            ]
-          , HH.div 
-            [ classNames ["program"]
-            , HE.onMouseLeave \event -> do
-                H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-                setHighlightElement Nothing
-            ]
-            case currentState of
-              CursorState cursor -> do
-                let dzipper = hdzipperDerivZipper cursor.hdzipper
-                case cursor.hdzipper of
-                  InjectHoleyDerivZipper _ -> 
-                    [ renderPath locs dzipper 
-                          (renderDerivTerm locs true dzipper)
-                        defaultRenderingContext
-                    ]
-                  HoleInteriorHoleyDerivZipper dpath sort -> 
-                    [ renderPath locs dzipper 
-                        (renderHoleExterior locs dpath sort
-                            (renderHoleInterior locs true dpath sort))
-                        defaultRenderingContext
-                    ]
-              SelectState _select -> hole "render SelectState"
-              TopState _top -> hole "render TopState"
-              SmallStepState ss -> 
-                [HH.div
-                  [ classNames ["smallstep-program"] ]
-                  [ renderSSTerm locs ss.ssterm 
-                      defaultRenderingContext
-                  ]]
-          ]
+            HoleInteriorHoleyDerivZipper dpath sort -> 
+              [ renderPath locs dzipper 
+                  (renderHoleExterior locs dpath sort
+                      (renderHoleInterior locs true dpath sort))
+                  defaultRenderingContext
+              ]
+        SelectState _select -> hole "render SelectState"
+        TopState _top -> hole "render TopState"
+        SmallStepState ss -> 
+          [HH.div
+            [ classNames ["smallstep-program"] ]
+            [ renderSSTerm locs ss.ssterm 
+                defaultRenderingContext
+            ]]
+    , HH.slot_ _consoleSlot unit consoleComponent unit
+    ]
 

@@ -9,6 +9,7 @@ import Bug.Assertion (Assertion(..), assert, just)
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Bounded.Generic (genericBottom, genericTop)
+import Data.Const (Const)
 import Data.Either (Either)
 import Data.Either.Nested (type (\/))
 import Data.Enum (class Enum)
@@ -44,6 +45,7 @@ type EditorHTML l r =
     (HK.HookM Aff Unit)
     ( buffer :: H.Slot Query (Output l r) Unit
     , preview :: H.Slot (PreviewQuery l r) Unit HorizontalDir
+    , console :: H.Slot (Const Void) Void Unit
     ) 
     Aff
 

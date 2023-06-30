@@ -30,18 +30,19 @@ import Effect.Exception.Unsafe (unsafeThrow)
 import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
 import Hole (hole)
-import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint)
+import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
+import Language.Pantograph.Generic.Rendering.Console (logConsole)
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
+import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS)
 import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM, dMTERM)
 import Language.Pantograph.Generic.Smallstep as SmallStep
-import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS{-(%+), (%-)-})
 import Language.Pantograph.Generic.Unification (unify)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
@@ -242,7 +243,7 @@ type Query = Rendering.Query
 type Output = Rendering.Output PreSortLabel RuleLabel
 
 arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
+arrangeDerivTermSubs _ {renCtx, rule, sort} = logConsole (HH.text "arrangeDerivTermSubs") \_ -> case rule /\ sort of
   _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % 
     [ _gamma
     , Expr.Meta (Right (Grammar.StringSortLabel str)) % [] ]) -> 
