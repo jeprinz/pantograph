@@ -40,8 +40,8 @@ import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Console (logConsole)
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
-import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS)
-import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM, dMTERM)
+import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS, (%#))
+import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM)
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.Unification (unify)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
@@ -395,9 +395,12 @@ One possibility: Have the following rules:
 --deleteZRule :: StepRule
 --deleteZRule = SmallStep.makeDownRule
 --    (VarSort %+- [dMINUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot])
---    (dMTERM Zero [] ["gamma" /\ ?h, "x" /\ ?h] []) -- TODO: PROBLEM: I both don't have the values for the sorts, plus it doesn't matter. The matchTerm really only cares about where the slots are anyway. So I need to make a function specifically for matching with DerivTerms where it ignores everything except the rule label.
+--    (Zero %# [])
 --    (\[y] [ctx, x] [] ->
---        SmallStep.wrapBoundary SmallStep.Up ?h ?h)
+--        SmallStep.wrapBoundary SmallStep.Up
+--            (Expr.Replace
+--                (sor VarSort % [])
+--                ?h % []) (dTERM FreeVar [] [] []))
 
 stepRules :: List StepRule
 stepRules = do

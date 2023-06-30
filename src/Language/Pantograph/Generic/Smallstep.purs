@@ -326,11 +326,18 @@ type MatchSort l = Expr.Expr (Expr.MatchLabel (Expr.Meta (Grammar.SortLabel l)))
 cSlot :: forall l. MatchSortChange l
 cSlot = Expr.Inject Expr.Match % []
 
-type SSMatchTerm l r = Expr.Expr (Expr.MatchLabel (StepExprLabel l r))
+--type SSMatchTerm l r = Expr.Expr (Expr.MatchLabel (StepExprLabel l r))
+type SSMatchTerm l r = Expr.Expr (Expr.MatchLabel r)
 type SSMatchPath l r = Expr.Path Dir.Up (Expr.MatchLabel (StepExprLabel l r))
 
-dMTERM :: forall l r. IsRuleLabel l r => r -> Array (String /\ Grammar.Sort l) -> Array (String /\ Grammar.Sort l) -> Array (SSMatchTerm l r) -> SSMatchTerm l r
-dMTERM ruleLabel datavalues values kids = (Expr.InjectMatchLabel (Inject (Grammar.makeLabel ruleLabel datavalues values))) % kids
+compareMatchLabel :: forall l r. IsRuleLabel l r => StepExprLabel l r -> r -> Boolean
+compareMatchLabel (Inject (Grammar.DerivLabel r1 _)) r2 = r1 == r2
+compareMatchLabel _ _ = false
+
+injectSSMatchTerm :: forall l r. IsRuleLabel l r => r -> Array (SSMatchTerm l r) -> SSMatchTerm l r
+injectSSMatchTerm ruleLabel kids = (Expr.InjectMatchLabel ruleLabel) % kids
+
+infixl 7 injectSSMatchTerm as %#
 
 makeDownRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
        MatchSortChange l -- match the change going down, resulting in both sorts and sort changes that get matches
@@ -343,7 +350,7 @@ makeDownRule changeMatch derivMatch output term
 --        traceM ("Calling matchChange with " <> pretty inputCh <> " and " <> pretty changeMatch)
 --        traceM ("result is " <> pretty (Expr.matchChange inputCh changeMatch))
         sortMatches /\ changeMatches <- Expr.matchChange inputCh changeMatch
-        derivMatches <- Expr.matchExprImpl inputDeriv derivMatch
+        derivMatches <- Expr.matchDiffExprs compareMatchLabel inputDeriv derivMatch
         Just $ unsafePartial $ output sortMatches changeMatches derivMatches
       _ -> Nothing
 

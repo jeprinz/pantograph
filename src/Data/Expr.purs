@@ -605,13 +605,14 @@ injectMatchExpr l kids = (InjectMatchLabel l) % kids
 
 infixl 7 injectMatchExpr as %$
 
---  (Partial => Array (Sort l) -> Array (Sort l) /\ Sort l) ->
---  Rule l
+matchDiffExprs :: forall l1 l2. (l1 -> l2 -> Boolean) -> Expr l1 -> Expr (MatchLabel l2) -> Maybe (Array (Expr l1))
+matchDiffExprs compare (l1 % kids1) (InjectMatchLabel l2 % kids2) | compare l1 l2 =
+    Array.concat <$> sequence (Array.zipWith (matchDiffExprs compare) kids1 kids2)
+matchDiffExprs _ e2 (Match % []) = Just [e2]
+matchDiffExprs _ _ _ = Nothing
+
 matchExprImpl :: forall l. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> Maybe (Array (Expr l))
-matchExprImpl (l1 % kids1) (InjectMatchLabel l2 % kids2) | l1 == l2 =
-    Array.concat <$> sequence (Array.zipWith matchExprImpl kids1 kids2)
-matchExprImpl e2 (Match % []) = Just [e2]
-matchExprImpl _ _ = Nothing
+matchExprImpl = matchDiffExprs (==)
 
 -- helper function for matchChange
 matchTeeth :: forall l. IsExprLabel l =>
