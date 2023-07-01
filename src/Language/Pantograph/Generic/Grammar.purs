@@ -28,7 +28,7 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
-import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen', unifyLists)
+import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen', unifyLists, composeSub, composeSubs)
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, bullets, pretty)
 import Type.Direction (_down, _up)
@@ -37,6 +37,8 @@ import Data.Tuple (fst, snd)
 import Util as Util
 import Hole as Hole
 import Type.Direction as Dir
+import Data.Traversable (sequence)
+import Data.List.Rev as RevList
 
 --------------------------------------------------------------------------------
 -- IsRuleLabel
@@ -111,11 +113,11 @@ derivLabelSort (DerivLabel r sub) = getSortFromSub r sub
 derivLabelSort (DerivString str) = NameSortLabel %* [StringSortLabel str %* []]
 
 kidSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
-    DerivTerm l r -> Array (Sort l)
-kidSorts (DerivLabel ruleLabel sigma % kids) =
+    DerivLabel l r -> Array (Sort l)
+kidSorts (DerivLabel ruleLabel sigma) =
     let (Rule _vars kidSorts _parentSort) = TotalMap.lookup ruleLabel language in
     map (Expr.subMetaExprPartially sigma) kidSorts
-kidSorts (DerivString _ % _kids) = []
+kidSorts (DerivString _) = []
 
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
 mapDerivLabelSort f (DerivLabel r sub) = DerivLabel r (map f sub)
@@ -146,6 +148,9 @@ subDerivLabel _ other = other
 
 subDerivTerm :: forall l r. IsRuleLabel l r => SortSub l -> DerivTerm l r -> DerivTerm l r
 subDerivTerm sub = map (subDerivLabel sub)
+
+subDerivPath :: forall d l r. IsRuleLabel l r => SortSub l -> DerivPath d l r -> DerivPath d l r
+subDerivPath sub = map (subDerivLabel sub)
 
 --------------------------------------------------------------------------------
 -- AsExprLabel
@@ -199,6 +204,9 @@ derive instance Ord l => Ord (SortLabel l)
 derive instance Functor SortLabel
 derive instance Foldable SortLabel
 derive instance Traversable SortLabel
+
+freshMetaVarSort :: forall l. String -> Sort l
+freshMetaVarSort name = Expr.Meta (Either.Left (freshMetaVar name)) % []
 
 -- JACOB: please give this a better name or at least an explanation
 sor :: forall l. l -> Expr.Meta (SortLabel l)
@@ -349,37 +357,37 @@ derive instance Traversable ChangeRule
 
 
 --------------------------------------------------------------------------------
---
-
---kidSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
-
-infer :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
-    DerivTerm l r -> Maybe (SortSub l)
-infer t@(l % kids) = do
-    sub1 <- inferList (List.fromFoldable kids)
-    let inferredKidSorts = map (Expr.subMetaExprPartially sub1 <<< derivTermSort) kids
-    let expectedKidSorts = kidSorts t
-    _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
-    let allSubs = Util.union' sub2 (map (Expr.subMetaExprPartially sub2) sub1)
-    pure $ allSubs
+----------- Typechecking (and inference) for any grammar -----------------------
+--------------------------------------------------------------------------------
 
 {-
-TODO:
-a bug in these is that they don't sub the subs!
-Maybe also for performance (is currencly O(n^2)) only return a sub?
+Inputs a term, and checks if it typechecks up to unification of metavariables. If it does, returns the sub.
+To do regular typechecking, then check if the sub is empty.
 -}
 
-inferList :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
-    List (DerivTerm l r) -> Maybe (SortSub l)
-inferList Nil = Just Map.empty
-inferList (t : ts) = do
-    sub1 <- infer t
-    let ts' = map (subDerivTerm sub1) ts
-    sub2 <- inferList ts'
-    let allSubs = Util.union' sub2 (map (Expr.subMetaExprPartially sub2) sub1)
+-- TODO: I guess this has a bug that it doesn't check the parent of the top node?
+infer :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    DerivTerm l r -> Maybe (SortSub l)
+infer (l % kids) = do
+    subs <- sequence $ map infer kids
+    let sub1 = composeSubs subs
+    let inferredKidSorts = map (Expr.subMetaExprPartially sub1 <<< derivTermSort) kids
+    let expectedKidSorts = kidSorts l
+    _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
+    let allSubs = composeSub sub1 sub2
     pure $ allSubs
 
 inferPath :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
-    DerivPath Dir.Up l r -> Maybe (SortSub l)
-inferPath (Expr.Path Nil) = Just Map.empty
-inferPath (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : ths)) = ?h
+    Sort l -> DerivPath Dir.Up l r -> Maybe (SortSub l)
+inferPath _ (Expr.Path Nil) = Just Map.empty
+inferPath innerSort (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : ths)) = do
+    subs1 <- sequence (map infer left)
+    subs2 <- sequence (map infer right)
+    let allSubs1 = (composeSubs subs1) `composeSub` (composeSubs subs2) -- `composeSub` sub3
+    let inferredKidSorts = map (Expr.subMetaExprPartially allSubs1)
+            ((derivTermSort <$> RevList.unreverse left) <> innerSort : (derivTermSort <$> right))
+    let expectedKidSorts = map (Expr.subMetaExprPartially allSubs1) (kidSorts l)
+    _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
+    let sub12 = composeSub allSubs1 sub2
+    sub3 <- inferPath (Expr.subMetaExprPartially sub12 (derivLabelSort l)) (Expr.Path ths)
+    pure $ composeSub sub12 sub3

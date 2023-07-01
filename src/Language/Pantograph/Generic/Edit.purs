@@ -25,6 +25,7 @@ import Hole (hole)
 import Text.Pretty (pretty)
 import Type.Direction (Up)
 import Debug (traceM)
+import Util (fromJust')
 
 --------------------------------------------------------------------------------
 -- Edit, Action
@@ -58,7 +59,16 @@ newPathFromRule r kidIx = do
       defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $ 
         sequence (defaultDerivTerm <$> hypSortPath)
 
-  Expr.Path (List.singleton (DerivLabel r sub %< defaultHypDerivPath)) /\ hypSort
+  let path1 = Expr.Path (List.singleton (DerivLabel r sub %< defaultHypDerivPath))
+--  traceM ("in newPathFromRule:")
+--  traceM ("path1 is: " <> pretty path1)
+  let sub = fromJust' "path didn't typecheck in newPathFromRule" $ inferPath (freshMetaVarSort "pathInside") path1
+--  traceM ("sub is: " <> pretty sub)
+  let path = subDerivPath sub path1
+--  traceM ("path is: " <> pretty path)
+  path /\ Expr.subMetaExprPartially sub  hypSort
+
+--  /\ hypSort
 
 {-
 defaultEditsAtCursor :: forall l r. IsRuleLabel l r => Sort l -> Array (Edit l r)

@@ -12,6 +12,7 @@ import Data.Either (Either(..))
 import Data.Expr (subMetaExprPartially, (%))
 import Data.Expr as Expr
 import Data.Foldable (foldl)
+import Data.Foldable as Foldable
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.Map (Map)
@@ -103,9 +104,12 @@ freshen' rho = AsFreshenable >>> freshen rho >>> Newtype.unwrap
 
 type Sub l = Expr.MetaVarSub (Expr.MetaExpr l)
 
--- sigma1 after sigma2
+-- sub2 after sub1
 composeSub :: forall l. Expr.IsExprLabel l => Sub l -> Sub l -> Sub l
-composeSub sigma1 sigma2 = subMetaExprPartially sigma1 <$> sigma2
+composeSub sub1 sub2 = union' (map (Expr.subMetaExprPartially sub2) sub1) sub2
+
+composeSubs :: forall l f. Foldable.Foldable f => Expr.IsExprLabel l => f (Sub l) -> Sub l
+composeSubs subs = foldl composeSub Map.empty subs
 
 noMetaVars :: forall l. Expr.IsExprLabel l => String -> Expr.MetaExpr l -> Assertion (Expr.Expr l)
 noMetaVars source mexpr0 = Assertion
