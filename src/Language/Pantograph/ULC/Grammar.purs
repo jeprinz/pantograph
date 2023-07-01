@@ -105,33 +105,33 @@ instance Grammar.IsRuleLabel SortLabel RuleLabel where
     Hole -> true
     _ -> false
 
-  defaultDerivTerm' sort = pure (Grammar.makeLabel Hole [] ["sort" /\ sort] % [])
+  defaultDerivTerm' sort = pure (Grammar.makeLabel Hole ["sort" /\ sort] % [])
   -- pure $ (Hole %|- ?sort) % []
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of
-  Zero -> Grammar.makeRule [] [] \[] ->
+  Zero -> Grammar.makeRule [] \[] ->
     [ ]
     /\ --------
     ( Grammar.InjectSortLabel VarSort %* [] )
-  Suc -> Grammar.makeRule [] [] \[] ->
+  Suc -> Grammar.makeRule [] \[] ->
     [ Grammar.InjectSortLabel VarSort %* [] ]
     /\ --------
     ( Grammar.InjectSortLabel VarSort %* [] )
-  Lam -> Grammar.makeRule [] [] \[] ->
+  Lam -> Grammar.makeRule [] \[] ->
     [ Grammar.InjectSortLabel TermSort %* [] ]
     /\ --------
     ( Grammar.InjectSortLabel TermSort %* [] )
-  App -> Grammar.makeRule [] [] \[] ->
+  App -> Grammar.makeRule [] \[] ->
     [ Grammar.InjectSortLabel TermSort %* []
     , Grammar.InjectSortLabel TermSort %* [] ]
     /\ --------
     ( Grammar.InjectSortLabel TermSort %* [] )
-  Ref -> Grammar.makeRule [] [] \[] ->
+  Ref -> Grammar.makeRule [] \[] ->
     [ Grammar.InjectSortLabel VarSort %* [] ]
     /\ --------
     ( Grammar.InjectSortLabel TermSort %* [] )
-  Hole -> Grammar.makeRule [] ["sort"] \[sort] ->
+  Hole -> Grammar.makeRule ["sort"] \[sort] ->
     [ ]
     /\ --------
     ( sort )

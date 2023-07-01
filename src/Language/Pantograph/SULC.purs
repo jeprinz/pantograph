@@ -155,10 +155,12 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TermHole -> true
     _ -> false
 
-  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = pure (Grammar.makeLabel TermHole [] ["gamma" /\ gamma] % [])
+  -- Note from Jacob: TODO: can we put this particular function in EditorSpec instead of the typeclass? It really doesn't make sense in the typeclass.
+  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma] % [])
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x]) = empty
   -- NOTE from jacob: I made it only work if given (Name (String _)) and not (Name ?x) because the latter shouldn't appear in programs.
-  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [Expr.Meta (Right (Grammar.StringSortLabel _str)) % []]) = pure $ Grammar.DerivString "" % []
+--  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [Expr.Meta (Right (Grammar.StringSortLabel _str)) % []]) = pure $ Grammar.DerivString "" % []
+  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % []
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
 ctxCons x gamma = CtxConsSort %|-* [x, gamma]
@@ -167,49 +169,49 @@ infixl 7 ctxCons as %:
 language :: Language
 language = TotalMap.makeTotalMap case _ of
 
-  Zero -> Grammar.makeRule [] ["gamma", "x"] \[gamma, x] ->
+  Zero -> Grammar.makeRule ["gamma", "x"] \[gamma, x] ->
     []
     /\ --------
     ( VarSort %|-* [x %: gamma, x] )
 
-  Suc -> Grammar.makeRule [] ["gamma", "x", "y"] \[gamma, x, y] ->
+  Suc -> Grammar.makeRule ["gamma", "x", "y"] \[gamma, x, y] ->
     [ VarSort %|-* [gamma, x] ]
     /\ --------
     ( VarSort %|-* [(y %: gamma), x] )
 
-  Lam -> Grammar.makeRule ["x"] ["gamma"] \[x, gamma] ->
+  Lam -> Grammar.makeRule ["x", "gamma"] \[x, gamma] ->
     [ Grammar.NameSortLabel %* [x]
     , TermSort %|-* [x %: gamma] ]
     /\ --------
     ( TermSort %|-* [gamma])
 
-  App -> Grammar.makeRule [] ["gamma"] \[gamma] ->
+  App -> Grammar.makeRule ["gamma"] \[gamma] ->
     [ TermSort %|-* [gamma]
     , TermSort %|-* [gamma] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  FreeVar -> Grammar.makeRule [] ["gamma", "name"] \[gamma, _name] -> -- Note that name is stored in the FreeVar, but doesn't affect typing rules. This is fine
+  FreeVar -> Grammar.makeRule ["gamma", "name"] \[gamma, _name] -> -- Note that name is stored in the FreeVar, but doesn't affect typing rules. This is fine
     []
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  Ref -> Grammar.makeRule [] ["gamma", "x"] \[gamma, x] ->
+  Ref -> Grammar.makeRule ["gamma", "x"] \[gamma, x] ->
     [ VarSort %|-* [gamma, x] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  TermHole -> Grammar.makeRule [] ["gamma"] \[gamma] ->
+  TermHole -> Grammar.makeRule ["gamma"] \[gamma] ->
     [ ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  FormatRule Newline -> Grammar.makeRule [] ["gamma"] \[gamma] ->
+  FormatRule Newline -> Grammar.makeRule ["gamma"] \[gamma] ->
     [ TermSort %|-* [gamma] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  FormatRule Comment -> Grammar.makeRule [] ["comment", "gamma"] \[comment, gamma] ->
+  FormatRule Comment -> Grammar.makeRule ["comment", "gamma"] \[comment, gamma] ->
     [ Grammar.NameSortLabel %* [comment]
     , TermSort %|-* [gamma] ]
     /\ --------
@@ -321,11 +323,11 @@ getIndices ctx = Expr.matchExpr2 ctx
     (sor CtxConsSort %$ [slot, slot]) (\[name, ctx'] ->
         let wrapInSuc var =
              Expr.matchExpr (Grammar.derivTermSort var) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
-             Grammar.makeLabel Suc [] [ "gamma" /\ gamma , "x" /\ x , "y" /\ name]
+             Grammar.makeLabel Suc [ "gamma" /\ gamma , "x" /\ x , "y" /\ name]
              % [var]
         in
         -- new var
-        (Grammar.makeLabel Zero [] ["gamma" /\ ctx', "x" /\ name] % [])
+        (Grammar.makeLabel Zero ["gamma" /\ ctx', "x" /\ name] % [])
         -- wrap vars from ctx' in a Suc
         : map wrapInSuc (getIndices ctx')
     )
@@ -338,7 +340,7 @@ getVarEdits sort =
     Expr.matchExpr2 sort (sor TermSort %$ [slot]) (\[ctx] ->
             let wrapInRef index =
                  Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
-                 Grammar.makeLabel Ref [] [ "gamma" /\ gamma , "x" /\ x]
+                 Grammar.makeLabel Ref [ "gamma" /\ gamma , "x" /\ x]
                  % [index]
             in
             let indices = getIndices ctx in
@@ -379,7 +381,7 @@ insertSucRule = SmallStep.makeDownRule
     (VarSort %+- [dPLUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot])
     {-i-}slot
     (\[y] [ctx, x] [i] ->
-        dTERM Suc [] ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y] [i])
+        dTERM Suc ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y] [i])
         -- x is type of var, y is type of thing added to ctx
 
 {-

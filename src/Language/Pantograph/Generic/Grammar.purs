@@ -6,6 +6,7 @@ import Bug (bug)
 import Bug.Assertion (Assertion, assert, assertInput_, assertInterface_, equal, just, makeAssertionBoolean)
 import Control.Plus (empty)
 import Data.Array as Array
+import Data.List as List
 import Data.Bifunctor (lmap)
 import Data.Enum (class Enum)
 import Data.Expr (class IsExprLabel, class ReflectPathDir, MetaVar(..), expectedKidsCount, freshMetaVar, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
@@ -27,11 +28,15 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
-import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen')
+import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen', unifyLists)
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, bullets, pretty)
 import Type.Direction (_down, _up)
 import Data.Either as Either
+import Data.Tuple (fst, snd)
+import Util as Util
+import Hole as Hole
+import Type.Direction as Dir
 
 --------------------------------------------------------------------------------
 -- IsRuleLabel
@@ -67,10 +72,10 @@ getSortFromSub r sub =
     let (Rule _vars _kidSorts parentSort) = TotalMap.lookup r language in
     Expr.subMetaExprPartially sub parentSort
 
-makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> Array (String /\ Sort l) -> DerivLabel l r
-makeLabel ruleLabel datavalues values =
+makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> DerivLabel l r
+makeLabel ruleLabel values =
     let Rule vars _ _ = TotalMap.lookup ruleLabel language in
-    let sigma = Map.fromFoldable ((lmap (RuleMetaVar true) <$> datavalues) <> (lmap (RuleMetaVar false) <$> values)) in
+    let sigma = Map.fromFoldable (lmap RuleMetaVar <$> values) in
     assert (equal "makeLabel" 
       ( "Given substitution must have same vars as quantified in rule:" <> 
         bullets ["ruleLabel = " <> pretty ruleLabel, "value keys = " <> pretty values] )
@@ -105,6 +110,13 @@ derivLabelSort :: forall l r. IsRuleLabel l r => DerivLabel l r -> Sort l
 derivLabelSort (DerivLabel r sub) = getSortFromSub r sub
 derivLabelSort (DerivString str) = NameSortLabel %* [StringSortLabel str %* []]
 
+kidSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    DerivTerm l r -> Array (Sort l)
+kidSorts (DerivLabel ruleLabel sigma % kids) =
+    let (Rule _vars kidSorts _parentSort) = TotalMap.lookup ruleLabel language in
+    map (Expr.subMetaExprPartially sigma) kidSorts
+kidSorts (DerivString _ % _kids) = []
+
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
 mapDerivLabelSort f (DerivLabel r sub) = DerivLabel r (map f sub)
 mapDerivLabelSort _ (DerivString str) = DerivString str
@@ -131,6 +143,9 @@ instance Freshenable (DerivLabel l r) where
 subDerivLabel :: forall l r. IsRuleLabel l r => SortSub l -> DerivLabel l r -> DerivLabel l r
 subDerivLabel sub (DerivLabel r s) = DerivLabel r (map (Expr.subMetaExprPartially sub) s)
 subDerivLabel _ other = other
+
+subDerivTerm :: forall l r. IsRuleLabel l r => SortSub l -> DerivTerm l r -> DerivTerm l r
+subDerivTerm sub = map (subDerivLabel sub)
 
 --------------------------------------------------------------------------------
 -- AsExprLabel
@@ -222,8 +237,7 @@ freshenRuleMetaVars mvars =
   Map.fromFoldable $
   flip map (Set.toUnfoldable mvars :: Array _) $
   case _ of
-    RuleMetaVar false str -> RuleMetaVar false str /\ Expr.fromMetaVar (freshMetaVar str)
-    RuleMetaVar true str -> RuleMetaVar true str /\ Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []
+    RuleMetaVar str -> RuleMetaVar str /\ Expr.fromMetaVar (freshMetaVar str)
     _ -> bug "[freshenRuleMetaVars] Shouldn't use this on non-RuleMetaVars"
 
 --------------------------------------------------------------------------------
@@ -293,22 +307,20 @@ nonDuplicateArray source message arr = makeAssertionBoolean
   }
 
 makeRule' :: forall l. 
-  Array String -> -- Data metavariables
-  Array String -> -- Regular metavariables
+  Array String -> -- metavariables
   (Array (Sort l) -> Array (Sort l) /\ Sort l) ->
   Rule l
-makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \datastrs strs f -> do
-  let mxs = (Expr.RuleMetaVar true <$> datastrs) <> (Expr.RuleMetaVar false <$> strs)
+makeRule' = assertInput_ (\strs -> nonDuplicateArray "makeRule" ("All metavar strings must be different among: " <> show strs) strs) \strs f -> do
+  let mxs = Expr.RuleMetaVar <$> strs
   let es = Expr.fromMetaVar <$> mxs
   let hyps /\ con = f es
   Rule (Set.fromFoldable mxs) hyps con
 
 makeRule :: forall l. 
-  Array String -> -- Data metavariables
   Array String -> -- Regular metavariables
   (Partial => Array (Sort l) -> Array (Sort l) /\ Sort l) ->
   Rule l
-makeRule = \datastrs strs f -> makeRule' datastrs strs (unsafePartial f)
+makeRule = \strs f -> makeRule' strs (unsafePartial f)
 
 --------------------------------------------------------------------------------
 -- Language
@@ -335,3 +347,39 @@ derive instance Functor ChangeRule
 derive instance Foldable ChangeRule
 derive instance Traversable ChangeRule
 
+
+--------------------------------------------------------------------------------
+--
+
+--kidSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+
+infer :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    DerivTerm l r -> Maybe (SortSub l)
+infer t@(l % kids) = do
+    sub1 <- inferList (List.fromFoldable kids)
+    let inferredKidSorts = map (Expr.subMetaExprPartially sub1 <<< derivTermSort) kids
+    let expectedKidSorts = kidSorts t
+    _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
+    let allSubs = Util.union' sub2 (map (Expr.subMetaExprPartially sub2) sub1)
+    pure $ allSubs
+
+{-
+TODO:
+a bug in these is that they don't sub the subs!
+Maybe also for performance (is currencly O(n^2)) only return a sub?
+-}
+
+inferList :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    List (DerivTerm l r) -> Maybe (SortSub l)
+inferList Nil = Just Map.empty
+inferList (t : ts) = do
+    sub1 <- infer t
+    let ts' = map (subDerivTerm sub1) ts
+    sub2 <- inferList ts'
+    let allSubs = Util.union' sub2 (map (Expr.subMetaExprPartially sub2) sub1)
+    pure $ allSubs
+
+inferPath :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    DerivPath Dir.Up l r -> Maybe (SortSub l)
+inferPath (Expr.Path Nil) = Just Map.empty
+inferPath (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : ths)) = ?h

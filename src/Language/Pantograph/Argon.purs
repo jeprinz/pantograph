@@ -62,7 +62,7 @@ import Language.Pantograph.Generic.Rendering.Base as Rendering
 import Language.Pantograph.Generic.Rendering.Console (logConsole)
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS)
-import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM, dMTERM)
+import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM)
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.Unification (unify)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
@@ -147,11 +147,11 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   
   defaultDerivTerm' 
     (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % []) =
-    Just $ Grammar.makeLabel TermHole [] [] % []
+    Just $ Grammar.makeLabel TermHole [] % []
 
   defaultDerivTerm'
     (Expr.Meta (Right (Grammar.InjectSortLabel ArgsSort)) % []) =
-    Just $ Grammar.makeLabel NilArgs [] [] % []
+    Just $ Grammar.makeLabel NilArgs [] % []
 
   defaultDerivTerm' 
     sort =
@@ -164,28 +164,28 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
 language :: Language
 language = TotalMap.makeTotalMap case _ of
   -- <<Term>>
-  Var -> Grammar.makeRule [] ["x"] \[x] ->
+  Var -> Grammar.makeRule ["x"] \[x] ->
     [ Grammar.NameSortLabel %* [x] ] /\
     ( TermSort %|-* [] )
-  Neu -> Grammar.makeRule [] [] \[x] ->
+  Neu -> Grammar.makeRule [] \[x] ->
     [ VarSort %|-* [x] ] /\
     ( ArgsSort %|-* [] )
-  Lam -> Grammar.makeRule [] [] \[] ->
+  Lam -> Grammar.makeRule [] \[] ->
     [ VarSort %|-* [] ] /\
     ( TermSort %|-* [] )
-  Let -> Grammar.makeRule [] [] \[] ->
+  Let -> Grammar.makeRule [] \[] ->
     [ VarSort %|-* []
     , TermSort %|-* []
     , TermSort %|-* [] ] /\
     ( TermSort %|-* [] )
-  TermHole -> Grammar.makeRule [] [] \[] ->
+  TermHole -> Grammar.makeRule [] \[] ->
     [ TermSort %|-* [] ] /\
     ( TermSort %|-* [] )
   -- <<Args>>
-  ConsArgs -> Grammar.makeRule [] [] \[] ->
+  ConsArgs -> Grammar.makeRule [] \[] ->
     [ TermSort %|-* []
     , ArgsSort %|-* [] ] /\
     ( ArgsSort %|-* [] )
-  NilArgs -> Grammar.makeRule [] [] \[] ->
+  NilArgs -> Grammar.makeRule [] \[] ->
     [ ArgsSort %|-* [] ] /\
     ( ArgsSort %|-* [] )

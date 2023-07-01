@@ -59,8 +59,8 @@ data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Dir
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
 --makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> Array (String /\ Sort l) -> DerivLabel l r
-dTERM :: forall l r. IsRuleLabel l r => r -> Array (String /\ Grammar.Sort l) -> Array (String /\ Grammar.Sort l) -> Array (SSTerm l r) -> SSTerm l r
-dTERM ruleLabel datavalues values kids = (Inject (Grammar.makeLabel ruleLabel datavalues values)) % kids
+dTERM :: forall l r. IsRuleLabel l r => r -> Array (String /\ Grammar.Sort l) -> Array (SSTerm l r) -> SSTerm l r
+dTERM ruleLabel values kids = (Inject (Grammar.makeLabel ruleLabel values)) % kids
 
 type StepRule l r = SSTerm l r -> Maybe (SSTerm l r)
 
