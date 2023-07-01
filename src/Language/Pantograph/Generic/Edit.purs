@@ -59,6 +59,7 @@ newPathFromRule r kidIx = do
       defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $ 
         sequence (defaultDerivTerm <$> hypSortPath)
 
+  -- Some of the children might have more specialized types, so we need to unify by calling infer. (e.g. in lambda, we call defaultDerivTerm on sort (Name ?x), but we actually get something of sort (Name ""))
   let path1 = Expr.Path (List.singleton (DerivLabel r sub %< defaultHypDerivPath))
 --  traceM ("in newPathFromRule:")
 --  traceM ("path1 is: " <> pretty path1)

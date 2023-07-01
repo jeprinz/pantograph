@@ -156,6 +156,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     _ -> false
 
   -- Note from Jacob: TODO: can we put this particular function in EditorSpec instead of the typeclass? It really doesn't make sense in the typeclass.
+  -- NOTE: a criteria is that defaultDerivTerm' should return something with a sort either equal to the input sort, or a specialization (substitution) of it. See the NameSortLabel case; it could input (Name ?x) but output something of the sort (Name "")
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma] % [])
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x]) = empty
   -- NOTE from jacob: I made it only work if given (Name (String _)) and not (Name ?x) because the latter shouldn't appear in programs.
