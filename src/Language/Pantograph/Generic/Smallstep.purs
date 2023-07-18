@@ -342,7 +342,7 @@ infixl 7 injectSSMatchTerm as %#
 makeDownRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
        MatchSortChange l -- match the change going down, resulting in both sorts and sort changes that get matches
     -> SSMatchTerm l r -- match the expression within the boundary
-    -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
+    -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> Maybe (SSTerm l r))
     -> StepRule l r
 makeDownRule changeMatch derivMatch output term
     = case term of
@@ -351,7 +351,7 @@ makeDownRule changeMatch derivMatch output term
 --        traceM ("result is " <> pretty (Expr.matchChange inputCh changeMatch))
         sortMatches /\ changeMatches <- Expr.matchChange inputCh changeMatch
         derivMatches <- Expr.matchDiffExprs compareMatchLabel inputDeriv derivMatch
-        Just $ unsafePartial $ output sortMatches changeMatches derivMatches
+        unsafePartial $ output sortMatches changeMatches derivMatches
       _ -> Nothing
 
 -- A possible design, I don't know if its what I want yet:
@@ -359,7 +359,7 @@ makeUpRule1 :: forall l r. IsExprLabel l => IsRuleLabel l r =>
        MatchSortChange l -- match the change going up, resulting in both sorts and sort changes that get matches
     -> Expr.Expr (Expr.MatchLabel (StepExprLabel l r)) -- match the expression within the boundary
     -> (Partial => Array (SSTerm l r) ->
-            ( SSTerm l r -- The child that is supposed to be the up boundary
+            ( SSTerm l r -- The child that is supposed to be the up boundary (the "makeUpRule" function needs to know which child of the node is supposed to be where the boundary is coming from. You tell it where to look for the boundary by outputing that subterm of the expression we matched against)
             /\ (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -- If that was a boundary and the change matches, here are the matches
                 -> SSTerm l r -- Here is the term inside the boundary
                 -> SSTerm l r {- This is the output term finally output by the rule -})))

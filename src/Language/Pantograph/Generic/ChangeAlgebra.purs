@@ -98,7 +98,7 @@ rEndpoint = snd <<< endpoints
 -- actually, I'm not sure we need this.
 -- LUB (+ X -> A) (+ Y -> A) -- no unique solution!
 -- if you have changes where Plus and Minus DONT cancel each other out, then changes form a category without inverses.
--- this function returns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
+-- this functireturns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
 lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
 lub c1 c2 =
 --    trace ("lub called with: c1 is " <> pretty c1 <> " and c2 is " <> pretty c2) \_ ->

@@ -54,10 +54,12 @@ import Util (fromJust)
 --------------------------------------------------------------------------------
 
 data PreSortLabel
-  = VarSort {-Ctx-} {-String-}
+  = VarSort {-Ctx-} {-String-} {-Local or NonLocal-}
   | TermSort {-Ctx-}
   | CtxConsSort {-String-} {-Ctx-}
   | CtxNilSort
+  | Local
+  | NonLocal
 
 derive instance Generic PreSortLabel _
 instance Show PreSortLabel where show x = genericShow x
@@ -72,11 +74,15 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (TermSort /\ [gamma]) = "Term" <+> parens gamma
   prettyExprF'_unsafe (CtxConsSort /\ [x, gamma]) = x <> ", " <> gamma
   prettyExprF'_unsafe (CtxNilSort /\ []) = "∅"
+  prettyExprF'_unsafe (Local /\ []) = "Local"
+  prettyExprF'_unsafe (NonLocal /\ []) = "NonLocal"
 
-  expectedKidsCount VarSort = 2
+  expectedKidsCount VarSort = 3
   expectedKidsCount TermSort = 1
   expectedKidsCount CtxConsSort = 2
   expectedKidsCount CtxNilSort = 0
+  expectedKidsCount Local = 0
+  expectedKidsCount NonLocal = 0
 
 --------------------------------------------------------------------------------
 -- Expr
@@ -173,12 +179,12 @@ language = TotalMap.makeTotalMap case _ of
   Zero -> Grammar.makeRule ["gamma", "x"] \[gamma, x] ->
     []
     /\ --------
-    ( VarSort %|-* [x %: gamma, x] )
+    ( VarSort %|-* [x %: gamma, x, Local %|-* []] )
 
-  Suc -> Grammar.makeRule ["gamma", "x", "y"] \[gamma, x, y] ->
-    [ VarSort %|-* [gamma, x] ]
+  Suc -> Grammar.makeRule ["gamma", "x", "y", "locality"] \[gamma, x, y, locality] ->
+    [ VarSort %|-* [gamma, x, locality] ]
     /\ --------
-    ( VarSort %|-* [(y %: gamma), x] )
+    ( VarSort %|-* [(y %: gamma), x, locality] )
 
   Lam -> Grammar.makeRule ["x", "gamma"] \[x, gamma] ->
     [ Grammar.NameSortLabel %* [x]
@@ -192,13 +198,13 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TermSort %|-* [gamma] )
 
-  FreeVar -> Grammar.makeRule ["gamma", "name"] \[gamma, _name] -> -- Note that name is stored in the FreeVar, but doesn't affect typing rules. This is fine
+  FreeVar -> Grammar.makeRule ["name"] \[name] -> -- Note that name is stored in the FreeVar, but doesn't affect typing rules. This is fine
     []
     /\ --------
-    ( TermSort %|-* [gamma] )
+    ( VarSort %|-* [CtxNilSort %|-* [], name, NonLocal %|-* []] )
 
-  Ref -> Grammar.makeRule ["gamma", "x"] \[gamma, x] ->
-    [ VarSort %|-* [gamma, x] ]
+  Ref -> Grammar.makeRule ["gamma", "x", "locality"] \[gamma, x, locality] ->
+    [ VarSort %|-* [gamma, x, locality] ]
     /\ --------
     ( TermSort %|-* [gamma] )
 
@@ -323,7 +329,7 @@ getIndices :: Sort -> List DerivTerm
 getIndices ctx = Expr.matchExpr2 ctx
     (sor CtxConsSort %$ [slot, slot]) (\[name, ctx'] ->
         let wrapInSuc var =
-             Expr.matchExpr (Grammar.derivTermSort var) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
+             Expr.matchExpr (Grammar.derivTermSort var) (sor VarSort %$ [slot , slot, slot]) \[gamma, x, locality] ->
              Grammar.makeLabel Suc [ "gamma" /\ gamma , "x" /\ x , "y" /\ name]
              % [var]
         in
@@ -340,13 +346,13 @@ getVarEdits :: {-sort-}Sort -> List Edit
 getVarEdits sort =
     Expr.matchExpr2 sort (sor TermSort %$ [slot]) (\[ctx] ->
             let wrapInRef index =
-                 Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot]) \[gamma, x] ->
-                 Grammar.makeLabel Ref [ "gamma" /\ gamma , "x" /\ x]
+                 Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot, slot]) \[gamma, x, locality] ->
+                 Grammar.makeLabel Ref [ "gamma" /\ gamma , "x" /\ x, "locality" /\ locality]
                  % [index]
             in
             let indices = getIndices ctx in
             let makeEdit index =
-                    Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot]) \[_ctx2, name] ->
+                    Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot, slot]) \[_ctx2, name, locality] ->
                     let var = wrapInRef index in
                     {
                         label: Grammar.matchStringLabel name
@@ -376,34 +382,42 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 
 type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
 
--- down{i}_(VarSort (+ y, ctx) x) -> Suc i
+-- down{i}_(VarSort (+ y, ctx) x _) -> Suc i
 insertSucRule :: StepRule
 insertSucRule = SmallStep.makeDownRule
-    (VarSort %+- [dPLUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot])
+    (VarSort %+- [dPLUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot, {-locality-}cSlot])
     {-i-}slot
-    (\[y] [ctx, x] [i] ->
-        dTERM Suc ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y] [i])
+    (\[y] [ctx, x, locality] [i] ->
+        pure $ dTERM Suc ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y, "locality" /\ rEndpoint locality] [i])
         -- x is type of var, y is type of thing added to ctx
 
-{-
-TODO: how to deal with turning debruin indices into free vars when they are deleted from context?
-One possibility: Have the following rules:
-    down{Z}_{VarSort (- y , ctx) x} ==> up{FreeVar x}_{VarSort ctx' _ ~> TermSort ctx'}
-    S (up {t}_{VarSort ctx ~> TermSort ctx}) ==> {t}_{VarSort (_ , ctx) _ ~> (_ , ctx)}
-    Ref (up {t}_{VarSort ctx _ ~> TermSort ctx}) ==> t
--}
---- Rules for converting a var into a FreeVar when it's removed from context
+-- ALTERNATIVE I'M NOT USING: down {Z}_(VarSort (- y, ctx) x Local) ~~> up{S....S FreeVar}_(Var ctx A (Replace Local NonLocal))
+-- down{Z}_(VarSort (- A, Gamma) A Local) ~> up{down{FreeVar}_(Var (diff Gamma 0) A NonLocal))}_(VarSort Gamma A (Replace Local NonLocal))
+localBecomesNonlocal :: StepRule
+localBecomesNonlocal = SmallStep.makeDownRule
+    (VarSort %+- [dMINUS CtxConsSort [{-a-}slot] {-ctx-} cSlot [], {-a'-}cSlot, Local %+- []])
+    (Zero %# [])
+    (\[a] [ctx, a'] [] ->
+        if not (ChangeAlgebra.inject a == a') then Maybe.Nothing else
+        pure $ SmallStep.wrapBoundary SmallStep.Up (Expr.Replace (sor Local % []) (sor NonLocal % []) % [])
+            (SmallStep.wrapBoundary SmallStep.Down (ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx))
+                (dTERM FreeVar ["name" /\ a] [])))
 
-----  down{Z}_{VarSort (- y , ctx) x} ==> up{FreeVar x}_{VarSort ctx' _ ~> TermSort ctx'}
---deleteZRule :: StepRule
---deleteZRule = SmallStep.makeDownRule
---    (VarSort %+- [dMINUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot])
---    (Zero %# [])
---    (\[y] [ctx, x] [] ->
---        SmallStep.wrapBoundary SmallStep.Up
---            (Expr.Replace
---                (sor VarSort % [])
---                ?h % []) (dTERM FreeVar [] [] []))
+-- down{Suc i}_(VarSort (- y, ctx) x _) -> i
+removeSucRule :: StepRule
+removeSucRule = SmallStep.makeDownRule
+    (VarSort %+- [dMINUS CtxConsSort [{-y-}slot] {-ctx-} cSlot [], {-x-}cSlot, {-locality-}cSlot])
+    (Suc %# [{-i-}slot])
+    (\[_y] [_ctx, _x, _locality] [i] -> pure $ i)
+
+--- down{i}_(Var (+ A , ctx) A NonLocal) ~~> Z
+nonlocalBecomesLocal :: StepRule
+nonlocalBecomesLocal = SmallStep.makeDownRule
+    (VarSort %+- [dPLUS CtxConsSort [{-a-}slot] {-ctx-} cSlot [], {-a'-}cSlot, NonLocal %+- []])
+    {-i-}slot
+    (\[a] [ctx, a'] [] ->
+        if not (ChangeAlgebra.inject a == a') then Maybe.Nothing else
+        pure $ dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a] [])
 
 stepRules :: List StepRule
 stepRules = do
@@ -411,6 +425,9 @@ stepRules = do
   List.fromFoldable
     [
     insertSucRule
+    , removeSucRule
+    , localBecomesNonlocal
+    , nonlocalBecomesLocal
     , SmallStep.defaultDown chLang
     , SmallStep.defaultUp chLang
     ]
