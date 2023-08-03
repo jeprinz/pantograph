@@ -208,9 +208,13 @@ derive instance Traversable SortLabel
 freshMetaVarSort :: forall l. String -> Sort l
 freshMetaVarSort name = Expr.Meta (Either.Left (freshMetaVar name)) % []
 
--- JACOB: please give this a better name or at least an explanation
+-- This is used as part of a DSL for building up sorts.
 sor :: forall l. l -> Expr.Meta (SortLabel l)
 sor l = pure (InjectSortLabel l)
+
+-- This is used as part of a DSL for building up sort changes
+csor :: forall l. l -> Expr.ChangeLabel (Expr.Meta (SortLabel l))
+csor l = Expr.Inject (pure (InjectSortLabel l))
 
 -- assert that a label is a name and return the string
 matchNameLabel :: forall l. Sort l -> String
