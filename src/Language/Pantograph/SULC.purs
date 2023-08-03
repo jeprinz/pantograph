@@ -70,7 +70,7 @@ instance Pretty PreSortLabel where
   pretty = show
 
 instance IsExprLabel PreSortLabel where
-  prettyExprF'_unsafe (VarSort /\ [gamma, x]) = "Var" <+> parens gamma <+> x
+  prettyExprF'_unsafe (VarSort /\ [gamma, x, locality]) = "Var" <+> parens gamma <+> x <+> "(" <> show locality <> ")"
   prettyExprF'_unsafe (TermSort /\ [gamma]) = "Term" <+> parens gamma
   prettyExprF'_unsafe (CtxConsSort /\ [x, gamma]) = x <> ", " <> gamma
   prettyExprF'_unsafe (CtxNilSort /\ []) = "∅"
@@ -164,7 +164,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   -- Note from Jacob: TODO: can we put this particular function in EditorSpec instead of the typeclass? It really doesn't make sense in the typeclass.
   -- NOTE: a criteria is that defaultDerivTerm' should return something with a sort either equal to the input sort, or a specialization (substitution) of it. See the NameSortLabel case; it could input (Name ?x) but output something of the sort (Name "")
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma]) = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma] % [])
-  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x]) = empty
+  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x, _locality]) = empty
   -- NOTE from jacob: I made it only work if given (Name (String _)) and not (Name ?x) because the latter shouldn't appear in programs.
 --  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [Expr.Meta (Right (Grammar.StringSortLabel _str)) % []]) = pure $ Grammar.DerivString "" % []
   defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % []
@@ -255,7 +255,9 @@ arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel Rule
 arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % 
     [ _gamma
-    , Expr.Meta (Right (Grammar.StringSortLabel str)) % [] ]) -> 
+    , Expr.Meta (Right (Grammar.StringSortLabel str)) % [] 
+    , _ ]) -> 
+    -- TODO: use locality in rendering?
     [pure [nameElem str]]
   -- term
   Ref /\ _ -> 
