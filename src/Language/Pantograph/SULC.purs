@@ -394,7 +394,7 @@ insertSucRule = SmallStep.makeDownRule
         -- x is type of var, y is type of thing added to ctx
 
 -- ALTERNATIVE I'M NOT USING: down {Z}_(VarSort (- y, ctx) x Local) ~~> up{S....S FreeVar}_(Var ctx A (Replace Local NonLocal))
--- down{Z}_(VarSort (- A, Gamma) A Local) ~> up{down{FreeVar}_(Var (diff Gamma 0) A NonLocal))}_(VarSort Gamma A (Replace Local NonLocal))
+-- INSTEAD I'M USING: down{Z}_(VarSort (- A, Gamma) A Local) ~> up{down{FreeVar}_(Var (diff Gamma 0) A NonLocal))}_(VarSort Gamma A (Replace Local NonLocal))
 localBecomesNonlocal :: StepRule
 localBecomesNonlocal = SmallStep.makeDownRule
     (VarSort %+- [dMINUS CtxConsSort [{-a-}slot] {-ctx-} cSlot [], {-a'-}cSlot, Local %+- []])
