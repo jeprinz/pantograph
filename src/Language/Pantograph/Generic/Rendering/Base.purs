@@ -100,6 +100,14 @@ type PreKid l r =
 type EditorSpec l r =
   { dterm :: DerivTerm l r
   
+  -- | removePathChanges: (bottomSort: Sort, topSort: Sort) → (downChange, upChange, cursorSort)
+  -- | - endpoints downChange = (bottomSort, cursorSort)
+  -- | - endpoints upChange = (topSort, cursorSort)
+  -- | - computes new cursorSort
+  , removePathChanges :: 
+      {bottomSort :: Sort l, topSort :: Sort l} -> 
+      {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
+
   -- The output terms are valid (already checked via unification when
   -- generated).
   , editsAtHoleInterior :: Sort l -> Array (Edit l r)

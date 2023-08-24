@@ -384,6 +384,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 
 type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
 
+-- TODO:JACOB: propogate ctx changes down (and following rule)
 -- down{i}_(VarSort (+ y, ctx) x _) -> Suc i
 insertSucRule :: StepRule
 insertSucRule = SmallStep.makeDownRule
@@ -393,8 +394,12 @@ insertSucRule = SmallStep.makeDownRule
         pure $ dTERM Suc ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y, "locality" /\ rEndpoint locality] [i])
         -- x is type of var, y is type of thing added to ctx
 
+-- diff 0 (A, B, 0) = (+A, +B, 0) 
+-- i.e. adds to the LHS context in order to produce the RHS context i.e. what
+-- change required of the first context to get second context
+
 -- ALTERNATIVE I'M NOT USING: down {Z}_(VarSort (- y, ctx) x Local) ~~> up{S....S FreeVar}_(Var ctx A (Replace Local NonLocal))
--- INSTEAD I'M USING: down{Z}_(VarSort (- A, Gamma) A Local) ~> up{down{FreeVar}_(Var (diff Gamma 0) A NonLocal))}_(VarSort Gamma A (Replace Local NonLocal))
+-- INSTEAD I'M USING: down{Z}_(VarSort (- A, Gamma) A Local) ~> up{down{FreeVar}_(Var (diff 0 Gamma) A NonLocal))}_(VarSort Gamma A (Replace Local NonLocal))
 localBecomesNonlocal :: StepRule
 localBecomesNonlocal = SmallStep.makeDownRule
     (VarSort %+- [dMINUS CtxConsSort [{-a-}slot] {-ctx-} cSlot [], {-a'-}cSlot, Local %+- []])
@@ -438,10 +443,13 @@ stepRules = do
 -- EditorSpec
 --------------------------------------------------------------------------------
 
+removePathChanges _  = hole "removePathChanges"
+
 editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =
   { dterm: assertI $ just "SULC dterm" $ 
       Grammar.defaultDerivTerm (TermSort %|-* [CtxNilSort %|-* []])
+  , removePathChanges
   , editsAtCursor
   , editsAtHoleInterior
   , arrangeDerivTermSubs

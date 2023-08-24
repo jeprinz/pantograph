@@ -412,9 +412,33 @@ editorComponent = HK.component \tokens spec -> HK.do
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
+
+
+          -- else if key == "Backspace" then do
+          --   -- escape to cursor state, but without selection (updates state)
+          --   setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm)))
+
           else if key == "Backspace" then do
-            -- escape to cursor state, but without selection (updates state)
-            setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm)))
+            let Expr.Zipperp path selection dterm = select.dzipperp
+            let sort = derivTermSort dterm
+            let selection'' = case selection of
+                  Left p -> Expr.toUpPath p
+                  Right p -> Expr.toUpPath p
+
+            let {downChange, upChange, cursorSort: _} =
+                  spec.removePathChanges
+                    { bottomSort: sort
+                    , topSort: derivPathSort selection'' sort }
+
+            let ssterm = setupSSTermFromWrapAction
+                  path
+                  upChange
+                  (Expr.Path mempty)
+                  downChange 
+                  dterm
+
+            setState $ SmallStepState {ssterm}
+
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
