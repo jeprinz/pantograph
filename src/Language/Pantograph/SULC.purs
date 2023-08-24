@@ -154,6 +154,8 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (TermHole /\ []) = "?"
   prettyExprF'_unsafe_RuleLabel (FormatRule Newline /\ [a]) = "<newline> " <> a
   prettyExprF'_unsafe_RuleLabel (FormatRule Comment /\ [str, a]) = " /* " <> str <> "*/ " <> a
+  prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
+--  prettyExprF'_unsafe_RuleLabel other = trace ("the input was: " <> show other) \_ -> hole "no"
 
   language = language
 
@@ -238,6 +240,7 @@ type DerivZipperp = Grammar.DerivZipperp PreSortLabel RuleLabel
 --------------------------------------------------------------------------------
 
 type LanguageChanges = Grammar.LanguageChanges PreSortLabel RuleLabel
+type SortChange = Grammar.SortChange PreSortLabel
 type ChangeRule = Grammar.ChangeRule PreSortLabel
 
 languageChanges :: LanguageChanges
@@ -332,7 +335,7 @@ getIndices ctx = Expr.matchExpr2 ctx
     (sor CtxConsSort %$ [slot, slot]) (\[name, ctx'] ->
         let wrapInSuc var =
              Expr.matchExpr (Grammar.derivTermSort var) (sor VarSort %$ [slot , slot, slot]) \[gamma, x, locality] ->
-             Grammar.makeLabel Suc [ "gamma" /\ gamma , "x" /\ x , "y" /\ name]
+             Grammar.makeLabel Suc [ "gamma" /\ gamma , "x" /\ x , "y" /\ name, "locality" /\ locality]
              % [var]
         in
         -- new var
@@ -407,8 +410,9 @@ localBecomesNonlocal = SmallStep.makeDownRule
     (Zero %# [])
     (\[a] [ctx, a'] [] ->
         if not (ChangeAlgebra.inject a == a') then Maybe.Nothing else
-        pure $ SmallStep.wrapBoundary SmallStep.Up (Expr.Replace (sor Local % []) (sor NonLocal % []) % [])
-            (SmallStep.wrapBoundary SmallStep.Down (ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx))
+        -- TODO: the bugs here are that the boundaries going up and down are only part, we need the whole bussiness with Var and all its arguments.
+        pure $ SmallStep.wrapBoundary SmallStep.Up (csor VarSort % [ctx, a', Expr.Replace (sor Local % []) (sor NonLocal % []) % []])
+            (SmallStep.wrapBoundary SmallStep.Down (csor VarSort % [ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx), ChangeAlgebra.inject a, csor NonLocal % []])
                 (dTERM FreeVar ["name" /\ a] [])))
 
 -- down{Suc i}_(VarSort (- y, ctx) x locality) -> down{i}_(VarSort ctx x locality)
@@ -442,11 +446,18 @@ stepRules = do
     , SmallStep.defaultUp chLang
     ]
 
+removePathChanges ::
+  {bottomSort :: Sort, topSort :: Sort} ->
+  {downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort}
+removePathChanges {bottomSort, topSort} = {
+    downChange: ChangeAlgebra.diff bottomSort topSort
+    , upChange: ChangeAlgebra.inject topSort
+    , cursorSort: topSort
+}
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
-
-removePathChanges _  = hole "removePathChanges"
 
 editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =

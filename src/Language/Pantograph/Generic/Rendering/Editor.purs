@@ -477,6 +477,9 @@ editorComponent = HK.component \tokens spec -> HK.do
             case SmallStep.step ss.ssterm spec.stepRules of
               Nothing -> setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper ss.ssterm)))
               Just ssterm -> setState $ SmallStepState ss {ssterm = ssterm}
+          else if key == "Enter" then do
+            let final = SmallStep.stepRepeatedly ss.ssterm spec.stepRules
+            setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper final)))
           else
             pure unit
 
