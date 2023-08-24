@@ -34,7 +34,7 @@ import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
-import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor)
+import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor, csor)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
@@ -384,14 +384,15 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 
 type StepRule = SmallStep.StepRule PreSortLabel RuleLabel
 
--- TODO:JACOB: propogate ctx changes down (and following rule)
--- down{i}_(VarSort (+ y, ctx) x _) -> Suc i
+-- down{i}_(VarSort (+ y, ctx) x locality) -> Suc down{i}_(VarSort ctx x locality)
 insertSucRule :: StepRule
 insertSucRule = SmallStep.makeDownRule
     (VarSort %+- [dPLUS CtxConsSort [{-y-}slot] {-ctx-}cSlot [], {-x-}cSlot, {-locality-}cSlot])
     {-i-}slot
     (\[y] [ctx, x, locality] [i] ->
-        pure $ dTERM Suc ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y, "locality" /\ rEndpoint locality] [i])
+        pure $
+            SmallStep.wrapBoundary SmallStep.Down (csor VarSort % [ctx, x, locality]) $
+            dTERM Suc ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "y" /\ y, "locality" /\ rEndpoint locality] [i])
         -- x is type of var, y is type of thing added to ctx
 
 -- diff 0 (A, B, 0) = (+A, +B, 0) 
@@ -410,12 +411,14 @@ localBecomesNonlocal = SmallStep.makeDownRule
             (SmallStep.wrapBoundary SmallStep.Down (ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx))
                 (dTERM FreeVar ["name" /\ a] [])))
 
--- down{Suc i}_(VarSort (- y, ctx) x _) -> i
+-- down{Suc i}_(VarSort (- y, ctx) x locality) -> down{i}_(VarSort ctx x locality)
 removeSucRule :: StepRule
 removeSucRule = SmallStep.makeDownRule
     (VarSort %+- [dMINUS CtxConsSort [{-y-}slot] {-ctx-} cSlot [], {-x-}cSlot, {-locality-}cSlot])
     (Suc %# [{-i-}slot])
-    (\[_y] [_ctx, _x, _locality] [i] -> pure $ i)
+    (\[_y] [ctx, x, locality] [i] -> pure $
+        SmallStep.wrapBoundary SmallStep.Down (csor VarSort % [ctx, x, locality]) $
+        i)
 
 --- down{i}_(Var (+ A , ctx) A NonLocal) ~~> Z
 nonlocalBecomesLocal :: StepRule
