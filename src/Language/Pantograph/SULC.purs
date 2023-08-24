@@ -259,9 +259,10 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % 
     [ _gamma
     , Expr.Meta (Right (Grammar.StringSortLabel str)) % [] 
-    , _ ]) -> 
+    , locality ]) ->
     -- TODO: use locality in rendering?
-    [pure [nameElem str]]
+    let postfix = if locality == sor Local % [] then "" else "!" in
+    [pure [nameElem (str <> postfix)]]
   -- term
   Ref /\ _ -> 
     [pure [refElem], Left (renCtx /\ 0)]
