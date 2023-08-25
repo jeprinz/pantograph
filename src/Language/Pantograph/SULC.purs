@@ -379,7 +379,8 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> []
 editsAtCursor cursorSort = Array.mapMaybe identity
     [makeEditFromPath (newPathFromRule Lam 1) "lambda" cursorSort,
-    makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort]
+    makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort,
+    makeEditFromPath (newPathFromRule (FormatRule Newline) 0 )"newline" cursorSort]
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 
 --------------------------------------------------------------------------------
