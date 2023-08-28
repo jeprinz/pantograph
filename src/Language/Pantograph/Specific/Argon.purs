@@ -19,7 +19,7 @@
 -- |
 -- | <<Name> ::= Name(<<Label>>)
 -- |
-module Language.Pantograph.Argon where
+module Language.Pantograph.Specific.Argon where
 
 import Data.Tuple.Nested
 import Prelude

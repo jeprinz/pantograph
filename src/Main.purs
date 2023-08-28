@@ -1,6 +1,6 @@
 module Main where
 
-import Language.Pantograph.SULC (editorSpec)
+import Language.Pantograph.Specific.SULC (editorSpec)
 import Prelude
 
 import Bug.Assertion (assert, just)

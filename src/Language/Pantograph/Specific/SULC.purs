@@ -1,4 +1,4 @@
-module Language.Pantograph.SULC where
+module Language.Pantograph.Specific.SULC where
 
 import Data.Tuple.Nested
 import Prelude
