@@ -565,6 +565,18 @@ subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially"
       Just mexpr -> mexpr
     Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
 
+--    Minus [kid] -> ?h
+--    Inject kids -> ?h
+--    Replace t1 t2 -> ?h
+--subMetaChangePartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially") go
+--  where
+--  go :: Partial => _
+--  go = case _ of
+--    Meta (Left mx) % [] -> case Map.lookup mx sigma of
+--      Nothing -> Meta (Left mx) % []
+--      Just mexpr -> mexpr
+--    Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
+
 --------------------------------------------------------------------------------
 -- Pattern Matching
 --------------------------------------------------------------------------------

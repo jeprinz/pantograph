@@ -200,7 +200,8 @@ diff e1@(Expr l1 kids1) e2@(Expr l2 kids2) =
 isPostfix :: forall l. Eq l => Expr l -> Expr l -> Maybe (Change l)
 isPostfix e1 e2 | e1 == e2 = Just $ map Inject e1
 isPostfix (Expr l kids) e2 =
-    let splits = Array.mapWithIndex (\index kid -> Array.take index kids /\ kid /\ Array.drop (Array.length kids - index + 1) kids) kids in
+--    let splits = Array.mapWithIndex (\index kid -> Array.take index kids /\ kid /\ Array.drop (Array.length kids - index + 1) kids) kids in
+    let splits = Array.mapWithIndex (\index kid -> Array.take index kids /\ kid /\ Array.drop (index + 1) kids) kids in
     findMap (\(leftKids /\ kid /\ rightKids) ->
         do
             innerCh <- isPostfix kid e2

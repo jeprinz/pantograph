@@ -288,6 +288,7 @@ defaultUp _ _ = Nothing
 -------------- Other typechange related functions ---------------------
 
 -- the input sort is the bottom sort
+-- The output change goes from the bottom to the top
 getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.IsRuleLabel l r => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Grammar.Sort l -> Grammar.SortChange l
 getPathChange _lang (Expr.Path Nil) bottomSort = inject bottomSort
 ---- getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivHole sort1) (ZipList.Path {left})) : path)) sort = unsafeCrashWith "Holes aren't paths"
@@ -295,21 +296,6 @@ getPathChange _lang (Expr.Path Nil) bottomSort = inject bottomSort
 getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivString _) _) : _)) _ = unsafeCrashWith "Strings aren't paths"
 getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.Path {left})) : path)) bottomSort =
     let Grammar.ChangeRule vars crustyKidChanges = TotalMap.lookup r lang in
-    
-    ----------------------------------------------------------------------------
-    -- -- [HENRY] I commented this out because you don't have to freshen here,
-    -- -- but im not sure if my translation below is correct, so i left the
-    -- -- original for you to check against
-    -- let crustyKidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
-    -- let freshener = genFreshener (Set.fromFoldable vars) in
-    -- let kidChange = freshen freshener crustyKidChange in
-    -- let leftType = snd $ endpoints kidChange in
-    -- -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
-    -- let kidChange' = subSomeMetaChange sub kidChange in
-    -- let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
-    -- compose kidChange' restOfPathChange
-    ----------------------------------------------------------------------------
-
     let kidChange = fromJust' "Array.index crustyKidChanges (Rev.length left)" $ Array.index crustyKidChanges (Rev.length left) in
     let leftType = snd $ endpoints kidChange in
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code

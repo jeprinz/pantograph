@@ -28,6 +28,7 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Text.Pretty (pretty, quotes)
 import Util (lookup', union')
 import Debug (trace)
+import Debug (traceM)
 
 {-
 
@@ -128,6 +129,7 @@ noMetaVars source mexpr0 = Assertion
 unify :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
 unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
     case l1 /\ l2 of
+        Left x1 /\ Left x2 | x1 == x2 -> Just (e1 /\ Map.empty)
         Left x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
         _ /\ Left x -> unify e2 e1
         Right l /\ Right l' | l == l' -> do

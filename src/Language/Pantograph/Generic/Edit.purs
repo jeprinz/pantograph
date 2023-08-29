@@ -61,12 +61,8 @@ newPathFromRule r kidIx = do
 
   -- Some of the children might have more specialized types, so we need to unify by calling infer. (e.g. in lambda, we call defaultDerivTerm on sort (Name ?x), but we actually get something of sort (Name ""))
   let path1 = Expr.Path (List.singleton (DerivLabel r sub %< defaultHypDerivPath))
---  traceM ("in newPathFromRule:")
---  traceM ("path1 is: " <> pretty path1)
   let sub = fromJust' "path didn't typecheck in newPathFromRule" $ inferPath (freshMetaVarSort "pathInside") path1
---  traceM ("sub is: " <> pretty sub)
   let path = subDerivPath sub path1
---  traceM ("path is: " <> pretty path)
   path /\ Expr.subMetaExprPartially sub  hypSort
 
 --  /\ hypSort
