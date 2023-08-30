@@ -412,7 +412,6 @@ makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
 makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
     let change = SmallStep.getPathChange languageChanges path bottomOfPathSort
     let preTopChange /\ preCursorSort /\ preBotChange = splitTopBottomChange (ChangeAlgebra.invert change)
-    traceM ("making edit for " <> name <> ". change is " <> pretty change <> " and preTopChange is " <> pretty preTopChange)
 --    _ /\ sub <- unify cursorSort preCursorSort -- TODO: should these arguments to unify be flipped? Does it matter?
     _ /\ sub <- unify preCursorSort cursorSort
     let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange

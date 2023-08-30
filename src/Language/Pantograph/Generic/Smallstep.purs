@@ -189,7 +189,8 @@ stepSomebody (t : ts) rules = case step t rules of
 -- when outputs `Nothing`, then done.
 step :: forall l r. SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
 step t@(Expr.Expr l kids) rules =
- case doAnyApply t rules of
+ let fullRules = stepUpThroughCursor : stepDownThroughCursor : rules in
+ case doAnyApply t fullRules of
      Nothing -> do
          kids' <- stepSomebody (List.fromFoldable kids) rules
          pure $ Expr.Expr l (Array.fromFoldable kids')
@@ -248,6 +249,16 @@ getFirst (x : xs) f = case f x of
         pure $ ((x : ts1) /\ a /\ ts2)
  Just a -> Just (Nil /\ a /\ xs)
 
+stepDownThroughCursor :: forall l r. StepRule l r
+stepDownThroughCursor prog@(Expr.Expr (Boundary Down ch) [Expr.Expr Cursor [kid]]) =
+    Just $ Expr.Expr Cursor [Expr.Expr (Boundary Down ch) [kid]]
+stepDownThroughCursor _ = Nothing
+
+stepUpThroughCursor :: forall l r. StepRule l r
+stepUpThroughCursor prog@(Expr.Expr Cursor [Expr.Expr (Boundary Up ch) [kid]]) =
+    Just $ Expr.Expr (Boundary Up ch) [Expr.Expr Cursor [kid]]
+stepUpThroughCursor _ = Nothing
+
 -- Down rule that steps boundary through form - defined generically for every typing rule!
 defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
 defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids]) =
@@ -302,7 +313,6 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.P
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
     let kidChange' = subSomeMetaChange sub kidChange in
     let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
-    trace ("kidChange' is: " <> pretty kidChange' <> " and restOPC is " <> pretty restOfPathChange <> " and compose ... is " <> pretty (compose kidChange' restOfPathChange)) \_ ->
     compose kidChange' restOfPathChange
 
 
