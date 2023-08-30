@@ -39,6 +39,7 @@ import Hole as Hole
 import Type.Direction as Dir
 import Data.Traversable (sequence)
 import Data.List.Rev as RevList
+import Debug (trace)
 
 --------------------------------------------------------------------------------
 -- IsRuleLabel
@@ -349,7 +350,7 @@ type LanguageChanges l r = TotalMap r (ChangeRule l) -- changes go from child to
 
 defaultLanguageChanges :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r => Language l r -> LanguageChanges l r
 defaultLanguageChanges = map \(Rule mvars kids parent) ->
-  ChangeRule mvars (kids <#> \kid -> diff kid parent) 
+  ChangeRule mvars (kids <#> \kid -> diff kid parent)
 
 -- | A `ChangeRule` is oriented from parent to kid i.e. it describes the changes
 -- to apply to the parent's kids.

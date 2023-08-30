@@ -44,6 +44,7 @@ import Debug (trace)
 import Debug (traceM)
 import Data.List.Rev as RevList
 import Partial.Unsafe (unsafePartial)
+import Debug (trace)
 
 data Direction = Up | Down -- TODO:
 
@@ -301,6 +302,7 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.P
     -- TODO: this should only substitute metavars in leftType, not in sort. I need to figure out how to codify that assumption in the code
     let kidChange' = subSomeMetaChange sub kidChange in
     let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
+    trace ("kidChange' is: " <> pretty kidChange' <> " and restOPC is " <> pretty restOfPathChange <> " and compose ... is " <> pretty (compose kidChange' restOfPathChange)) \_ ->
     compose kidChange' restOfPathChange
 
 

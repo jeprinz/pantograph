@@ -10,9 +10,7 @@ import Bug as Bug
 import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Foldable (findMap)
-import Data.Foldable (foldl)
-import Data.Foldable (intercalate)
+import Data.Foldable (findMap, foldl, intercalate, and)
 import Data.List as List
 import Data.List.Rev (unreverse, reverse)
 import Data.List.Zip (Path(..))
@@ -142,6 +140,19 @@ compose c1 c2 =
                 (Array.fromFoldable $ map (map Inject) $ right)
         _ /\ (Expr (Plus l) [c2']) -> Expr (Plus l) [compose c1 c2']
         (Expr (Minus l) [c1']) /\ _ -> Expr (Minus l) [compose c1' c2]
+        -- TODO: BUG: needs to deal with Plus /\ Inject case and Inject /\ Minus case
+        (Expr (Plus th@(Tooth l1 p)) [c1']) /\ (Expr (Inject l2) kids2)
+            | l1 == l2
+            , p2 /\ kid <- fromJust' "compose" (ZipList.zipAt (ZipList.leftLength p) (List.fromFoldable kids2))
+            , and (List.zipWith (\e c -> inject e == c) (ZipList.unpath p)
+                (ZipList.unpath p2)) ->
+            Expr (Plus th) [compose c1' kid]
+        (Expr (Inject l2) kids1) /\ (Expr (Minus th@(Tooth l1 p)) [c2'])
+            | l1 == l2
+            , p1 /\ kid <- fromJust' "compose" (ZipList.zipAt (ZipList.leftLength p) (List.fromFoldable kids1))
+            , and (List.zipWith (\e c -> inject e == c) (ZipList.unpath p)
+                (ZipList.unpath p1)) ->
+            Expr (Minus th) [compose kid c2']
         (Expr (Inject l1) kids1) /\ (Expr (Inject l2) kids2) | l1 == l2 ->
             Expr (Inject l1) (Array.zipWith compose kids1 kids2)
         _ -> do
@@ -200,7 +211,7 @@ diff e1@(Expr l1 kids1) e2@(Expr l2 kids2) =
 isPostfix :: forall l. Eq l => Expr l -> Expr l -> Maybe (Change l)
 isPostfix e1 e2 | e1 == e2 = Just $ map Inject e1
 isPostfix (Expr l kids) e2 =
---    let splits = Array.mapWithIndex (\index kid -> Array.take index kids /\ kid /\ Array.drop (Array.length kids - index + 1) kids) kids in
+-- TODO: this can probably be rewritten with utilities in Zip.purs like zipAt and zips
     let splits = Array.mapWithIndex (\index kid -> Array.take index kids /\ kid /\ Array.drop (index + 1) kids) kids in
     findMap (\(leftKids /\ kid /\ rightKids) ->
         do

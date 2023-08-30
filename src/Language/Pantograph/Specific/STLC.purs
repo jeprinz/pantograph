@@ -258,11 +258,11 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( s )
 
-  FormatRule Comment -> Grammar.makeRule ["comment", "gamma"] \[comment, gamma] ->
+  FormatRule Comment -> Grammar.makeRule ["comment", "gamma"] \[comment, s] ->
     [ Grammar.NameSortLabel %* [comment]
-    , TermSort %|-* [gamma] ]
+    , s ]
     /\ --------
-    ( TermSort %|-* [gamma] )
+    ( s )
 
   Let -> Grammar.makeRule ["x", "a", "b", "gamma"] \[x, a, b, gamma] ->
     [ Grammar.NameSortLabel %* [x]
@@ -334,7 +334,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
   Let /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
-    [pure [letElem], Left (renCtx /\ 0), pure [equalsElem], Left (renCtx /\ 1), pure [colonElem], Left (renCtx' /\ 2), pure [inElem], Left (renCtx' /\ 3)]
+    [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem], Left (renCtx' /\ 3)]
   App /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
@@ -412,6 +412,7 @@ makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
 makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
     let change = SmallStep.getPathChange languageChanges path bottomOfPathSort
     let preTopChange /\ preCursorSort /\ preBotChange = splitTopBottomChange (ChangeAlgebra.invert change)
+    traceM ("making edit for " <> name <> ". change is " <> pretty change <> " and preTopChange is " <> pretty preTopChange)
 --    _ /\ sub <- unify cursorSort preCursorSort -- TODO: should these arguments to unify be flipped? Does it matter?
     _ /\ sub <- unify preCursorSort cursorSort
     let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange
