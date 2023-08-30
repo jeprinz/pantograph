@@ -144,8 +144,9 @@ unifyLists (e1 : es1) (e2 : es2) = do
     let es1' = map (Expr.subMetaExprPartially sub) es1
     let es2' = map (Expr.subMetaExprPartially sub) es2
     es /\ sub2 <- unifyLists es1' es2'
-    pure $ (e : es) /\ union' sub sub2
+    pure $ (e : es) /\ composeSub sub sub2
 unifyLists _ _ = Bug.bug "[unifyLists] shouldn't happen"
+
 
 ------------- Another operation I need for typechanges stuff ------------------
 

@@ -218,7 +218,7 @@ language = TotalMap.makeTotalMap case _ of
   Zero -> Grammar.makeRule ["gamma", "x", "type"] \[gamma, x, ty] ->
     []
     /\ --------
-    ( VarSort %|-* [CtxConsSort %|-* [x, ty, gamma], x, Local %|-* []] )
+    ( VarSort %|-* [CtxConsSort %|-* [x, ty, gamma], x, ty, Local %|-* []] )
 
   Suc -> Grammar.makeRule ["gamma", "x", "typeX", "y", "typeY", "locality"] \[gamma, x, typeX, y, typeY, locality] ->
     [ VarSort %|-* [gamma, x, typeX, locality] ]
@@ -457,19 +457,19 @@ getVarEdits sort =
             in
             let indices = getIndices ctx in
             let makeEdit index =
-                    Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot, slot]) \[_ctx2, name, varTy, _locality] ->
-                    if varTy == ty then pure $
-                        let var = wrapInRef index in
-                        {
+                    Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot, slot, slot]) \[_ctx2, name, varTy, _locality] ->
+                    do
+                        newTy /\ sub <- unify varTy ty -- think about order
+                        let var = wrapInRef index
+                        pure {
                             label: Grammar.matchStringLabel name
                             , action: defer \_ -> Edit.ReplaceAction {
+                                -- TODO TODO TODO TODO TODO: needs to actually output the correct change, based on sub!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                -- should map sub by (x |-> e) -> x |-> (Replace x e), and then use that on ty?????
                                 topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
                                 , dterm: var
-    --                            topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
-    --                            , dterm: Grammar.makeLabel TermHole [] ["gamma" /\ ctx] % []
                             }
                         }
-                    else Maybe.Nothing
             in
             List.mapMaybe makeEdit indices
         )
