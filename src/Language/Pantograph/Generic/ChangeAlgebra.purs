@@ -97,6 +97,7 @@ rEndpoint = snd <<< endpoints
 -- LUB (+ X -> A) (+ Y -> A) -- no unique solution!
 -- if you have changes where Plus and Minus DONT cancel each other out, then changes form a category without inverses.
 -- this function returns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
+-- TODO: There might be a simpler way to define this function, which is that it's output either only has + or only has -    ???
 lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
 lub c1 c2 =
 --    trace ("lub called with: c1 is " <> pretty c1 <> " and c2 is " <> pretty c2) \_ ->
@@ -105,18 +106,26 @@ lub c1 c2 =
 --    trace ("got here") \_ ->
     case c1 /\ c2 of
         Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
-        _ | Just out <- leftLub c1 c2 -> pure out
-        _ | Just out <- leftLub c2 c1 -> pure out
+        _ | Just out <- plusLub c1 c2 -> pure out
+        _ | Just out <- plusLub c2 c1 -> pure out
+        _ | Just out <- minusLub c1 c2 -> pure out
+        _ | Just out <- minusLub c2 c1 -> pure out
         _ -> Nothing
 
--- TODO: This only really makes sense for Plus, right?
--- I need an analagous but different function for Minus?
-leftLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
-leftLub c1 c2 | c1 == c2 = Just c1
-leftLub (Expr (Plus th) [c1]) c2 = Expr (Plus th) <<< Array.singleton <$> (leftLub c1 c2)
-leftLub (Expr (Minus th) [c1]) c2 = Expr (Minus th) <<< Array.singleton <$> (leftLub c1 c2)
-leftLub c1@(Expr (Replace e1 e2) []) c2 | isId c2 = Just c1
-leftLub _ _ = Nothing
+plusLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
+plusLub c1 c2 | c1 == c2 = Just c1
+plusLub (Expr (Plus th) [c1]) c2 = Expr (Plus th) <<< Array.singleton <$> (plusLub c1 c2)
+plusLub c1@(Expr (Replace e1 e2) []) c2 | isId c2 = Just c1
+plusLub _ _ = Nothing
+
+minusLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
+minusLub c1 c2 | c1 == c2 = Just c1
+minusLub (Expr (Minus th@(Tooth l1 p)) [c1]) (Expr (Inject l2) kids)
+    | l1 == l2
+    , Array.length kids == 1 + ZipList.leftLength p + ZipList.rightLength p =
+    Expr (Minus th) <<< Array.singleton <$> (minusLub c1 (fromJust' "minusLub" $ Array.index kids (ZipList.leftLength p)))
+minusLub c1@(Expr (Replace e1 e2) []) c2 | isId c2 = Just c1
+minusLub _ _ = Nothing
 
 matchingEndpoints :: forall l. IsExprLabel l => String -> String -> Change l -> Change l -> Assertion Unit
 matchingEndpoints source message c1 c2 = makeAssertionBoolean
@@ -189,8 +198,9 @@ doOperation c1 c2 =
     let subc2 = subMetaExpr sub2 c2
 --    traceM ("subc2 is: " <> pretty subc2)
 --    traceM ("invert c1 is" <> pretty (invert c1))
---    traceM ("compose (invert c1) subc2 is" <> pretty (compose (invert c1) subc2))
-    pure $ (sub2 /\ compose (invert c1) subc2)
+    let result = (sub2 /\ compose (invert c1) subc2)
+--    traceM ("final result is " <> pretty result)
+    pure $ result
 
 {-
 Implementing a real tree diff algorithm is hard, so instead I have one that makes some assumptions about the inputs.
