@@ -20,6 +20,7 @@ import Data.List (List(..), (:))
 import Data.List as List
 import Data.Maybe (Maybe)
 import Data.Maybe as Maybe
+import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
@@ -362,11 +363,13 @@ getVarEdits sort =
                     let var = wrapInRef index in
                     {
                         label: Grammar.matchStringLabel name
+--                        , action: defer \_ -> Edit.FillAction {
+--                            sub: Map.empty
+--                            , dterm: var
+--                        }
                         , action: defer \_ -> Edit.ReplaceAction {
                             topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
                             , dterm: var
---                            topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
---                            , dterm: Grammar.makeLabel TermHole [] ["gamma" /\ ctx] % []
                         }
                     }
             in
@@ -449,13 +452,15 @@ stepRules = do
     ]
 
 removePathChanges ::
-  {bottomSort :: Sort, topSort :: Sort} ->
+  SortChange ->
   {downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort}
-removePathChanges {bottomSort, topSort} = {
-    downChange: ChangeAlgebra.diff bottomSort topSort
+removePathChanges ch =
+    let _bottomSort /\ topSort = ChangeAlgebra.endpoints ch in
+    {
+    downChange: ch
     , upChange: ChangeAlgebra.inject topSort
     , cursorSort: topSort
-}
+    }
 
 --------------------------------------------------------------------------------
 -- EditorSpec
@@ -472,5 +477,6 @@ editorSpec =
   , stepRules
   , isValidCursorSort: const true
   , isValidSelectionSorts: const true
+  , languageChanges
   }
 

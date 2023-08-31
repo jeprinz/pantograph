@@ -10,7 +10,7 @@ import Bug.Assertion (assert, assertI, just)
 import Control.Plus (empty)
 import Data.Array as Array
 import Data.Enum (enumFromTo)
-import Data.Expr ((%<))
+import Data.Expr ((%),(%<))
 import Data.Expr as Expr
 import Data.Lazy (Lazy, defer)
 import Data.List as List
@@ -43,11 +43,17 @@ data Action l r
   | ReplaceAction {topChange :: SortChange l, dterm :: DerivTerm l r}
   | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
 
+newTermFromRule :: forall l r. IsRuleLabel l r => r -> DerivTerm l r
+newTermFromRule r = do
+    let Rule mvars hyps' _con = TotalMap.lookup r language
+    let sub = freshenRuleMetaVars mvars
+    let hyps = Expr.subMetaExprPartially sub <$> hyps'
+    DerivLabel r sub % (map (fromJust' "yes" <<< defaultDerivTerm) hyps)
+
 newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
 newPathFromRule r kidIx = do
   let Rule mvars hyps' _con = TotalMap.lookup r language
   let sub = freshenRuleMetaVars mvars
---  let hyps = concretizeSort <$> hyps'
   let hyps = Expr.subMetaExprPartially sub <$> hyps'
 
   -- `hypSort` is the sort of what should got at position `kidIx`

@@ -32,7 +32,7 @@ import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
-import Language.Pantograph.Generic.Edit (newPathFromRule)
+import Language.Pantograph.Generic.Edit (newPathFromRule, newTermFromRule)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor, csor)
 import Language.Pantograph.Generic.Grammar as Grammar
@@ -187,6 +187,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "↦" <+> b
   prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
+  prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ []) = "?"
@@ -296,6 +297,7 @@ type DerivTerm = Grammar.DerivTerm PreSortLabel RuleLabel
 type DerivPath dir = Grammar.DerivPath dir PreSortLabel RuleLabel
 type DerivZipper = Grammar.DerivZipper PreSortLabel RuleLabel
 type DerivZipperp = Grammar.DerivZipperp PreSortLabel RuleLabel
+type SSTerm = SmallStep.SSTerm PreSortLabel RuleLabel
 
 --------------------------------------------------------------------------------
 -- LanguageChanges
@@ -320,7 +322,8 @@ arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel Rule
 arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % 
     [ _gamma
-    , Expr.Meta (Right (Grammar.StringSortLabel str)) % [] 
+    , Expr.Meta (Right (Grammar.StringSortLabel str)) % []
+    , _ty
     , locality ]) ->
     -- TODO: use locality in rendering?
     let postfix = if locality == sor Local % [] then "" else "!" in
@@ -328,8 +331,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   -- term
   Ref /\ _ -> 
     [pure [refElem], Left (renCtx /\ 0)]
-
-  Lam /\ _ -> 
+  Lam /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
   Let /\ _ ->
@@ -388,8 +390,9 @@ type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 {-
 This function is used both for inserting and deleting paths.
 
+Input is change going UP the path
 Should have the property that if it maps c -> c1 /\ s /\ c2, then
-c = c1 o c2, and   _ --[c1]--> s --[c2]--> _
+c = c1^-1 o c2, and   _ --[c1^-1]--> s --[c2]--> _
 -}
 splitTopBottomChange :: SortChange -> SortChange /\ Sort /\ SortChange
 splitTopBottomChange c
@@ -397,21 +400,22 @@ splitTopBottomChange c
     =
         let ctx1 /\ ctx2 = ChangeAlgebra.endpoints ctx in
         let ty1 /\ ty2 = ChangeAlgebra.endpoints ty in
-        csor TermSort % [ChangeAlgebra.inject ctx1, ty]
-        /\ sor TermSort % [ctx1, ty2]
-        /\ csor TermSort % [ctx, ChangeAlgebra.inject ty2]
---        csor TermSort % [ctx, tyBot]
+        csor TermSort % [ChangeAlgebra.inject ctx2, ty]
+        /\ sor TermSort % [ctx2, ty1]
+        /\ csor TermSort % [ChangeAlgebra.invert ctx, ChangeAlgebra.inject ty1]
+        -- TODO TODO TODO: implement the case for TypeSort
 --splitTopBottomChange c
 --    | Maybe.Just ([] /\ [tyTop]) <- Expr.matchChange c (TypeSort %+- [cSlot])
 --    , Maybe.Just ([] /\ [tyBot]) <- Expr.matchChange bottomSort (TypeSort %+- [cSlot])
 --    = csor TypeSort % [tyBot]
+        -- TODO TODO TODO: Also implement the case where the change is just a metavariable identity!
 splitTopBottomChange c = bug ("splitTopBottomChange - got c = " <> pretty c)
 
 -- Makes an edit that inserts a path, and propagates the context change downwards and type change upwards
 makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
 makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
     let change = SmallStep.getPathChange languageChanges path bottomOfPathSort
-    let preTopChange /\ preCursorSort /\ preBotChange = splitTopBottomChange (ChangeAlgebra.invert change)
+    let preTopChange /\ preCursorSort /\ preBotChange = splitTopBottomChange change
 --    _ /\ sub <- unify cursorSort preCursorSort -- TODO: should these arguments to unify be flipped? Does it matter?
     _ /\ sub <- unify preCursorSort cursorSort
     let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange
@@ -420,10 +424,21 @@ makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
     pure $ { label : name
     , action : defer \_ -> Edit.WrapAction
     {
-        topChange: ChangeAlgebra.invert topChange
+        topChange
         , dpath : pathSubbed -- DerivPath Up l r
         , botChange
     }
+    }
+
+makeEditFromTerm :: DerivTerm -> String -> Sort -> Maybe Edit
+makeEditFromTerm dterm name cursorSort = do
+    _ /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
+    pure $ { label : name
+    , action : defer \_ -> Edit.FillAction
+        {
+            sub
+            , dterm : Grammar.subDerivTerm sub dterm
+        }
     }
 
 --assertHasVarSort :: Sort -> Sort /\ Sort
@@ -463,12 +478,15 @@ getVarEdits sort =
                         let var = wrapInRef index
                         pure {
                             label: Grammar.matchStringLabel name
-                            , action: defer \_ -> Edit.ReplaceAction {
-                                -- TODO TODO TODO TODO TODO: needs to actually output the correct change, based on sub!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                                -- should map sub by (x |-> e) -> x |-> (Replace x e), and then use that on ty?????
-                                topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
-                                , dterm: var
+                            , action: defer \_ -> Edit.FillAction {
+                                sub , dterm: var
                             }
+--                            , action: defer \_ -> Edit.ReplaceAction {
+--                                -- TODO TODO TODO TODO TODO: needs to actually output the correct change, based on sub!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--                                -- should map sub by (x |-> e) -> x |-> (Replace x e), and then use that on ty?????
+--                                topChange: ChangeAlgebra.inject $ Grammar.derivTermSort var
+--                                , dterm: var
+--                            }
                         }
             in
             List.mapMaybe makeEdit indices
@@ -477,7 +495,11 @@ getVarEdits sort =
         slot \[_] -> Nil
 
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
-    <> []
+    <> Array.mapMaybe identity [
+        makeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
+        , makeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
+        , makeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+    ]
 editsAtCursor cursorSort = Array.mapMaybe identity
     [
     makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
@@ -535,13 +557,34 @@ nonlocalBecomesLocal :: StepRule
 nonlocalBecomesLocal = SmallStep.makeDownRule
     (VarSort %+- [dPLUS CtxConsSort [{-a-}slot, {-ty-}slot] {-ctx-} cSlot [], {-a'-}cSlot, {-ty'-}cSlot, NonLocal %+- []])
     {-i-}slot
-    (\[a, ty] [ctx, a', ty'] [] ->
+    (\[a, ty] [ctx, a', ty'] [i] ->
         if not (ChangeAlgebra.inject a == a' && ChangeAlgebra.inject ty == ty') then Maybe.Nothing else
         pure $ dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a, "type" /\ ty] [])
 
+--sortToType :: Sort -> DerivTerm
+--sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel (DataType dt)))) []) =
+--    Grammar.makeLabel (DataTypeRule dt) [] % []
+--sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel Arrow))) [a, b]) =
+--    Grammar.makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
+--sortToType _ = bug "wasn't a type!"
+sortToType :: Sort -> SSTerm
+sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel (DataType dt)))) []) =
+    dTERM (DataTypeRule dt) [] []
+sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel Arrow))) [a, b]) =
+    dTERM ArrowRule ["a" /\ a, "b" /\ b] [sortToType a, sortToType b]
+sortToType s = SmallStep.termToSSTerm $ assertI $ just "sortToType: invalid sort"
+    $ Grammar.defaultDerivTerm (TypeSort %|-* [s])
+
 -- down{t}_(Type (+ A -> B)) ~~> [A] -> down{t}_B
---arrowWrap :: StepRule
---arrowWrap = ?h
+arrowWrap :: StepRule
+arrowWrap = SmallStep.makeDownRule
+    (TypeSort %+- [dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    {-t-}slot
+    (\[a] [b] [t] ->
+        pure $ dTERM ArrowRule ["a" /\ a, "b" /\ rEndpoint b] [
+            sortToType a
+            , SmallStep.wrapBoundary SmallStep.Down b t
+        ])
 
 stepRules :: List StepRule
 stepRules = do
@@ -552,18 +595,21 @@ stepRules = do
 --    , removeSucRule
 --    , localBecomesNonlocal
 --    , nonlocalBecomesLocal
-      SmallStep.defaultDown chLang
+    arrowWrap
+    , SmallStep.defaultDown chLang
     , SmallStep.defaultUp chLang
     ]
 
 removePathChanges ::
-  {bottomSort :: Sort, topSort :: Sort} ->
+  SortChange ->
   {downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort}
-removePathChanges {bottomSort, topSort} = {
-    downChange: ChangeAlgebra.diff bottomSort topSort
-    , upChange: ChangeAlgebra.inject topSort
-    , cursorSort: topSort
-}
+removePathChanges ch =
+    let upChange' /\ cursorSort /\ downChange' = splitTopBottomChange ch in
+    {
+        downChange : ChangeAlgebra.invert downChange'
+        , upChange : ChangeAlgebra.invert upChange'
+        , cursorSort
+    }
 
 --------------------------------------------------------------------------------
 -- EditorSpec
@@ -580,5 +626,6 @@ editorSpec =
   , stepRules
   , isValidCursorSort: const true
   , isValidSelectionSorts: const true
+  , languageChanges
   }
 

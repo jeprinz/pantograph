@@ -100,12 +100,12 @@ type PreKid l r =
 type EditorSpec l r =
   { dterm :: DerivTerm l r
   
-  -- | removePathChanges: (bottomSort: Sort, topSort: Sort) → (downChange, upChange, cursorSort)
-  -- | - endpoints downChange = (bottomSort, cursorSort)
-  -- | - endpoints upChange = (topSort, cursorSort)
-  -- | - computes new cursorSort
-  , removePathChanges :: 
-      {bottomSort :: Sort l, topSort :: Sort l} -> 
+  -- | removePathChanges: change → (downChange, upChange, cursorSort)
+  -- | The input change is the change going up the path to be deleted
+  -- | cursorSort is the left endpoint of downChange and upChange
+  -- | subject to the constraint that   downChange^-1 o upchange = change
+  , removePathChanges ::
+      SortChange l ->
       {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
 
   -- The output terms are valid (already checked via unification when
@@ -126,7 +126,9 @@ type EditorSpec l r =
   , arrangeDerivTermSubs :: Unit -> ArrangeDerivTermSubs l r
 
   , stepRules :: List (StepRule l r)
-  
+
+  , languageChanges :: LanguageChanges l r
+
   }
 
 editsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Array (Edit l r)

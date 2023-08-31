@@ -103,7 +103,10 @@ expectedHypsCount r = do
 
 data DerivLabel l r
   = DerivLabel r (Expr.MetaVarSub (Sort l)) -- NOTE: the domain of this substitution is the set of MetaVars in the Rule for r
-  | DerivString String
+  | DerivString String -- NOTE: When we generalize NameSortLabel to be a TypeOf label, this will also be parametrized by the same set of type labels.
+    -- When we make that generalization, we could rename this to "DerivLiteral"
+    -- IDEA: we could have UUID symbol literals, which are displayed nicely but have a UUID underlying them. These could be used in a language for naming libraries.
+        -- You can copy/paste the symbol, which remembers the UUID, but when you generate a new one it gets a new UUID.
 
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRule (DerivLabel r _) = Just r

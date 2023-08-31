@@ -109,6 +109,8 @@ lub c1 c2 =
         _ | Just out <- leftLub c2 c1 -> pure out
         _ -> Nothing
 
+-- TODO: This only really makes sense for Plus, right?
+-- I need an analagous but different function for Minus?
 leftLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
 leftLub c1 c2 | c1 == c2 = Just c1
 leftLub (Expr (Plus th) [c1]) c2 = Expr (Plus th) <<< Array.singleton <$> (leftLub c1 c2)
@@ -142,7 +144,6 @@ compose c1 c2 =
                 (Array.fromFoldable $ map (map Inject) $ right)
         _ /\ (Expr (Plus l) [c2']) -> Expr (Plus l) [compose c1 c2']
         (Expr (Minus l) [c1']) /\ _ -> Expr (Minus l) [compose c1' c2]
-        -- TODO: BUG: needs to deal with Plus /\ Inject case and Inject /\ Minus case
         (Expr (Plus th@(Tooth l1 p)) [c1']) /\ (Expr (Inject l2) kids2)
             | l1 == l2
             , p2 /\ kid <- fromJust' "compose" (ZipList.zipAt (ZipList.leftLength p) (List.fromFoldable kids2))

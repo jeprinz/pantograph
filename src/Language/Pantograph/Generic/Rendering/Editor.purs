@@ -427,8 +427,7 @@ editorComponent = HK.component \tokens spec -> HK.do
 
             let {downChange, upChange, cursorSort: _} =
                   spec.removePathChanges
-                    { bottomSort: sort
-                    , topSort: derivPathSort selection'' sort }
+                    (SmallStep.getPathChange spec.languageChanges selection'' sort)
 
             let ssterm = setupSSTermFromWrapAction
                   path
