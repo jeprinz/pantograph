@@ -462,6 +462,9 @@ removePathChanges ch =
     , cursorSort: topSort
     }
 
+onDelete :: Sort -> SortChange
+onDelete = ChangeAlgebra.inject
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -478,5 +481,6 @@ editorSpec =
   , isValidCursorSort: const true
   , isValidSelectionSorts: const true
   , languageChanges
+  , onDelete
   }
 

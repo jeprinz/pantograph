@@ -47,6 +47,7 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
+import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -379,12 +380,19 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- activate buffer
             setBufferEnabled true (Just key)
           else if key == "Backspace" then do
-            -- replace dterm with default deriv
-            case defaultDerivTerm (derivTermSort dterm) of
+            -- replace dterm with default deriv, and propagate change up from onDelete
+            let upChange = spec.onDelete (derivTermSort dterm)
+            case defaultDerivTerm (ChangeAlgebra.rEndpoint upChange) of
               Nothing -> pure unit
               Just dterm' -> do
                 liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+--                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+                let ssterm = setupSSTermFromReplaceAction
+                      path
+                      upChange
+                      dterm'
+
+                setState $ SmallStepState {ssterm}
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- CursorState --> TopState

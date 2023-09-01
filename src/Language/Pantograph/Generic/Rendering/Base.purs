@@ -129,6 +129,12 @@ type EditorSpec l r =
 
   , languageChanges :: LanguageChanges l r
 
+  -- Input Sort is that of the term to be deleted, output Change is propagated upwards after deletion.
+  , onDelete :: Sort l -> SortChange l
+
+
+  -- TODO: find a way to put defaultDerivTerm in EditorSpec instead of a TypeClass. Yes I know it requires re-plumbing some things.
+
   }
 
 editsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Array (Edit l r)

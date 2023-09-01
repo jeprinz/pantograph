@@ -404,11 +404,13 @@ splitTopBottomChange c
         /\ sor TermSort % [ctx2, ty1]
         /\ csor TermSort % [ChangeAlgebra.invert ctx, ChangeAlgebra.inject ty1]
         -- TODO TODO TODO: implement the case for TypeSort
---splitTopBottomChange c
---    | Maybe.Just ([] /\ [tyTop]) <- Expr.matchChange c (TypeSort %+- [cSlot])
---    , Maybe.Just ([] /\ [tyBot]) <- Expr.matchChange bottomSort (TypeSort %+- [cSlot])
---    = csor TypeSort % [tyBot]
-        -- TODO TODO TODO: Also implement the case where the change is just a metavariable identity!
+--    | Maybe.Just ([] /\ [ty]) <- Expr.matchChange c (TypeSort %+- [cSlot])
+--    =
+--        let ty1 /\ ty2 = ChangeAlgebra.endpoints ty in
+--        ?h
+--        /\ sor TypeSort % [ty1]
+--        /\ ?h
+    -- TODO TODO TODO: Also implement the case where the change is just a metavariable identity!
 splitTopBottomChange c = bug ("splitTopBottomChange - got c = " <> pretty c)
 
 -- Makes an edit that inserts a path, and propagates the context change downwards and type change upwards
@@ -622,6 +624,12 @@ removePathChanges ch =
         , cursorSort
     }
 
+onDelete :: Sort -> SortChange
+onDelete cursorSort
+    | Maybe.Just [ty] <- Expr.matchExprImpl cursorSort (sor TypeSort %$ [slot])
+    = csor TypeSort % [Expr.replaceChange ty (Expr.fromMetaVar (Expr.freshMetaVar "deleted"))]
+onDelete cursorSort = ChangeAlgebra.inject cursorSort
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -638,5 +646,6 @@ editorSpec =
   , isValidCursorSort: const true
   , isValidSelectionSorts: const true
   , languageChanges
+  , onDelete
   }
 
