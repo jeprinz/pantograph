@@ -30,35 +30,9 @@ import Util (lookup', union')
 import Debug (trace)
 import Debug (traceM)
 
-{-
-
-Here is roughly how unify should work:
-
-unify :: forall l. (l -> l -> Maybe Sub) -> Expr l -> Expr l -> Maybe Sub
-
-unify (Minus A B1) (Minus A B2) -> unify B1 B2
-unify (Minus A1 B1) (Minus A2 B2) -> fail if A1 =/= A2
-
-we need to be able to:
-- unify an Expr l with a Change l, getting a substitution of metavars for changes
--
-
-In order to be able to do
-unify (+A -> B) (+A' -> B'), we would need to unify the EXPRESSIONS A and A'. But those are in ExprLabels in B and B'!
-
-Its not clear to me though if we'll need to be able to do that.
-We might only need to do unification of changes with expressions, or changes with changes where the metavariables are
-only in the change parts, not the expression parts.
-
-The reasoning is that when we perform the typechanging algorithm, the change going in doesn't have metavariables -
-its really only being unified with an expression that has metavariables.
-
-If I have a Change = Expr (ChangeLabel l), and then I turn it into something with metavariables for unification
-then I have Expr (ChangeLabel (Meta l)), which still doesn't have metavariables in the teeth things.
-
-It seems wierd to have an change with both "change metavariables" and "expression metavariables" in it anyway.
-
--}
+--QUESTION from Jacob: what is Freshenable for? Do we use any of that?
+--we already have an implementation of substitution elsewhere, which is
+--much simpler and more general
 
 type Ren = Expr.MetaVarSub Expr.MetaVar
 

@@ -85,6 +85,13 @@ makeLabel ruleLabel values =
       vars (Map.keys sigma)) \_ ->
     DerivLabel ruleLabel sigma
 
+-- Makes a DerivLabel from a rule r with all of the parameters set to fresh metavars
+makeFreshLabel :: forall l r. IsRuleLabel l r => r -> DerivLabel l r
+makeFreshLabel ruleLabel =
+    let Rule vars _ _ = TotalMap.lookup ruleLabel language in
+    let sigma = Map.fromFoldable (Set.map (\mv -> mv /\ Expr.fromMetaVar (Expr.freshMetaVar (Expr.metaVarName mv))) vars) in
+    DerivLabel ruleLabel sigma
+
 isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
 isHoleDerivLabel (DerivLabel r sub) | isHoleRule r = pure (getSortFromSub r sub)
 isHoleDerivLabel _ = empty
@@ -399,3 +406,12 @@ inferPath innerSort (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : th
     let sub12 = composeSub allSubs1 sub2
     sub3 <- inferPath (Expr.subMetaExprPartially sub12 (derivLabelSort l)) (Expr.Path ths)
     pure $ composeSub sub12 sub3
+
+forgetDerivLabelSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    (DerivLabel l r -> Maybe (DerivLabel l r)) -> DerivLabel l r -> DerivLabel l r
+forgetDerivLabelSorts f label =
+        case f label of
+            Just label' -> label'
+            Nothing -> case derivLabelRule label of
+                Just r -> makeFreshLabel r
+                Nothing -> label

@@ -119,6 +119,11 @@ data MetaVar
   = MetaVar (Maybe String) UUID
   | RuleMetaVar String
 
+metaVarName :: MetaVar -> String
+metaVarName (RuleMetaVar s) = s
+metaVarName (MetaVar (Just s) _) = s
+metaVarName _ = "no_name"
+
 derive instance Generic MetaVar _
 instance Show MetaVar where show x = genericShow x
 instance Eq MetaVar where eq x y = genericEq x y

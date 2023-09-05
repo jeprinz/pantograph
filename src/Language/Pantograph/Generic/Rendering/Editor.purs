@@ -48,6 +48,7 @@ import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
+import Util as Util
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -291,6 +292,31 @@ editorComponent = HK.component \tokens spec -> HK.do
       setState $ CursorState cursor {mode = if isEnabled then BufferCursorMode else NavigationCursorMode}
       HK.tell tokens.slotToken bufferSlot unit $ SetBufferEnabledQuery isEnabled mb_str
 
+    -- Takes a term to be added to the clipboard, and generalizes it before adding it to the clipboard
+    genAndSetClipTerm :: DerivTerm l r -> HK.HookM Aff Unit
+    genAndSetClipTerm dterm = do
+        let forgottenDTerm = map (forgetDerivLabelSorts spec.forgetSorts) dterm
+        let unifyingSub = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
+        let unifiedDTerm = subDerivTerm unifyingSub forgottenDTerm
+        let generalizingChange = spec.generalizeDerivation (derivTermSort unifiedDTerm)
+        let generalizedDTerm = SmallStep.assertJustExpr
+                (SmallStep.stepRepeatedly (SmallStep.termToSSTerm unifiedDTerm) spec.stepRules)
+        liftEffect $ Ref.write (Just (Right generalizedDTerm)) clipboard_ref
+
+    -- Deletes the term at the cursor and enters smallstep with a change going up
+    deleteTermAtCursor :: DerivPath Up l r -> DerivTerm l r -> HK.HookM Aff Unit
+    deleteTermAtCursor restOfProg dterm = do
+        let upChange = spec.onDelete (derivTermSort dterm)
+        case defaultDerivTerm (ChangeAlgebra.rEndpoint upChange) of
+          Nothing -> pure unit
+          Just dterm' -> do
+--                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+            let ssterm = setupSSTermFromReplaceAction
+                  restOfProg
+                  upChange
+                  dterm'
+            setState $ SmallStepState {ssterm}
+
     ------------------------------------------------------------------------------
     -- handle keyboard event
     ------------------------------------------------------------------------------
@@ -336,17 +362,14 @@ editorComponent = HK.component \tokens spec -> HK.do
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
+            genAndSetClipTerm dterm
           -- cut
           else if cmdKey && key == "x" then do
-            case defaultDerivTerm (derivTermSort dterm) of
-              Nothing -> pure unit
-              Just dterm' -> do
-                liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-                -- update clipboard
-                liftEffect $ Ref.write (Just (Right dterm)) clipboard_ref
-                -- replace cursor with default deriv
-                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            -- update clipboard
+            genAndSetClipTerm dterm
+            -- replace cursor with default deriv
+            deleteTermAtCursor path dterm
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
@@ -380,19 +403,9 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- activate buffer
             setBufferEnabled true (Just key)
           else if key == "Backspace" then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- replace dterm with default deriv, and propagate change up from onDelete
-            let upChange = spec.onDelete (derivTermSort dterm)
-            case defaultDerivTerm (ChangeAlgebra.rEndpoint upChange) of
-              Nothing -> pure unit
-              Just dterm' -> do
-                liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
---                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
-                let ssterm = setupSSTermFromReplaceAction
-                      path
-                      upChange
-                      dterm'
-
-                setState $ SmallStepState {ssterm}
+            deleteTermAtCursor path dterm
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- CursorState --> TopState

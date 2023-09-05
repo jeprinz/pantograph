@@ -232,6 +232,7 @@ language = TotalMap.makeTotalMap case _ of
 --------------------------------------------------------------------------------
 
 type DerivTerm = Grammar.DerivTerm PreSortLabel RuleLabel
+type DerivLabel = Grammar.DerivLabel PreSortLabel RuleLabel
 type DerivPath dir = Grammar.DerivPath dir PreSortLabel RuleLabel
 type DerivZipper = Grammar.DerivZipper PreSortLabel RuleLabel
 type DerivZipperp = Grammar.DerivZipperp PreSortLabel RuleLabel
@@ -465,6 +466,18 @@ removePathChanges ch =
 onDelete :: Sort -> SortChange
 onDelete = ChangeAlgebra.inject
 
+-- TODO
+generalizeDerivation :: Sort -> SortChange
+generalizeDerivation = ChangeAlgebra.inject
+
+-- TODO
+specializeDerivation :: Sort -> Sort -> SortChange
+specializeDerivation clipboard _cursor = ChangeAlgebra.inject clipboard
+
+-- TODO
+forgetSorts :: DerivLabel -> Maybe DerivLabel
+forgetSorts _ = Maybe.Nothing
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -482,5 +495,8 @@ editorSpec =
   , isValidSelectionSorts: const true
   , languageChanges
   , onDelete
+  , generalizeDerivation
+  , specializeDerivation
+  , forgetSorts
   }
 

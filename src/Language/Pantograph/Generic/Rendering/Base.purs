@@ -132,6 +132,12 @@ type EditorSpec l r =
   -- Input Sort is that of the term to be deleted, output Change is propagated upwards after deletion.
   , onDelete :: Sort l -> SortChange l
 
+  , generalizeDerivation :: Sort l -> SortChange l
+
+  , specializeDerivation :: {-clipboard-} Sort l -> {-cursor-} Sort l -> SortChange l
+
+  , forgetSorts :: DerivLabel l r -> Maybe (DerivLabel l r)
+
 
   -- TODO: find a way to put defaultDerivTerm in EditorSpec instead of a TypeClass. Yes I know it requires re-plumbing some things.
 
