@@ -49,6 +49,7 @@ import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Util as Util
+import Language.Pantograph.Generic.Unification as Unification
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -293,14 +294,15 @@ editorComponent = HK.component \tokens spec -> HK.do
       HK.tell tokens.slotToken bufferSlot unit $ SetBufferEnabledQuery isEnabled mb_str
 
     -- Takes a term to be added to the clipboard, and generalizes it before adding it to the clipboard
-    genAndSetClipTerm :: DerivTerm l r -> HK.HookM Aff Unit
-    genAndSetClipTerm dterm = do
+    genAndCopyClipTerm :: DerivTerm l r -> HK.HookM Aff Unit
+    genAndCopyClipTerm dterm = do
         let forgottenDTerm = map (forgetDerivLabelSorts spec.forgetSorts) dterm
         let unifyingSub = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
         let unifiedDTerm = subDerivTerm unifyingSub forgottenDTerm
         let generalizingChange = spec.generalizeDerivation (derivTermSort unifiedDTerm)
         let generalizedDTerm = SmallStep.assertJustExpr
-                (SmallStep.stepRepeatedly (SmallStep.termToSSTerm unifiedDTerm) spec.stepRules)
+                (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down generalizingChange
+                    (SmallStep.termToSSTerm unifiedDTerm)) spec.stepRules)
         liftEffect $ Ref.write (Just (Right generalizedDTerm)) clipboard_ref
 
     -- Deletes the term at the cursor and enters smallstep with a change going up
@@ -362,12 +364,12 @@ editorComponent = HK.component \tokens spec -> HK.do
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
-            genAndSetClipTerm dterm
+            genAndCopyClipTerm dterm
           -- cut
           else if cmdKey && key == "x" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- update clipboard
-            genAndSetClipTerm dterm
+            genAndCopyClipTerm dterm
             -- replace cursor with default deriv
             deleteTermAtCursor path dterm
           else if cmdKey && key == "v" then do
@@ -377,10 +379,21 @@ editorComponent = HK.component \tokens spec -> HK.do
                 liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
                 -- paste a path
                 setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (path' <> path) dterm)))
-              Just (Right dterm') -> do
+              Just (Right clipDTerm) -> do
                 liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-                -- paste an dterm
-                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+                -- paste a dterm:
+                -- First, specialize the term
+                let specializingChange = spec.specializeDerivation (derivTermSort clipDTerm) (derivTermSort dterm)
+                let specializedDTerm = SmallStep.assertJustExpr
+                        (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
+                            (SmallStep.termToSSTerm clipDTerm)) spec.stepRules)
+                case Unification.unify (derivTermSort specializedDTerm) (derivTermSort dterm) of
+                    Just (_newSort /\ unifyingSub) -> do
+                        let unifiedDTerm = subDerivTerm unifyingSub specializedDTerm
+                        let unifiedPath = subDerivPath unifyingSub path
+                        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper unifiedPath unifiedDTerm)))
+                    Nothing -> do -- Didn't unify; can't paste
+                        pure unit
           else if cmdKey && key == "s" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             Debug.traceM $ pretty $ 

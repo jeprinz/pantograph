@@ -466,16 +466,23 @@ removePathChanges ch =
 onDelete :: Sort -> SortChange
 onDelete = ChangeAlgebra.inject
 
--- TODO
 generalizeDerivation :: Sort -> SortChange
-generalizeDerivation = ChangeAlgebra.inject
+generalizeDerivation sort
+    | Maybe.Just [ctx] <- Expr.matchExprImpl sort (sor TermSort %$ [slot])
+    = csor TermSort % [ChangeAlgebra.diff ctx (sor CtxNilSort % [])]
+generalizeDerivation other = ChangeAlgebra.inject other
 
 -- TODO
 specializeDerivation :: Sort -> Sort -> SortChange
+specializeDerivation clipboard cursor
+    | Maybe.Just [] <- Expr.matchExprImpl clipboard (sor TermSort %$ [sor CtxNilSort %$ []])
+    , Maybe.Just [cursorCtx] <- Expr.matchExprImpl cursor (sor TermSort %$ [slot])
+    = csor TermSort % [ChangeAlgebra.diff (sor CtxNilSort % []) cursorCtx]
 specializeDerivation clipboard _cursor = ChangeAlgebra.inject clipboard
 
 -- TODO
 forgetSorts :: DerivLabel -> Maybe DerivLabel
+forgetSorts r@(Grammar.DerivLabel FreeVar sigma) = pure r
 forgetSorts _ = Maybe.Nothing
 
 --------------------------------------------------------------------------------
