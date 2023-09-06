@@ -125,9 +125,9 @@ setupSSTermFromReplaceAction :: forall l r. IsExprLabel l =>
 setupSSTermFromReplaceAction topPath ch newTerm =
     wrapPath topPath $ wrapBoundary Up ch $ wrapCursor $ termToSSTerm newTerm
 
-assertJustExpr :: forall l r. SSTerm l r -> Grammar.DerivTerm l r
+assertJustExpr :: forall l r. IsExprLabel l => IsRuleLabel l r => SSTerm l r -> Grammar.DerivTerm l r
 assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
-assertJustExpr _ = Bug.bug "Error: assertJustExpr assertion failed"
+assertJustExpr t = Bug.bug ("Error: assertJustExpr assertion failed. Term was: \n" <> pretty t)
 
 assertNoneOfList :: forall t b. List t -> (t -> Maybe b) -> List b
 assertNoneOfList Nil _f = Nil
@@ -196,8 +196,10 @@ step t@(Expr.Expr l kids) rules =
          pure $ Expr.Expr l (Array.fromFoldable kids')
      Just t' -> Just t'
 
-stepRepeatedly :: forall l r. SSTerm l r -> List (StepRule l r) -> SSTerm l r
-stepRepeatedly t rules = case step t rules of
+stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
+stepRepeatedly t rules =
+    trace ("stepRepeatedly: " <> pretty t) \_ ->
+    case step t rules of
     Nothing -> t
     Just t' -> stepRepeatedly t' rules
 

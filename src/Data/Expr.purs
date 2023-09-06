@@ -473,7 +473,7 @@ instance IsExprLabel l => Pretty (ChangeLabel l) where
   pretty (Plus th) = "(+ " <> prettyTooth th "⌶" <> ")"
   pretty (Minus th) = "(- " <> prettyTooth  th "⌶" <> ")"
   pretty (Inject l) = pretty l
-  pretty (Replace e1 e2) = "(" <> pretty e1 <> "~~> " <> pretty e2 <> ")"
+  pretty (Replace e1 e2) = "(" <> pretty e1 <> ") ~~> (" <> pretty e2 <> ")"
 
 derive instance Functor ChangeLabel
 derive instance Foldable ChangeLabel
@@ -508,7 +508,7 @@ instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
   prettyExprF'_unsafe (Plus th /\ [kid]) = P.parens $ "+" <> prettyTooth th kid
   prettyExprF'_unsafe (Minus th /\ [kid]) = P.parens $ "-" <> prettyTooth th kid
   prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)
-  prettyExprF'_unsafe (Replace e1 e2 /\ []) = P.parens (pretty e1 <> " ~~> " <> pretty e2)
+  prettyExprF'_unsafe (Replace e1 e2 /\ []) = P.parens (pretty e1) <> " ~~> " <> P.parens (pretty e2)
 
   expectedKidsCount (Plus _) = 1
   expectedKidsCount (Minus _) = 1
@@ -517,11 +517,15 @@ instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
 
 type MetaChange l = Change (Meta l)
 
-plusChange :: forall l. Tooth l -> Change l -> Change l
-plusChange th ch = Plus th % [ch]
+plusChange :: forall l. l -> Array (Expr l) -> Change l -> Array (Expr l) -> Change l
+plusChange l leftKids inside rightKids =
+    Plus (Tooth l (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
+        % [inside]
 
-minusChange :: forall l. Tooth l -> Change l -> Change l
-minusChange th ch = Minus th % [ch]
+minusChange :: forall l. l -> Array (Expr l) -> Change l -> Array (Expr l) -> Change l
+minusChange l leftKids inside rightKids =
+    Minus (Tooth l (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
+        % [inside]
 
 injectChange :: forall l. l -> Array (Change l) -> Change l
 injectChange l chs = Inject l % chs

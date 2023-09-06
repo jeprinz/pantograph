@@ -430,24 +430,25 @@ removeSucRule = SmallStep.makeDownRule
         SmallStep.wrapBoundary SmallStep.Down (csor VarSort % [ctx, x, locality]) $
         i)
 
---- down{i}_(Var (+ A , ctx) A NonLocal) ~~> Z
+--- down{i}_(Var (+ A , ctx) A NonLocal) ~~> up{Z}_(Var (A, ctx) A (Replace NonLocal Local))
 nonlocalBecomesLocal :: StepRule
 nonlocalBecomesLocal = SmallStep.makeDownRule
     (VarSort %+- [dPLUS CtxConsSort [{-a-}slot] {-ctx-} cSlot [], {-a'-}cSlot, NonLocal %+- []])
     {-i-}slot
-    (\[a] [ctx, a'] [] ->
+    (\[a] [ctx, a'] [_i] ->
         if not (ChangeAlgebra.inject a == a') then Maybe.Nothing else
-        pure $ dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a] [])
+        pure $ SmallStep.wrapBoundary SmallStep.Up (csor VarSort % [(csor CtxConsSort % [a', ctx]), a', Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
+            (dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a] []))
 
 stepRules :: List StepRule
 stepRules = do
   let chLang = SmallStep.langToChLang language
   List.fromFoldable
     [
-    insertSucRule
+    localBecomesNonlocal
+    , nonlocalBecomesLocal -- NOTE: this has to come before insertSucRule?
+    , insertSucRule
     , removeSucRule
-    , localBecomesNonlocal
-    , nonlocalBecomesLocal
     , SmallStep.defaultDown chLang
     , SmallStep.defaultUp chLang
     ]
@@ -466,13 +467,19 @@ removePathChanges ch =
 onDelete :: Sort -> SortChange
 onDelete = ChangeAlgebra.inject
 
+--subtractConses :: Sort -> SortChange
+--subtractConses s
+--    | Maybe.Just [str, ctx'] <- Expr.matchExprImpl s (sor CtxConsSort %$ [slot, slot])
+--    = Expr.minusChange (sor CtxConsSort) [str] (subtractConses ctx') []
+--subtractConses s = ChangeAlgebra.inject s
+
 generalizeDerivation :: Sort -> SortChange
 generalizeDerivation sort
     | Maybe.Just [ctx] <- Expr.matchExprImpl sort (sor TermSort %$ [slot])
+--    = csor TermSort % [subtractConses ctx]
     = csor TermSort % [ChangeAlgebra.diff ctx (sor CtxNilSort % [])]
 generalizeDerivation other = ChangeAlgebra.inject other
 
--- TODO
 specializeDerivation :: Sort -> Sort -> SortChange
 specializeDerivation clipboard cursor
     | Maybe.Just [] <- Expr.matchExprImpl clipboard (sor TermSort %$ [sor CtxNilSort %$ []])
@@ -480,7 +487,6 @@ specializeDerivation clipboard cursor
     = csor TermSort % [ChangeAlgebra.diff (sor CtxNilSort % []) cursorCtx]
 specializeDerivation clipboard _cursor = ChangeAlgebra.inject clipboard
 
--- TODO
 forgetSorts :: DerivLabel -> Maybe DerivLabel
 forgetSorts r@(Grammar.DerivLabel FreeVar sigma) = pure r
 forgetSorts _ = Maybe.Nothing

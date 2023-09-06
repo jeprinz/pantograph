@@ -34,7 +34,7 @@ import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule, newTermFromRule)
 import Language.Pantograph.Generic.Edit as Edit
-import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor, csor)
+import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor, csor, nameSort)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Rendering
@@ -388,6 +388,11 @@ dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
 type Edit = Edit.Edit PreSortLabel RuleLabel
 type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
 
+startCtx :: Sort
+startCtx =
+    sor CtxConsSort % [nameSort "ten", sor (DataType Int) % []
+    , sor CtxNilSort %[]]
+
 {-
 This function is used both for inserting and deleting paths.
 
@@ -562,14 +567,10 @@ nonlocalBecomesLocal = SmallStep.makeDownRule
     {-i-}slot
     (\[a, ty] [ctx, a', ty'] [i] ->
         if not (ChangeAlgebra.inject a == a' && ChangeAlgebra.inject ty == ty') then Maybe.Nothing else
-        pure $ dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a, "type" /\ ty] [])
+        pure $ SmallStep.wrapBoundary SmallStep.Up (csor VarSort % [(csor CtxConsSort % [a', ty', ctx]),a' ,ty' , Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
+            (dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a, "type" /\ ty] []))
 
---sortToType :: Sort -> DerivTerm
---sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel (DataType dt)))) []) =
---    Grammar.makeLabel (DataTypeRule dt) [] % []
---sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel Arrow))) [a, b]) =
---    Grammar.makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
---sortToType _ = bug "wasn't a type!"
+-- TODO: Instead, this should be part of defaultDerivTerm! This is because e.g. when you make a lambda at the type Int -> A, the argument should already start with a derivation of Int!
 sortToType :: Sort -> SSTerm
 sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel (DataType dt)))) []) =
     dTERM (DataTypeRule dt) [] []
@@ -604,11 +605,11 @@ stepRules = do
   let chLang = SmallStep.langToChLang language
   List.fromFoldable
     [
---    insertSucRule
---    , removeSucRule
---    , localBecomesNonlocal
---    , nonlocalBecomesLocal
-    arrowWrap
+    localBecomesNonlocal
+    , nonlocalBecomesLocal
+    , insertSucRule
+    , removeSucRule
+    , arrowWrap
     , arrowUnWrap
     , SmallStep.defaultDown chLang
     , SmallStep.defaultUp chLang
@@ -631,16 +632,21 @@ onDelete cursorSort
     = csor TypeSort % [Expr.replaceChange ty (Expr.fromMetaVar (Expr.freshMetaVar "deleted"))]
 onDelete cursorSort = ChangeAlgebra.inject cursorSort
 
--- TODO
 generalizeDerivation :: Sort -> SortChange
-generalizeDerivation = ChangeAlgebra.inject
+generalizeDerivation sort
+    | Maybe.Just [ctx, ty] <- Expr.matchExprImpl sort (sor TermSort %$ [slot, slot])
+    = csor TermSort % [ChangeAlgebra.diff ctx startCtx, ChangeAlgebra.inject ty]
+generalizeDerivation other = ChangeAlgebra.inject other
 
--- TODO
 specializeDerivation :: Sort -> Sort -> SortChange
+specializeDerivation clipboard cursor
+    | Maybe.Just [clipCtx, clipTy] <- Expr.matchExprImpl clipboard (sor TermSort %$ [slot, slot])
+    , Maybe.Just [cursorCtx, _cursorTy] <- Expr.matchExprImpl cursor (sor TermSort %$ [slot, slot])
+    = csor TermSort % [ChangeAlgebra.diff clipCtx cursorCtx, ChangeAlgebra.inject clipTy]
 specializeDerivation clipboard _cursor = ChangeAlgebra.inject clipboard
 
--- TODO
 forgetSorts :: DerivLabel -> Maybe DerivLabel
+forgetSorts r@(Grammar.DerivLabel FreeVar sigma) = pure r
 forgetSorts _ = Maybe.Nothing
 
 --------------------------------------------------------------------------------
@@ -650,7 +656,7 @@ forgetSorts _ = Maybe.Nothing
 editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =
   { dterm: assertI $ just "SULC dterm" $ 
-      Grammar.defaultDerivTerm (TermSort %|-* [CtxNilSort %|-* [], Expr.fromMetaVar (Expr.freshMetaVar "tyhole")])
+      Grammar.defaultDerivTerm (TermSort %|-* [startCtx, Expr.fromMetaVar (Expr.freshMetaVar "tyhole")])
   , removePathChanges
   , editsAtCursor
   , editsAtHoleInterior

@@ -50,6 +50,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Util as Util
 import Language.Pantograph.Generic.Unification as Unification
+import Debug (trace, traceM)
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -296,14 +297,15 @@ editorComponent = HK.component \tokens spec -> HK.do
     -- Takes a term to be added to the clipboard, and generalizes it before adding it to the clipboard
     genAndCopyClipTerm :: DerivTerm l r -> HK.HookM Aff Unit
     genAndCopyClipTerm dterm = do
-        let forgottenDTerm = map (forgetDerivLabelSorts spec.forgetSorts) dterm
-        let unifyingSub = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
-        let unifiedDTerm = subDerivTerm unifyingSub forgottenDTerm
-        let generalizingChange = spec.generalizeDerivation (derivTermSort unifiedDTerm)
+        let generalizingChange = spec.generalizeDerivation (derivTermSort dterm)
+--        traceM ("genCh is : " <> pretty generalizingChange <> " and unifiedDTerm is " <> pretty unifiedDTerm)
         let generalizedDTerm = SmallStep.assertJustExpr
                 (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down generalizingChange
-                    (SmallStep.termToSSTerm unifiedDTerm)) spec.stepRules)
-        liftEffect $ Ref.write (Just (Right generalizedDTerm)) clipboard_ref
+                    (SmallStep.termToSSTerm dterm)) spec.stepRules)
+        let forgottenDTerm = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDTerm
+        let unifyingSub = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
+        let unifiedDTerm = subDerivTerm unifyingSub forgottenDTerm
+        liftEffect $ Ref.write (Just (Right unifiedDTerm)) clipboard_ref
 
     -- Deletes the term at the cursor and enters smallstep with a change going up
     deleteTermAtCursor :: DerivPath Up l r -> DerivTerm l r -> HK.HookM Aff Unit
@@ -384,6 +386,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                 -- paste a dterm:
                 -- First, specialize the term
                 let specializingChange = spec.specializeDerivation (derivTermSort clipDTerm) (derivTermSort dterm)
+                traceM ("specCh is: " <> pretty specializingChange)
                 let specializedDTerm = SmallStep.assertJustExpr
                         (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.termToSSTerm clipDTerm)) spec.stepRules)

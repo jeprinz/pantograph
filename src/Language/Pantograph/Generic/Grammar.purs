@@ -205,7 +205,7 @@ type SortChange l = Expr.MetaChange (SortLabel l)
 
 data SortLabel l  -- l is language specific sort labels, and SortLabel adds on generic ones that exist for every language
   = InjectSortLabel l
-  | NameSortLabel -- NOTE: can generalize to "TypeOf sort label"
+  | NameSortLabel -- NOTE: can generalize to "TypeOf sort label" -- Jacob note: I still think that we should call this TextboxSortLabel, since it really is just used to indicate a literal in the derivations
   | StringSortLabel String -- NOTE: can generalize to DataSortLabel
 
 derive instance Generic (SortLabel l) _
@@ -222,6 +222,9 @@ freshMetaVarSort name = Expr.Meta (Either.Left (freshMetaVar name)) % []
 -- This is used as part of a DSL for building up sorts.
 sor :: forall l. l -> Expr.Meta (SortLabel l)
 sor l = pure (InjectSortLabel l)
+
+nameSort :: forall l. String -> Expr.MetaExpr (SortLabel l)
+nameSort name = pure (StringSortLabel name) % []
 
 -- This is used as part of a DSL for building up sort changes
 csor :: forall l. l -> Expr.ChangeLabel (Expr.Meta (SortLabel l))

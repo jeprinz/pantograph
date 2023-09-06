@@ -129,7 +129,8 @@ getMatches e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr l2 kids2) =
     case l1 of
         Left x -> Just $ MultiMap.insert x e2 (MultiMap.empty)
         Right l | l == l2 -> foldl (lift2 MultiMap.union) (Just MultiMap.empty) (Array.zipWith getMatches kids1 kids2)
-        _ -> Nothing
+        _ ->
+            Nothing
 
 
 
