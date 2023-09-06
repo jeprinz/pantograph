@@ -453,10 +453,10 @@ stepRules = do
     , SmallStep.defaultUp chLang
     ]
 
-removePathChanges ::
+splitChange ::
   SortChange ->
   {downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort}
-removePathChanges ch =
+splitChange ch =
     let _bottomSort /\ topSort = ChangeAlgebra.endpoints ch in
     {
     downChange: ch
@@ -499,7 +499,7 @@ editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =
   { dterm: assertI $ just "SULC dterm" $ 
       Grammar.defaultDerivTerm (TermSort %|-* [CtxNilSort %|-* []])
-  , removePathChanges
+  , splitChange
   , editsAtCursor
   , editsAtHoleInterior
   , arrangeDerivTermSubs

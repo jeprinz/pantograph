@@ -400,6 +400,7 @@ Input is change going UP the path
 Should have the property that if it maps c -> c1 /\ s /\ c2, then
 c = c1^-1 o c2, and   _ --[c1^-1]--> s --[c2]--> _
 -}
+-- TODO: get rid of this and use splitChange - maybe even have that code in Generic
 splitTopBottomChange :: SortChange -> SortChange /\ Sort /\ SortChange
 splitTopBottomChange c
     | Maybe.Just ([] /\ [ctx, ty]) <- Expr.matchChange c (TermSort %+- [cSlot, cSlot])
@@ -615,16 +616,19 @@ stepRules = do
     , SmallStep.defaultUp chLang
     ]
 
-removePathChanges ::
+splitChange ::
   SortChange ->
   {downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort}
-removePathChanges ch =
-    let upChange' /\ cursorSort /\ downChange' = splitTopBottomChange ch in
-    {
-        downChange : ChangeAlgebra.invert downChange'
-        , upChange : ChangeAlgebra.invert upChange'
-        , cursorSort
-    }
+splitChange c | Maybe.Just ([] /\ [ctx, ty]) <- Expr.matchChange c (TermSort %+- [cSlot, cSlot])
+    =
+        let _ctx1 /\ ctx2 = ChangeAlgebra.endpoints ctx in
+        let ty1 /\ _ty2 = ChangeAlgebra.endpoints ty in
+        {upChange: csor TermSort % [ChangeAlgebra.inject ctx2, ty]
+        , cursorSort: sor TermSort % [ctx2, ty1]
+        , downChange: csor TermSort % [ctx, ChangeAlgebra.inject ty1]}
+-- TODO: implement Type case
+-- TODO TODO TODO: Also implement the case where the change is just a metavariable identity!
+splitChange c = bug ("splitChange - got c = " <> pretty c)
 
 onDelete :: Sort -> SortChange
 onDelete cursorSort
@@ -657,7 +661,7 @@ editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =
   { dterm: assertI $ just "SULC dterm" $ 
       Grammar.defaultDerivTerm (TermSort %|-* [startCtx, Expr.fromMetaVar (Expr.freshMetaVar "tyhole")])
-  , removePathChanges
+  , splitChange
   , editsAtCursor
   , editsAtHoleInterior
   , arrangeDerivTermSubs

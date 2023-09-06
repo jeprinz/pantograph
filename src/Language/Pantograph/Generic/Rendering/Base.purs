@@ -99,14 +99,20 @@ type PreKid l r =
 
 type EditorSpec l r =
   { dterm :: DerivTerm l r
-  
-  -- | removePathChanges: change → (downChange, upChange, cursorSort)
-  -- | The input change is the change going up the path to be deleted
-  -- | cursorSort is the left endpoint of downChange and upChange
-  -- | subject to the constraint that   downChange^-1 o upchange = change
-  , removePathChanges ::
-      SortChange l ->
-      {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
+
+  -- inputChange = downChange o upChange
+  -- cursorSort is the right endpoint of downChange and left endpoint of upChange
+  -- cursorSort represents the sort at which such a path could be inserted, or alternately
+  -- the new cursor sort after deletion of the path
+   , splitChange :: SortChange l -> {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
+
+--  -- | removePathChanges: change → (downChange, upChange, cursorSort)
+--  -- | The input change is the change going up the path to be deleted
+--  -- | cursorSort is the left endpoint of downChange and upChange
+--  -- | subject to the constraint that   downChange^-1 o upchange = change
+--  , removePathChanges ::
+--      SortChange l ->
+--      {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
 
   -- The output terms are valid (already checked via unification when
   -- generated).

@@ -463,14 +463,14 @@ editorComponent = HK.component \tokens spec -> HK.do
                   Right p -> Expr.toUpPath p
 
             let {downChange, upChange, cursorSort: _} =
-                  spec.removePathChanges
+                  spec.splitChange
                     (SmallStep.getPathChange spec.languageChanges selection'' sort)
 
             let ssterm = setupSSTermFromWrapAction
                   path
-                  upChange
+                  (ChangeAlgebra.invert upChange)
                   (Expr.Path mempty)
-                  downChange 
+                  downChange
                   dterm
 
             setState $ SmallStepState {ssterm}
