@@ -9,6 +9,7 @@ import Bug as Bug
 import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
+import Data.Either as Either
 import Data.Eq.Generic (genericEq)
 import Data.Expr (class IsExprLabel, (%), (%<))
 import Data.Expr as Expr
@@ -30,6 +31,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
+import Data.Either.Nested (type (\/), (\/))
 import Hole (hole)
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
@@ -56,7 +58,7 @@ instance Pretty Direction where
     pretty Up = "↑"
     pretty Down = "↓"
 
-data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | Cursor | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
+data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | {-Marks e.g. where the cursor is-} Marker | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
 --makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> Array (String /\ Sort l) -> DerivLabel l r
@@ -71,19 +73,19 @@ instance (Eq l, Eq r) => Eq (StepExprLabel l r) where eq x y = genericEq x y
 instance (Ord l, Ord r) => Ord (StepExprLabel l r) where compare x y = genericCompare x y
 instance (IsExprLabel l, Pretty r) => Pretty (StepExprLabel l r) where
     pretty (Inject dl) = pretty dl
-    pretty Cursor = "⌶"
+    pretty Marker = "⌶"
     pretty (Boundary dir sortCh) = pretty dir <> brackets (pretty sortCh)
 
 instance IsRuleLabel l r => Expr.IsExprLabel (StepExprLabel l r) where
     prettyExprF'_unsafe (Inject dl /\ kids) = Expr.prettyExprF'_unsafe (dl /\ kids)
-    prettyExprF'_unsafe (sel@Cursor /\ [kid]) = pretty sel <> braces kid
+    prettyExprF'_unsafe (sel@Marker /\ kids) = pretty sel <> braces (intercalate "," kids) -- TODO: how should this print?[
     prettyExprF'_unsafe (sel@(Boundary _ _) /\ [kid]) = pretty sel <> braces kid
 
     expectedKidsCount (Inject dl) = Expr.expectedKidsCount dl
-    expectedKidsCount Cursor = 1
+    expectedKidsCount Marker = 1
     expectedKidsCount (Boundary _ _) = 1
 
--- ---------- Code for converting zippers to terms and back ------------------------------------------
+------------- Code for converting DerivTerms and DerivPaths to SSTerms and back ----------------------------------------
 
 addToothToTerm :: forall l r. Expr.Tooth (Grammar.DerivLabel l r) -> SSTerm l r -> SSTerm l r
 addToothToTerm (Expr.Tooth l (ZipList.Path {left, right})) t =
@@ -94,14 +96,14 @@ addToothToTerm (Expr.Tooth l (ZipList.Path {left, right})) t =
 
 -- !TODO use Expr.Zipper
 zipperToTerm :: forall l r. Expr.Path Dir.Up (Grammar.DerivLabel l r) -> Grammar.DerivTerm l r -> SSTerm l r
-zipperToTerm (Expr.Path Nil) exp = Expr.Expr Cursor [map Inject exp]
+zipperToTerm (Expr.Path Nil) exp = Expr.Expr Marker [map Inject exp]
 zipperToTerm (Expr.Path (th : path)) exp = addToothToTerm th (zipperToTerm (Expr.Path path) exp)
 
 termToSSTerm :: forall l r. Grammar.DerivTerm l r -> SSTerm l r
 termToSSTerm = map Inject
 
 wrapCursor :: forall l r. SSTerm l r -> SSTerm l r
-wrapCursor t = Expr.Expr Cursor [t]
+wrapCursor t = Expr.Expr Marker [t]
 
 wrapPath :: forall l r. Grammar.DerivPath Dir.Up l r -> SSTerm l r -> SSTerm l r
 wrapPath (Expr.Path Nil) t = t
@@ -151,28 +153,65 @@ oneOrNone (x : xs) f = case f x of
      in
      Right (Nil /\ a /\ bs2)
 
-termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
-termToZipper (Expr.Expr Cursor [kid]) =
- Expr.Zipper (Expr.Path Nil) (assertJustExpr kid)
-termToZipper (Expr.Expr (Inject l) kids) =
- let kids' = (\(Expr.Zipper p t) -> p /\ t) <$> (List.fromFoldable $ map termToZipper kids) in
- let isPath (p /\ e) = case p of
-         (Expr.Path Nil) -> Right e
-         _ -> Left (p /\ e) in
- let pathOrNot = oneOrNone kids' isPath in
- case pathOrNot of
+-- unwraps a path from around a Marker, or
+unWrapPath :: forall l r. IsRuleLabel l r => SSTerm l r
+    -- path                                         OR term
+    -> (Grammar.DerivPath Dir.Down l r /\ SSTerm l r) \/ Grammar.DerivTerm l r
+unWrapPath t@(Expr.Expr Marker _) = Left (Expr.Path Nil /\ t)
+unWrapPath (Expr.Expr (Inject l) kids) =
+ let kids' = (List.fromFoldable $ map unWrapPath kids) in
+ case oneOrNone kids' identity of
      -- child didn't have cursor
-     Left kids'' -> Expr.Zipper (Expr.Path Nil) (Expr.Expr l (Array.fromFoldable (kids'')))
+     Left kids'' -> Right $ Expr.Expr l (Array.fromFoldable (kids''))
      -- child has exactly one cursor
      Right (leftKids /\ (Expr.Path p /\ e) /\ rightKids) ->
         let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
-        Expr.Zipper (Expr.Path (newTooth : p)) e
---    let
-termToZipper t = Bug.bug ("shouldn't happen in termToZipper: t was " <> pretty t)
+        Left $ Expr.Path (newTooth : p) /\ e
+unWrapPath t = Bug.bug ("shouldn't happen in termToZipper: t was " <> pretty t)
+
+removeMarkers :: forall l r. IsRuleLabel l r => SSTerm l r -> SSTerm l r
+removeMarkers (Expr.Expr (Inject l) kids) = Expr.Expr (Inject l) (map removeMarkers kids)
+removeMarkers (Expr.Expr Marker [kid]) = removeMarkers kid
+removeMarkers t = Bug.bug ("shouldn't happen in removeMarkers: t was " <> pretty t)
+
+termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
+termToZipper term =
+    -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
+    -- One Henry fixes the rendering code, then I can uncomment the real implementation below.
+    Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term))
+--    case unWrapPath term of
+--        Left (path /\ (Expr.Expr Marker [innerTerm])) ->
+--            Expr.Zipper (Expr.reversePath path) (assertJustExpr innerTerm)
+--        _justATerm -> Bug.bug ("termToZipper: term didn't have the right shape: " <> pretty term)
+
+--termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
+--termToZipper term =
+--    let res = oldTermToZipper term in
+--    trace ("term is: " <> pretty term <> " and res is: " <> pretty res) \_ ->
+--    res
+
+--oldTermToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
+--oldTermToZipper (Expr.Expr Marker [kid]) =
+-- Expr.Zipper (Expr.Path Nil) (assertJustExpr kid)
+--oldTermToZipper (Expr.Expr (Inject l) kids) =
+-- let kids' = (\(Expr.Zipper p t) -> p /\ t) <$> (List.fromFoldable $ map oldTermToZipper kids) in
+-- let isPath (p /\ e) = case p of
+--         (Expr.Path Nil) -> Right e
+--         _ -> Left (p /\ e) in
+-- let pathOrNot = oneOrNone kids' isPath in
+-- case pathOrNot of
+--     -- child didn't have cursor
+--     Left kids'' -> trace "left case" \_ -> Expr.Zipper (Expr.Path Nil) (Expr.Expr l (Array.fromFoldable (kids'')))
+--     -- child has exactly one cursor
+--     Right (leftKids /\ (Expr.Path p /\ e) /\ rightKids) ->
+--        trace "right case" \_ ->
+--        let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
+--        Expr.Zipper (Expr.Path (newTooth : p)) e
+----    let
+--oldTermToZipper t = Bug.bug ("shouldn't happen in oldTermToZipper: t was " <> pretty t)
 
 --------------------------------------------------------------------------------
-
-------------- Code for doing smallstep -------------------------------------
+------------- Code for running smallstep -----------------------------------
 
 doAnyApply :: forall t out. t -> List (t -> Maybe out) -> Maybe out
 doAnyApply t Nil = Nothing
@@ -204,16 +243,6 @@ stepRepeatedly t rules =
     Just t' -> stepRepeatedly t' rules
 
 -------------- Default rules --------------------------------------------
---type Language l r = TotalMap r (Rule l)
---data Rule l = Rule (Set Expr.MetaVar) (Array (Sort l)) (Sort l)
---type Sort l = Expr.MetaExpr (SortLabel l)
---type SortChange l = Expr.MetaChange (SortLabel l)
---
---data SortLabel l
---  = InjectSortLabel l
---  | NameSortLabel
---  | StringSortLabel String
-
 type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
 data SSChangeRule l = SSChangeRule (Set.Set Expr.MetaVar) (Array (SSChangeSort l)) (SSChangeSort l)
 
@@ -229,14 +258,6 @@ metaInject e = map (map (Expr.Inject <<< Expr.Meta <<< Right)) e
 langToChLang :: forall l r. IsRuleLabel l r => Grammar.Language l r -> SSChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
       -> SSChangeRule vars (map metaInject kids) (metaInject parent)) lang
---     -> hole "TODO: handle SortLabel, or keep generic?") lang
--- langToChLang lang = TotalMap.makeTotalMap case _ of
---     Hole -> Hole.hole "!TODO langToChLang rule for Hole"
---     HoleInterior -> Hole.hole "!TODO langToChLang rule for HoleInterior"
---     InjectRuleLabel r -> do
---         let Grammar.Rule vars kids parent = TotalMap.lookup r lang
---         Grammar.Rule vars (map metaInject kids) (metaInject parent)
-
 
 -- wraps a boundary unless the change is the identity, in which case so is this function
 wrapBoundary :: forall l r. IsExprLabel l => Direction -> Grammar.SortChange l{-Expr.MetaChange l-} -> SSTerm l r -> SSTerm l r
@@ -252,13 +273,13 @@ getFirst (x : xs) f = case f x of
  Just a -> Just (Nil /\ a /\ xs)
 
 stepDownThroughCursor :: forall l r. StepRule l r
-stepDownThroughCursor prog@(Expr.Expr (Boundary Down ch) [Expr.Expr Cursor [kid]]) =
-    Just $ Expr.Expr Cursor [Expr.Expr (Boundary Down ch) [kid]]
+stepDownThroughCursor prog@(Expr.Expr (Boundary Down ch) [Expr.Expr Marker [kid]]) =
+    Just $ Expr.Expr Marker [Expr.Expr (Boundary Down ch) [kid]]
 stepDownThroughCursor _ = Nothing
 
 stepUpThroughCursor :: forall l r. StepRule l r
-stepUpThroughCursor prog@(Expr.Expr Cursor [Expr.Expr (Boundary Up ch) [kid]]) =
-    Just $ Expr.Expr (Boundary Up ch) [Expr.Expr Cursor [kid]]
+stepUpThroughCursor prog@(Expr.Expr Marker [Expr.Expr (Boundary Up ch) [kid]]) =
+    Just $ Expr.Expr (Boundary Up ch) [Expr.Expr Marker [kid]]
 stepUpThroughCursor _ = Nothing
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
@@ -301,6 +322,7 @@ defaultUp _ _ = Nothing
 
 -------------- Other typechange related functions ---------------------
 
+-- TODO: maybe this should be in Grammar.purs?
 -- the input sort is the bottom sort
 -- The output change goes from the bottom to the top
 getPathChange :: forall l r. Ord r => Expr.IsExprLabel l => Grammar.IsRuleLabel l r => Grammar.LanguageChanges l r -> Grammar.DerivPath Dir.Up l r -> Grammar.Sort l -> Grammar.SortChange l

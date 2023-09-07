@@ -227,13 +227,23 @@ derive instance Traversable (Path dir)
 -- annotation
 class ReflectPathDir (dir :: Symbol) where 
   reflectPathDir :: forall l. Path dir l -> Dir.VerticalDir
-instance ReflectPathDir Dir.Down where reflectPathDir _ = upDir
-instance ReflectPathDir Dir.Up where reflectPathDir _ = downDir
+  inSaneEnglishIsItDown :: forall l. Path dir l -> Boolean -- Jacob: because I have no idea how to pattern match on variants
+instance ReflectPathDir Dir.Down where
+    reflectPathDir _ = upDir
+    inSaneEnglishIsItDown _ = true
+instance ReflectPathDir Dir.Up where
+    reflectPathDir _ = downDir
+    inSaneEnglishIsItDown _ = false
 
--- | This works on both up and down paths
+-- | This works on both up and down paths -- Jacob: no it doesn't, it only works on Down paths. It would display Up paths backwards.
 prettyPath path str = foldMapPath str prettyTooth path
 
-instance (ReflectPathDir dir, IsExprLabel l) => Pretty (Path dir l) where pretty path = prettyPath path "⌶"
+instance (ReflectPathDir dir, IsExprLabel l) => Pretty (Path dir l) where
+    pretty path =
+        if (inSaneEnglishIsItDown path) then -- TODO: verify that this is the right way around
+            prettyPath (toUpPath path) "⌶"
+            else
+            prettyPath path "⌶"
 
 stepPath :: forall dir l. Tooth l -> Path dir l -> Path dir l
 stepPath th (Path ths) = Path (th : ths)
@@ -242,15 +252,25 @@ unstepPath :: forall dir l. Path dir l -> Maybe (Tooth l /\ Path dir l)
 unstepPath (Path Nil) = Nothing
 unstepPath (Path (th : ths)) = Just (th /\ Path ths)
 
+{-
+TODO: This function doesn't work. But when I replaced it with a working version,
+it caused a bunch of rendering stuff to break. Henry needs to fix all of that.
+-}
 toUpPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Up l
-toUpPath path@(Path ths) = (_ $ reflectPathDir path) $ case_
-  # on _up (\_ -> Path ths)
-  # on _down (\_ -> reversePath (Path ths :: Path Down l))
+toUpPath path@(Path ths) =
+    trace "Note from Jacob: this function doesn't work; it always goes through the up case." \_ ->
+    (_ $ reflectPathDir path) $ case_
+  # on _up (\_ -> trace "toUpPath up case" \_ -> Path ths)
+  # on _down (\_ -> trace "toUpPath down case" \_ -> reversePath (Path ths :: Path Down l))
+--    if inSaneEnglishIsItDown path then Path (List.reverse ths) else Path ths
 
 toDownPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Down l
-toDownPath path@(Path ths) = (_ $ reflectPathDir path) $ case_
+toDownPath path@(Path ths) =
+    trace "I assume that this function doesn't work as well." \_ ->
+    (_ $ reflectPathDir path) $ case_
   # on _up (\_ -> reversePath (Path ths :: Path Up l))
   # on _down (\_ -> Path ths)
+--    if inSaneEnglishIsItDown path then Path ths else Path (List.reverse ths)
 
 unPath :: forall dir l. ReflectPathDir dir => Path dir l -> Expr l -> Expr l
 unPath path expr0 = do

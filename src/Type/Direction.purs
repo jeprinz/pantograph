@@ -8,6 +8,8 @@ import Data.Maybe (Maybe)
 import Data.Variant (Variant, inj)
 import Type.Proxy (Proxy(..))
 
+-- Jacob: what is this file? Is this AI generated? Does this code need to use variants and be so repetetive and strange?
+
 -- proxies
 _up    = Proxy :: Proxy "up"
 _down  = Proxy :: Proxy "down"
