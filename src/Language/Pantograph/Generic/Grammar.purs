@@ -300,6 +300,21 @@ derivPathSort dpath botSort = do
     Expr.Path Nil -> botSort
     Expr.Path (th : _) -> derivToothSort th
 
+-- NOTE: once toDownPath is fixed, this can be deleted and you can use derivPathSort combined with nonemptyPathSort
+nonemptyUpPathTopSort :: forall l r. IsRuleLabel l r => DerivPath Dir.Up l r -> Sort l
+nonemptyUpPathTopSort dpath = do
+  let dpath' = Expr.reversePath dpath
+  case dpath' of
+    Expr.Path Nil -> bug "path was empty"
+    Expr.Path (th : _) -> derivToothSort th
+
+nonemptyPathInnerSort :: forall l r. IsRuleLabel l r => DerivPath Dir.Up l r -> Sort l
+nonemptyPathInnerSort (Expr.Path teeth) = case teeth of
+    (Expr.Tooth (DerivLabel r sigma) p) : _ ->
+        let Rule _mvars hyps _con = TotalMap.lookup r language in
+        Expr.subMetaExprPartially sigma (Util.fromJust' "nepis" $ Array.index hyps (ZipList.leftLength p))
+    _ -> bug "path waas empty oor otherwise"
+
 derivZipperSort :: forall l r. IsRuleLabel l r => DerivZipper l r -> Sort l
 derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
 

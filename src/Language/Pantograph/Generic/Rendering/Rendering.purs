@@ -317,9 +317,9 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
       (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma} <#> case _ of
         Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [kid renCtx']
         Right elems -> elems)
-  -- TODO for Henry from Jacob: I'm not sure the right way to do this, but I'm using Marker as a more general thing, so it doesn't always have a term in it.
-  Marker % [] -> do HH.div [classNames ["node", "smallstep", "cursor"]] []
-  Marker % [kid] -> do
+  -- TODO for Henry from Jacob: make this work with any number of kids n, instead of just 0 and 1. Or maybe it doesn't matter.
+  Marker 0 % [] -> do HH.div [classNames ["node", "smallstep", "cursor"]] []
+  Marker 1 % [kid] -> do
     HH.div
       [classNames ["node", "smallstep", "cursor"]]
       [renderSSTerm locs kid renCtx]

@@ -72,6 +72,8 @@ editorComponent = HK.component \tokens spec -> HK.do
   _ /\ facade_ref <- HK.useRef $ initState
 
   -- clipboard
+   -- JACOB: A useful constraint to have here is that the path should be non-empty
+   -- It is useless to have an empty path in the clipboard, and it also makes some computations more annoying to have to deal with that case.
   _ /\ clipboard_ref <- HK.useRef (Nothing :: Maybe (DerivPath Up l r \/ DerivTerm l r))
 
   -- highlight path
@@ -307,6 +309,18 @@ editorComponent = HK.component \tokens spec -> HK.do
         let unifiedDTerm = subDerivTerm unifyingSub forgottenDTerm
         liftEffect $ Ref.write (Just (Right unifiedDTerm)) clipboard_ref
 
+    -- Takes a path to be added to the clipboard, and generalizes it before adding it to the clipboard
+    genAndCopyClipPath :: DerivPath Up l r -> HK.HookM Aff Unit
+    genAndCopyClipPath dpath = do
+        let generalizingChange = spec.generalizeDerivation (nonemptyUpPathTopSort dpath)
+        let generalizedDPath = SmallStep.ssTermToPath
+                (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down generalizingChange
+                    (SmallStep.wrapPath dpath (SmallStep.Marker 0 % []))) spec.stepRules)
+        let forgottenDPath = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDPath
+        let unifyingSub = Util.fromJust' "shouldn't fail if term typechecks" $ inferPath (nonemptyPathInnerSort forgottenDPath) forgottenDPath
+        let unifiedDPath = subDerivPath unifyingSub forgottenDPath
+        liftEffect $ Ref.write (Just (Left unifiedDPath)) clipboard_ref
+
     -- Deletes the term at the cursor and enters smallstep with a change going up
     deleteTermAtCursor :: DerivPath Up l r -> DerivTerm l r -> HK.HookM Aff Unit
     deleteTermAtCursor restOfProg dterm = do
@@ -377,19 +391,46 @@ editorComponent = HK.component \tokens spec -> HK.do
           else if cmdKey && key == "v" then do
             liftEffect (Ref.read clipboard_ref) >>= case _ of
               Nothing -> pure unit -- nothing in clipboard
-              Just (Left path') -> do
+              Just (Left clipDPath) -> do
                 liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
                 -- paste a path
-                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (path' <> path) dterm)))
+                -- First, specialize the path using the specializingChange from EditorSpec, which generally is used for putting the path into the cursor's context and thus updating variables that appear in the path
+                let specializingChange = spec.specializeDerivation (nonemptyUpPathTopSort clipDPath) (derivTermSort dterm)
+                let specializedClipDPath = SmallStep.ssTermToPath
+                        (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
+                            (SmallStep.wrapPath clipDPath (SmallStep.Marker 0 % []))) spec.stepRules)
+                -- call splitChange to get the expected sort that the path should unify with, and the changes that will be sent up and down
+                let {downChange, upChange, cursorSort} =
+                      spec.splitChange
+                        (SmallStep.getPathChange spec.languageChanges specializedClipDPath (nonemptyPathInnerSort specializedClipDPath))
+                -- Then, unify to make sure the types line up
+                case Unification.unify cursorSort (derivTermSort dterm) of
+                    Just (_newSort /\ unifyingSub) -> do
+                        -- update everything with the substitution
+                        let unifiedClipDPath = subDerivPath unifyingSub specializedClipDPath
+                        let unifiedProgPath = subDerivPath unifyingSub path
+                        let unifiedProgDTerm = subDerivTerm unifyingSub dterm
+                        let unifiedDownChange = ChangeAlgebra.subSomeMetaChange unifyingSub downChange
+                        let unifiedUpChange = ChangeAlgebra.subSomeMetaChange unifyingSub upChange
+                        -- Now, we set up smallstep for changing the program on path paste
+                        let ssterm = setupSSTermFromWrapAction
+                              unifiedProgPath
+                              unifiedUpChange
+                              unifiedClipDPath
+                              (ChangeAlgebra.invert unifiedDownChange)
+                              unifiedProgDTerm
+                        setState $ SmallStepState {ssterm}
+                    Nothing -> do -- Didn't unify; can't paste
+                        pure unit
               Just (Right clipDTerm) -> do
                 liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
                 -- paste a dterm:
                 -- First, specialize the term
                 let specializingChange = spec.specializeDerivation (derivTermSort clipDTerm) (derivTermSort dterm)
-                traceM ("specCh is: " <> pretty specializingChange)
                 let specializedDTerm = SmallStep.assertJustExpr
                         (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.termToSSTerm clipDTerm)) spec.stepRules)
+                -- Then, unify to make sure the types line up
                 case Unification.unify (derivTermSort specializedDTerm) (derivTermSort dterm) of
                     Just (_newSort /\ unifyingSub) -> do
                         let unifiedDTerm = subDerivTerm unifyingSub specializedDTerm
@@ -435,46 +476,38 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- SelectState
         ------------------------------------------------------------------------
         SelectState select -> do
+          let deleteSelection = do
+                let Expr.Zipperp path selection dterm = select.dzipperp
+                let sort = derivTermSort dterm
+                let selection'' = case selection of
+                      Left p -> Expr.reversePath p -- Expr.toUpPath p
+                      Right p -> p -- Expr.toUpPath p
+                let {downChange, upChange, cursorSort: _} =
+                      spec.splitChange
+                        (SmallStep.getPathChange spec.languageChanges selection'' sort)
+                let ssterm = setupSSTermFromWrapAction
+                      path
+                      (ChangeAlgebra.invert upChange)
+                      (Expr.Path mempty)
+                      downChange
+                      dterm
+                setState $ SmallStepState {ssterm}
+
           let Expr.Zipperp path selection dterm = select.dzipperp
           -- copy
           if cmdKey && key == "c" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
+            genAndCopyClipPath (either Expr.reversePath identity selection)
           -- cut
           else if cmdKey && key == "x" then do
             -- update clipboard
-            liftEffect $ Ref.write (Just (Left (either Expr.reversePath identity selection))) clipboard_ref
-            -- escape to cursor state, but without selection (updates state)
-            setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm)))
+            genAndCopyClipPath (either Expr.reversePath identity selection)
+            -- then delete the selection
+            deleteSelection
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
-
-
-          -- else if key == "Backspace" then do
-          --   -- escape to cursor state, but without selection (updates state)
-          --   setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm)))
-
-          else if key == "Backspace" then do
-            let Expr.Zipperp path selection dterm = select.dzipperp
-            let sort = derivTermSort dterm
-            let selection'' = case selection of
-                  Left p -> Expr.toUpPath p
-                  Right p -> Expr.toUpPath p
-
-            let {downChange, upChange, cursorSort: _} =
-                  spec.splitChange
-                    (SmallStep.getPathChange spec.languageChanges selection'' sort)
-
-            let ssterm = setupSSTermFromWrapAction
-                  path
-                  (ChangeAlgebra.invert upChange)
-                  (Expr.Path mempty)
-                  downChange
-                  dterm
-
-            setState $ SmallStepState {ssterm}
-
+          else if key == "Backspace" then deleteSelection
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
