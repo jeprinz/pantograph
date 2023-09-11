@@ -532,9 +532,11 @@ insertSucRule = SmallStep.makeDownRule
     {-i-}slot
     (\[y, typeY] [ctx, x, typeX, locality] [i] ->
         pure $
-            SmallStep.wrapBoundary SmallStep.Down (csor VarSort % [ctx, x, typeX, locality]) $
             dTERM Suc ["gamma" /\ rEndpoint ctx, "x" /\ rEndpoint x, "typeX" /\ rEndpoint typeX,
-                "y" /\ y, "typeY" /\ typeY, "locality" /\ rEndpoint locality] [i])
+                "y" /\ y, "typeY" /\ typeY, "locality" /\ rEndpoint locality] [
+                    SmallStep.wrapBoundary SmallStep.Down (csor VarSort % [ctx, x, typeX, locality]) $
+                        i
+                ])
         -- x is type of var, y is type of thing added to ctx
 
 -- diff 0 (A, B, 0) = (+A, +B, 0) 

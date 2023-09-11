@@ -226,16 +226,16 @@ doAnyApply t (r : rs) = case r t of
  Just t' -> Just t'
  Nothing -> doAnyApply t rs
 
-stepSomebody :: forall l r. List (SSTerm l r) -> List (StepRule l r) -> Maybe (List (SSTerm l r))
+stepSomebody :: forall l r. IsRuleLabel l r => List (SSTerm l r) -> List (StepRule l r) -> Maybe (List (SSTerm l r))
 stepSomebody Nil _ = Nothing
 stepSomebody (t : ts) rules = case step t rules of
  Just t' -> Just (t' : ts)
  Nothing -> (:) <$> pure t <*> stepSomebody ts rules
 
 -- when outputs `Nothing`, then done.
-step :: forall l r. SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
+step :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
 step t@(Expr.Expr l kids) rules =
- let fullRules = stepUpThroughCursor : stepDownThroughCursor : rules in
+ let fullRules = stepUpThroughCursor : stepDownThroughCursor : rules <> (pure passThroughRule) in
  case doAnyApply t fullRules of
      Nothing -> do
          kids' <- stepSomebody (List.fromFoldable kids) rules
@@ -294,7 +294,8 @@ defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSCh
 defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids]) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let sort = Grammar.getSortFromSub ruleLabel sub in
- if not ((fst (endpoints ch)) == sort) then Bug.bug "assertion failed: ch boundary didn't match sort in defaultDown" else
+ if not ((fst (endpoints ch)) == sort)
+    then Bug.bug ("assertion failed: ch boundary didn't match sort in defaultDown. sort was: " <> pretty sort) else
  do
      chSub /\ chBackUp <- doOperation ch parentGSort
      let subFull = map (map Expr.Inject) sub
@@ -326,6 +327,14 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
              (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub')))
              (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
 defaultUp _ _ = Nothing
+
+passThroughRule :: forall l r. IsRuleLabel l r => StepRule l r
+passThroughRule (Expr.Expr (Boundary Down downCh) [Expr.Expr (Boundary Up upCh) [kid]]) =
+    let hypotenuse = fromJust' "This shouldn't happen [passThroughRule]" $ lub downCh upCh in
+    let upCh' = compose (invert downCh) hypotenuse in
+    let downCh' = compose (invert upCh) hypotenuse in
+    pure $ wrapBoundary Up upCh' (wrapBoundary Down downCh' kid)
+passThroughRule _ = Nothing
 
 -------------- Other typechange related functions ---------------------
 
