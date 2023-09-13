@@ -244,7 +244,7 @@ step t@(Expr.Expr l kids) rules =
 
 stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules =
-    trace ("stepRepeatedly: " <> pretty t) \_ ->
+--    trace ("stepRepeatedly: " <> pretty t) \_ ->
     case step t rules of
     Nothing -> t
     Just t' -> stepRepeatedly t' rules

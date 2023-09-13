@@ -221,7 +221,7 @@ editorComponent = HK.component \tokens spec -> HK.do
       FillAction {sub, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
         let dzipper0 = Expr.Zipper up dterm
-        let dzipper1 = subDerivLabel sub <$> dzipper0
+        let dzipper1 = subDerivZipper sub dzipper0
         setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1))
 
       -- !TODO use topChange

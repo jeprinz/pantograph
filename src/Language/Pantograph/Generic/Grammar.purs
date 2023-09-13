@@ -42,7 +42,7 @@ import Data.List.Rev as RevList
 import Debug (trace)
 
 --------------------------------------------------------------------------------
--- IsRuleLabel
+-- RuleLabel
 --------------------------------------------------------------------------------
 
 class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleLabel l r | r -> l where
@@ -157,11 +157,30 @@ subDerivLabel :: forall l r. IsRuleLabel l r => SortSub l -> DerivLabel l r -> D
 subDerivLabel sub (DerivLabel r s) = DerivLabel r (map (Expr.subMetaExprPartially sub) s)
 subDerivLabel _ other = other
 
+fillDefaultsDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> DerivTerm l r
+fillDefaultsDerivTerm inp@(Expr.Expr label kids) =
+    case isHoleDerivLabel label of
+        Just sort -> Util.fromJust' "why does defaultDerivTerm return a Maybe anyway?" $ defaultDerivTerm sort
+        Nothing -> Expr.Expr label (map fillDefaultsDerivTerm kids)
+
+fillDefaultsDerivPath :: forall l r dir. IsRuleLabel l r => DerivPath dir l r -> DerivPath dir l r
+fillDefaultsDerivPath (Expr.Path teeth) = Expr.Path $
+    map ( \ (Expr.Tooth label (ZipList.Path {left, right})) ->
+        Expr.Tooth label (ZipList.Path {left: map fillDefaultsDerivTerm left, right: map fillDefaultsDerivTerm right})
+    ) teeth
+
+fillDefaultsDerivZipper :: forall l r. IsRuleLabel l r => DerivZipper l r -> DerivZipper l r
+fillDefaultsDerivZipper (Expr.Zipper path term) = Expr.Zipper (fillDefaultsDerivPath path) (fillDefaultsDerivTerm term)
+
 subDerivTerm :: forall l r. IsRuleLabel l r => SortSub l -> DerivTerm l r -> DerivTerm l r
-subDerivTerm sub = map (subDerivLabel sub)
+subDerivTerm sub =  map (subDerivLabel sub) >>> fillDefaultsDerivTerm
 
 subDerivPath :: forall d l r. IsRuleLabel l r => SortSub l -> DerivPath d l r -> DerivPath d l r
-subDerivPath sub = map (subDerivLabel sub)
+subDerivPath sub = map (subDerivLabel sub) >>> fillDefaultsDerivPath
+
+subDerivZipper :: forall l r. IsRuleLabel l r => SortSub l -> DerivZipper l r -> DerivZipper l r
+subDerivZipper sub = map (subDerivLabel sub) >>> fillDefaultsDerivZipper
+
 
 --------------------------------------------------------------------------------
 -- AsExprLabel
