@@ -606,6 +606,12 @@ arrowUnWrap = Smallstep.makeDownRule
             Smallstep.wrapBoundary Smallstep.Down b bDeriv
         )
 
+typeBecomeRhsOfChange :: StepRule
+typeBecomeRhsOfChange = Smallstep.makeDownRule
+    (TypeSort %+- [{-c-}cSlot])
+    {-t-}slot
+    (\[] [c] [_t] -> pure (Smallstep.termToSSTerm (sortToType (rEndpoint c))))
+
 stepRules :: List StepRule
 stepRules = do
   let chLang = Smallstep.langToChLang language
@@ -615,8 +621,9 @@ stepRules = do
     , nonlocalBecomesLocal
     , insertSucRule
     , removeSucRule
-    , arrowWrap
-    , arrowUnWrap
+--    , arrowWrap
+--    , arrowUnWrap
+    , typeBecomeRhsOfChange
     , Smallstep.defaultDown chLang
     , Smallstep.defaultUp chLang
     ]

@@ -341,6 +341,11 @@ zipUp (Zipper path expr) = case path of
   Path Nil -> Nothing
   Path (th : ths) -> Just $ th /\ Zipper (Path ths) (unTooth th expr)
 
+zipAllTheWayUp :: forall l. Zipper l -> Zipper l
+zipAllTheWayUp z = case zipUp z of
+    Just (_ /\ z) -> zipAllTheWayUp z
+    Nothing -> z
+
 -- | Only zip down the kids in the tooth (not the interior of the tooth).
 zipDownsTooth :: forall l. IsExprLabel l => Zipper l -> Tooth l -> ZipList.Path (Zipper l)
 zipDownsTooth zipper (_ %< kidsPath) = do
