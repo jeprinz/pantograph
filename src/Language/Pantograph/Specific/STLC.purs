@@ -576,13 +576,17 @@ removeSucRule = Smallstep.makeDownRule
         i)
 
 --- down{i}_(Var (+ A : ty , ctx) A ty NonLocal) ~~> Z
+-- NOTE: the unify and diff is to deal with the situation where a FreeVar is really the same type, but has different metavariables. Its a bit hacky maybe.
 nonlocalBecomesLocal :: StepRule
 nonlocalBecomesLocal = Smallstep.makeDownRule
     (VarSort %+- [dPLUS CtxConsSort [{-a-}slot, {-ty-}slot] {-ctx-} cSlot [], {-a'-}cSlot, {-ty'-}cSlot, NonLocal %+- []])
     {-i-}slot
-    (\[a, ty] [ctx, a', ty'] [i] ->
-        if not (ChangeAlgebra.inject a == a' && ChangeAlgebra.inject ty == ty') then Maybe.Nothing else
-        pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [(csor CtxConsSort % [a', ty', ctx]),a' ,ty' , Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
+    (\[a, ty] [ctx, a', ty'] [_i] ->
+        if not (ChangeAlgebra.inject a == a' && Maybe.isJust (unify ty (rEndpoint ty'))) then Maybe.Nothing else
+        pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [(csor CtxConsSort % [a', ChangeAlgebra.inject ty, ctx])
+            , a'
+            , ChangeAlgebra.diff (rEndpoint ty') ty
+            , Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
             (dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a, "type" /\ ty] []))
 
 -- down{t}_(Type (+ A -> B)) ~~> [A] -> down{t}_B
@@ -665,6 +669,12 @@ forgetSorts :: DerivLabel -> Maybe DerivLabel
 forgetSorts r@(Grammar.DerivLabel FreeVar sigma) = pure r
 forgetSorts _ = Maybe.Nothing
 
+clipboardSort :: Sort -> Sort
+clipboardSort s
+    | Maybe.Just [gamma, ty] <- Expr.matchExprImpl s (sor TermSort %$ [slot , slot])
+    = sor TermSort % [startCtx, Expr.fromMetaVar (Expr.freshMetaVar "anyType")]
+clipboardSort _other = Expr.fromMetaVar (Expr.freshMetaVar "anySort")
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -685,5 +695,6 @@ editorSpec =
   , generalizeDerivation
   , specializeDerivation
   , forgetSorts
+  , clipboardSort
   }
 

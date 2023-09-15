@@ -16,6 +16,7 @@ import Data.Int.Bits as Bits
 import Data.Maybe (Maybe(..), isJust)
 import Data.String as String
 import Data.Tuple.Nested ((/\))
+import Data.Tuple as Tuple
 import Data.Variant (default, on)
 import Debug as Debug
 import Debug as Debug
@@ -307,20 +308,30 @@ editorComponent = HK.component \tokens spec -> HK.do
                 (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down generalizingChange
                     (SmallStep.termToSSTerm dterm)) spec.stepRules)
         let forgottenDTerm = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDTerm
-        let unifyingSub = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
+        let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
+        let expectedClipSort = spec.clipboardSort (derivTermSort forgottenDTerm)
+        let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' (derivTermSort forgottenDTerm)
+        let unifyingSub = Unification.composeSub unifyingSub'
+                (Tuple.snd $ Util.fromJust' "gacct shouldn't fail" $ (Unification.unify expectedClipSort forgottenTopSort))
         let unifiedDTerm = subDerivTerm unifyingSub forgottenDTerm
         liftEffect $ Ref.write (Just (Right unifiedDTerm)) clipboard_ref
 
     -- Takes a path to be added to the clipboard, and generalizes it before adding it to the clipboard
+    -- The path to be copied should be nonempty
     genAndCopyClipPath :: DerivPath Up l r -> HK.HookM Aff Unit
     genAndCopyClipPath dpath = do
         let generalizingChange = spec.generalizeDerivation (nonemptyUpPathTopSort dpath)
-        let generalizedDPath = SmallStep.ssTermToPath
+        let _upChange /\ generalizedDPath /\ _downChange = SmallStep.ssTermToChangedPath
                 (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down generalizingChange
                     (SmallStep.wrapPath dpath (SmallStep.Marker 0 % []))) spec.stepRules)
         let forgottenDPath = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDPath
-        let unifyingSub = Util.fromJust' "shouldn't fail if term typechecks" $ inferPath (nonemptyPathInnerSort forgottenDPath) forgottenDPath
+        let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferPath (nonemptyPathInnerSort forgottenDPath) forgottenDPath
+        let expectedClipSort = spec.clipboardSort (nonemptyUpPathTopSort forgottenDPath)
+        let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' (nonemptyUpPathTopSort forgottenDPath)
+        let unifyingSub = Unification.composeSub unifyingSub'
+                (Tuple.snd $ Util.fromJust' "gacct shouldn't fail" $ (Unification.unify expectedClipSort forgottenTopSort))
         let unifiedDPath = subDerivPath unifyingSub forgottenDPath
+        traceM ("going into clipboard is path: " <> pretty unifiedDPath <> " with top sort " <> pretty (nonemptyUpPathTopSort unifiedDPath) <> " and bottom sort " <> pretty (nonemptyPathInnerSort unifiedDPath))
         liftEffect $ Ref.write (Just (Left unifiedDPath)) clipboard_ref
 
     -- Deletes the term at the cursor and enters smallstep with a change going up
@@ -381,6 +392,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           let dterm = hdzipperDerivTerm cursor.hdzipper
           -- copy
           if cmdKey && key == "c" then do
+            -- TODO: Question for Henry: why doesn't this have preventDefault?
             -- update clipboard
             genAndCopyClipTerm dterm
           -- cut
@@ -398,22 +410,31 @@ editorComponent = HK.component \tokens spec -> HK.do
                 -- paste a path
                 -- First, specialize the path using the specializingChange from EditorSpec, which generally is used for putting the path into the cursor's context and thus updating variables that appear in the path
                 let specializingChange = spec.specializeDerivation (nonemptyUpPathTopSort clipDPath) (derivTermSort dterm)
-                let specializedClipDPath = SmallStep.ssTermToPath
+                traceM ("pasting a path with specChange " <> pretty specializingChange)
+                let _upChange /\ specializedClipDPath /\ _downChange = SmallStep.ssTermToChangedPath
                         (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.wrapPath clipDPath (SmallStep.Marker 0 % []))) spec.stepRules)
                 -- call splitChange to get the expected sort that the path should unify with, and the changes that will be sent up and down
                 let {downChange, upChange, cursorSort} =
                       spec.splitChange
                         (SmallStep.getPathChange spec.languageChanges specializedClipDPath (nonemptyPathInnerSort specializedClipDPath))
+                traceM ("cursorSort is: " <> pretty cursorSort <> " and dts dterm is: " <> pretty (derivTermSort dterm))
+                traceM ("downChange is: " <> pretty downChange <> " and upChange is: " <> pretty upChange)
                 -- Then, unify to make sure the types line up
                 case Unification.unify cursorSort (derivTermSort dterm) of
                     Just (_newSort /\ unifyingSub) -> do
+                        traceM "got here 3"
                         -- update everything with the substitution
                         let unifiedClipDPath = subDerivPath unifyingSub specializedClipDPath
+                        traceM "got here 4"
                         let unifiedProgPath = subDerivPath unifyingSub path
+                        traceM "got here 5"
                         let unifiedProgDTerm = subDerivTerm unifyingSub dterm
+                        traceM "got here 6"
                         let unifiedDownChange = ChangeAlgebra.subSomeMetaChange unifyingSub downChange
+                        traceM "got here 7"
                         let unifiedUpChange = ChangeAlgebra.subSomeMetaChange unifyingSub upChange
+                        traceM "got here 8"
                         -- Now, we set up smallstep for changing the program on path paste
                         let ssterm = setupSSTermFromWrapAction
                               unifiedProgPath

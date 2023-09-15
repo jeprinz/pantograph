@@ -158,7 +158,6 @@ oneOrNone (x : xs) f = case f x of
 unWrapPath :: forall l r. IsRuleLabel l r => SSTerm l r
     -- path                                         OR term
     -> (Grammar.DerivPath Dir.Down l r /\ SSTerm l r) \/ Grammar.DerivTerm l r
-unWrapPath t@(Expr.Expr (Marker 0) _) = Left (Expr.Path Nil /\ t)
 unWrapPath (Expr.Expr (Inject l) kids) =
  let kids' = (List.fromFoldable $ map unWrapPath kids) in
  case oneOrNone kids' identity of
@@ -168,7 +167,8 @@ unWrapPath (Expr.Expr (Inject l) kids) =
      Right (leftKids /\ (Expr.Path p /\ e) /\ rightKids) ->
         let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
         Left $ Expr.Path (newTooth : p) /\ e
-unWrapPath t = Bug.bug ("shouldn't happen in termToZipper: t was " <> pretty t)
+unWrapPath t = Left (Expr.Path Nil /\ t)
+--unWrapPath t = Bug.bug ("shouldn't happen in unWrapPath: t was " <> pretty t)
 
 removeMarkers :: forall l r. IsRuleLabel l r => SSTerm l r -> SSTerm l r
 removeMarkers (Expr.Expr (Inject l) kids) = Expr.Expr (Inject l) (map removeMarkers kids)
@@ -177,45 +177,43 @@ removeMarkers t = Bug.bug ("shouldn't happen in removeMarkers: t was " <> pretty
 
 termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
 termToZipper term =
+    let _change /\ term' = ssTermStripTopChange term in
     -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
     -- One Henry fixes the rendering code, then I can uncomment the real implementation below.
-    Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term))
---    case unWrapPath term of
---        Left (path /\ (Expr.Expr Marker [innerTerm])) ->
+    Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
+--    case unWrapPath term' of
+--        Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
 --            Expr.Zipper (Expr.reversePath path) (assertJustExpr innerTerm)
 --        _justATerm -> Bug.bug ("termToZipper: term didn't have the right shape: " <> pretty term)
 
-ssTermToPath :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.DerivPath Dir.Up l r
+-- The input path should be nonempty
+ssTermToPath :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.DerivPath Dir.Up l r /\ Grammar.SortChange l
 ssTermToPath term =
     case unWrapPath term of
-        Left (path /\ (Expr.Expr (Marker 0) [])) -> Expr.reversePath path
+        Left (path /\ (Expr.Expr (Boundary Down c) [Expr.Expr (Marker 0) []])) -> Expr.reversePath path /\ c
+        Left (path /\ (Expr.Expr (Marker 0) [])) ->
+            let res = Expr.reversePath path in
+            res /\ inject (Grammar.nonemptyPathInnerSort res)
         _justATerm -> Bug.bug ("ssTermToPath: term didn't have the right shape: " <> pretty term)
 
---termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
---termToZipper term =
---    let res = oldTermToZipper term in
---    trace ("term is: " <> pretty term <> " and res is: " <> pretty res) \_ ->
---    res
+-- TODO: maybe can simplify this function if I instead make a function called getSSTermSort and use that?
+ssTermStripTopChange :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.SortChange l /\ SSTerm l r
+ssTermStripTopChange (Expr.Expr (Boundary Up c) [t]) = c /\ t
+ssTermStripTopChange t@(Expr.Expr (Inject l) _) = inject (Grammar.derivLabelSort l) /\ t
+ssTermStripTopChange t@(Expr.Expr (Marker 1) [Expr.Expr (Inject l) _]) = inject (Grammar.derivLabelSort l) /\ t
+ssTermStripTopChange _ = Bug.bug "invalid input ssTerStripTopChange"
 
---oldTermToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
---oldTermToZipper (Expr.Expr Marker [kid]) =
--- Expr.Zipper (Expr.Path Nil) (assertJustExpr kid)
---oldTermToZipper (Expr.Expr (Inject l) kids) =
--- let kids' = (\(Expr.Zipper p t) -> p /\ t) <$> (List.fromFoldable $ map oldTermToZipper kids) in
--- let isPath (p /\ e) = case p of
---         (Expr.Path Nil) -> Right e
---         _ -> Left (p /\ e) in
--- let pathOrNot = oneOrNone kids' isPath in
--- case pathOrNot of
---     -- child didn't have cursor
---     Left kids'' -> trace "left case" \_ -> Expr.Zipper (Expr.Path Nil) (Expr.Expr l (Array.fromFoldable (kids'')))
---     -- child has exactly one cursor
---     Right (leftKids /\ (Expr.Path p /\ e) /\ rightKids) ->
---        trace "right case" \_ ->
---        let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
---        Expr.Zipper (Expr.Path (newTooth : p)) e
-----    let
---oldTermToZipper t = Bug.bug ("shouldn't happen in oldTermToZipper: t was " <> pretty t)
+-- returns term and how it changed
+ssTermToChangedTerm :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.SortChange l /\ Grammar.DerivTerm l r
+ssTermToChangedTerm t =
+    let c /\ t' = ssTermStripTopChange t in
+    c /\ assertJustExpr t'
+
+-- returns path and how it changed, upChange /\ path /\ downChange
+ssTermToChangedPath :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.SortChange l /\ Grammar.DerivPath Dir.Up l r /\ Grammar.SortChange l
+ssTermToChangedPath t =
+    let c /\ t' = ssTermStripTopChange t in
+    c /\ ssTermToPath t'
 
 --------------------------------------------------------------------------------
 ------------- Code for running smallstep -----------------------------------
@@ -235,7 +233,7 @@ stepSomebody (t : ts) rules = case step t rules of
 -- when outputs `Nothing`, then done.
 step :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
 step t@(Expr.Expr l kids) rules =
- let fullRules = stepUpThroughCursor : stepDownThroughCursor : rules <> (pure passThroughRule) in
+ let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
  case doAnyApply t fullRules of
      Nothing -> do
          kids' <- stepSomebody (List.fromFoldable kids) rules
@@ -335,6 +333,16 @@ passThroughRule (Expr.Expr (Boundary Down downCh) [Expr.Expr (Boundary Up upCh) 
     let downCh' = compose (invert upCh) hypotenuse in
     pure $ wrapBoundary Up upCh' (wrapBoundary Down downCh' kid)
 passThroughRule _ = Nothing
+
+combineDownRule :: forall l r. IsRuleLabel l r => StepRule l r
+combineDownRule (Expr.Expr (Boundary Down c1) [Expr.Expr (Boundary Down c2) [kid]]) =
+        pure $ wrapBoundary Down (compose c2 c1) kid
+combineDownRule _ = Nothing
+
+combineUpRule :: forall l r. IsRuleLabel l r => StepRule l r
+combineUpRule (Expr.Expr (Boundary Up c1) [Expr.Expr (Boundary Up c2) [kid]]) =
+        pure $ wrapBoundary Up (compose c1 c2) kid
+combineUpRule _ = Nothing
 
 -------------- Other typechange related functions ---------------------
 

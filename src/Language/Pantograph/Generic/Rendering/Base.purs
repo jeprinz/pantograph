@@ -144,6 +144,7 @@ type EditorSpec l r =
 
   , forgetSorts :: DerivLabel l r -> Maybe (DerivLabel l r)
 
+  , clipboardSort :: Sort l -> Sort l
 
   -- TODO: find a way to put defaultDerivTerm in EditorSpec instead of a TypeClass. Yes I know it requires re-plumbing some things.
 

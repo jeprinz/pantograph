@@ -493,6 +493,12 @@ forgetSorts :: DerivLabel -> Maybe DerivLabel
 forgetSorts r@(Grammar.DerivLabel FreeVar sigma) = pure r
 forgetSorts _ = Maybe.Nothing
 
+clipboardSort :: Sort -> Sort
+clipboardSort s
+    | Maybe.Just [gamma] <- Expr.matchExprImpl s (sor TermSort %$ [ slot ])
+    = sor TermSort % [sor CtxNilSort % []]
+clipboardSort _other = Expr.fromMetaVar (Expr.freshMetaVar "anySort")
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -513,5 +519,6 @@ editorSpec =
   , generalizeDerivation
   , specializeDerivation
   , forgetSorts
+  , clipboardSort
   }
 
