@@ -45,11 +45,17 @@ consoleComponent = HK.component \tokens spec -> HK.do
           [HH.text "Console"]
        
       , HH.div [classNames ["console-controls"]] 
-          [HH.button 
-            [HE.onClick \event ->
-              logConsole (HH.text ("[force console update]")) \_ ->
-                HK.modify_ bitId not]
-            [HH.text "force update"]]
+          [ HH.button 
+              [HE.onClick \event ->
+                logConsole (HH.text ("[force console update]")) \_ ->
+                  HK.modify_ bitId not]
+              [HH.text "force update"]
+          , HH.button 
+              [HE.onClick \event ->
+                logConsole (HH.text ("[clear console]")) \_ ->
+                  setConsole (\_ -> []) (\_ -> HK.modify_ bitId not)]
+              [HH.text "clear"] 
+          ]
       , HH.div [classNames ["console-logs"]] $
           getConsole \logs -> Array.reverse logs <#> \log -> 
           HH.div [classNames ["console-log"]]

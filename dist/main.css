@@ -361,7 +361,9 @@ console
 .console-controls {
   padding: 0.5rem 0;
 }
+
 .console-controls button {
+  margin-right: 1em;
   font-size: inherit;
   border: none;
   outline: none;

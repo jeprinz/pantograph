@@ -180,11 +180,13 @@ termToZipper term =
     let _change /\ term' = ssTermStripTopChange term in
     -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
     -- Once Henry fixes the rendering code, then I can uncomment the real implementation below.
-    Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
---    case unWrapPath term' of
---        Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
---            Expr.Zipper (Expr.reversePath path) (assertJustExpr innerTerm)
---        _justATerm -> Bug.bug ("termToZipper: term didn't have the right shape: " <> pretty term)
+  
+    -- Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
+  
+    case unWrapPath term' of
+       Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
+           Expr.Zipper (Expr.reversePath path) (assertJustExpr innerTerm)
+       _justATerm -> Bug.bug ("termToZipper: term didn't have the right shape: " <> pretty term)
 
 -- The input path should be nonempty
 ssTermToPath :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.DerivPath Dir.Up l r /\ Grammar.SortChange l
