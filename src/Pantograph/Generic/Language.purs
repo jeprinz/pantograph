@@ -91,11 +91,6 @@ instance IsJoint joint => FoldableWithIndex Int (SortJoint joint) where
   foldMapWithIndex _ _ = hole "TODO"
 instance IsJoint joint => IsJoint (SortJoint joint)
 
--- The derivative of a 1-argument type constructor.
-class Derivative f f' | f -> f' where
-  differentiate :: forall x. f x -> f (f' x)
-  integrate :: forall x. x -> f' x -> f x
-
 -- | A `Tooth` is a `Term` with one kid missing -- exactly one kid should be
 -- | `Nothing` and the rest should be `Some`. Unfortunately, this is not
 -- | type-enforced.
