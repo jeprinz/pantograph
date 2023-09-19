@@ -179,7 +179,7 @@ termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Gramma
 termToZipper term =
     let _change /\ term' = ssTermStripTopChange term in
     -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
-    -- One Henry fixes the rendering code, then I can uncomment the real implementation below.
+    -- Once Henry fixes the rendering code, then I can uncomment the real implementation below.
     Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
 --    case unWrapPath term' of
 --        Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
