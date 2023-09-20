@@ -98,6 +98,7 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (VarSort /\ [gamma, x, ty, locality]) = "Var" <+> parens gamma <+> x <+> ty <+> "(" <> show locality <> ")"
   prettyExprF'_unsafe (TermSort /\ [gamma, ty]) = "Term" <+> parens gamma <+> ty
   prettyExprF'_unsafe (TypeSort /\ [t]) = "Type" <+> parens t
+  prettyExprF'_unsafe (CtxConsSort /\ [x, ty, "∅"]) = x <> ":" <> ty
   prettyExprF'_unsafe (CtxConsSort /\ [x, ty, gamma]) = x <> ":" <> ty <> ", " <> gamma
   prettyExprF'_unsafe (CtxNilSort /\ []) = "∅"
   prettyExprF'_unsafe (Local /\ []) = "Local"
@@ -388,7 +389,7 @@ colonElem = Rendering.makePuncElem "colon" ":"
 equalsElem = Rendering.makePuncElem "equals" "="
 inElem = Rendering.makePuncElem "inLet" "in"
 letElem = Rendering.makePuncElem "let" "let"
-arrowElem = Rendering.makePuncElem "arrow" "->"
+arrowElem = Rendering.makePuncElem "arrow" "→"
 
 nameElem str = HH.span [classNames ["name"]] [HH.text str]
 dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]

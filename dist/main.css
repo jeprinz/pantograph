@@ -27,7 +27,7 @@ body {
 */
 
 .editor {
-  padding: 1rem;
+  padding: 1em;
   font-size: 12pt;
 }
 
@@ -36,8 +36,8 @@ body {
 */
 
 .status {
-  padding: 0.5rem 0;
-  margin-bottom: 1rem;
+  padding: 0.5em 0;
+  margin-bottom: 1em;
   font-size: 80%;
   background-color: rgb(213, 213, 213);
 }
@@ -48,7 +48,7 @@ body {
 } */
 
 .status td {
-  padding: 0.2rem 0.5rem;
+  padding: 0.2em 0.5em;
 }
 
 .status td:first-child {
@@ -81,8 +81,8 @@ body {
   /* font-family: 'Iosevka Curly'; */
   font-family: monospace;
 
-  margin-bottom: 1rem;
-  padding: 0.5rem 0;
+  margin-bottom: 1em;
+  padding: 0.5em 0;
 }
 
 /* 
@@ -92,7 +92,7 @@ body {
 .node {
   display: inline;
   cursor: pointer;
-  border-radius: 1rem 1rem / 2rem;
+  border-radius: 1em 1em / 2em;
 }
 
 .node.zero {}
@@ -124,8 +124,8 @@ body {
 }
 
 .subnode.holeExterior-inner {
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
+  padding: 0 0.4em;
+  border-radius: 1em 1em / 2em;
   background-color: rgba(255, 139, 50, 0.1);
   box-shadow:
     inset 0 0 0 2px rgb(255, 139, 50),
@@ -133,7 +133,7 @@ body {
 }
 
 .subnode.holeInterior-inner {
-  padding: 0 0.2rem;
+  padding: 0 0.2em;
   box-shadow: inset 0 0 0 2px rgb(255, 139, 50);
   /* box-shadow: 0 0 0 4px rgb(255, 139, 50) inset; */
 }
@@ -144,7 +144,7 @@ body {
 
 .subnode {
   display: inline;
-  border-radius: 1rem 1rem / 2rem;
+  border-radius: 1em 1em / 2em;
 }
 
 .subnode.s-pred {}
@@ -166,8 +166,8 @@ body {
 .subnode.string-inner.empty-string {
   color: gray;
   font-style: italic;
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
+  padding: 0 0.4em;
+  border-radius: 1em 1em / 2em;
   background-color: rgba(255, 139, 50, 0.1);
   box-shadow:
     inset 0 0 0 2px rgb(255, 139, 50),
@@ -183,11 +183,11 @@ body {
 }
 
 .subnode.punctuation.lambda {
-  margin-right: 0.2rem;
+  margin-right: 0.2em;
 }
 
 .subnode.punctuation.mapsto {
-  padding: 0 0.5rem;
+  padding: 0 0.5em;
 }
 
 .subnode.punctuation.space {
@@ -201,11 +201,27 @@ body {
 .subnode.punctuation.interrogative {}
 
 .subnode.punctuation.colon {
-  margin: 0 0.2rem;
+  margin: 0 0.4em;
+}
+
+.subnode.punctuation.let {
+  margin-right: 0.4em;
+}
+
+.subnode.punctuation.equals {
+  margin: 0 0.4em;
+}
+
+.subnode.punctuation.inLet {
+  margin: 0 0.4em;
 }
 
 .subnode.punctuation.turnstile {
-  margin: 0 0.2rem;
+  margin: 0 0.4em;
+}
+
+.subnode.punctuation.arrow {
+  margin: 0 0.4em;
 }
 
 /* 
@@ -220,17 +236,17 @@ body {
 .subnode.buffer>.buffer-inner {
   position: absolute;
   left: 0;
-  top: 2rem;
+  top: 2em;
 
   box-shadow: 0 0 0 1px black;
-  border-radius: 0.2rem;
+  border-radius: 0.2em;
 }
 
 .subnode.buffer>.buffer-inner>.buffer-results>.buffer-result {
   /* min-width: 200px; */
   white-space: nowrap;
   overflow: hidden;
-  padding: 0.2rem;
+  padding: 0.2em;
 }
 
 .subnode.buffer>.buffer-inner>.buffer-results>.buffer-result.buffer-focus {
@@ -246,8 +262,8 @@ body {
 .node.placeholderCursor {}
 
 .node.placeholderCursor>.subnode.placeholderCursor-inner {
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
+  padding: 0 0.4em;
+  border-radius: 1em 1em / 2em;
   background-color: rgba(255, 139, 50, 0.1);
   box-shadow:
     0 0 0 2px blue,
@@ -259,16 +275,16 @@ body {
 
 .preview {
   /* display: inline-block; */
-  border-radius: 1rem 1rem / 2rem;
+  border-radius: 1em 1em / 2em;
   background-color: rgba(0, 234, 179, 0.379);
 }
 
 .preview.wrap.before {
-  margin-right: 0.1rem;
+  margin-right: 0.1em;
 }
 
 .preview.wrap.before:after {
-  border-radius: 1rem 1rem / 2rem;
+  border-radius: 1em 1em / 2em;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
   position: relative;
@@ -280,11 +296,11 @@ body {
 }
 
 .preview.wrap.after {
-  margin-left: 0.1rem;
+  margin-left: 0.1em;
 }
 
 .preview.wrap.after:before {
-  border-radius: 1rem 1rem / 2rem;
+  border-radius: 1em 1em / 2em;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   position: relative;
@@ -320,8 +336,8 @@ body {
 .node.smallstep {}
 
 .node.smallstep.hole {
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
+  padding: 0 0.4em;
+  border-radius: 1em 1em / 2em;
   box-shadow:
     inset 0 0 0 2px rgb(255, 139, 50),
     0 0 2px 0 black;
@@ -347,19 +363,19 @@ console
 .console {
   position: fixed;
   bottom: 0;
-  padding: 0 0.5rem;
-  margin-bottom: 1rem;
-  width: calc(100vw - 3rem);
+  padding: 0 0.5em;
+  margin-bottom: 1em;
+  width: calc(100vw - 3em);
   font-size: 80%;
   background-color: rgb(213, 213, 213);
 }
 
 .console-header {
-  padding-top: 0.5rem;
+  padding-top: 0.5em;
 }
 
 .console-controls {
-  padding: 0.5rem 0;
+  padding: 0.5em 0;
 }
 
 .console-controls button {
@@ -372,11 +388,11 @@ console
 }
 
 .console-logs {
-  max-height: 20rem;;
+  max-height: 20em;;
   overflow-y: scroll;
 }
 
 .console-log {
-  padding: 0.5rem 0;
+  padding: 0.5em 0;
   box-shadow: 0 -1px 0 0 black;
 }
