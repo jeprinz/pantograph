@@ -165,7 +165,7 @@ instance IsJoint joint => FoldableWithIndex Int (ChangeJoint joint) where
   foldMapWithIndex _ _ = hole "TODO"
 instance IsJoint joint => IsJoint (ChangeJoint joint)
 
-invertChange :: forall ruleName joint. IsLanguage ruleName joint => Change joint -> Change joint
+invertChange :: forall rule joint. IsLanguage rule joint => Change joint -> Change joint
 invertChange = mapFix case _ of
   Plus th a -> Minus th a
   Minus th a -> Plus th a
@@ -189,44 +189,44 @@ changeEndpoints = unFix >>> case _ of
 
 -- Term
 
-type Term ruleName joint = Fix (TermJoint ruleName (MetaJoint joint))
+type Term rule joint = Fix (TermJoint rule (MetaJoint joint))
 
-data TermJoint ruleName joint a
-  = Term ruleName (Sub MetaVar (Sort joint)) (joint a)
+data TermJoint rule joint a
+  = Term rule (Sub MetaVar (Sort joint)) (joint a)
   | Literal String
 
-instance IsJoint joint => Pretty1 (TermJoint ruleName joint) where pretty1 _ = hole "TODO"
-derive instance IsJoint joint => Functor (TermJoint ruleName joint)
-instance IsJoint joint => FunctorWithIndex Int (TermJoint ruleName joint) where
+instance IsJoint joint => Pretty1 (TermJoint rule joint) where pretty1 _ = hole "TODO"
+derive instance IsJoint joint => Functor (TermJoint rule joint)
+instance IsJoint joint => FunctorWithIndex Int (TermJoint rule joint) where
   mapWithIndex _ _ = hole "TODO"
-derive instance IsJoint joint => Foldable (TermJoint ruleName joint)
-instance IsJoint joint => FoldableWithIndex Int (TermJoint ruleName joint) where
+derive instance IsJoint joint => Foldable (TermJoint rule joint)
+instance IsJoint joint => FoldableWithIndex Int (TermJoint rule joint) where
   foldrWithIndex _ _ _ = hole "TODO"
   foldlWithIndex _ _ _ = hole "TODO"
   foldMapWithIndex _ _ = hole "TODO"
-instance IsJoint joint => IsJoint (TermJoint ruleName joint)
+instance IsJoint joint => IsJoint (TermJoint rule joint)
 
 -- TODO: does this go in `Editor` since its only relevant to the ui?
 
 -- -- | A `HolyTerm` is a term 
--- type HolyTerm ruleName joint = Fix (HolyTermJoint ruleName (MetaJoint joint))
+-- type HolyTerm rule joint = Fix (HolyTermJoint rule (MetaJoint joint))
 
--- data HolyTermJoint ruleName joint a
---   = InjectHolyTermJoint (TermJoint ruleName joint a)
+-- data HolyTermJoint rule joint a
+--   = InjectHolyTermJoint (TermJoint rule joint a)
 --   | HoleInterior (Sort joint)
 
--- instance Subtype (TermJoint ruleName joint a) (HolyTermJoint ruleName joint a) where inject = InjectHolyTermJoint
+-- instance Subtype (TermJoint rule joint a) (HolyTermJoint rule joint a) where inject = InjectHolyTermJoint
 
--- instance IsJoint joint => Pretty1 (HolyTermJoint ruleName joint) where pretty1 _ = hole "TODO"
--- derive instance IsJoint joint => Functor (HolyTermJoint ruleName joint)
--- instance IsJoint joint => FunctorWithIndex Int (HolyTermJoint ruleName joint) where
+-- instance IsJoint joint => Pretty1 (HolyTermJoint rule joint) where pretty1 _ = hole "TODO"
+-- derive instance IsJoint joint => Functor (HolyTermJoint rule joint)
+-- instance IsJoint joint => FunctorWithIndex Int (HolyTermJoint rule joint) where
 --   mapWithIndex _ _ = hole "TODO"
--- derive instance IsJoint joint => Foldable (HolyTermJoint ruleName joint)
--- instance IsJoint joint => FoldableWithIndex Int (HolyTermJoint ruleName joint) where
+-- derive instance IsJoint joint => Foldable (HolyTermJoint rule joint)
+-- instance IsJoint joint => FoldableWithIndex Int (HolyTermJoint rule joint) where
 --   foldrWithIndex _ _ _ = hole "TODO"
 --   foldlWithIndex _ _ _ = hole "TODO"
 --   foldMapWithIndex _ _ = hole "TODO"
--- instance IsJoint joint => IsJoint (HolyTermJoint ruleName joint)
+-- instance IsJoint joint => IsJoint (HolyTermJoint rule joint)
 
 -- Cursor
 
@@ -239,17 +239,17 @@ data Select joint dir a = Select (Path UpPathDir joint a) (Path dir joint a) a
 -- Language
 
 class
-    ( Pretty ruleName
+    ( Pretty rule
     , IsJoint joint )
-    <= IsLanguage ruleName joint
-    | joint -> ruleName
+    <= IsLanguage rule joint
+    | joint -> rule
   where
-  -- | The production rules, indexed by `ruleName`.
-  productionRules :: ruleName -> ProductionRule ruleName joint
-  -- | The change rules, indexed by `ruleName`.
-  changeRules :: ruleName -> ChangeRule ruleName joint
+  -- | The production rules, indexed by `rule`.
+  productionRules :: rule -> ProductionRule rule joint
+  -- | The change rules, indexed by `rule`.
+  changeRules :: rule -> ChangeRule rule joint
   -- | The default term (if any) for a sort.
-  defaultTerm :: Sort joint -> Maybe (Term ruleName joint)
+  defaultTerm :: Sort joint -> Maybe (Term rule joint)
   -- | When a change is yielded at a cursor, split it into a change to propogate
   -- | downwards, and change to propogate upwards, and a new sort at the cursor.
   splitChange :: Change joint -> {down :: Change joint, up :: Change joint, sort :: Sort joint}
@@ -264,15 +264,15 @@ class
   -- | TODO: DOC
   specialize :: {general :: Sort joint, special :: Sort joint} -> Change joint
 
-newtype ProductionRule ruleName joint = ProductionRule
+newtype ProductionRule rule joint = ProductionRule
   { quantifiers :: Set.Set MetaVar
-  , kidSorts :: TermJoint ruleName joint (Sort joint)
+  , kidSorts :: TermJoint rule joint (Sort joint)
   , parentSort :: Sort joint 
   }
 
-newtype ChangeRule ruleName joint = ChangeRule
+newtype ChangeRule rule joint = ChangeRule
   { quantifiers :: Set.Set MetaVar
-  , kidChanges :: TermJoint ruleName joint (Fix (ChangeJoint (MetaJoint joint)))
+  , kidChanges :: TermJoint rule joint (Fix (ChangeJoint (MetaJoint joint)))
   }
 
 -- -- example
