@@ -76,10 +76,11 @@ instance IsJoint joint => IsJoint (MetaJoint joint)
 -- | supports __name__ and __string__ sorts, where `Name` expects one child that
 -- | is a `String <String>`, which reflects the literal name into the sort
 -- | system.
-type Sort joint = Fix (SortJoint (MetaJoint joint))
+type Sort joint = Fix (SortJoint joint)
 
 data SortJoint joint a
   = InjectSortJoint (joint a)
+  | MetaSort (MetaJoint joint a)
   | Name a
   | String String
 
@@ -99,10 +100,13 @@ instance IsJoint joint => IsJoint (SortJoint joint)
 -- | A `Tooth` is a `Term` with one kid missing -- exactly one kid should be
 -- | `Nothing` and the rest should be `Some`. Unfortunately, this is not
 -- | type-enforced.
-data Tooth joint a = Tooth (joint (Maybe a))
+newtype Tooth joint a = Tooth (joint (Maybe a))
 
 derive instance IsJoint joint => Foldable (Tooth joint)
 derive instance IsJoint joint => Functor (Tooth joint)
+
+type TermTooth rule joint = Tooth (TermJoint rule joint) (Term rule joint)
+type SortTooth joint = Tooth (SortJoint (MetaJoint joint)) (Sort joint)
 
 tooths :: forall joint a. IsJoint joint => joint a -> joint (Tooth joint a)
 tooths joint = mapWithIndex (\i _ -> Tooth (mapWithIndex (\i' a' -> if i == i' then Nothing else Just a') joint)) joint
@@ -127,14 +131,18 @@ instance ReversePathDir DownPathDir UpPathDir
 
 newtype Path (dir :: Symbol) joint a = Path (List (Tooth joint a))
 
-data SomePath joint a 
-  = UpPath (Path UpPathDir joint a) 
-  | DownPath (Path DownPathDir joint a)
+type TermPath dir rule joint = Path dir (TermJoint rule joint) (Term rule joint)
 
 derive instance IsJoint joint => Foldable (Path dir joint)
 derive instance IsJoint joint => Functor (Path dir joint)
 instance Semigroup (Path dir joint a) where append (Path ths1) (Path ths2) = Path (ths1 <> ths2)
 instance Monoid (Path dir joint a) where mempty = Path mempty
+
+data SomePath joint a 
+  = UpPath (Path UpPathDir joint a) 
+  | DownPath (Path DownPathDir joint a)
+
+type SomeTermPath rule joint = SomePath (TermJoint rule joint) (Term rule joint)
 
 pathDir :: forall dir joint a. Path dir joint a -> Proxy dir
 pathDir _ = Proxy
@@ -154,15 +162,15 @@ reversePath (Path ths) = Path (List.reverse ths)
 
 -- Change
 
-type Change joint = Fix (ChangeJoint (SortJoint (MetaJoint joint)))
+type Change joint = Fix (ChangeJoint joint)
 
 data ChangeJoint joint a
-  = Plus (Tooth joint (Fix joint)) a
-  | Minus (Tooth joint (Fix joint)) a
-  | Replace (Fix joint) (Fix joint)
-  | InjectChangeJoint (joint a)
+  = Plus (Tooth (SortJoint joint) (Fix (SortJoint joint))) a
+  | Minus (Tooth (SortJoint joint) (Fix (SortJoint joint))) a
+  | Replace (Fix (SortJoint joint)) (Fix (SortJoint joint))
+  | InjectChangeJoint (SortJoint joint a)
 
-instance Subtype (joint a) (ChangeJoint joint a) where inject = InjectChangeJoint
+instance Subtype (SortJoint joint a) (ChangeJoint joint a) where inject = InjectChangeJoint
 instance IsJoint joint => Pretty1 (ChangeJoint joint) where pretty1 _ = hole "TODO"
 derive instance IsJoint joint => Functor (ChangeJoint joint)
 instance IsJoint joint => FunctorWithIndex Int (ChangeJoint joint) where
@@ -181,28 +189,26 @@ invertChange = mapFix case _ of
   Replace a a' -> Replace a' a
   InjectChangeJoint a -> InjectChangeJoint a
 
-changeEndpoints :: forall joint. IsJoint joint => Change joint -> {left :: Sort joint, right :: Sort joint}
+changeEndpoints :: forall joint. IsJoint joint => Change joint -> {before :: Sort joint, after :: Sort joint}
 changeEndpoints = unFix >>> case _ of
   Plus th a -> do
-    let {left, right} = changeEndpoints a
-    {left, right: Fix (unTooth right th)}
+    let {before, after} = changeEndpoints a
+    {before, after: Fix (unTooth after th)}
   Minus th a -> do
-    let {left, right} = changeEndpoints a
-    {left: Fix (unTooth left th), right}
-  Replace left right -> {left, right}
+    let {before, after} = changeEndpoints a
+    {before: Fix (unTooth before th), after}
+  Replace before after -> {before, after}
   InjectChangeJoint a -> do
     let zippedKids = map changeEndpoints a
-    let leftKids = _.left <$> zippedKids
-    let rightKids = _.right <$> zippedKids
-    {left: Fix leftKids, right: Fix rightKids}
+    let beforeKids = _.before <$> zippedKids
+    let afterKids = _.after <$> zippedKids
+    {before: Fix beforeKids, after: Fix afterKids}
 
 -- Term
 
-type Term rule joint = Fix (TermJoint rule (MetaJoint joint))
+type Term rule joint = Fix (TermJoint rule joint)
 
-data TermJoint rule joint a
-  = Term rule (Sub MetaVar (Sort joint)) (joint a)
-  | Literal String
+data TermJoint rule joint a = Term rule (Substitution MetaVar (Sort joint)) (joint a)
 
 instance IsJoint joint => Pretty1 (TermJoint rule joint) where pretty1 _ = hole "TODO"
 derive instance IsJoint joint => Functor (TermJoint rule joint)
@@ -240,17 +246,20 @@ instance IsJoint joint => IsJoint (TermJoint rule joint)
 -- Cursor
 
 data Cursor joint a = Cursor (Path UpPathDir joint a) a
+type TermCursor rule joint = Cursor (TermJoint rule joint) (Term rule joint)
 
 -- Select
 
 data Select joint a = Select (Path UpPathDir joint a) (SomePath joint a) a
+type TermSelect rule joint = Select (TermJoint rule joint) (Term rule joint)
 
 -- Language
 
 class
     ( Pretty rule
     , IsJoint joint )
-    <= IsLanguage rule joint | joint -> rule, rule -> joint
+    <= IsLanguage rule joint 
+    | joint -> rule, rule -> joint
   where
   -- | The production rules, indexed by `rule`.
   productionRules :: rule -> ProductionRule rule joint
@@ -284,7 +293,7 @@ newtype ChangeRule rule joint = ChangeRule
 
 -- Misc
 
-newtype Sub k v = Sub (Map.Map k v)
+newtype Substitution k v = Substitution (Map.Map k v)
 
 -- data Nat = Zero | Suc Nat
 -- derive instance Eq Nat
