@@ -3,19 +3,21 @@ module Data.Derivative where
 import Data.Tuple.Nested
 import Prelude
 
-import Data.Foldable (class Foldable)
+import Data.Foldable (class Foldable, find)
+import Data.Maybe (fromJust)
+import Data.Tuple (fst, snd)
+import Partial.Unsafe (unsafePartial)
 
 -- | A functional typeclass that relates a functor to its derivative.
 -- |
 -- | Laws:
 -- | ```
--- | map (\(a /\ f') -> (a /\ integrate a)) (differentiate f) =
--- | map (\a -> (a /\ f)) f
+-- | all (f == _) (\(a /\ f') -> integrate a f') (differentiate f)
 -- |
--- | foldr (\(a' /\ f') -> maybe (if a == a' then Just f' else Nothing) Just) Nothing (differentiate (integrate a f')) =
--- | Just f'
+-- | differentiate (integrate a f') `at` a == f'
 -- | ```
 class (Functor f, Foldable f, Functor f') <= Derivative f f' | f -> f' where
   differentiate :: forall a. f a -> f (a /\ f' a)
   integrate :: forall a. a -> f' a -> f a
 
+at f a = unsafePartial (snd (fromJust (find (fst >>> (a == _)) f)))
