@@ -95,7 +95,8 @@ data SortJoint joint a
   | Name a
   | String String
 
-data SortJoint' joint' a
+data SortJoint' (joint' :: Type -> Type) a
+  = InjectSortJoint' (joint' a)
 
 instance Subtype (joint a) (SortJoint joint a) where inject = InjectSortJoint
 
@@ -117,23 +118,6 @@ instance Derivative joint joint' => Derivative (SortJoint joint) (SortJoint' joi
 
 instance IsJoint joint => IsJoint (SortJoint joint)
 
--- -- | A `Tooth` is a `Term` with one kid missing -- exactly one kid should be
--- -- | `Nothing` and the rest should be `Some`. Unfortunately, this is not
--- -- | type-enforced.
--- newtype Tooth joint a = Tooth (joint (Maybe a))
-
--- derive instance IsJoint joint joint' => Foldable (Tooth joint)
--- derive instance IsJoint joint joint' => Functor (Tooth joint)
-
--- type TermTooth rule joint = Tooth (TermJoint rule joint) (Term rule joint)
--- type SortTooth joint = Tooth (SortJoint (MetaJoint joint)) (Sort joint)
-
--- tooths :: forall joint a. IsJoint joint joint' => joint a -> joint (Tooth joint a)
--- tooths joint = mapWithIndex (\i _ -> Tooth (mapWithIndex (\i' a' -> if i == i' then Nothing else Just a') joint)) joint
-
--- unTooth :: forall joint a. IsJoint joint joint' => a -> Tooth joint a -> joint a
--- unTooth a (Tooth joint) = map (maybe a identity) joint
-
 -- Path
 
 data PathDir = UpPathDir | DownPathDir
@@ -149,9 +133,9 @@ class ReversePathDir (dir :: Symbol) (dir' :: Symbol)
 instance ReversePathDir UpPathDir DownPathDir
 instance ReversePathDir DownPathDir UpPathDir
 
-newtype Path (dir :: Symbol) joint' a = Path (List (joint' a))
+newtype Path (dir :: Symbol) (joint' :: Type -> Type) a = Path (List (joint' a))
 
-type TermPath dir rule joint = Path dir (TermJoint' rule joint) (Term rule joint)
+type TermPath dir rule joint joint' = Path dir (TermJoint' rule joint joint') (Term rule joint)
 
 derive instance Foldable joint' => Foldable (Path dir joint')
 derive instance Functor joint' => Functor (Path dir joint')
@@ -162,7 +146,7 @@ data SomePath joint' a
   = UpPath (Path UpPathDir joint' a) 
   | DownPath (Path DownPathDir joint' a)
 
-type SomeTermPath rule joint = SomePath (TermJoint' rule joint) (Term rule joint)
+type SomeTermPath rule joint joint' = SomePath (TermJoint' rule joint joint') (Term rule joint)
 
 pathDir :: forall dir joint' a. Path dir joint' a -> Proxy dir
 pathDir _ = Proxy
@@ -227,7 +211,7 @@ type Term rule joint = Fix (TermJoint rule joint)
 
 data TermJoint rule joint a = Term rule (Substitution MetaVar (Sort joint)) (joint a)
 
-data TermJoint' rule joint' a
+data TermJoint' rule joint (joint' :: Type -> Type) a = Term' rule (Substitution MetaVar (Sort joint)) (joint' a)
 
 instance Pretty1 joint => Pretty1 (TermJoint rule joint) where pretty1 _ = hole "TODO"
 derive instance Functor joint => Functor (TermJoint rule joint)
@@ -235,49 +219,27 @@ instance FunctorWithIndex Int joint => FunctorWithIndex Int (TermJoint rule join
   mapWithIndex _ _ = hole "TODO"
 derive instance Foldable joint => Foldable (TermJoint rule joint)
 
-instance Pretty1 joint' => Pretty1 (TermJoint' rule joint') where pretty1 _ = hole "TODO"
-derive instance Functor joint' => Functor (TermJoint' rule joint')
-instance FunctorWithIndex Int joint' => FunctorWithIndex Int (TermJoint' rule joint') where
+instance Pretty1 joint' => Pretty1 (TermJoint' rule joint joint') where pretty1 _ = hole "TODO"
+derive instance Functor joint' => Functor (TermJoint' rule joint joint')
+instance FunctorWithIndex Int joint' => FunctorWithIndex Int (TermJoint' rule joint joint') where
   mapWithIndex _ _ = hole "TODO"
-derive instance Foldable joint' => Foldable (TermJoint' rule joint')
+derive instance Foldable joint' => Foldable (TermJoint' rule joint joint')
 
-instance Derivative joint joint' => Derivative (TermJoint rule joint) (TermJoint' rule joint') where
+instance Derivative joint joint' => Derivative (TermJoint rule joint) (TermJoint' rule joint joint') where
   differentiate = hole "TODO"
   integrate = hole "TODO"
 
 instance IsJoint joint => IsJoint (TermJoint rule joint)
 
--- TODO: does this go in `Editor` since its only relevant to the ui?
-
--- -- | A `HolyTerm` is a term 
--- type HolyTerm rule joint = Fix (HolyTermJoint rule (MetaJoint joint))
-
--- data HolyTermJoint rule joint a
---   = InjectHolyTermJoint (TermJoint rule joint a)
---   | HoleInterior (Sort joint)
-
--- instance Subtype (TermJoint rule joint a) (HolyTermJoint rule joint a) where inject = InjectHolyTermJoint
-
--- instance IsJoint joint joint' => Pretty1 (HolyTermJoint rule joint) where pretty1 _ = hole "TODO"
--- derive instance IsJoint joint joint' => Functor (HolyTermJoint rule joint)
--- instance IsJoint joint joint' => FunctorWithIndex Int (HolyTermJoint rule joint) where
---   mapWithIndex _ _ = hole "TODO"
--- derive instance IsJoint joint joint' => Foldable (HolyTermJoint rule joint)
--- instance IsJoint joint joint' => FoldableWithIndex Int (HolyTermJoint rule joint) where
---   foldrWithIndex _ _ _ = hole "TODO"
---   foldlWithIndex _ _ _ = hole "TODO"
---   foldMapWithIndex _ _ = hole "TODO"
--- instance IsJoint joint joint' => IsJoint (HolyTermJoint rule joint)
-
 -- Cursor
 
 data Cursor joint' a = Cursor (Path UpPathDir joint' a) a
-type TermCursor rule joint = Cursor (TermJoint' rule joint) (Term rule joint)
+type TermCursor rule joint joint' = Cursor (TermJoint' rule joint joint') (Term rule joint)
 
 -- Select
 
 data Select joint' a = Select (Path UpPathDir joint' a) (SomePath joint' a) a
-type TermSelect rule joint joint' = Select (TermJoint' rule joint) (Term rule joint)
+type TermSelect rule joint joint' = Select (TermJoint' rule joint joint') (Term rule joint)
 
 -- Language
 
