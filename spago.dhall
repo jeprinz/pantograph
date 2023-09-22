@@ -40,6 +40,7 @@ to generate this file without the comments in this block.
   , "rationals"
   , "record"
   , "refs"
+  , "safe-coerce"
   , "strings"
   , "transformers"
   , "tuples"

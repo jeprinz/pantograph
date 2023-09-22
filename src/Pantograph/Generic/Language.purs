@@ -1,7 +1,6 @@
 module Pantograph.Generic.Language where
 
 import Prelude
-
 import Data.Foldable (class Foldable, foldl, foldr)
 import Data.FoldableWithIndex (class FoldableWithIndex, foldMapWithIndexDefaultR)
 import Data.FunctorWithIndex (class FunctorWithIndex, mapWithIndex)
@@ -22,6 +21,8 @@ import Safe.Coerce (coerce)
 import Text.Pretty (class Pretty, class Pretty1)
 import Type.Proxy (Proxy(..))
 
+-- Fix
+
 -- | The fixpoint of a 1-argument type constructor.
 data Fix (f :: Type -> Type) = Fix (f (Fix f))
 
@@ -35,7 +36,11 @@ unFix (Fix ff) = ff
 
 -- | A language's __joint__ type is the container type of the children of an
 -- | expression.
-class (Functor joint, FunctorWithIndex Int joint, Foldable joint, FoldableWithIndex Int joint, Pretty1 joint) <= IsJoint joint
+class 
+  ( Functor joint, FunctorWithIndex Int joint
+  , Foldable joint, FoldableWithIndex Int joint
+  , Pretty1 joint )
+  <= IsJoint joint
 
 -- MetaVar
 
@@ -121,6 +126,10 @@ instance ReversePathDir UpPathDir DownPathDir
 instance ReversePathDir DownPathDir UpPathDir
 
 newtype Path (dir :: Symbol) joint a = Path (List (Tooth joint a))
+
+data SomePath joint a 
+  = UpPath (Path UpPathDir joint a) 
+  | DownPath (Path DownPathDir joint a)
 
 derive instance IsJoint joint => Foldable (Path dir joint)
 derive instance IsJoint joint => Functor (Path dir joint)
@@ -234,15 +243,14 @@ data Cursor joint a = Cursor (Path UpPathDir joint a) a
 
 -- Select
 
-data Select joint dir a = Select (Path UpPathDir joint a) (Path dir joint a) a
+data Select joint a = Select (Path UpPathDir joint a) (SomePath joint a) a
 
 -- Language
 
 class
     ( Pretty rule
     , IsJoint joint )
-    <= IsLanguage rule joint
-    | joint -> rule
+    <= IsLanguage rule joint | joint -> rule, rule -> joint
   where
   -- | The production rules, indexed by `rule`.
   productionRules :: rule -> ProductionRule rule joint
@@ -254,9 +262,9 @@ class
   -- | downwards, and change to propogate upwards, and a new sort at the cursor.
   splitChange :: Change joint -> {down :: Change joint, up :: Change joint, sort :: Sort joint}
   -- | Defines if a cursor is valid as a function of its sort.
-  isValidCursorSort :: Sort joint -> Boolean
+  validCursorSort :: Sort joint -> Boolean
   -- | Defines if a selection is valid as a function of its top and bottom sorts.
-  isValidSelectionSorts :: {top :: Sort joint, bottom :: Sort joint} -> Boolean
+  validSelectionSorts :: {top :: Sort joint, bottom :: Sort joint} -> Boolean
   -- | The change propogated upwards when the term is deleted.
   digChange :: Sort joint -> Change joint
   -- | TODO: DOC
@@ -267,19 +275,12 @@ class
 newtype ProductionRule rule joint = ProductionRule
   { quantifiers :: Set.Set MetaVar
   , kidSorts :: TermJoint rule joint (Sort joint)
-  , parentSort :: Sort joint 
-  }
+  , parentSort :: Sort joint }
 
+-- TODO: DOC
 newtype ChangeRule rule joint = ChangeRule
   { quantifiers :: Set.Set MetaVar
-  , kidChanges :: TermJoint rule joint (Fix (ChangeJoint (MetaJoint joint)))
-  }
-
--- -- example
-
--- data L = String
--- data J x = Leaf x | Tree x x
--- type G = Term L J
+  , kidChanges :: TermJoint rule joint (Fix (ChangeJoint (MetaJoint joint))) }
 
 -- Misc
 
