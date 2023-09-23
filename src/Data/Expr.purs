@@ -693,6 +693,41 @@ matchChange (Replace a1 b1 % []) (Replace a2 b2 % []) = do
     pure $ (matches1 <> matches2) /\ []
 matchChange _ _ = Nothing
 
+---- helper function for matchChange
+--matchTeeth2Impl :: forall l. IsExprLabel l =>
+--    Tooth l -> Tooth (MatchLabel l)
+--    -> Maybe (Array (MetaVar /\ Expr l))
+--matchTeeth2Impl (Tooth l1 (ZipList.Path {left: left1, right: right1}))
+--           (Tooth (InjectMatchLabel l2) (ZipList.Path {left: left2, right: right2})) =
+--    if not (l1 == l2 && List.length right1 == List.length right2) then Nothing else do
+--    leftMatches <- sequence $ List.zipWith matchExprImpl (RevList.unreverse left1) (RevList.unreverse left2)
+--    rightMatches <- sequence $ List.zipWith matchExprImpl right1 right2
+--    let concatMatches = foldl (<>) []
+--    pure $ concatMatches leftMatches <> concatMatches rightMatches
+--matchTeeth2Impl (Tooth l1 a) (Tooth Match y) = bug "what even is this case? I guess it shouldn't happen since Match has zero children, and therefore can't be a tooth?"
+--
+--matchChange2Impl :: forall l. IsExprLabel l =>
+--    -- Two kinds of slots: those in change positions, and those in expression postions
+--    Change l -> Expr (ChangeLabel (Meta l))
+--    -- Two kinds out outputs: expressions and changes
+--    -> Maybe (Array (MetaVar /\ Expr l) /\ Array (MetaVar /\ Change l))
+--matchChange2Impl c (Inject (Meta (Left mv)) % []) = Just ([] /\ [mv /\ c])
+--matchChange2Impl (Inject l1 % kids1) (Inject (Meta (Right l2)) % kids2) | l1 == l2 =
+--    foldl (\(a/\b) (c/\d) -> (a <> c) /\ (b <> d)) ([] /\ []) <$> sequence (Array.zipWith matchChange2Impl kids1 kids2)
+--matchChange2Impl (Plus th1 % [kid1]) ((Plus th2) % [kid2]) = do
+--    toothMatches <- matchTeeth th1 th2
+--    es /\ cs <- matchChange2Impl kid1 kid2
+--    pure $ (toothMatches <> es) /\ cs
+--matchChange2Impl (Minus th1 % [kid1]) ((Minus th2) % [kid2]) = do
+--    toothMatches <- matchTeeth th1 th2
+--    es /\ cs <- matchChange2Impl kid1 kid2
+--    pure $ (toothMatches <> es) /\ cs
+--matchChange2Impl (Replace a1 b1 % []) (Replace a2 b2 % []) = do
+--    matches1 <- (matchExprImpl a1 a2)
+--    matches2 <- (matchExprImpl b1 b2)
+--    pure $ (matches1 <> matches2) /\ []
+--matchChange2Impl _ _ = Nothing
+
 matchExpr :: forall l out. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out) -> out
 matchExpr e eMatch f = unsafePartial f (fromJust' "in matchExpr, expressions didn't match" $ matchExprImpl e eMatch)
 
