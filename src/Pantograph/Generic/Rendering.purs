@@ -164,7 +164,7 @@ renderSomePath :: forall ctx env rule joint. IsEditor ctx env rule joint => Some
 renderSomePath (UpPath p) = renderUpPath p
 renderSomePath (DownPath p) = renderDownPath p
 
-renderTerm ∷ forall ctx env rule joint. IsEditor ctx env rule joint => Term rule joint -> TermRenderer ctx env rule joint
+renderTerm :: forall ctx env rule joint. IsEditor ctx env rule joint => Term rule joint -> TermRenderer ctx env rule joint
 renderTerm (Fix (Term rule sigma j)) = arrangeTerm (Term rule sigma (renderTerm <$> j))
 
 -- Toolbox
