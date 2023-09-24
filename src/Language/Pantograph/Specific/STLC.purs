@@ -502,14 +502,14 @@ insertSucRule = Smallstep.makeDownRule
 -- i.e. adds to the LHS context in order to produce the RHS context i.e. what
 -- change required of the first context to get second context
 
--- down{Z}_(VarSort (- A : ty, Gamma) A ty Local) ~> up{down{FreeVar}_(Var (diff 0 Gamma) A ty NonLocal))}_(VarSort Gamma A ty (Replace Local NonLocal))
+-- down{Z}_(VarSort (- A : ty, Gamma) A ty Local) ~> up{down{FreeVar}_(Var (diff 0 Gamma) A ty NonLocal))}_(VarSort id A ty (Replace Local NonLocal))
 localBecomesNonlocal :: StepRule
 localBecomesNonlocal = Smallstep.makeDownRule
     (VarSort %+- [dMINUS CtxConsSort [{-a-}slot, {-ty-}slot] {-ctx-} cSlot [], {-a'-}cSlot, {-ty'-}cSlot, Local %+- []])
     (Zero %# [])
     (\[a, ty] [ctx, a', ty'] [] ->
         if not (ChangeAlgebra.inject a == a' && ChangeAlgebra.inject ty == ty') then Maybe.Nothing else
-        pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [ctx, a', ty', Expr.Replace (sor Local % []) (sor NonLocal % []) % []])
+        pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [ChangeAlgebra.inject (rEndpoint ctx), a', ty', Expr.Replace (sor Local % []) (sor NonLocal % []) % []])
             (Smallstep.wrapBoundary Smallstep.Down (csor VarSort % [ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx), ChangeAlgebra.inject a, ChangeAlgebra.inject ty, csor NonLocal % []])
                 (dTERM FreeVar ["name" /\ a, "type" /\ ty] [])))
 
