@@ -48,6 +48,7 @@ import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
 import Util (fromJust)
+import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -406,66 +407,6 @@ startCtx =
     sor CtxConsSort % [nameSort "ten", sor (DataType Int) % []
     , sor CtxNilSort %[]]
 
-{-
-This function is used both for inserting and deleting paths.
-
-Input is change going UP the path
-Should have the property that if it maps c -> c1 /\ s /\ c2, then
-c = c1^-1 o c2, and   _ --[c1^-1]--> s --[c2]--> _
--}
--- TODO: get rid of this and use splitChange - maybe even have that code in Generic
-splitTopBottomChange :: SortChange -> SortChange /\ Sort /\ SortChange
-splitTopBottomChange c
-    | Maybe.Just ([] /\ [ctx, ty]) <- Expr.matchChange c (TermSort %+- [cSlot, cSlot])
-    =
-        let ctx1 /\ ctx2 = ChangeAlgebra.endpoints ctx in
-        let ty1 /\ ty2 = ChangeAlgebra.endpoints ty in
-        csor TermSort % [ChangeAlgebra.inject ctx2, ty]
-        /\ sor TermSort % [ctx2, ty1]
-        /\ csor TermSort % [ChangeAlgebra.invert ctx, ChangeAlgebra.inject ty1]
-        -- TODO TODO TODO: implement the case for TypeSort
---    | Maybe.Just ([] /\ [ty]) <- Expr.matchChange c (TypeSort %+- [cSlot])
---    =
---        let ty1 /\ ty2 = ChangeAlgebra.endpoints ty in
---        ?h
---        /\ sor TypeSort % [ty1]
---        /\ ?h
-    -- TODO TODO TODO: Also implement the case where the change is just a metavariable identity!
-splitTopBottomChange c = bug ("splitTopBottomChange - got c = " <> pretty c)
-
--- Makes an edit that inserts a path, and propagates the context change downwards and type change upwards
-makeEditFromPath :: DerivPath Up /\ Sort -> String -> Sort -> Maybe Edit
-makeEditFromPath (path /\ bottomOfPathSort) name cursorSort = do
-    let change = Smallstep.getPathChange languageChanges path bottomOfPathSort
-    let preTopChange /\ preCursorSort /\ preBotChange = splitTopBottomChange change
---    _ /\ sub <- unify cursorSort preCursorSort -- TODO: should these arguments to unify be flipped? Does it matter?
-    _ /\ sub <- unify preCursorSort cursorSort
-    let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange
-    let botChange = ChangeAlgebra.subSomeMetaChange sub preBotChange
-    let pathSubbed = map (Grammar.subDerivLabel sub) path
-    pure $ { label : name
-    , action : defer \_ -> Edit.WrapAction
-    {
-        topChange
-        , dpath : pathSubbed -- DerivPath Up l r
-        , botChange
-    }
-    }
-
-makeEditFromTerm :: DerivTerm -> String -> Sort -> Maybe Edit
-makeEditFromTerm dterm name cursorSort = do
-    _ /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
-    pure $ { label : name
-    , action : defer \_ -> Edit.FillAction
-        {
-            sub
-            , dterm : Grammar.subDerivTerm sub dterm
-        }
-    }
-
---assertHasVarSort :: Sort -> Sort /\ Sort
---assertHasVarSort (VarSort %|-* []) = ?h
-
 -- returns a list of all indices in the context
 getIndices :: Sort -> List DerivTerm
 getIndices ctx = Expr.matchExpr2 ctx
@@ -516,16 +457,21 @@ getVarEdits sort =
         -- If its not a TermSort, then there are no var edits
         slot \[_] -> Nil
 
+makeEditFromTerm = DefaultEdits.makeEditFromTerm
+makeEditFromPath = DefaultEdits.makeEditFromPath languageChanges splitChange
+
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity [
         makeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
         , makeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
         , makeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
     ]
+
 editsAtCursor cursorSort = Array.mapMaybe identity
     [
     makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
+
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
 --    , makeEditFromPath (newPathFromRule (FormatRule Newline) 0 )"newline" cursorSort

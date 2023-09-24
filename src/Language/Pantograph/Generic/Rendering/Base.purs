@@ -97,6 +97,8 @@ type PreKid l r =
   (RenderingContext /\ Int) \/ -- reference to kid, with kid's rendering context
   Array (EditorHTML l r) -- static html
 
+type SplitChangeType l = SortChange l -> {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
+
 type EditorSpec l r =
   { dterm :: DerivTerm l r
 
@@ -104,7 +106,7 @@ type EditorSpec l r =
   -- cursorSort is the right endpoint of downChange and left endpoint of upChange
   -- cursorSort represents the sort at which such a path could be inserted, or alternately
   -- the new cursor sort after deletion of the path
-   , splitChange :: SortChange l -> {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
+   , splitChange :: SplitChangeType l
 
 --  -- | removePathChanges: change → (downChange, upChange, cursorSort)
 --  -- | The input change is the change going up the path to be deleted

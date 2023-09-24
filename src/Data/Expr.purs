@@ -258,15 +258,13 @@ it caused a bunch of rendering stuff to break. Henry needs to fix all of that.
 -}
 toUpPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Up l
 toUpPath path@(Path ths) =
-    trace "Note from Jacob: this function doesn't work; it always goes through the up case." \_ ->
     (_ $ reflectPathDir path) $ case_
-  # on _up (\_ -> trace "toUpPath up case" \_ -> Path ths)
-  # on _down (\_ -> trace "toUpPath down case" \_ -> reversePath (Path ths :: Path Down l))
+  # on _up (\_ -> Path ths)
+  # on _down (\_ -> reversePath (Path ths :: Path Down l))
 --    if inSaneEnglishIsItDown path then Path (List.reverse ths) else Path ths
 
 toDownPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Down l
 toDownPath path@(Path ths) =
-    trace "I assume that this function doesn't work as well." \_ ->
     (_ $ reflectPathDir path) $ case_
   # on _up (\_ -> reversePath (Path ths :: Path Up l))
   # on _down (\_ -> Path ths)
