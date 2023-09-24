@@ -401,30 +401,30 @@ makeDownRule changeMatch derivMatch output term
       _ -> Nothing
 
 -- A possible design, I don't know if its what I want yet:
-makeUpRule1 :: forall l r. IsExprLabel l => IsRuleLabel l r =>
+makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
        MatchSortChange l -- match the change going up, resulting in both sorts and sort changes that get matches
-    -> Expr.Expr (Expr.MatchLabel (StepExprLabel l r)) -- match the expression within the boundary
+    -> SSMatchTerm l r -- match the expression around the boundary
     -> (Partial => Array (SSTerm l r) ->
             ( SSTerm l r -- The child that is supposed to be the up boundary (the "makeUpRule" function needs to know which child of the node is supposed to be where the boundary is coming from. You tell it where to look for the boundary by outputing that subterm of the expression we matched against)
-            /\ (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -- If that was a boundary and the change matches, here are the matches
+            /\ (Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -- If that was a boundary and the change matches, here are the matches
                 -> SSTerm l r -- Here is the term inside the boundary
                 -> SSTerm l r {- This is the output term finally output by the rule -})))
     -> StepRule l r
-makeUpRule1 changeMatch derivMatch output term = do
-    derivMatches <- Expr.matchExprImpl term derivMatch
+makeUpRule changeMatch derivMatch output term = do
+    derivMatches <- Expr.matchDiffExprs compareMatchLabel term derivMatch
     let possibleUpBoundary /\ restOfOutput = unsafePartial output derivMatches
     case possibleUpBoundary of
         Expr.Expr (Boundary Up inputCh) [kid] -> do
             sortMatches /\ changeMatches <- Expr.matchChange inputCh changeMatch
-            Just $ unsafePartial $ restOfOutput sortMatches changeMatches kid
+            Just $ restOfOutput sortMatches changeMatches kid
         _ -> Nothing
-
-makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
-       MatchSortChange l -- match the change going up, resulting in both sorts and sort changes that get matches
-    -> Hole -- TODO: need some sort of way to match on paths
-    -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
-    -> StepRule l r
-makeUpRule = Hole.hole "makeUpRule"
+--
+--makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
+--       MatchSortChange l -- match the change going up, resulting in both sorts and sort changes that get matches
+--    -> Hole -- TODO: need some sort of way to match on paths
+--    -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
+--    -> StepRule l r
+--makeUpRule = Hole.hole "makeUpRule"
 
 injectChangeMatchExpr :: forall l. l -> Array (MatchSortChange l) -> MatchSortChange l
 injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))) % kids
