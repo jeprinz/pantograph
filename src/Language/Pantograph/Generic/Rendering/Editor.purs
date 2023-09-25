@@ -685,10 +685,10 @@ editorComponent = HK.component \tokens spec -> HK.do
                     (renderDerivTerm locs true dzipper)
                   defaultRenderingContext
               ]
-            HoleInteriorHoleyDerivZipper dpath sort -> 
+            HoleInteriorHoleyDerivZipper dpath label ->
               [ renderPath locs dzipper 
-                  (renderHoleExterior locs dpath sort
-                      (renderHoleInterior locs true dpath sort))
+                  (renderHoleExterior locs dpath label
+                      (renderHoleInterior locs true dpath label))
                   defaultRenderingContext
               ]
         SelectState _select -> hole "render SelectState"

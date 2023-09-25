@@ -317,6 +317,8 @@ data Zipper l = Zipper (Path Dir.Up l) (Expr l)
 
 zipperPath (Zipper p _) = p
 zipperExpr (Zipper _ e) = e
+exprLabel :: forall l. Expr l -> l
+exprLabel (Expr l _) = l
 
 derive instance Generic (Zipper l) _
 derive instance Eq l => Eq (Zipper l)
