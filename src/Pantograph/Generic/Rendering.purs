@@ -7,6 +7,7 @@ import Prelude
 import Control.Monad.Reader (ReaderT, local, runReaderT)
 import Control.Monad.State (StateT, evalStateT)
 import Data.Bifunctor (bimap)
+import Data.Derivative (integrate)
 import Data.Identity (Identity)
 import Data.List (List)
 import Data.List as List
@@ -98,7 +99,7 @@ type TermRenderer ctx env rule joint joint' = RenderingM ctx env (TermHtml rule 
 -- EditorHtml
 
 type EditorSlots rule joint joint' =
-  ( toolbox :: H.Slot (ToolboxQuery rule joint) (ToolboxOutput rule joint) ToolboxSlot
+  ( toolbox :: H.Slot (ToolboxQuery rule joint joint') (ToolboxOutput rule joint joint') ToolboxSlot
   , preview :: H.Slot (PreviewQuery rule joint joint') Unit PreviewSlot
   , clipboard :: H.Slot (ClipboardQuery rule joint) (ClipboardOutput rule joint) ClipboardSlot
   , console :: H.Slot ConsoleQuery ConsoleOutput ConsoleSlot )
@@ -135,37 +136,16 @@ editorComponent = HK.component \token input -> HK.do
   HK.pure do
     html
       (EditorHtmlConfig {}) 
-      -- [(runRenderingM ctx env (renderBuffer buffer)).html]
-      []
+      [(runRenderingM ctx env (renderBuffer buffer)).html]
 
--- renderBuffer :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Buffer rule joint -> TermRenderer ctx env rule joint joint'
--- renderBuffer buffer = case buffer of
---   CursorBuffer (Cursor path term) -> renderUpPath path (renderTerm term)
---   SelectBuffer (Select top mid term) -> renderUpPath top (renderSomePath mid (renderTerm term))
---   TopBuffer term -> renderTerm term
+renderBuffer :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Buffer rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderBuffer buffer = case buffer of
+  CursorBuffer (Cursor path term) -> renderUpPath path (renderTerm term)
+  SelectBuffer (Select top mid term) -> renderUpPath top (renderSomePath mid (renderTerm term))
+  TopBuffer term -> renderTerm term
 
--- renderCursorWrapper :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
--- renderCursorWrapper = map \termHtml -> termHtml {html = html (CursorHtmlConfig {}) [termHtml.html]}
-
--- renderTooth :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermTooth rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
--- renderTooth (Tooth j) inside = arrangeTerm (j <#> maybe inside renderTerm)
-
--- renderUpPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath UpPathDir rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
--- renderUpPath (Path ths) inside = case ths of
---   List.Nil -> inside
---   List.Cons th ths' -> renderUpPath (Path ths') (renderTooth th inside)
-
--- renderDownPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath DownPathDir rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
--- renderDownPath (Path ths) inside = case ths of
---   List.Nil -> inside
---   List.Cons th ths' -> renderTooth th (renderDownPath (Path ths') inside)
-
--- renderSomePath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => SomeTermPath rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
--- renderSomePath (UpPath p) = renderUpPath p
--- renderSomePath (DownPath p) = renderDownPath p
-
--- renderTerm :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Term rule joint -> TermRenderer ctx env rule joint joint'
--- renderTerm (Fix (Term rule sigma j)) = arrangeTerm (Term rule sigma (renderTerm <$> j))
+renderCursorWrapper :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderCursorWrapper = map \termHtml -> termHtml {html = html (CursorHtmlConfig {}) [termHtml.html]}
 
 -- Toolbox
 
@@ -174,15 +154,15 @@ editorComponent = HK.component \token input -> HK.do
 
 type ToolboxSlot = Unit
 type ToolboxInput = Unit
-data ToolboxQuery rule joint a
+data ToolboxQuery rule joint joint' a
   = SetToolbox
-data ToolboxOutput rule joint
+data ToolboxOutput rule joint joint'
 
-data ToolboxValue rule joint
+data ToolboxValue rule joint joint'
 
-toolboxComponent :: forall rule joint. H.Component (ToolboxQuery rule joint) ToolboxInput (ToolboxOutput rule joint) Aff
+toolboxComponent :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => H.Component (ToolboxQuery rule joint joint') ToolboxInput (ToolboxOutput rule joint joint') Aff
 toolboxComponent = HK.component \token pos -> HK.do
-  value /\ value_id <- HK.useState (Nothing :: Maybe (ToolboxValue rule joint))
+  value /\ value_id <- HK.useState (Nothing :: Maybe (ToolboxValue rule joint joint'))
   HK.pure do
     html
       (ToolboxHtmlConfig {})
@@ -258,3 +238,25 @@ consoleComponent = HK.component \token _ -> HK.do
         html
           (ConsoleLogHtmlConfig {label: log.label})
           [bimap absurd absurd log.html])
+
+-- render Language pieces
+
+renderTooth :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermJoint' rule joint joint' (Term rule joint) -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderTooth j' inside = arrangeTerm (integrate inside (renderTerm <$> j'))
+
+renderUpPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath UpPathDir rule joint joint' -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderUpPath (Path ths) inside = case ths of
+  List.Nil -> inside
+  List.Cons th ths' -> renderUpPath (Path ths') (renderTooth th inside)
+
+renderDownPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath DownPathDir rule joint joint' -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderDownPath (Path ths) inside = case ths of
+  List.Nil -> inside
+  List.Cons th ths' -> renderTooth th (renderDownPath (Path ths') inside)
+
+renderSomePath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => SomeTermPath rule joint joint' -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderSomePath (UpPath p) = renderUpPath p
+renderSomePath (DownPath p) = renderDownPath p
+
+renderTerm :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Term rule joint -> TermRenderer ctx env rule joint joint'
+renderTerm (Fix (Term rule sigma j)) = arrangeTerm (Term rule sigma (renderTerm <$> j))
