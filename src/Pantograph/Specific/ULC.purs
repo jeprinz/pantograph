@@ -6,10 +6,14 @@ import Prelude
 import Data.Derivative (class Derivative, differentiate)
 import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
+import Data.Map as Map
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Data.Traversable (class Traversable)
+import Halogen.HTML as HH
 import Halogen.VDom.Driver as VDomDriver
 import Hole (hole)
+import Pantograph.Generic.Language (HoleJoint(..))
 import Pantograph.Generic.Language as L
 import Pantograph.Generic.Rendering as R
 import Text.Pretty (class Pretty, class Pretty1, pretty)
@@ -17,12 +21,12 @@ import Type.Proxy (Proxy(..))
 
 type Sort = L.Sort Joint
 type RuleSort = L.RuleSort Joint
-type TermPath dir = L.TermPath dir Rule Joint Joint'
-type SomeTermPath = L.SomeTermPath Rule Joint Joint'
+type HoleExprPath dir = L.HoleExprPath dir Rule Joint Joint'
+type SomeHoleExprPath = L.SomeHoleExprPath Rule Joint Joint'
 type Change = L.Change Joint Joint'
-type Term = L.Term Rule Joint
-type TermCursor = L.TermCursor Rule Joint Joint'
-type TermSelect = L.TermSelect Rule Joint Joint'
+type Expr = L.Expr Rule Joint
+type HoleExprCursor = L.HoleExprCursor Rule Joint Joint'
+type HoleExprSelect = L.HoleExprSelect Rule Joint Joint'
 type ProductionRule = L.ProductionRule Joint
 type ChangeRule = L.ChangeRule Joint Joint'
 
@@ -34,17 +38,18 @@ data Joint a
   | App a a
   | Ref a
   -- types
-  | Term
+  | Expr
 
 derive instance Functor Joint
 derive instance Foldable Joint
+derive instance Traversable Joint
 
 instance Pretty1 Joint where
   pretty1 = case _ of
     Lam x b -> "(λ " <> pretty x <> " ↦ " <> pretty b <> ")"
     App f a -> "(" <> pretty f <> " " <> pretty a <> ")"
     Ref x -> "#" <> pretty x
-    Term -> "Term"
+    Expr -> "Expr"
 
 instance L.IsJoint Joint
 
@@ -64,7 +69,7 @@ instance Derivative Joint Joint' where
   differentiate (Lam x b) = Lam (x /\ Lam'Param b) (b /\ Lam'Body x)
   differentiate (App f a) = App (f /\ App'Apl f) (a /\ App'Apl f)
   differentiate (Ref x) = Ref (x /\ Ref'Var)
-  differentiate Term = Term
+  differentiate Expr = Expr
 
   integrate x (Lam'Param b) = Lam x b
   integrate b (Lam'Body x) = Lam x b
@@ -96,8 +101,8 @@ instance Pretty Rule where pretty = show
 
 instance L.IsLanguage Rule Joint Joint' where
   productionRule =
-    let term_sort = L.Fix $ L.InjectSortJoint $ L.InjectRuleVarJoint Term in
-    let label_sort label = L.Fix $ L.SomeLabel $ L.Fix $ L.InjectSortJoint $ L.RuleVar label in
+    let term_sort = L.Fix $ L.InjectSortJoint $ L.InjectRuleVarJoint Expr in
+    let label_sort label = L.Fix $ L.SomeSymbol $ L.Fix $ L.InjectSortJoint $ L.RuleVar label in
     case _ of
       LamRule ->
         let var_label = L.MakeRuleVar "lam_var_label" in
@@ -121,15 +126,15 @@ instance L.IsLanguage Rule Joint Joint' where
 
   changeRule rule = L.defaultChangeRule rule
 
-  defaultTerm = hole "TODO"
+  defaultExpr = hole "TODO"
 
   splitChange = hole "TODO"
 
   validCursorSort _ = true
 
   validSelectionSorts 
-    { top: L.Fix (L.InjectSortJoint (L.InjectHoleJoint Term))
-    , bot: L.Fix (L.InjectSortJoint (L.InjectHoleJoint Term)) } = true
+    { top: L.Fix (L.InjectSortJoint (L.InjectHoleJoint Expr))
+    , bot: L.Fix (L.InjectSortJoint (L.InjectHoleJoint Expr)) } = true
   validSelectionSorts _ = false
 
   digChange = hole "TODO"
@@ -144,12 +149,19 @@ type Ctx = ()
 
 type Env = ()
 
--- instance R.IsEditor () () Rule Joint Joint' where
---   arrangeTerm = ?a
+instance R.IsEditor Rule Joint Joint' where
+  arrangeExpr _rule _sigma (Lam x b) =
+    pure $ HH.div [] [HH.text "(", HH.text "λ", x.html, HH.text "↦", b.html, HH.text ")"]
+  arrangeExpr _rule _sigma (App f a) = do
+    pure $ HH.div [] [HH.text "(", f.html, HH.text " ", a.html, HH.text ")"]
+  arrangeExpr _rule _sigma (Ref x) = do
+    pure $ HH.div [] [HH.text "#", x.html]
+  arrangeExpr _rule _sigma Expr = do
+    pure $ HH.div [] [HH.text "Expr"]
 
 -- run
 
--- run body = VDomDriver.runUI R.editorComponent
---   { term: ?a
---   , ctx: ?a
---   , env: ?a }
+run = VDomDriver.runUI R.editorComponent
+  { expr: L.Fix $ L.Expr RefRule (L.Subst Map.empty) $ L.InjectHoleJoint (Ref (L.Fix (L.SymbolExpr "x")))
+  , ctx: {}
+  , env: {} }

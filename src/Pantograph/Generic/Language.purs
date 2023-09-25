@@ -1,3 +1,6 @@
+-- | Language features handled generically:
+-- |   - holes
+-- |   - label terms, with their value reflected as strings in their sort
 module Pantograph.Generic.Language where
 
 import Prelude
@@ -13,6 +16,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Data.Traversable (class Traversable, traverse)
 import Data.Tuple (snd)
 import Data.Tuple.Nested ((/\))
 import Data.UUID (UUID)
@@ -45,13 +49,16 @@ data Fix (f :: Type -> Type) = Fix (f (Fix f))
 mapFix :: forall f f'. Functor f => (forall a. f a -> f' a) -> Fix f -> Fix f'
 mapFix f (Fix ff) = Fix (f (map (mapFix f) ff))
 
+-- | Traverses over each layer of the fixpoint.
+traverseFix :: forall f g m. Traversable f => Monad m => (forall a. f a -> m (g a)) -> Fix f -> m (Fix g)
+traverseFix f (Fix ff) = Fix <$> join (f <$> (traverse (traverseFix f) ff))
+
 -- | Unwrap the `Fix` wrapper.
 unFix :: forall f. Fix f -> f (Fix f)
 unFix (Fix ff) = ff
 
 class 
-  -- ( Functor joint, FunctorWithIndex Int joint, Foldable joint, Pretty1 joint )
-  ( Functor joint, Foldable joint, Pretty1 joint )
+  ( Functor joint, Foldable joint, Traversable joint, Pretty1 joint )
   <= IsJoint joint
 
 -- HoleJoint
@@ -65,7 +72,6 @@ instance Pretty HoleVar where pretty (MakeHoleVar label uuid) = label <> "@" <> 
 freshHoleVar :: String -> HoleVar
 freshHoleVar label = unsafePerformEffect $
   MakeHoleVar label <$> UUID.genUUID
-
 
 data HoleJoint (joint :: Type -> Type) a 
   = Hole HoleVar
@@ -82,12 +88,14 @@ derive instance Functor joint => Functor (HoleJoint joint)
 instance FunctorWithIndex Int joint  => FunctorWithIndex Int (HoleJoint joint) where
   mapWithIndex _ _ = hole "TODO"
 derive instance Foldable joint => Foldable (HoleJoint joint)
+derive instance Traversable joint => Traversable (HoleJoint joint)
 
 instance Pretty1 joint' => Pretty1 (HoleJoint' joint') where pretty1 _ = hole "TODO"
 derive instance Functor joint' => Functor (HoleJoint' joint')
 instance FunctorWithIndex Int joint'  => FunctorWithIndex Int (HoleJoint' joint') where
   mapWithIndex _ _ = hole "TODO"
 derive instance Foldable joint' => Foldable (HoleJoint' joint')
+derive instance Traversable joint' => Traversable (HoleJoint' joint')
 
 instance Derivative joint joint' => Derivative (HoleJoint joint) (HoleJoint joint') where
   differentiate = hole "TODO"
@@ -115,32 +123,33 @@ derive instance Functor joint => Functor (RuleVarJoint joint)
 instance FunctorWithIndex Int joint  => FunctorWithIndex Int (RuleVarJoint joint) where
   mapWithIndex _ _ = hole "TODO"
 derive instance Foldable joint => Foldable (RuleVarJoint joint)
+derive instance Traversable joint => Traversable (RuleVarJoint joint)
+instance IsJoint joint => IsJoint (RuleVarJoint joint)
 
 instance Pretty1 joint' => Pretty1 (RuleVarJoint' joint') where pretty1 _ = hole "TODO"
 derive instance Functor joint' => Functor (RuleVarJoint' joint')
 instance FunctorWithIndex Int joint'  => FunctorWithIndex Int (RuleVarJoint' joint') where
   mapWithIndex _ _ = hole "TODO"
 derive instance Foldable joint' => Foldable (RuleVarJoint' joint')
+derive instance Traversable joint' => Traversable (RuleVarJoint' joint')
 
 instance Derivative joint joint' => Derivative (RuleVarJoint joint) (RuleVarJoint joint') where
   differentiate = hole "TODO"
   integrate = hole "TODO"
-
-instance IsJoint joint => IsJoint (RuleVarJoint joint)
 
 -- | A `Sort` is basically a type for expressions in the language. `Sort` also
 -- | supports __name__ and __string__ sorts, where `Name` expects one child that
 -- | is a `String <String>`, which reflects the literal name into the sort
 -- | system.
 
-type Sort joint = Fix (SortJoint (HoleJoint joint))
-
-type RuleSort joint = Fix (SortJoint (RuleVarJoint joint))
+type Sort joint = Fix (SortJoint joint)
+type HoleSort joint = Sort (HoleJoint joint)
+type RuleSort joint = Sort (RuleVarJoint joint)
 
 data SortJoint joint a
   = InjectSortJoint (joint a)
-  | SomeLabel a
-  | Label String
+  | SomeSymbol a
+  | Symbol String
 
 data SortJoint' (joint' :: Type -> Type) a
   = InjectSortJoint' (joint' a)
@@ -152,18 +161,19 @@ derive instance Functor joint => Functor (SortJoint joint)
 instance FunctorWithIndex Int joint => FunctorWithIndex Int (SortJoint joint) where
   mapWithIndex _ _ = hole "TODO"
 derive instance Foldable joint => Foldable (SortJoint joint)
+derive instance Traversable joint => Traversable (SortJoint joint)
+instance IsJoint joint => IsJoint (SortJoint joint)
 
 instance Pretty1 joint' => Pretty1 (SortJoint' joint') where pretty1 _ = hole "TODO"
 derive instance Functor joint' => Functor (SortJoint' joint')
 instance FunctorWithIndex Int joint' => FunctorWithIndex Int (SortJoint' joint') where
   mapWithIndex _ _ = hole "TODO"
 derive instance Foldable joint' => Foldable (SortJoint' joint')
+derive instance Traversable joint' => Traversable (SortJoint' joint')
 
 instance Derivative joint joint' => Derivative (SortJoint joint) (SortJoint' joint') where
   differentiate = hole "TODO"
   integrate = hole "TODO"
-
-instance IsJoint joint => IsJoint (SortJoint joint)
 
 -- Path
 
@@ -182,7 +192,7 @@ instance ReversePathDir DownPathDir UpPathDir
 
 newtype Path (dir :: Symbol) (joint' :: Type -> Type) a = Path (List (joint' a))
 
-type TermPath dir rule joint joint' = Path dir (TermJoint' rule joint joint') (Term rule joint)
+type HoleExprPath dir rule joint joint' = Path dir (HoleExprJoint' rule joint joint') (HoleExpr rule joint)
 
 derive instance Foldable joint' => Foldable (Path dir joint')
 derive instance Functor joint' => Functor (Path dir joint')
@@ -193,7 +203,7 @@ data SomePath joint' a
   = UpPath (Path UpPathDir joint' a) 
   | DownPath (Path DownPathDir joint' a)
 
-type SomeTermPath rule joint joint' = SomePath (TermJoint' rule joint joint') (Term rule joint)
+type SomeHoleExprPath rule joint joint' = SomePath (HoleExprJoint' rule joint joint') (HoleExpr rule joint)
 
 pathDir :: forall dir joint' a. Path dir joint' a -> Proxy dir
 pathDir _ = Proxy
@@ -227,8 +237,9 @@ derive instance (Functor joint, Functor joint') => Functor (ChangeJoint joint jo
 instance (FunctorWithIndex Int joint, FunctorWithIndex Int joint') => FunctorWithIndex Int (ChangeJoint joint joint') where
   mapWithIndex _ _ = hole "TODO"
 derive instance (Foldable joint, Foldable joint') => Foldable (ChangeJoint joint joint')
+derive instance (Traversable joint, Traversable joint') => Traversable (ChangeJoint joint joint')
 
-instance (IsJoint joint, Functor joint', FunctorWithIndex Int joint', Foldable joint') => IsJoint (ChangeJoint joint joint')
+instance (IsJoint joint, Functor joint', FunctorWithIndex Int joint', Foldable joint', Traversable joint') => IsJoint (ChangeJoint joint joint')
 
 invertChange :: forall rule joint joint'. IsLanguage rule joint joint' => Change joint joint' -> Change joint joint'
 invertChange = mapFix case _ of
@@ -251,43 +262,51 @@ changeEndpoints = unFix >>> case _ of
   --   let beforeKids = _.before <$> zippedKids
   --   let afterKids = _.after <$> zippedKids
   --   {before: Fix beforeKids, after: Fix afterKids}
-  _ -> hole "TODO"
+  _ -> hole "TODO: changeEndpoints"
 
--- Term
+-- Expr
 
-type Term rule joint = Fix (TermJoint rule joint)
 
-data TermJoint rule joint a = Term rule (Substitution HoleVar (Sort joint)) (joint a)
+data ExprJoint rule joint a 
+  = Expr rule (Subst RuleVar (Sort joint)) (joint a)
+  | SymbolExpr String
 
-data TermJoint' rule joint (joint' :: Type -> Type) a = Term' rule (Substitution HoleVar (Sort joint)) (joint' a)
+type Expr rule joint = Fix (ExprJoint rule joint)
 
-instance Pretty1 joint => Pretty1 (TermJoint rule joint) where pretty1 _ = hole "TODO"
-derive instance Functor joint => Functor (TermJoint rule joint)
-instance FunctorWithIndex Int joint => FunctorWithIndex Int (TermJoint rule joint) where
+type HoleExprJoint rule joint = ExprJoint rule (HoleJoint joint)
+type HoleExpr rule joint = Fix (HoleExprJoint rule joint)
+
+data ExprJoint' rule joint (joint' :: Type -> Type) a = Expr' rule (Subst RuleVar (Sort joint)) (HoleJoint' joint' a)
+type HoleExprJoint' rule joint joint' = ExprJoint' rule (HoleJoint joint) (HoleJoint joint')
+
+instance Pretty1 joint => Pretty1 (ExprJoint rule joint) where pretty1 _ = hole "TODO"
+derive instance Functor joint => Functor (ExprJoint rule joint)
+instance FunctorWithIndex Int joint => FunctorWithIndex Int (ExprJoint rule joint) where
   mapWithIndex _ _ = hole "TODO"
-derive instance Foldable joint => Foldable (TermJoint rule joint)
+derive instance Foldable joint => Foldable (ExprJoint rule joint)
+derive instance Traversable joint => Traversable (ExprJoint rule joint)
+instance IsJoint joint => IsJoint (ExprJoint rule joint)
 
-instance Pretty1 joint' => Pretty1 (TermJoint' rule joint joint') where pretty1 _ = hole "TODO"
-derive instance Functor joint' => Functor (TermJoint' rule joint joint')
-instance FunctorWithIndex Int joint' => FunctorWithIndex Int (TermJoint' rule joint joint') where
+instance Pretty1 joint' => Pretty1 (ExprJoint' rule joint joint') where pretty1 _ = hole "TODO"
+derive instance Functor joint' => Functor (ExprJoint' rule joint joint')
+instance FunctorWithIndex Int joint' => FunctorWithIndex Int (ExprJoint' rule joint joint') where
   mapWithIndex _ _ = hole "TODO"
-derive instance Foldable joint' => Foldable (TermJoint' rule joint joint')
+derive instance Foldable joint' => Foldable (ExprJoint' rule joint joint')
 
-instance Derivative joint joint' => Derivative (TermJoint rule joint) (TermJoint' rule joint joint') where
-  differentiate = hole "TODO"
-  integrate = hole "TODO"
+instance Derivative joint joint' => Derivative (ExprJoint rule joint) (ExprJoint' rule joint joint') where
+  differentiate _ = hole "TODO"
+  integrate _ = hole "TODO"
 
-instance IsJoint joint => IsJoint (TermJoint rule joint)
 
 -- Cursor
 
 data Cursor joint' a = Cursor (Path UpPathDir joint' a) a
-type TermCursor rule joint joint' = Cursor (TermJoint' rule joint joint') (Term rule joint)
+type HoleExprCursor rule joint joint' = Cursor (HoleExprJoint' rule joint joint') (HoleExpr rule joint)
 
 -- Select
 
 data Select joint' a = Select (Path UpPathDir joint' a) (SomePath joint' a) a
-type TermSelect rule joint joint' = Select (TermJoint' rule joint joint') (Term rule joint)
+type HoleExprSelect rule joint joint' = Select (HoleExprJoint' rule joint joint') (HoleExpr rule joint)
 
 -- Language
 
@@ -304,20 +323,20 @@ class
   -- | The change rules, indexed by `rule`.
   changeRule :: rule -> ChangeRule joint joint'
   -- | The default term (if any) for a sort.
-  defaultTerm :: Sort joint -> Maybe (Term rule joint)
+  defaultExpr :: HoleSort joint -> Maybe (HoleExpr rule joint)
   -- | When a change is yielded at a cursor, split it into a change to propogate
   -- | downwards, and change to propogate upwards, and a new sort at the cursor.
   splitChange :: {change :: Change joint joint', sort :: Sort joint} -> {down :: Change joint joint', up :: Change joint joint', sort :: Sort joint}
   -- | Defines if a cursor is valid as a function of its sort.
-  validCursorSort :: Sort joint -> Boolean
+  validCursorSort :: HoleSort joint -> Boolean
   -- | Defines if a selection is valid as a function of its top and bot sorts.
-  validSelectionSorts :: {top :: Sort joint, bot :: Sort joint} -> Boolean
+  validSelectionSorts :: {top :: HoleSort joint, bot :: HoleSort joint} -> Boolean
   -- | The change propogated upwards when the term is deleted.
-  digChange :: Sort joint -> Change joint joint'
+  digChange :: HoleSort joint -> Change joint joint'
   -- | TODO: DOC
-  generalize :: Sort joint -> Change joint joint'
+  generalize :: HoleSort joint -> Change joint joint'
   -- | TODO: DOC
-  specialize :: {general :: Sort joint, special :: Sort joint} -> Change joint joint'
+  specialize :: {general :: HoleSort joint, special :: HoleSort joint} -> Change joint joint'
 
 newtype ProductionRule joint = ProductionRule
   { quantifiers :: Set.Set RuleVar
@@ -331,7 +350,7 @@ newtype ChangeRule joint (joint' :: Type -> Type) = ChangeRule
 
 -- Misc
 
-newtype Substitution k v = Substitution (Map.Map k v)
+newtype Subst k v = Subst (Map.Map k v)
 
 -- data Nat = Zero | Suc Nat
 -- derive instance Eq Nat

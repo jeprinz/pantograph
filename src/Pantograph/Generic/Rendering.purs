@@ -13,6 +13,7 @@ import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
+import Data.Traversable (sequence)
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -24,12 +25,28 @@ import Record as R
 import Text.Pretty (class Pretty)
 import Type.Proxy (Proxy(..))
 
+data EditorHtmlConfig
+  = HoleExprHtmlConfig {}
+  | SymbolHtmlConfig {}
+  | SortHtmlConfig {}
+  | CursorHtmlConfig {}
+  | SelectTopHtmlConfig {}
+  | SelectBotHtmlConfig {}
+  | ConsoleHtmlConfig {}
+  | ConsoleLogHtmlConfig {label :: ConsoleLogLabel}
+  | ClipboardHtmlConfig {}
+  | ToolboxHtmlConfig {}
+  | PreviewHtmlConfig {position :: PreviewPosition}
+  | EditorHtmlConfig {}
+
 html :: forall w i. EditorHtmlConfig -> Array (HH.HTML w i) -> HH.HTML w i
 html config kids = HH.div attrs kids
   where
   attrs = case config of
-    TermHtmlConfig args ->
-      [ Prop.classes [HH.ClassName "Term"] ]
+    HoleExprHtmlConfig args ->
+      [ Prop.classes [HH.ClassName "Expr"] ]
+    SymbolHtmlConfig args ->
+      [ Prop.classes [HH.ClassName "SymbolExpr"] ]
     SortHtmlConfig args ->
       [ Prop.classes [HH.ClassName "Sort"] ]
     CursorHtmlConfig args ->
@@ -51,19 +68,6 @@ html config kids = HH.div attrs kids
     EditorHtmlConfig args ->
       [ Prop.classes [HH.ClassName "Editor"] ]
 
-data EditorHtmlConfig
-  = TermHtmlConfig {}
-  | SortHtmlConfig {}
-  | CursorHtmlConfig {}
-  | SelectTopHtmlConfig {}
-  | SelectBotHtmlConfig {}
-  | ConsoleHtmlConfig {}
-  | ConsoleLogHtmlConfig {label :: ConsoleLogLabel}
-  | ClipboardHtmlConfig {}
-  | ToolboxHtmlConfig {}
-  | PreviewHtmlConfig {position :: PreviewPosition}
-  | EditorHtmlConfig {}
-
 -- RenderingCtx, RenderingEnv
 
 type RenderingCtx ctx =
@@ -76,25 +80,46 @@ type RenderingEnv env =
 
 type RenderingM ctx env = ReaderT (RenderingCtx ctx) (StateT (RenderingEnv env) Identity)
 
-runRenderingM :: forall ctx env rule joint joint' a. IsEditor ctx env rule joint joint' => RenderingCtx ctx -> RenderingEnv env -> RenderingM ctx env a -> a
+runRenderingM :: forall ctx env a. RenderingCtx ctx -> RenderingEnv env -> RenderingM ctx env a -> a
 runRenderingM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
 
 -- IsEditor
 
 class
-    ( IsLanguage rule joint joint'
-    , Nub ctx ctx, Lacks "depth" ctx
-    , Nub env env, Lacks "holeCount" env )
-    <= IsEditor (ctx :: Row Type) (env :: Row Type) rule joint joint'
-    | joint -> ctx env rule joint', ctx -> env rule joint joint', env -> ctx rule joint joint', rule -> ctx env joint joint'
+    ( IsLanguage rule joint joint' )
+    <= IsEditor rule joint joint'
+    | rule -> joint joint', joint -> rule joint', joint' -> rule joint
   where
-  arrangeTerm :: TermJoint rule joint (TermRenderer ctx env rule joint joint') -> TermRenderer ctx env rule joint joint'
+  arrangeExpr :: forall ctx env.
+    rule ->
+    Subst RuleVar (HoleSort joint) ->
+    joint (HoleExprHtml rule joint joint') ->
+    RenderingM ctx env (EditorHtml rule joint joint')
 
--- TermHtml
+arrangeHoleExpr :: forall ctx env rule joint joint'. IsEditor rule joint joint' =>
+  HoleExprJoint rule joint (HoleExprRenderer ctx env rule joint joint') ->
+  HoleExprRenderer ctx env rule joint joint'
+arrangeHoleExpr (Expr rule sigma (Hole holeVar)) =
+  pure
+    { expr: Fix (Expr rule sigma (Hole holeVar))
+    , html: html (HoleExprHtmlConfig {}) [] }
+arrangeHoleExpr (Expr rule sigma (InjectHoleJoint m_kids)) = do
+  kids <- sequence m_kids
+  html <- arrangeExpr rule sigma kids
+  pure
+    { expr: Fix (Expr rule sigma (InjectHoleJoint (kids <#> _.expr)))
+    , html }
+arrangeHoleExpr (SymbolExpr str) =
+  pure
+    { expr: Fix (SymbolExpr str)
+    , html: html (SymbolHtmlConfig {}) [HH.text str] }
 
-type TermHtml rule joint joint' = {term :: Term rule joint, html :: EditorHtml rule joint joint'}
+-- HoleExprHtml
 
-type TermRenderer ctx env rule joint joint' = RenderingM ctx env (TermHtml rule joint joint')
+type HoleExprHtml rule joint joint' = {expr :: HoleExpr rule joint, html :: EditorHtml rule joint joint'}
+type ExprHtml rule joint joint' = {expr :: Expr rule joint, html :: EditorHtml rule joint joint'}
+
+type HoleExprRenderer ctx env rule joint joint' = RenderingM ctx env (HoleExprHtml rule joint joint')
 
 -- EditorHtml
 
@@ -111,20 +136,24 @@ type EditorHtml rule joint joint' = HH.ComponentHTML (HK.HookM Aff Unit) (Editor
 type EditorSlot = Unit
 data EditorQuery rule joint a
 type EditorInput ctx env rule joint = 
-  { term :: Term rule joint
+  { expr :: HoleExpr rule joint
   , ctx :: Record ctx
   , env :: Record env }
 data EditorOutput rule joint
 
 -- | A `Buffer` is an independent section of code.
 data Buffer rule joint joint'
-  = CursorBuffer (TermCursor rule joint joint')
-  | SelectBuffer (TermSelect rule joint joint')
-  | TopBuffer (Term rule joint)
+  = CursorBuffer (HoleExprCursor rule joint joint')
+  | SelectBuffer (HoleExprSelect rule joint joint')
+  | TopBuffer (HoleExpr rule joint)
 
-editorComponent :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => H.Component (EditorQuery rule joint) (EditorInput ctx env rule joint) (EditorOutput rule joint) Aff
+editorComponent :: forall ctx env rule joint joint'. 
+  IsEditor rule joint joint' =>
+  Lacks "depth" ctx =>
+  Lacks "holeCount" env =>
+  H.Component (EditorQuery rule joint) (EditorInput ctx env rule joint) (EditorOutput rule joint) Aff
 editorComponent = HK.component \token input -> HK.do
-  buffer /\ buffer_id <- HK.useState (TopBuffer input.term)
+  buffer /\ buffer_id <- HK.useState (TopBuffer input.expr)
   ctx /\ ctx_id <- HK.useState 
     ( R.insert (Proxy :: Proxy "depth") 0 
     $ input.ctx
@@ -138,14 +167,14 @@ editorComponent = HK.component \token input -> HK.do
       (EditorHtmlConfig {}) 
       [(runRenderingM ctx env (renderBuffer buffer)).html]
 
-renderBuffer :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Buffer rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderBuffer :: forall ctx env rule joint joint'. IsEditor rule joint joint' => Buffer rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
 renderBuffer buffer = case buffer of
-  CursorBuffer (Cursor path term) -> renderUpPath path (renderTerm term)
-  SelectBuffer (Select top mid term) -> renderUpPath top (renderSomePath mid (renderTerm term))
-  TopBuffer term -> renderTerm term
+  CursorBuffer (Cursor path expr) -> renderUpPath path (renderExpr expr)
+  SelectBuffer (Select top mid expr) -> renderUpPath top (renderSomePath mid (renderExpr expr))
+  TopBuffer expr -> renderExpr expr
 
-renderCursorWrapper :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
-renderCursorWrapper = map \termHtml -> termHtml {html = html (CursorHtmlConfig {}) [termHtml.html]}
+renderCursorWrapper :: forall ctx env rule joint joint'. IsEditor rule joint joint' => HoleExprRenderer ctx env rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
+renderCursorWrapper = map \exprHtml -> exprHtml {html = html (CursorHtmlConfig {}) [exprHtml.html]}
 
 -- Toolbox
 
@@ -160,7 +189,7 @@ data ToolboxOutput rule joint joint'
 
 data ToolboxValue rule joint joint'
 
-toolboxComponent :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => H.Component (ToolboxQuery rule joint joint') ToolboxInput (ToolboxOutput rule joint joint') Aff
+toolboxComponent :: forall ctx env rule joint joint'. IsEditor rule joint joint' => H.Component (ToolboxQuery rule joint joint') ToolboxInput (ToolboxOutput rule joint joint') Aff
 toolboxComponent = HK.component \token pos -> HK.do
   value /\ value_id <- HK.useState (Nothing :: Maybe (ToolboxValue rule joint joint'))
   HK.pure do
@@ -185,7 +214,7 @@ data PreviewPosition
   = OutsideBeforePreviewPosition | OutsideAfterPreviewPosition
   | InsideBeforePreviewPosition | InsideAfterPreviewPosition
 
-data PreviewValue rule joint joint' = PreviewValue (joint' (Term rule joint))
+data PreviewValue rule joint joint' = PreviewValue (joint' (HoleExpr rule joint))
 
 previewComponent :: forall rule joint joint'. H.Component (PreviewQuery rule joint joint') PreviewInput (PreviewOutput rule joint) Aff
 previewComponent = HK.component \token pos -> HK.do
@@ -205,8 +234,8 @@ type ClipboardInput = Unit
 data ClipboardOutput rule joint
 
 data ClipboardValue rule joint
-  = TermClipboardValue (Term rule joint)
-  | PathClipboardValue (SomePath joint (Term rule joint))
+  = ExprClipboardValue (HoleExpr rule joint)
+  | PathClipboardValue (SomePath joint (HoleExpr rule joint))
 
 clipboardComponent :: forall rule joint. H.Component (ClipboardQuery rule joint) ClipboardInput (ClipboardOutput rule joint) Aff
 clipboardComponent = HK.component \token _ -> HK.do
@@ -241,22 +270,23 @@ consoleComponent = HK.component \token _ -> HK.do
 
 -- render Language pieces
 
-renderTooth :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermJoint' rule joint joint' (Term rule joint) -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
-renderTooth j' inside = arrangeTerm (integrate inside (renderTerm <$> j'))
+renderTooth :: forall ctx env rule joint joint'. IsEditor rule joint joint' => HoleExprJoint' rule joint joint' (HoleExpr rule joint) -> HoleExprRenderer ctx env rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
+renderTooth j' inside = arrangeHoleExpr (integrate inside (renderExpr <$> j'))
 
-renderUpPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath UpPathDir rule joint joint' -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderUpPath :: forall ctx env rule joint joint'. IsEditor rule joint joint' => HoleExprPath UpPathDir rule joint joint' -> HoleExprRenderer ctx env rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
 renderUpPath (Path ths) inside = case ths of
   List.Nil -> inside
   List.Cons th ths' -> renderUpPath (Path ths') (renderTooth th inside)
 
-renderDownPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath DownPathDir rule joint joint' -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderDownPath :: forall ctx env rule joint joint'. IsEditor rule joint joint' => HoleExprPath DownPathDir rule joint joint' -> HoleExprRenderer ctx env rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
 renderDownPath (Path ths) inside = case ths of
   List.Nil -> inside
   List.Cons th ths' -> renderTooth th (renderDownPath (Path ths') inside)
 
-renderSomePath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => SomeTermPath rule joint joint' -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+renderSomePath :: forall ctx env rule joint joint'. IsEditor rule joint joint' => SomeHoleExprPath rule joint joint' -> HoleExprRenderer ctx env rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
 renderSomePath (UpPath p) = renderUpPath p
 renderSomePath (DownPath p) = renderDownPath p
 
-renderTerm :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Term rule joint -> TermRenderer ctx env rule joint joint'
-renderTerm (Fix (Term rule sigma j)) = arrangeTerm (Term rule sigma (renderTerm <$> j))
+renderExpr :: forall ctx env rule joint joint'. IsEditor rule joint joint' => HoleExpr rule joint -> HoleExprRenderer ctx env rule joint joint'
+renderExpr (Fix (Expr rule sigma j)) = arrangeHoleExpr (Expr rule sigma (renderExpr <$> j))
+renderExpr (Fix (SymbolExpr str)) = arrangeHoleExpr (SymbolExpr str)
