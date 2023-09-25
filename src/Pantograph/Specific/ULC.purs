@@ -8,8 +8,10 @@ import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Halogen.VDom.Driver as VDomDriver
 import Hole (hole)
 import Pantograph.Generic.Language as L
+import Pantograph.Generic.Rendering as R
 import Text.Pretty (class Pretty, class Pretty1, pretty)
 import Type.Proxy (Proxy(..))
 
@@ -92,15 +94,6 @@ instance Pretty Rule where pretty = show
 
 -- IsLanguage
 
--- diff :: RuleSort -> RuleSort -> Change
--- diff s1 s2 = L.Fix $ L.Replace (L.mapFix f s1) (L.mapFix f' s2)
---   where
---   f = ?a
---   f :: forall a. L.SortJoint (L.RuleVarJoint Joint)
---   -- f = case _ of
---   --   x -> ?a
---   f' = ?a
-
 instance L.IsLanguage Rule Joint Joint' where
   productionRule =
     let term_sort = L.Fix $ L.InjectSortJoint $ L.InjectRuleVarJoint Term in
@@ -144,3 +137,19 @@ instance L.IsLanguage Rule Joint Joint' where
   generalize = hole "TODO"
 
   specialize = hole "TODO"
+
+-- IsEditor
+
+type Ctx = ()
+
+type Env = ()
+
+-- instance R.IsEditor () () Rule Joint Joint' where
+--   arrangeTerm = ?a
+
+-- run
+
+-- run body = VDomDriver.runUI R.editorComponent
+--   { term: ?a
+--   , ctx: ?a
+--   , env: ?a }
