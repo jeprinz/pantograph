@@ -410,7 +410,6 @@ editorComponent = HK.component \tokens spec -> HK.do
                 -- paste a path
                 -- First, specialize the path using the specializingChange from EditorSpec, which generally is used for putting the path into the cursor's context and thus updating variables that appear in the path
                 let specializingChange = spec.specializeDerivation (nonemptyUpPathTopSort clipDPath) (derivTermSort dterm)
-                traceM ("pasting a path with specChange " <> pretty specializingChange)
                 let _upChange /\ specializedClipDPath /\ _downChange = SmallStep.ssTermToChangedPath
                         (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.wrapPath clipDPath (SmallStep.Marker 0 % []))) spec.stepRules)
@@ -418,23 +417,15 @@ editorComponent = HK.component \tokens spec -> HK.do
                 let {downChange, upChange, cursorSort} =
                       spec.splitChange
                         (SmallStep.getPathChange spec.languageChanges specializedClipDPath (nonemptyPathInnerSort specializedClipDPath))
-                traceM ("cursorSort is: " <> pretty cursorSort <> " and dts dterm is: " <> pretty (derivTermSort dterm))
-                traceM ("downChange is: " <> pretty downChange <> " and upChange is: " <> pretty upChange)
                 -- Then, unify to make sure the types line up
                 case Unification.unify cursorSort (derivTermSort dterm) of
                     Just (_newSort /\ unifyingSub) -> do
-                        traceM "got here 3"
                         -- update everything with the substitution
                         let unifiedClipDPath = subDerivPath unifyingSub specializedClipDPath
-                        traceM "got here 4"
                         let unifiedProgPath = subDerivPath unifyingSub path
-                        traceM "got here 5"
                         let unifiedProgDTerm = subDerivTerm unifyingSub dterm
-                        traceM "got here 6"
                         let unifiedDownChange = ChangeAlgebra.subSomeMetaChange unifyingSub downChange
-                        traceM "got here 7"
                         let unifiedUpChange = ChangeAlgebra.subSomeMetaChange unifyingSub upChange
-                        traceM "got here 8"
                         -- Now, we set up smallstep for changing the program on path paste
                         let ssterm = setupSSTermFromWrapAction
                               unifiedProgPath

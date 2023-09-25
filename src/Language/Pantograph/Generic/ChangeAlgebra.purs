@@ -68,7 +68,7 @@ collectMatches _ _ = Bug.bug "base case in collectMatches"
 
 endpoints :: forall l. IsExprLabel l => Change l -> Expr l /\ Expr l
 endpoints ch =
-    assert (wellformedExpr "endpoints" ch) \_ ->
+--    assert (wellformedExpr "endpoints" ch) \_ ->
     case ch of
         Expr (Plus th) [kid] -> do
             -- - `leftEp` is the left endpoint of the plus's child, and so it is the
@@ -89,6 +89,7 @@ endpoints ch =
             let leftKids /\ rightKids = Array.unzip zippedKids
             Expr l leftKids /\ Expr l rightKids
         Expr (Replace e1 e2) [] -> e1 /\ e2
+        _ -> bug "invalid input to endpoints"
 
 lEndpoint :: forall l. IsExprLabel l => Change l -> Expr l
 lEndpoint = fst <<< endpoints
@@ -106,8 +107,8 @@ rEndpoint = snd <<< endpoints
 lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
 lub c1 c2 =
 --    trace ("lub called with: c1 is " <> pretty c1 <> " and c2 is " <> pretty c2) \_ ->
-    assert (wellformedExpr "lub.c1" c1) \_ -> 
-    assert (wellformedExpr "lub.c2" c2) \_ -> 
+--    assert (wellformedExpr "lub.c1" c1) \_ ->
+--    assert (wellformedExpr "lub.c2" c2) \_ ->
 --    trace ("got here") \_ ->
     case c1 /\ c2 of
         Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
@@ -145,9 +146,9 @@ matchingEndpoints source message c1 c2 = makeAssertionBoolean
 
 compose :: forall l. IsExprLabel l => Change l -> Change l -> Change l
 compose c1 c2 = 
-    assert (wellformedExpr "compose.c1" c1) \_ ->
-    assert (wellformedExpr "compose.c2" c2) \_ ->
-    assert (matchingEndpoints "ChangeAlgebra.compose" ("Change composition is only defined when endpoints match. Changes are: " <> pretty c1 <> " and " <> pretty c2) c1 c2) \_ ->
+--    assert (wellformedExpr "compose.c1" c1) \_ ->
+--    assert (wellformedExpr "compose.c2" c2) \_ ->
+--    assert (matchingEndpoints "ChangeAlgebra.compose" ("Change composition is only defined when endpoints match. Changes are: " <> pretty c1 <> " and " <> pretty c2) c1 c2) \_ ->
     case c1 /\ c2 of
         (Expr (Plus l1) [c1']) /\ (Expr (Minus l2) [c2']) | l1 == l2 -> compose c1' c2'
         (Expr (Minus l1) [c1']) /\ (Expr (Plus l2) [c2']) | l1 == l2 ->

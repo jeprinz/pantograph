@@ -579,20 +579,20 @@ unWrapLambda = Smallstep.makeDownRule
 -- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
 wrapApp :: StepRule
 wrapApp = Smallstep.makeUpRule
-    (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
     {-t-}slot
     (\[t] -> t /\ (\[a] [gamma, b] inside ->
-        Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+        Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
-                [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
+                [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor NeutralSort % [rEndpoint gamma, a]))]))
 
 -- App up{t1}_(Term G (- A -> B)) t2 ~~> up{t1}_(Term G B)
 unWrapApp :: StepRule
 unWrapApp = Smallstep.makeUpRule
-    (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    (NeutralSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
     (App %# [{-t1-}slot, {-t2-}slot])
     (\[t1, _t2] -> t1 /\ (\[_a] [gamma, b] inside ->
-        Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+        Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             inside))
 
 stepRules :: List StepRule

@@ -180,8 +180,10 @@ termToZipper term =
     let _change /\ term' = ssTermStripTopChange term in
     -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
     -- Once Henry fixes the rendering code, then I can uncomment the real implementation below.
-  
-     Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
+
+     trace "start termToZipper" \_ ->
+     let res = Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
+     in trace "end termToZipper" \_ -> res
   
 --    case unWrapPath term' of
 --       Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
@@ -244,10 +246,21 @@ step t@(Expr.Expr l kids) rules =
 
 stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules =
+    trace "start" \_ ->
+    let res = stepRepeatedly' t rules
+    in
+    trace "end" \_ ->
+    res
+
+
+stepRepeatedly' :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
+stepRepeatedly' t rules =
 --    trace ("stepRepeatedly: " <> pretty t) \_ ->
     case step t rules of
-    Nothing -> t
-    Just t' -> stepRepeatedly t' rules
+    Nothing ->
+        t
+    Just t' ->
+        stepRepeatedly' t' rules
 
 -------------- Default rules --------------------------------------------
 type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
