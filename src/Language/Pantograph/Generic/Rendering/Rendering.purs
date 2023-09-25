@@ -91,7 +91,6 @@ arrangeHoleExterior :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   Array (EditorHTML l r)
 arrangeHoleExterior locs sort holeInteriorElem renCtx =
-  let _ = fromJust' "arrangeHoleExterior runs" Nothing in
   [ HH.div [classNames ["subnode", "holeExterior-inner"]]
     [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
     , colonElem
