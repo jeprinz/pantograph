@@ -350,7 +350,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
   Let /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
-    [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem], Left (renCtx' /\ 3)]
+    [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
+        , pure (if renCtx.isInlined then [] else [Rendering.newlineElem])
+        , Left (renCtx' /\ 3)]
   App /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
@@ -369,8 +371,10 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
         [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
       , [Left (renCtx /\ 0)] ]
   -- hole
-  TermHole /\ _ -> bug $
-    "[STLC.Grammar.arrangeDerivTermSubs] `TermHole` should be handled generically instead of here"
+  TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
+    ->  -- TODO TODO TODO: it shouldn't just display the type as text using pretty. Ideally it should produce HTML.
+        [Left (renCtx /\ 0), pure [colonElem, HH.text (pretty ty)]]
+  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -387,6 +391,8 @@ equalsElem = Rendering.makePuncElem "equals" "="
 inElem = Rendering.makePuncElem "inLet" "in"
 letElem = Rendering.makePuncElem "let" "let"
 arrowElem = Rendering.makePuncElem "arrow" "→"
+
+typeElem = Rendering.makePuncElem "Type" "Type"
 
 nameElem str = HH.span [classNames ["name"]] [HH.text str]
 dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]

@@ -43,14 +43,18 @@ arrangeDerivTermSubs :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   Array (EditorHTML l r)
 arrangeDerivTermSubs locs (Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
-  DerivLabel rule sigma % [] | isHoleRule rule -> do
-    let sort = getSortFromSub rule sigma
-    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
-  DerivLabel rule sigma % kids | not (isHoleRule rule) -> do
+--  DerivLabel rule sigma % [] | isHoleRule rule -> do
+--    let sort = getSortFromSub rule sigma
+--    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
+  DerivLabel rule sigma % kids -> do
     let sort = getSortFromSub rule sigma
     let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort}
+    let kidCtxElems' =
+            if isHoleRule rule then
+                [renderHoleInterior locs false dpath sort]
+                else kidCtxElems
     Array.concat $ subCtxSymElems <#> case _ of
-      Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems kidIx)) \kidElem -> [kidElem renCtx']
+      Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems' kidIx)) \kidElem -> [kidElem renCtx']
       Right elems -> elems
   DerivString str % [] -> 
     [ if String.null str 
@@ -87,10 +91,11 @@ arrangeHoleExterior :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   Array (EditorHTML l r)
 arrangeHoleExterior locs sort holeInteriorElem renCtx =
+  let _ = fromJust' "arrangeHoleExterior runs" Nothing in
   [ HH.div [classNames ["subnode", "holeExterior-inner"]]
     [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
     , colonElem
-    , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
+    , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)]
     ]
   ]
 

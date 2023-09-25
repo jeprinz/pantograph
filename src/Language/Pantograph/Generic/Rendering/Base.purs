@@ -90,6 +90,7 @@ type ArrangeDerivTermSubs l r =
   , renCtx :: RenderingContext
   , rule :: r
   , sort :: Sort l
+--  , renderTerm :: DerivTerm l r -> (whatever type stuff like colonElem has) -- maybe this could be used to render the type in TermHole?
   } -> 
   Array (PreKid l r)
 
