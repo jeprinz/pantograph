@@ -584,7 +584,7 @@ wrapApp = Smallstep.makeUpRule
     (\[t] -> t /\ (\[a] [gamma, b] inside ->
         Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
-                [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor NeutralSort % [rEndpoint gamma, a]))]))
+                [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
 
 -- App up{t1}_(Term G (- A -> B)) t2 ~~> up{t1}_(Term G B)
 unWrapApp :: StepRule
@@ -610,7 +610,7 @@ stepRules = do
     , wrapApp
     , unWrapApp
     , Smallstep.defaultDown chLang
-    , Smallstep.defaultUp chLang
+    , Smallstep.unless (Smallstep.isRule FunctionCall) (Smallstep.defaultUp chLang)
     ]
 
 onDelete :: Sort -> SortChange

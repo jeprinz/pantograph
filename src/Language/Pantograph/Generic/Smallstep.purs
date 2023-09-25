@@ -318,6 +318,14 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.
      pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
 defaultDown _ _ = Nothing
 
+isRule :: forall l r. IsRuleLabel l r => r -> SSTerm l r -> Boolean
+isRule r (Expr.Expr (Inject (Grammar.DerivLabel r' _)) _) | r == r' = true
+isRule _ _ = false
+
+unless :: forall l r. (SSTerm l r -> Boolean) -> StepRule l r -> StepRule l r
+unless f r t =
+    if f t then Nothing else r t
+
 defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
 defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
