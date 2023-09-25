@@ -23,77 +23,124 @@ import Safe.Coerce (coerce)
 import Text.Pretty (class Pretty, class Pretty1)
 import Type.Proxy (Proxy(..))
 
+instantiateSort :: forall joint. RuleSort joint -> Sort joint
+instantiateSort = hole "TODO: instantiateSort"
+
+diff :: forall rule joint joint'. IsLanguage rule joint joint' => RuleSort joint -> RuleSort joint -> Change joint joint'
+diff = hole "TODO: diff"
+
+defaultChangeRule :: forall (rule ∷ Type) (joint' ∷ Type -> Type) (joint ∷ Type -> Type). IsLanguage rule joint joint' ⇒ rule -> ChangeRule joint joint'
+defaultChangeRule rule = 
+  let ProductionRule production = productionRule rule in
+  ChangeRule
+    { quantifiers: Set.empty
+    , kidChanges: production.kidSorts <#> \kidSort -> diff kidSort production.parentSort }
+
 -- Fix
 
 -- | The fixpoint of a 1-argument type constructor.
 data Fix (f :: Type -> Type) = Fix (f (Fix f))
 
 -- | Maps over each layer of the fixpoint.
-mapFix :: forall f. Functor f => (forall a. f a -> f a) -> Fix f -> Fix f
+mapFix :: forall f f'. Functor f => (forall a. f a -> f' a) -> Fix f -> Fix f'
 mapFix f (Fix ff) = Fix (f (map (mapFix f) ff))
 
 -- | Unwrap the `Fix` wrapper.
 unFix :: forall f. Fix f -> f (Fix f)
 unFix (Fix ff) = ff
 
--- | A language's __joint__ type is the container type of the children of an
--- | expression.
 class 
-  ( Functor joint, FunctorWithIndex Int joint, Foldable joint, Pretty1 joint )
+  -- ( Functor joint, FunctorWithIndex Int joint, Foldable joint, Pretty1 joint )
+  ( Functor joint, Foldable joint, Pretty1 joint )
   <= IsJoint joint
 
--- MetaVar
+-- HoleJoint
 
--- | A `MetaVar` is a meta-level variable that can appear in `Sort`s.
-data MetaVar = MetaVar UUID (Maybe String)
+data HoleVar = MakeHoleVar String UUID
 
-derive instance Generic MetaVar _
-instance Show MetaVar where show = genericShow
-instance Pretty MetaVar where pretty (MetaVar uuid mb_label) = maybe "" (_ <> "@") mb_label <> UUID.toString uuid
+derive instance Generic HoleVar _
+instance Show HoleVar where show = genericShow
+instance Pretty HoleVar where pretty (MakeHoleVar label uuid) = label <> "@" <> UUID.toString uuid
 
-freshMetaVar :: Maybe String -> MetaVar
-freshMetaVar label = unsafePerformEffect $
-  MetaVar <$> UUID.genUUID <*> pure label
+freshHoleVar :: String -> HoleVar
+freshHoleVar label = unsafePerformEffect $
+  MakeHoleVar label <$> UUID.genUUID
 
-data MetaJoint (joint :: Type -> Type) a 
-  = Meta MetaVar
-  | InjectMetaJoint (joint a)
 
-data MetaJoint' (joint' :: Type -> Type) a
-  = InjectMetaJoint' (joint' a)
+data HoleJoint (joint :: Type -> Type) a 
+  = Hole HoleVar
+  | InjectHoleJoint (joint a)
 
-instance Subtype (joint a) (MetaJoint joint a) where inject = InjectMetaJoint
-instance Subtype (joint' a) (MetaJoint' joint' a) where inject = InjectMetaJoint'
+data HoleJoint' (joint' :: Type -> Type) a
+  = InjectHoleJoint' (joint' a)
 
-instance Pretty1 joint => Pretty1 (MetaJoint joint) where pretty1 _ = hole "TODO"
-derive instance Functor joint => Functor (MetaJoint joint)
-instance FunctorWithIndex Int joint  => FunctorWithIndex Int (MetaJoint joint) where
+instance Subtype (joint a) (HoleJoint joint a) where inject = InjectHoleJoint
+instance Subtype (joint' a) (HoleJoint' joint' a) where inject = InjectHoleJoint'
+
+instance Pretty1 joint => Pretty1 (HoleJoint joint) where pretty1 _ = hole "TODO"
+derive instance Functor joint => Functor (HoleJoint joint)
+instance FunctorWithIndex Int joint  => FunctorWithIndex Int (HoleJoint joint) where
   mapWithIndex _ _ = hole "TODO"
-derive instance Foldable joint => Foldable (MetaJoint joint)
+derive instance Foldable joint => Foldable (HoleJoint joint)
 
-instance Pretty1 joint' => Pretty1 (MetaJoint' joint') where pretty1 _ = hole "TODO"
-derive instance Functor joint' => Functor (MetaJoint' joint')
-instance FunctorWithIndex Int joint'  => FunctorWithIndex Int (MetaJoint' joint') where
+instance Pretty1 joint' => Pretty1 (HoleJoint' joint') where pretty1 _ = hole "TODO"
+derive instance Functor joint' => Functor (HoleJoint' joint')
+instance FunctorWithIndex Int joint'  => FunctorWithIndex Int (HoleJoint' joint') where
   mapWithIndex _ _ = hole "TODO"
-derive instance Foldable joint' => Foldable (MetaJoint' joint')
+derive instance Foldable joint' => Foldable (HoleJoint' joint')
 
-instance Derivative joint joint' => Derivative (MetaJoint joint) (MetaJoint joint') where
+instance Derivative joint joint' => Derivative (HoleJoint joint) (HoleJoint joint') where
   differentiate = hole "TODO"
   integrate = hole "TODO"
 
--- instance IsJoint joint joint' => IsJoint (MetaJoint joint) (MetaJoint' joint')
+-- HoleJoint
+
+newtype RuleVar = MakeRuleVar String
+
+derive newtype instance Eq RuleVar
+derive newtype instance Ord RuleVar
+
+data RuleVarJoint (joint :: Type -> Type) a 
+  = RuleVar RuleVar
+  | InjectRuleVarJoint (joint a)
+
+data RuleVarJoint' (joint' :: Type -> Type) a
+  = InjectRuleVarJoint' (joint' a)
+
+instance Subtype (joint a) (RuleVarJoint joint a) where inject = InjectRuleVarJoint
+instance Subtype (joint' a) (RuleVarJoint' joint' a) where inject = InjectRuleVarJoint'
+
+instance Pretty1 joint => Pretty1 (RuleVarJoint joint) where pretty1 _ = hole "TODO"
+derive instance Functor joint => Functor (RuleVarJoint joint)
+instance FunctorWithIndex Int joint  => FunctorWithIndex Int (RuleVarJoint joint) where
+  mapWithIndex _ _ = hole "TODO"
+derive instance Foldable joint => Foldable (RuleVarJoint joint)
+
+instance Pretty1 joint' => Pretty1 (RuleVarJoint' joint') where pretty1 _ = hole "TODO"
+derive instance Functor joint' => Functor (RuleVarJoint' joint')
+instance FunctorWithIndex Int joint'  => FunctorWithIndex Int (RuleVarJoint' joint') where
+  mapWithIndex _ _ = hole "TODO"
+derive instance Foldable joint' => Foldable (RuleVarJoint' joint')
+
+instance Derivative joint joint' => Derivative (RuleVarJoint joint) (RuleVarJoint joint') where
+  differentiate = hole "TODO"
+  integrate = hole "TODO"
+
+instance IsJoint joint => IsJoint (RuleVarJoint joint)
 
 -- | A `Sort` is basically a type for expressions in the language. `Sort` also
 -- | supports __name__ and __string__ sorts, where `Name` expects one child that
 -- | is a `String <String>`, which reflects the literal name into the sort
 -- | system.
-type Sort joint = Fix (SortJoint joint)
+
+type Sort joint = Fix (SortJoint (HoleJoint joint))
+
+type RuleSort joint = Fix (SortJoint (RuleVarJoint joint))
 
 data SortJoint joint a
   = InjectSortJoint (joint a)
-  | MetaSort (MetaJoint joint a)
-  | Name a
-  | String String
+  | SomeLabel a
+  | Label String
 
 data SortJoint' (joint' :: Type -> Type) a
   = InjectSortJoint' (joint' a)
@@ -192,26 +239,27 @@ invertChange = mapFix case _ of
 
 changeEndpoints :: forall rule joint joint'. IsLanguage rule joint joint' => Change joint joint' -> {before :: Sort joint, after :: Sort joint}
 changeEndpoints = unFix >>> case _ of
-  Plus th a -> do
-    let {before, after} = changeEndpoints a
-    {before, after: Fix (integrate after th)}
-  Minus th a -> do
-    let {before, after} = changeEndpoints a
-    {before: Fix (integrate before th), after}
-  Replace before after -> {before, after}
-  InjectChangeJoint a -> do
-    let zippedKids = map changeEndpoints a
-    let beforeKids = _.before <$> zippedKids
-    let afterKids = _.after <$> zippedKids
-    {before: Fix beforeKids, after: Fix afterKids}
+  -- Plus th a -> do
+  --   let {before, after} = changeEndpoints a
+  --   {before, after: Fix (integrate after th)}
+  -- Minus th a -> do
+  --   let {before, after} = changeEndpoints a
+  --   {before: Fix (integrate before th), after}
+  -- Replace before after -> {before, after}
+  -- InjectChangeJoint a -> do
+  --   let zippedKids = map changeEndpoints a
+  --   let beforeKids = _.before <$> zippedKids
+  --   let afterKids = _.after <$> zippedKids
+  --   {before: Fix beforeKids, after: Fix afterKids}
+  _ -> hole "TODO"
 
 -- Term
 
 type Term rule joint = Fix (TermJoint rule joint)
 
-data TermJoint rule joint a = Term rule (Substitution MetaVar (Sort joint)) (joint a)
+data TermJoint rule joint a = Term rule (Substitution HoleVar (Sort joint)) (joint a)
 
-data TermJoint' rule joint (joint' :: Type -> Type) a = Term' rule (Substitution MetaVar (Sort joint)) (joint' a)
+data TermJoint' rule joint (joint' :: Type -> Type) a = Term' rule (Substitution HoleVar (Sort joint)) (joint' a)
 
 instance Pretty1 joint => Pretty1 (TermJoint rule joint) where pretty1 _ = hole "TODO"
 derive instance Functor joint => Functor (TermJoint rule joint)
@@ -246,23 +294,24 @@ type TermSelect rule joint joint' = Select (TermJoint' rule joint joint') (Term 
 class
     ( Pretty rule
     , IsJoint joint
+    , Pretty1 joint'
     , Derivative joint joint' )
     <= IsLanguage rule joint joint' 
     | joint -> rule joint', rule -> joint joint', joint' -> joint rule
   where
   -- | The production rules, indexed by `rule`.
-  productionRules :: rule -> ProductionRule rule joint
+  productionRule :: rule -> ProductionRule joint
   -- | The change rules, indexed by `rule`.
-  changeRules :: rule -> ChangeRule rule joint joint'
+  changeRule :: rule -> ChangeRule joint joint'
   -- | The default term (if any) for a sort.
   defaultTerm :: Sort joint -> Maybe (Term rule joint)
   -- | When a change is yielded at a cursor, split it into a change to propogate
   -- | downwards, and change to propogate upwards, and a new sort at the cursor.
-  splitChange :: Change joint joint' -> {down :: Change joint joint', up :: Change joint joint', sort :: Sort joint}
+  splitChange :: {change :: Change joint joint', sort :: Sort joint} -> {down :: Change joint joint', up :: Change joint joint', sort :: Sort joint}
   -- | Defines if a cursor is valid as a function of its sort.
   validCursorSort :: Sort joint -> Boolean
-  -- | Defines if a selection is valid as a function of its top and bottom sorts.
-  validSelectionSorts :: {top :: Sort joint, bottom :: Sort joint} -> Boolean
+  -- | Defines if a selection is valid as a function of its top and bot sorts.
+  validSelectionSorts :: {top :: Sort joint, bot :: Sort joint} -> Boolean
   -- | The change propogated upwards when the term is deleted.
   digChange :: Sort joint -> Change joint joint'
   -- | TODO: DOC
@@ -270,15 +319,15 @@ class
   -- | TODO: DOC
   specialize :: {general :: Sort joint, special :: Sort joint} -> Change joint joint'
 
-newtype ProductionRule rule joint = ProductionRule
-  { quantifiers :: Set.Set MetaVar
-  , kidSorts :: TermJoint rule joint (Sort joint)
-  , parentSort :: Sort joint }
+newtype ProductionRule joint = ProductionRule
+  { quantifiers :: Set.Set RuleVar
+  , kidSorts :: joint (RuleSort joint)
+  , parentSort :: RuleSort joint }
 
 -- TODO: DOC
-newtype ChangeRule rule joint (joint' :: Type -> Type) = ChangeRule
-  { quantifiers :: Set.Set MetaVar
-  , kidChanges :: TermJoint rule joint (Fix (ChangeJoint joint joint')) }
+newtype ChangeRule joint (joint' :: Type -> Type) = ChangeRule
+  { quantifiers :: Set.Set RuleVar
+  , kidChanges :: joint (Change joint joint') }
 
 -- Misc
 
@@ -294,3 +343,6 @@ class Zippable a where
 
 -- | `Subtype a b` if every term of `a` can be mapped to a unique term of `b`.
 class Subtype a b where inject :: a -> b
+
+inject' :: forall a b. Subtype a b => Proxy a -> a -> b
+inject' _ = inject

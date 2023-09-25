@@ -75,35 +75,35 @@ type RenderingEnv env =
 
 type RenderingM ctx env = ReaderT (RenderingCtx ctx) (StateT (RenderingEnv env) Identity)
 
-runRenderingM :: forall ctx env rule joint a. IsEditor ctx env rule joint => RenderingCtx ctx -> RenderingEnv env -> RenderingM ctx env a -> a
+runRenderingM :: forall ctx env rule joint joint' a. IsEditor ctx env rule joint joint' => RenderingCtx ctx -> RenderingEnv env -> RenderingM ctx env a -> a
 runRenderingM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
 
 -- IsEditor
 
 class
-    ( IsLanguage rule joint
+    ( IsLanguage rule joint joint'
     , Nub ctx ctx, Lacks "depth" ctx
     , Nub env env, Lacks "holeCount" env )
-    <= IsEditor (ctx :: Row Type) (env :: Row Type) rule joint 
-    | joint -> ctx env rule, ctx -> joint env rule, env -> joint ctx rule, rule -> joint ctx env
+    <= IsEditor (ctx :: Row Type) (env :: Row Type) rule joint joint'
+    | joint -> ctx env rule joint', ctx -> env rule joint joint', env -> ctx rule joint joint', rule -> ctx env joint joint'
   where
-  arrangeTerm :: TermJoint rule joint (TermRenderer ctx env rule joint) -> TermRenderer ctx env rule joint
+  arrangeTerm :: TermJoint rule joint (TermRenderer ctx env rule joint joint') -> TermRenderer ctx env rule joint joint'
 
 -- TermHtml
 
-type TermHtml rule joint = {term :: Term rule joint, html :: EditorHtml rule joint}
+type TermHtml rule joint joint' = {term :: Term rule joint, html :: EditorHtml rule joint joint'}
 
-type TermRenderer ctx env rule joint = RenderingM ctx env (TermHtml rule joint)
+type TermRenderer ctx env rule joint joint' = RenderingM ctx env (TermHtml rule joint joint')
 
 -- EditorHtml
 
-type EditorSlots rule joint = 
+type EditorSlots rule joint joint' =
   ( toolbox :: H.Slot (ToolboxQuery rule joint) (ToolboxOutput rule joint) ToolboxSlot
-  , preview :: H.Slot (PreviewQuery rule joint) Unit PreviewSlot
+  , preview :: H.Slot (PreviewQuery rule joint joint') Unit PreviewSlot
   , clipboard :: H.Slot (ClipboardQuery rule joint) (ClipboardOutput rule joint) ClipboardSlot
   , console :: H.Slot ConsoleQuery ConsoleOutput ConsoleSlot )
 
-type EditorHtml rule joint = HH.ComponentHTML (HK.HookM Aff Unit) (EditorSlots rule joint) Aff
+type EditorHtml rule joint joint' = HH.ComponentHTML (HK.HookM Aff Unit) (EditorSlots rule joint joint') Aff
 
 -- Editor
 
@@ -112,17 +112,16 @@ data EditorQuery rule joint a
 type EditorInput ctx env rule joint = 
   { term :: Term rule joint
   , ctx :: Record ctx
-  , env :: Record env
-  }
+  , env :: Record env }
 data EditorOutput rule joint
 
 -- | A `Buffer` is an independent section of code.
-data Buffer rule joint
-  = CursorBuffer (TermCursor rule joint)
-  | SelectBuffer (TermSelect rule joint)
+data Buffer rule joint joint'
+  = CursorBuffer (TermCursor rule joint joint')
+  | SelectBuffer (TermSelect rule joint joint')
   | TopBuffer (Term rule joint)
 
-editorComponent :: forall ctx env rule joint. IsEditor ctx env rule joint => H.Component (EditorQuery rule joint) (EditorInput ctx env rule joint) (EditorOutput rule joint) Aff
+editorComponent :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => H.Component (EditorQuery rule joint) (EditorInput ctx env rule joint) (EditorOutput rule joint) Aff
 editorComponent = HK.component \token input -> HK.do
   buffer /\ buffer_id <- HK.useState (TopBuffer input.term)
   ctx /\ ctx_id <- HK.useState 
@@ -136,36 +135,37 @@ editorComponent = HK.component \token input -> HK.do
   HK.pure do
     html
       (EditorHtmlConfig {}) 
-      [(runRenderingM ctx env (renderBuffer buffer)).html]
+      -- [(runRenderingM ctx env (renderBuffer buffer)).html]
+      []
 
-renderBuffer :: forall ctx env rule joint. IsEditor ctx env rule joint => Buffer rule joint -> TermRenderer ctx env rule joint
-renderBuffer buffer = case buffer of
-  CursorBuffer (Cursor path term) -> renderUpPath path (renderTerm term)
-  SelectBuffer (Select top mid term) -> renderUpPath top (renderSomePath mid (renderTerm term))
-  TopBuffer term -> renderTerm term
+-- renderBuffer :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Buffer rule joint -> TermRenderer ctx env rule joint joint'
+-- renderBuffer buffer = case buffer of
+--   CursorBuffer (Cursor path term) -> renderUpPath path (renderTerm term)
+--   SelectBuffer (Select top mid term) -> renderUpPath top (renderSomePath mid (renderTerm term))
+--   TopBuffer term -> renderTerm term
 
-renderCursorWrapper :: forall ctx env rule joint. IsEditor ctx env rule joint => TermRenderer ctx env rule joint -> TermRenderer ctx env rule joint
-renderCursorWrapper = map \termHtml -> termHtml {html = html (CursorHtmlConfig {}) [termHtml.html]}
+-- renderCursorWrapper :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+-- renderCursorWrapper = map \termHtml -> termHtml {html = html (CursorHtmlConfig {}) [termHtml.html]}
 
-renderTooth :: forall ctx env rule joint. IsEditor ctx env rule joint => TermTooth rule joint -> TermRenderer ctx env rule joint -> TermRenderer ctx env rule joint
-renderTooth (Tooth j) inside = arrangeTerm (j <#> maybe inside renderTerm)
+-- renderTooth :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermTooth rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+-- renderTooth (Tooth j) inside = arrangeTerm (j <#> maybe inside renderTerm)
 
-renderUpPath :: forall ctx env rule joint. IsEditor ctx env rule joint => TermPath UpPathDir rule joint -> TermRenderer ctx env rule joint -> TermRenderer ctx env rule joint
-renderUpPath (Path ths) inside = case ths of
-  List.Nil -> inside
-  List.Cons th ths' -> renderUpPath (Path ths') (renderTooth th inside)
+-- renderUpPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath UpPathDir rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+-- renderUpPath (Path ths) inside = case ths of
+--   List.Nil -> inside
+--   List.Cons th ths' -> renderUpPath (Path ths') (renderTooth th inside)
 
-renderDownPath :: forall ctx env rule joint. IsEditor ctx env rule joint => TermPath DownPathDir rule joint -> TermRenderer ctx env rule joint -> TermRenderer ctx env rule joint
-renderDownPath (Path ths) inside = case ths of
-  List.Nil -> inside
-  List.Cons th ths' -> renderTooth th (renderDownPath (Path ths') inside)
+-- renderDownPath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => TermPath DownPathDir rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+-- renderDownPath (Path ths) inside = case ths of
+--   List.Nil -> inside
+--   List.Cons th ths' -> renderTooth th (renderDownPath (Path ths') inside)
 
-renderSomePath :: forall ctx env rule joint. IsEditor ctx env rule joint => SomeTermPath rule joint -> TermRenderer ctx env rule joint -> TermRenderer ctx env rule joint
-renderSomePath (UpPath p) = renderUpPath p
-renderSomePath (DownPath p) = renderDownPath p
+-- renderSomePath :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => SomeTermPath rule joint -> TermRenderer ctx env rule joint joint' -> TermRenderer ctx env rule joint joint'
+-- renderSomePath (UpPath p) = renderUpPath p
+-- renderSomePath (DownPath p) = renderDownPath p
 
-renderTerm :: forall ctx env rule joint. IsEditor ctx env rule joint => Term rule joint -> TermRenderer ctx env rule joint
-renderTerm (Fix (Term rule sigma j)) = arrangeTerm (Term rule sigma (renderTerm <$> j))
+-- renderTerm :: forall ctx env rule joint joint'. IsEditor ctx env rule joint joint' => Term rule joint -> TermRenderer ctx env rule joint joint'
+-- renderTerm (Fix (Term rule sigma j)) = arrangeTerm (Term rule sigma (renderTerm <$> j))
 
 -- Toolbox
 
@@ -196,8 +196,8 @@ toolboxComponent = HK.component \token pos -> HK.do
 -- | inwards.
 
 type PreviewSlot = PreviewPosition
-data PreviewQuery rule joint a
-  = SetPreviewValue (PreviewValue rule joint) a
+data PreviewQuery rule joint joint' a
+  = SetPreviewValue (PreviewValue rule joint joint') a
 type PreviewInput = PreviewPosition
 data PreviewOutput rule joint
 
@@ -205,11 +205,11 @@ data PreviewPosition
   = OutsideBeforePreviewPosition | OutsideAfterPreviewPosition
   | InsideBeforePreviewPosition | InsideAfterPreviewPosition
 
-data PreviewValue rule joint = PreviewValue (TermTooth rule joint)
+data PreviewValue rule joint joint' = PreviewValue (joint' (Term rule joint))
 
-previewComponent :: forall rule joint. H.Component (PreviewQuery rule joint) PreviewInput (PreviewOutput rule joint) Aff
+previewComponent :: forall rule joint joint'. H.Component (PreviewQuery rule joint joint') PreviewInput (PreviewOutput rule joint) Aff
 previewComponent = HK.component \token pos -> HK.do
-  value /\ value_id <- HK.useState (Nothing :: Maybe (PreviewValue rule joint))
+  value /\ value_id <- HK.useState (Nothing :: Maybe (PreviewValue rule joint joint'))
   HK.pure do
     html
       (PreviewHtmlConfig {position: pos})
