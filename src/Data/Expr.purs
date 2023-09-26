@@ -130,7 +130,7 @@ instance Eq MetaVar where eq x y = genericEq x y
 instance Ord MetaVar where compare x y = genericCompare x y
 instance Pretty MetaVar where
   pretty (MetaVar Nothing uuid) = "?" <> String.take 2 (UUID.toString uuid)
-  pretty (MetaVar (Just str) uuid) = "?" <> str <> "~" <> String.take 2 (UUID.toString uuid)
+  pretty (MetaVar (Just str) uuid) = "?" <> str <> "#" <> String.take 2 (UUID.toString uuid)
   pretty (RuleMetaVar str) = "??" <> str
 
 freshMetaVar :: String -> MetaVar
@@ -204,6 +204,17 @@ tooth i (Expr l kids) = do
   kidsZip /\ kid <- ZipList.zipAt i (List.fromFoldable kids)
   Just $ (l %< kidsZip) /\ kid
 
+tooths :: forall l. Expr l -> List (Tooth l /\ Expr l)
+tooths (Expr l kids) = case Array.uncons kids of
+  Nothing -> mempty
+  Just {head: kid, tail: kids'} ->
+    let go kidsLeft kid kidsRight thExs = case kidsRight of
+          Nil -> thExs
+          Cons kid' kidsRight' -> 
+            let kidsLeft' = RevList.snoc kidsLeft kid in
+            go kidsLeft' kid' kidsRight' ((Tooth l (ZipList.Path {left: kidsLeft', right: kidsRight'}) /\ kid') : thExs)
+    in go mempty kid (List.fromFoldable kids') (List.singleton (Tooth l (ZipList.Path {left: mempty, right: List.fromFoldable kids'}) /\ kid))
+
 showTooth (l %< p) = show l <> " " <> intercalate " " (ZipList.unpathAround "{}" (show <$> p))
 
 prettyTooth (l %< p) str = prettyExprF (l /\ Array.fromFoldable (ZipList.unpathAround str (pretty <$> p)))
@@ -236,6 +247,7 @@ instance ReflectPathDir Dir.Up where
     inSaneEnglishIsItDown _ = false
 
 -- | This works on both up and down paths -- Jacob: no it doesn't, it only works on Down paths. It would display Up paths backwards.
+prettyPath ∷ ∀ (dir190319372017 ∷ Symbol) (t2019 ∷ Type). ReflectPathDir dir190319372017 ⇒ IsExprLabel t2019 ⇒ Path dir190319372017 t2019 → String → String
 prettyPath path str = foldMapPath str prettyTooth path
 
 instance (ReflectPathDir dir, IsExprLabel l) => Pretty (Path dir l) where

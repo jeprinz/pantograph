@@ -10,14 +10,19 @@ import Bug.Assertion (Assertion(..), assert, makeAssertionBoolean)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Either as Either
+import Data.Either.Nested (type (\/), (\/))
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, (%), (%<))
+import Data.Expr (class IsExprLabel, unTooth, (%), (%<))
 import Data.Expr as Expr
+import Data.FunctorWithIndex (mapWithIndex)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), (:))
 import Data.List as List
 import Data.List.Rev as Rev
+import Data.List.Rev as RevList
 import Data.List.Zip as ZipList
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
 import Data.Ord.Generic (genericCompare)
@@ -27,26 +32,22 @@ import Data.Show.Generic (genericShow)
 import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
 import Data.TotalMap as TotalMap
-import Data.Map (Map)
-import Data.Map as Map
 import Data.Tuple (snd, fst)
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.Either.Nested (type (\/), (\/))
+import Debug (trace)
+import Debug (trace)
+import Debug (traceM)
 import Hole (hole)
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (endpoints)
 import Language.Pantograph.Generic.Grammar (class IsRuleLabel, isHoleDerivLabel, isHoleDerivTerm)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Partial.Unsafe (unsafeCrashWith)
+import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, braces, brackets, pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust', assertSingleton, Hole)
 import Utility ((<$$>))
-import Debug (trace)
-import Debug (traceM)
-import Data.List.Rev as RevList
-import Partial.Unsafe (unsafePartial)
-import Debug (trace)
 
 data Direction = Up | Down -- TODO:
 
@@ -154,12 +155,26 @@ oneOrNone (x : xs) f = case f x of
      in
      Right (Nil /\ a /\ bs2)
 
--- unwraps a path from around a Marker, or
-unWrapPath :: forall l r. IsRuleLabel l r => SSTerm l r
-    -- path                                         OR term
-    -> (Grammar.DerivPath Dir.Down l r /\ SSTerm l r) \/ Grammar.DerivTerm l r
-unWrapPath (Expr.Expr (Inject l) kids) =
- let kids' = (List.fromFoldable $ map unWrapPath kids) in
+-- -- TODO: finish writing this
+-- unwrapSSTerm' :: forall l r. IsRuleLabel l r =>
+--     Grammar.DerivPath Dir.Up l r ->
+--     SSTerm l r ->
+--     (Grammar.DerivPath Dir.Up l r /\ SSTerm l r) \/ -- DerivPath to an SSTerm
+--     Grammar.DerivTerm l r -- just a DerivTerm
+-- unwrapSSTerm' (Expr.Path ths) e@(Expr.Expr (Inject l) kids) =
+--     -- let kids'' = mapWithIndex (\i -> unwrapSSTerm' (Expr.Path (fromJust Expr.tooth ?a ?a : ths))) kids in
+--     let kids' = Expr.tooths e <#> \(th /\ e') -> unwrapSSTerm' (Expr.Path (?th : ths)) e' in
+--     ?a
+-- unwrapSSTerm' p sst@(Expr.Expr (Marker _) _) = Left (p /\ sst)
+-- unwrapSSTerm' p sst@(Expr.Expr (Boundary _ _) kids) = Left (p /\ sst)
+
+-- Unwrap an SSTerm into either a DerivPath to an SSTerm, or a DerivTerm.
+unwrapSSTerm' :: forall l r. IsRuleLabel l r => 
+    SSTerm l r -> 
+    (Grammar.DerivPath Dir.Down l r /\ SSTerm l r) \/ -- DerivPath to an SSTerm
+    Grammar.DerivTerm l r -- just a DerivTerm
+unwrapSSTerm' (Expr.Expr (Inject l) kids) =
+ let kids' = (List.fromFoldable $ map unwrapSSTerm' kids) in
  case oneOrNone kids' identity of
      -- child didn't have cursor
      Left kids'' -> Right $ Expr.Expr l (Array.fromFoldable (kids''))
@@ -167,8 +182,11 @@ unWrapPath (Expr.Expr (Inject l) kids) =
      Right (leftKids /\ (Expr.Path p /\ e) /\ rightKids) ->
         let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
         Left $ Expr.Path (newTooth : p) /\ e
-unWrapPath t = Left (Expr.Path Nil /\ t)
---unWrapPath t = Bug.bug ("shouldn't happen in unWrapPath: t was " <> pretty t)
+unwrapSSTerm' t = Left (Expr.Path Nil /\ t)
+
+unwrapSSTerm = unwrapSSTerm' >>> case _ of
+    Left (p /\ sst) -> Left (Expr.reversePath p /\ sst)
+    Right dt -> Right dt
 
 removeMarkers :: forall l r. IsRuleLabel l r => SSTerm l r -> SSTerm l r
 removeMarkers (Expr.Expr (Inject l) kids) = Expr.Expr (Inject l) (map removeMarkers kids)
@@ -193,10 +211,10 @@ termToZipper term =
 -- The input path should be nonempty
 ssTermToPath :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.DerivPath Dir.Up l r /\ Grammar.SortChange l
 ssTermToPath term =
-    case unWrapPath term of
-        Left (path /\ (Expr.Expr (Boundary Down c) [Expr.Expr (Marker 0) []])) -> Expr.reversePath path /\ c
+    case unwrapSSTerm term of
+        Left (path /\ (Expr.Expr (Boundary Down c) [Expr.Expr (Marker 0) []])) -> path /\ c
         Left (path /\ (Expr.Expr (Marker 0) [])) ->
-            let res = Expr.reversePath path in
+            let res = path in
             res /\ inject (Grammar.nonemptyPathInnerSort res)
         _justATerm -> Bug.bug ("ssTermToPath: term didn't have the right shape: " <> pretty term)
 

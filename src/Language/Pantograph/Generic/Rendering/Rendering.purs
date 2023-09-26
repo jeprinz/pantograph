@@ -105,7 +105,6 @@ arrangeHoleExterior locs label@(DerivLabel rule _) holeInteriorElem renCtx = do
 --  ]
 arrangeHoleExterior _ _ _ _ = bug "a hole's DerivLabel shouldn't be a string"
 
-
 ------------------------------------------------------------------------------
 -- render term
 ------------------------------------------------------------------------------
@@ -115,7 +114,7 @@ renderDerivTerm :: forall l r. IsRuleLabel l r =>
   Boolean ->
   DerivZipper l r ->
   RenderingContext ->
-  EditorHTML l r
+  EditorHTML l r -- /\ Tree Element
 renderDerivTerm locs isCursor dzipper renCtx =
   HH.div
     (Array.concat
