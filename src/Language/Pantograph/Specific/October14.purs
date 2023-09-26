@@ -182,6 +182,7 @@ data RuleLabel
   | DataTypeRule DataType
   | ArrowRule
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
+  | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -228,6 +229,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Newline /\ [a]) = "<newline> " <> a
   prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
   prettyExprF'_unsafe_RuleLabel (FunctionCall /\ [neu]) = "call" <+> P.parens neu
+  prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -319,6 +321,13 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TypeSort %|-* [Arrow %|-* [a, b]] )
 
+  If -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+      [ TermSort %|-* [gamma, DataType Bool %|-* []]
+      , TermSort %|-* [gamma, ty]
+      , TermSort %|-* [gamma, ty] ]
+      /\
+      ( TermSort %|-* [gamma, ty] )
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -376,6 +385,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     ->  -- TODO TODO TODO: it shouldn't just display the type as text using pretty. Ideally it should produce HTML.
         [Left (renCtx /\ 0), pure [colonElem, HH.text (pretty ty)]]
   TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
+  If /\ _ ->
+    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    [pure [ifElem], Left (renCtx /\ 0), pure [Rendering.newlineElem, thenElem], Left (renCtx' /\ 1), pure [Rendering.newlineElem, elseElem], Left (renCtx' /\ 2)]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -392,6 +404,9 @@ equalsElem = Rendering.makePuncElem "equals" "="
 inElem = Rendering.makePuncElem "inLet" "in"
 letElem = Rendering.makePuncElem "let" "let"
 arrowElem = Rendering.makePuncElem "arrow" "→"
+ifElem = Rendering.makePuncElem "if" "if"
+thenElem = Rendering.makePuncElem "then" "then"
+elseElem = Rendering.makePuncElem "else" "else"
 
 typeElem = Rendering.makePuncElem "Type" "Type"
 
@@ -481,6 +496,7 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         makeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
         , makeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
         , makeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+        , makeEditFromTerm (newTermFromRule If) "If" cursorSort
     ]
 
 editsAtCursor cursorSort = Array.mapMaybe identity
