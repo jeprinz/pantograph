@@ -130,7 +130,7 @@ instance Eq MetaVar where eq x y = genericEq x y
 instance Ord MetaVar where compare x y = genericCompare x y
 instance Pretty MetaVar where
   pretty (MetaVar Nothing uuid) = "?" <> String.take 2 (UUID.toString uuid)
-  pretty (MetaVar (Just str) uuid) = "?" <> str <> "~" <> String.take 2 (UUID.toString uuid)
+  pretty (MetaVar (Just str) uuid) = "?" <> str <> "#" <> String.take 2 (UUID.toString uuid)
   pretty (RuleMetaVar str) = "??" <> str
 
 freshMetaVar :: String -> MetaVar
