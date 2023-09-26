@@ -8,36 +8,47 @@ import Prelude
 import Data.Derivative (class Derivative, differentiate, integrate)
 import Data.Foldable (class Foldable, foldl, foldr)
 import Data.FoldableWithIndex (class FoldableWithIndex, foldMapWithIndexDefaultR)
+import Data.FunctorWithIndex (mapWithIndex)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable, traverse)
-import Data.Tuple (snd)
 import Data.Tuple.Nested ((/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Hole (hole)
 import Safe.Coerce (coerce)
-import Text.Pretty (class Pretty, class Pretty1, class PrettyS1, angles, pretty, pretty1, prettyS1, quotes, quotes2)
+import Text.Pretty (class Pretty, class Pretty1, class PrettyS1, angles, pretty, pretty1, prettyS1, quotes)
 import Type.Proxy (Proxy(..))
 
-instantiateSort :: forall joint. RuleSort joint -> Sort joint
-instantiateSort = hole "TODO: instantiateSort"
-
-diff :: forall rule joint joint'. IsLanguage rule joint joint' => RuleSort joint -> RuleSort joint -> Change joint joint'
-diff = hole "TODO: diff"
+-- TODO: sophisticate
+diff :: forall rule joint joint'. IsLanguage rule joint joint' => HoleSort joint -> HoleSort joint -> HoleChange joint joint'
+diff sort1 sort2 = Fix $ Replace sort1 sort2
 
 defaultChangeRule :: forall (rule ∷ Type) (joint' ∷ Type -> Type) (joint ∷ Type -> Type). IsLanguage rule joint joint' ⇒ rule -> ChangeRule joint joint'
 defaultChangeRule rule = 
   let ProductionRule production = productionRule rule in
   ChangeRule
-    { quantifiers: Set.empty
-    , kidChanges: production.kidSorts <#> \kidSort -> diff kidSort production.parentSort }
+    { parameters: Set.empty
+    , kidChanges: production.kidSorts <#> \kidSort ->
+        let sigma = freshRuleVarSubst production.parameters in
+        diff (substRuleSort sigma kidSort) (substRuleSort sigma production.parentSort) }
+
+-- applySubst :: Subst k v -> 
+
+substRuleSort :: forall joint. Subst RuleVar (HoleSort joint) -> RuleSort joint -> HoleSort joint
+substRuleSort sigma (Fix (InjectSortJoint (RuleVar ruleVar))) = case sigma of
+substRuleSort sigma (Fix (InjectSortJoint (InjectRuleVarJoint j))) = hole "TODO: substRuleSort"
+substRuleSort sigma (Fix (SomeSymbol sort)) = hole "TODO: substRuleSort"
+substRuleSort sigma (Fix (Symbol str)) = hole "TODO: substRuleSort"
+
+substRuleVar :: forall joint. Subst RuleVar a -> RuleVar -> Maybe a
+substRuleVar (Subst sigma) 
 
 -- Fix
 
@@ -114,6 +125,8 @@ instance Derivative joint joint' => Derivative (HoleJoint joint) (HoleJoint' joi
 -- HoleJoint
 
 newtype RuleVar = MakeRuleVar String
+
+newtype RuleVarSubst a = RuleVarSubst RuleVar a
 
 derive newtype instance Eq RuleVar
 derive newtype instance Ord RuleVar
@@ -247,6 +260,9 @@ reversePath (Path ths) = Path (List.reverse ths)
 -- Change
 
 type Change joint joint' = Fix (ChangeJoint joint joint')
+type HoleChange joint joint' = Fix (HoleChangeJoint joint joint')
+
+type HoleChangeJoint joint joint' = ChangeJoint (HoleJoint joint) (HoleJoint' joint')
 
 data ChangeJoint joint (joint' :: Type -> Type) a
   = Plus (SortJoint' joint' (Sort joint)) a
@@ -302,7 +318,7 @@ type HoleExprJoint rule joint = ExprJoint rule (HoleJoint joint)
 type HoleExpr rule joint = Fix (HoleExprJoint rule joint)
 
 data ExprJoint' rule joint (joint' :: Type -> Type) a = Expr' rule (Subst RuleVar (Sort joint)) (joint' a)
-type HoleExprJoint' rule joint joint' = ExprJoint' rule (HoleJoint joint) (HoleJoint joint')
+type HoleExprJoint' rule joint joint' = ExprJoint' rule (HoleJoint joint) (HoleJoint' joint')
 
 instance Pretty1 joint => Pretty1 (ExprJoint rule joint) where
   pretty1 (Expr _rule _sigma j) = pretty1 j
@@ -366,18 +382,17 @@ class
   specialize :: {general :: HoleSort joint, special :: HoleSort joint} -> Change joint joint'
 
 newtype ProductionRule joint = ProductionRule
-  { quantifiers :: Set.Set RuleVar
+  { parameters :: Set.Set RuleVar
   , kidSorts :: joint (RuleSort joint)
   , parentSort :: RuleSort joint }
 
+freshRuleVarSubst :: forall joint. Set.Set RuleVar -> Subst RuleVar (HoleSort joint)
+freshRuleVarSubst = Subst <<< mapWithIndex (\(MakeRuleVar str) _ -> Fix $ InjectSortJoint $ Hole $ freshHoleVar str) <<< Set.toMap
+
 -- TODO: DOC
 newtype ChangeRule joint (joint' :: Type -> Type) = ChangeRule
-  { quantifiers :: Set.Set RuleVar
-  , kidChanges :: joint (Change joint joint') }
-
--- Misc
-
-newtype Subst k v = Subst (Map.Map k v)
+  { parameters :: Set.Set RuleVar
+  , kidChanges :: joint (HoleChange joint joint') }
 
 -- data Nat = Zero | Suc Nat
 -- derive instance Eq Nat

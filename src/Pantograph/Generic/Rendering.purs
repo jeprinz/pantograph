@@ -271,7 +271,7 @@ consoleComponent = HK.component \token _ -> HK.do
 -- render Language pieces
 
 renderTooth :: forall ctx env rule joint joint'. IsEditor rule joint joint' => HoleExprJoint' rule joint joint' (HoleExpr rule joint) -> HoleExprRenderer ctx env rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
-renderTooth j' inside = arrangeHoleExpr (integrate inside (renderExpr <$> j'))
+renderTooth j' inside = arrangeHoleExpr $ integrate inside (renderExpr <$> j')
 
 renderUpPath :: forall ctx env rule joint joint'. IsEditor rule joint joint' => HoleExprPath UpPathDir rule joint joint' -> HoleExprRenderer ctx env rule joint joint' -> HoleExprRenderer ctx env rule joint joint'
 renderUpPath (Path ths) inside = case ths of
