@@ -18,11 +18,12 @@ import Data.Generic.Rep (class Generic)
 import Data.Lazy (defer)
 import Data.List (List(..), (:))
 import Data.List as List
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
+import Data.Map as Map
 import Data.Variant (Variant)
 import Debug (traceM, trace)
 import Debug as Debug
@@ -30,7 +31,7 @@ import Effect.Exception.Unsafe (unsafeThrow)
 import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
 import Hole (hole)
-import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint)
+import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint, lEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule, newTermFromRule)
 import Language.Pantograph.Generic.Edit as Edit
@@ -241,7 +242,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % [ty]) =
     pure $ sortToType ty
 --    pure (Grammar.makeLabel TypeHole ["type" /\ ty] % [])
-  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % []
+  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
 language :: Language
@@ -465,9 +466,11 @@ splitChange c | Maybe.Just ([] /\ [ctx, ty]) <- Expr.matchChange c (TermSort %+-
         {upChange: csor TermSort % [ChangeAlgebra.inject ctx2, ty]
         , cursorSort: sor TermSort % [ctx2, ty1]
         , downChange: csor TermSort % [ctx, ChangeAlgebra.inject ty1]}
--- TODO: implement Type case
--- TODO: implement Neutral case
--- TODO TODO TODO: Also implement the case where the change is just a metavariable identity!
+splitChange c | Maybe.Just ([] /\ [_ty]) <- Expr.matchChange c (TypeSort %+- [cSlot])
+    = {upChange: c, cursorSort: lEndpoint c, downChange: ChangeAlgebra.inject (lEndpoint c)}
+splitChange c | Maybe.Just ([] /\ [_gamma, _ty]) <- Expr.matchChange c (NeutralSort %+- [cSlot, cSlot])
+    = {upChange: ChangeAlgebra.inject (rEndpoint c), cursorSort: rEndpoint c, downChange: c}
+-- TODO TODO TODO: Also implement the case where the change is just a metavariable identity! Later: I don't remember why I wrote this, maybe I'll find out later.
 splitChange c = bug ("splitChange - got c = " <> pretty c)
 
 makeEditFromTerm = DefaultEdits.makeEditFromTerm
@@ -484,6 +487,8 @@ editsAtCursor cursorSort = Array.mapMaybe identity
     [
     makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
+    , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
+    , makeEditFromPath (newPathFromRule App 0) "app" cursorSort
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
@@ -566,21 +571,37 @@ wrapLambda = Smallstep.makeDownRule
         let varName = (Expr.Meta (Right (Grammar.StringSortLabel "")) % []) in
         pure $
             dTERM Lam ["x" /\ varName, "a" /\ a, "b" /\ rEndpoint b, "gamma" /\ rEndpoint gamma] [
-                    Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.plusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
+                    Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
+                    , dTERM TermHole ["gamma" /\ rEndpoint gamma, "type" /\ a] []
+                    , Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.plusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
                         t
                 ])
 
 -- down{Lam x : A. t}_(Term G (- A -> B)) ~~> down{t}_(Term (-x : A, G) B)
-unWrapLambda :: StepRule
-unWrapLambda = Smallstep.makeDownRule
-    (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
-    (Lam %# [{-name-}slot, {-ty-} slot,{-t-}slot])
-    (\[a] [gamma, b] [_name, _ty, t] ->
-        let varName = (Expr.Meta (Right (Grammar.StringSortLabel "")) % []) in
-        pure $
-            Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
-                t
-                )
+--unWrapLambda :: StepRule
+--unWrapLambda = Smallstep.makeDownRule
+--    (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+--    (Lam %# [{-name-}slot, {-ty-} slot,{-t-}slot])
+--    (\[a] [gamma, b] [name, _ty, t] ->
+--        pure $
+--            Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.minusChange (sor CtxConsSort) [?name, a] gamma [] , b]) $
+--                t
+--                )
+
+unWrapLambda2 :: StepRule
+unWrapLambda2 (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
+        Expr.Expr (Inject (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
+    ])
+    | Just ([a] /\ [gamma, b]) <- trace "got hereee" \_ -> Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    =
+    let varName = Util.lookup' (Expr.RuleMetaVar "x") sigma in
+    pure $
+        Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
+            body
+
+unWrapLambda2 _ = Nothing
+--    = case term of
+--      (Expr.Expr (Boundary Down inputCh) [inputDeriv]) -> do
 
 -- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
 wrapApp :: StepRule
@@ -601,6 +622,18 @@ unWrapApp = Smallstep.makeUpRule
         Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             inside))
 
+{-
+This is necessary because the wrapApp rule conflicts with the defaultUp, and the priority order of the list isn't enough
+because defaultUp happens on a term higher up in the tree.
+-}
+isUpInCall :: SSTerm -> Boolean
+isUpInCall (Expr.Expr (Inject (Grammar.DerivLabel FunctionCall _)) [
+        Expr.Expr (Smallstep.Boundary Smallstep.Up ch) [_]
+    ])
+    | Just ([] /\ [gamma, ty]) <- Expr.matchChange ch (NeutralSort %+- [cSlot, cSlot])
+    = not (ChangeAlgebra.isId ty)
+isUpInCall _ = false
+
 stepRules :: List StepRule
 stepRules = do
   let chLang = Smallstep.langToChLang language
@@ -612,11 +645,11 @@ stepRules = do
     , removeSucRule
     , typeBecomeRhsOfChange
     , wrapLambda
-    , unWrapLambda
+    , unWrapLambda2
     , wrapApp
     , unWrapApp
     , Smallstep.defaultDown chLang
-    , Smallstep.unless (Smallstep.isRule FunctionCall) (Smallstep.defaultUp chLang)
+    , Smallstep.unless isUpInCall (Smallstep.defaultUp chLang)
     ]
 
 onDelete :: Sort -> SortChange

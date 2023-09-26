@@ -308,7 +308,7 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let sort = Grammar.getSortFromSub ruleLabel sub in
  if not ((fst (endpoints ch)) == sort)
-    then Bug.bug ("assertion failed: ch boundary didn't match sort in defaultDown. sort was: " <> pretty sort) else
+    then Bug.bug ("assertion failed: ch boundary didn't match sort in defaultDown. sort was: " <> pretty sort <> " and ch was " <> pretty ch) else
  do
      chSub /\ chBackUp <- doOperation ch parentGSort
      let subFull = map (map Expr.Inject) sub
@@ -326,7 +326,7 @@ unless :: forall l r. (SSTerm l r -> Boolean) -> StepRule l r -> StepRule l r
 unless f r t =
     if f t then Nothing else r t
 
-defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
+defaultUp :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
 defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let findUpBoundary = case _ of
