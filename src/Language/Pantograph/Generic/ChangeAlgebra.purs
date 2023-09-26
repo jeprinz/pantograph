@@ -51,6 +51,11 @@ isId (Expr (Inject _) kids) = Array.all isId kids
 isId (Expr (Replace e1 e2) []) = e1 == e2 -- NOTE: I'm not sure if this should be considered an identity, but if not then something needs to be done about (doOperation (Replace a b) ?x)
 isId _ = false
 
+isIdMaybe :: forall l. IsExprLabel l => Change l -> Maybe (Expr l)
+isIdMaybe (Expr (Inject l) kids) = Expr l <$> sequence (map isIdMaybe kids)
+isIdMaybe (Expr (Replace e1 e2) []) | e1 == e2 = Just e1
+isIdMaybe _ = Nothing
+
 collectMatches :: forall l. Eq l => Change l -> MetaExpr l -> Maybe (Map MetaVar (Set (Change l)))
 collectMatches (Expr (Inject l1) kids1) (Expr (Meta (Right l2)) kids2) | l1 == l2 =
     let subs = Array.zipWith collectMatches kids1 kids2 in
@@ -63,7 +68,7 @@ collectMatches _ _ = Bug.bug "base case in collectMatches"
 
 endpoints :: forall l. IsExprLabel l => Change l -> Expr l /\ Expr l
 endpoints ch =
-    assert (wellformedExpr "endpoints" ch) \_ ->
+--    assert (wellformedExpr "endpoints" ch) \_ ->
     case ch of
         Expr (Plus th) [kid] -> do
             -- - `leftEp` is the left endpoint of the plus's child, and so it is the
@@ -84,6 +89,7 @@ endpoints ch =
             let leftKids /\ rightKids = Array.unzip zippedKids
             Expr l leftKids /\ Expr l rightKids
         Expr (Replace e1 e2) [] -> e1 /\ e2
+        _ -> bug "invalid input to endpoints"
 
 lEndpoint :: forall l. IsExprLabel l => Change l -> Expr l
 lEndpoint = fst <<< endpoints
@@ -101,8 +107,8 @@ rEndpoint = snd <<< endpoints
 lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
 lub c1 c2 =
 --    trace ("lub called with: c1 is " <> pretty c1 <> " and c2 is " <> pretty c2) \_ ->
-    assert (wellformedExpr "lub.c1" c1) \_ -> 
-    assert (wellformedExpr "lub.c2" c2) \_ -> 
+--    assert (wellformedExpr "lub.c1" c1) \_ ->
+--    assert (wellformedExpr "lub.c2" c2) \_ ->
 --    trace ("got here") \_ ->
     case c1 /\ c2 of
         Expr (Inject l1) kids1 /\ Expr (Inject l2) kids2 | l1 == l2 -> Expr (Inject l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
@@ -140,9 +146,9 @@ matchingEndpoints source message c1 c2 = makeAssertionBoolean
 
 compose :: forall l. IsExprLabel l => Change l -> Change l -> Change l
 compose c1 c2 = 
-    assert (wellformedExpr "compose.c1" c1) \_ ->
-    assert (wellformedExpr "compose.c2" c2) \_ ->
-    assert (matchingEndpoints "ChangeAlgebra.compose" ("Change composition is only defined when endpoints match. Changes are: " <> pretty c1 <> " and " <> pretty c2) c1 c2) \_ ->
+--    assert (wellformedExpr "compose.c1" c1) \_ ->
+--    assert (wellformedExpr "compose.c2" c2) \_ ->
+--    assert (matchingEndpoints "ChangeAlgebra.compose" ("Change composition is only defined when endpoints match. Changes are: " <> pretty c1 <> " and " <> pretty c2) c1 c2) \_ ->
     case c1 /\ c2 of
         (Expr (Plus l1) [c1']) /\ (Expr (Minus l2) [c2']) | l1 == l2 -> compose c1' c2'
         (Expr (Minus l1) [c1']) /\ (Expr (Plus l2) [c2']) | l1 == l2 ->
@@ -234,14 +240,13 @@ isPostfix (Expr l kids) e2 =
             Just $ Expr (Minus (Tooth l (Path {left: reverse $ List.fromFoldable leftKids, right: List.fromFoldable rightKids}))) [innerCh]
           ) splits
 
--- TODO: I need to figure out how to make this stuff work in a more generic way!
 subSomeChangeLabel :: forall l. IsExprLabel l => Sub l -> ChangeLabel (Meta l) -> ChangeLabel (Meta l)
 subSomeChangeLabel sub =
   let subExpr = subMetaExprPartially sub in
   case _ of
       Plus (Tooth dir (ZipList.Path {left, right})) -> Plus (Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))
       Minus (Tooth dir (ZipList.Path {left, right})) -> Minus (Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))
-      Inject l -> Inject l
+      Inject l -> Inject l -- NOTE: if l was a metavar, we wouldn't get here because subSomeMetaChange would have dealt with it.
       Replace e1 e2 -> Replace (subExpr e1) (subExpr e2)
 
 -- TODO: I need to figure out how this function can really be written without repetition relative to other substitution functions we have in Expr

@@ -270,15 +270,13 @@ it caused a bunch of rendering stuff to break. Henry needs to fix all of that.
 -}
 toUpPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Up l
 toUpPath path@(Path ths) =
-    trace "Note from Jacob: this function doesn't work; it always goes through the up case." \_ ->
     (_ $ reflectPathDir path) $ case_
-  # on _up (\_ -> trace "toUpPath up case" \_ -> Path ths)
-  # on _down (\_ -> trace "toUpPath down case" \_ -> reversePath (Path ths :: Path Down l))
+  # on _up (\_ -> Path ths)
+  # on _down (\_ -> reversePath (Path ths :: Path Down l))
 --    if inSaneEnglishIsItDown path then Path (List.reverse ths) else Path ths
 
 toDownPath :: forall dir l. ReflectPathDir dir => Path dir l -> Path Down l
 toDownPath path@(Path ths) =
-    trace "I assume that this function doesn't work as well." \_ ->
     (_ $ reflectPathDir path) $ case_
   # on _up (\_ -> reversePath (Path ths :: Path Up l))
   # on _down (\_ -> Path ths)
@@ -331,6 +329,8 @@ data Zipper l = Zipper (Path Dir.Up l) (Expr l)
 
 zipperPath (Zipper p _) = p
 zipperExpr (Zipper _ e) = e
+exprLabel :: forall l. Expr l -> l
+exprLabel (Expr l _) = l
 
 derive instance Generic (Zipper l) _
 derive instance Eq l => Eq (Zipper l)
@@ -704,6 +704,41 @@ matchChange (Replace a1 b1 % []) (Replace a2 b2 % []) = do
     matches2 <- (matchExprImpl b1 b2)
     pure $ (matches1 <> matches2) /\ []
 matchChange _ _ = Nothing
+
+---- helper function for matchChange
+--matchTeeth2Impl :: forall l. IsExprLabel l =>
+--    Tooth l -> Tooth (MatchLabel l)
+--    -> Maybe (Array (MetaVar /\ Expr l))
+--matchTeeth2Impl (Tooth l1 (ZipList.Path {left: left1, right: right1}))
+--           (Tooth (InjectMatchLabel l2) (ZipList.Path {left: left2, right: right2})) =
+--    if not (l1 == l2 && List.length right1 == List.length right2) then Nothing else do
+--    leftMatches <- sequence $ List.zipWith matchExprImpl (RevList.unreverse left1) (RevList.unreverse left2)
+--    rightMatches <- sequence $ List.zipWith matchExprImpl right1 right2
+--    let concatMatches = foldl (<>) []
+--    pure $ concatMatches leftMatches <> concatMatches rightMatches
+--matchTeeth2Impl (Tooth l1 a) (Tooth Match y) = bug "what even is this case? I guess it shouldn't happen since Match has zero children, and therefore can't be a tooth?"
+--
+--matchChange2Impl :: forall l. IsExprLabel l =>
+--    -- Two kinds of slots: those in change positions, and those in expression postions
+--    Change l -> Expr (ChangeLabel (Meta l))
+--    -- Two kinds out outputs: expressions and changes
+--    -> Maybe (Array (MetaVar /\ Expr l) /\ Array (MetaVar /\ Change l))
+--matchChange2Impl c (Inject (Meta (Left mv)) % []) = Just ([] /\ [mv /\ c])
+--matchChange2Impl (Inject l1 % kids1) (Inject (Meta (Right l2)) % kids2) | l1 == l2 =
+--    foldl (\(a/\b) (c/\d) -> (a <> c) /\ (b <> d)) ([] /\ []) <$> sequence (Array.zipWith matchChange2Impl kids1 kids2)
+--matchChange2Impl (Plus th1 % [kid1]) ((Plus th2) % [kid2]) = do
+--    toothMatches <- matchTeeth th1 th2
+--    es /\ cs <- matchChange2Impl kid1 kid2
+--    pure $ (toothMatches <> es) /\ cs
+--matchChange2Impl (Minus th1 % [kid1]) ((Minus th2) % [kid2]) = do
+--    toothMatches <- matchTeeth th1 th2
+--    es /\ cs <- matchChange2Impl kid1 kid2
+--    pure $ (toothMatches <> es) /\ cs
+--matchChange2Impl (Replace a1 b1 % []) (Replace a2 b2 % []) = do
+--    matches1 <- (matchExprImpl a1 a2)
+--    matches2 <- (matchExprImpl b1 b2)
+--    pure $ (matches1 <> matches2) /\ []
+--matchChange2Impl _ _ = Nothing
 
 matchExpr :: forall l out. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out) -> out
 matchExpr e eMatch f = unsafePartial f (fromJust' "in matchExpr, expressions didn't match" $ matchExprImpl e eMatch)

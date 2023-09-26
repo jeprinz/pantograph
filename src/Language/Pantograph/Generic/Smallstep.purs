@@ -198,17 +198,15 @@ termToZipper term =
     let _change /\ term' = ssTermStripTopChange term in
     -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
     -- Once Henry fixes the rendering code, then I can uncomment the real implementation below.
-  
-    -- Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
-  
-    -- case unwrapSSTerm term' of
-    --    Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
-    --        Expr.Zipper (Expr.reversePath path) (assertJustExpr innerTerm)
-    --    _justATerm -> Bug.bug ("termToZipper: term didn't have the right shape: " <> pretty term)
 
-    case unwrapSSTerm term' of
-        Left (path /\ Expr.Expr (Marker 1) [innerTerm]) -> Expr.Zipper path (assertJustExpr innerTerm)
-        _justATerm -> Bug.bug ("termToZipper: term didn't have the right shape: " <> pretty term)
+     trace "start termToZipper" \_ ->
+     let res = Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
+     in trace "end termToZipper" \_ -> res
+  
+--    case unWrapPath term' of
+--       Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
+--           Expr.Zipper (Expr.reversePath path) (assertJustExpr innerTerm)
+--       _justATerm -> Bug.bug ("termToZipper: term didn't have the right shape: " <> pretty term)
 
 -- The input path should be nonempty
 ssTermToPath :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.DerivPath Dir.Up l r /\ Grammar.SortChange l
@@ -266,10 +264,21 @@ step t@(Expr.Expr l kids) rules =
 
 stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules =
+    trace "start" \_ ->
+    let res = stepRepeatedly' t rules
+    in
+    trace "end" \_ ->
+    res
+
+
+stepRepeatedly' :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
+stepRepeatedly' t rules =
 --    trace ("stepRepeatedly: " <> pretty t) \_ ->
     case step t rules of
-    Nothing -> t
-    Just t' -> stepRepeatedly t' rules
+    Nothing ->
+        t
+    Just t' ->
+        stepRepeatedly' t' rules
 
 -------------- Default rules --------------------------------------------
 type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
@@ -326,6 +335,14 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.
      let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
      pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
 defaultDown _ _ = Nothing
+
+isRule :: forall l r. IsRuleLabel l r => r -> SSTerm l r -> Boolean
+isRule r (Expr.Expr (Inject (Grammar.DerivLabel r' _)) _) | r == r' = true
+isRule _ _ = false
+
+unless :: forall l r. (SSTerm l r -> Boolean) -> StepRule l r -> StepRule l r
+unless f r t =
+    if f t then Nothing else r t
 
 defaultUp :: forall l r. Ord r => Expr.IsExprLabel l => SSChLanguage l r -> StepRule l r
 defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
@@ -423,30 +440,30 @@ makeDownRule changeMatch derivMatch output term
       _ -> Nothing
 
 -- A possible design, I don't know if its what I want yet:
-makeUpRule1 :: forall l r. IsExprLabel l => IsRuleLabel l r =>
+makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
        MatchSortChange l -- match the change going up, resulting in both sorts and sort changes that get matches
-    -> Expr.Expr (Expr.MatchLabel (StepExprLabel l r)) -- match the expression within the boundary
+    -> SSMatchTerm l r -- match the expression around the boundary
     -> (Partial => Array (SSTerm l r) ->
             ( SSTerm l r -- The child that is supposed to be the up boundary (the "makeUpRule" function needs to know which child of the node is supposed to be where the boundary is coming from. You tell it where to look for the boundary by outputing that subterm of the expression we matched against)
-            /\ (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -- If that was a boundary and the change matches, here are the matches
+            /\ (Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -- If that was a boundary and the change matches, here are the matches
                 -> SSTerm l r -- Here is the term inside the boundary
                 -> SSTerm l r {- This is the output term finally output by the rule -})))
     -> StepRule l r
-makeUpRule1 changeMatch derivMatch output term = do
-    derivMatches <- Expr.matchExprImpl term derivMatch
+makeUpRule changeMatch derivMatch output term = do
+    derivMatches <- Expr.matchDiffExprs compareMatchLabel term derivMatch
     let possibleUpBoundary /\ restOfOutput = unsafePartial output derivMatches
     case possibleUpBoundary of
         Expr.Expr (Boundary Up inputCh) [kid] -> do
             sortMatches /\ changeMatches <- Expr.matchChange inputCh changeMatch
-            Just $ unsafePartial $ restOfOutput sortMatches changeMatches kid
+            Just $ restOfOutput sortMatches changeMatches kid
         _ -> Nothing
-
-makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
-       MatchSortChange l -- match the change going up, resulting in both sorts and sort changes that get matches
-    -> Hole -- TODO: need some sort of way to match on paths
-    -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
-    -> StepRule l r
-makeUpRule = Hole.hole "makeUpRule"
+--
+--makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
+--       MatchSortChange l -- match the change going up, resulting in both sorts and sort changes that get matches
+--    -> Hole -- TODO: need some sort of way to match on paths
+--    -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> SSTerm l r)
+--    -> StepRule l r
+--makeUpRule = Hole.hole "makeUpRule"
 
 injectChangeMatchExpr :: forall l. l -> Array (MatchSortChange l) -> MatchSortChange l
 injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))) % kids

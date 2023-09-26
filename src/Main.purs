@@ -1,6 +1,7 @@
 module Main where
 
-import Language.Pantograph.Specific.STLC (editorSpec)
+--import Language.Pantograph.Specific.STLC (editorSpec)
+import Language.Pantograph.Specific.October14 (editorSpec)
 import Prelude
 
 import Bug.Assertion (assert, just)

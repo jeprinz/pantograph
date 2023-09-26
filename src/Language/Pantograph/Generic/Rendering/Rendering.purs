@@ -31,6 +31,7 @@ import Language.Pantograph.Generic.Smallstep as SmallStep
 import Text.Pretty (pretty)
 import Type.Direction (Up, leftDir, rightDir)
 import Util (fromJust')
+import Partial.Unsafe (unsafePartial)
 
 ------------------------------------------------------------------------------
 -- arrange
@@ -43,14 +44,18 @@ arrangeDerivTermSubs :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   Array (EditorHTML l r)
 arrangeDerivTermSubs locs (Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
-  DerivLabel rule sigma % [] | isHoleRule rule -> do
-    let sort = getSortFromSub rule sigma
-    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
-  DerivLabel rule sigma % kids | not (isHoleRule rule) -> do
+--  DerivLabel rule sigma % [] | isHoleRule rule -> do
+--    let sort = getSortFromSub rule sigma
+--    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
+  label@(DerivLabel rule sigma) % kids -> do
     let sort = getSortFromSub rule sigma
     let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort}
+    let kidCtxElems' =
+            if isHoleRule rule then
+                [renderHoleInterior locs false dpath label]
+                else kidCtxElems
     Array.concat $ subCtxSymElems <#> case _ of
-      Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems kidIx)) \kidElem -> [kidElem renCtx']
+      Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems' kidIx)) \kidElem -> [kidElem renCtx']
       Right elems -> elems
   DerivString str % [] -> 
     [ if String.null str 
@@ -82,17 +87,23 @@ arrangeNodeSubs locs isCursor hdzipper subElems = Array.concat
 
 arrangeHoleExterior :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
-  Sort l ->
+  DerivLabel l r ->
   (RenderingContext -> EditorHTML l r) ->
   RenderingContext ->
   Array (EditorHTML l r)
-arrangeHoleExterior locs sort holeInteriorElem renCtx =
-  [ HH.div [classNames ["subnode", "holeExterior-inner"]]
-    [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
-    , colonElem
-    , HH.div [classNames ["subnode", "hole-sort"]] [HH.text (pretty sort)] 
-    ]
-  ]
+arrangeHoleExterior locs label@(DerivLabel rule _) holeInteriorElem renCtx = do
+  let subCtxSymElems = unsafePartial $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: derivLabelSort label}
+  -- TODO: use subCtxSymElems
+  Array.concat $ subCtxSymElems <#> case _ of
+    Left (renCtx' /\ kidIx) -> [holeInteriorElem renCtx]
+    Right elems -> elems
+--  [ HH.div [classNames ["subnode", "holeExterior-inner"]]
+--    [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
+--    , colonElem
+--    , HH.div [classNames ["subnode", "hole-sort"]] [HH.text "replace this with what needs to be here"]
+--    ]
+--  ]
+arrangeHoleExterior _ _ _ _ = bug "a hole's DerivLabel shouldn't be a string"
 
 ------------------------------------------------------------------------------
 -- render term
@@ -126,33 +137,33 @@ renderDerivTerm locs isCursor dzipper renCtx =
 renderHoleExterior :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
   DerivPath Up l r ->
-  Sort l ->
+  DerivLabel l r ->
   (RenderingContext -> EditorHTML l r) ->
   RenderingContext ->
   EditorHTML l r
-renderHoleExterior locs dpath sort holeInteriorElem renCtx = assert (just "renderHoleInterior" (defaultDerivTerm sort)) \dterm ->
+renderHoleExterior locs dpath label holeInteriorElem renCtx =
   HH.div
     (Array.concat 
       [ [classNames ["node"]]
       , if not renCtx.isInteractive then [] else do
-        let dzipper = Expr.Zipper dpath dterm
+        let dzipper = Expr.Zipper dpath (Expr.Expr label [])
         let elemId = fromPathToElementId (Expr.zipperPath dzipper)
         [ HP.id elemId
         , HE.onMouseDown (locs.onMouseDown (InjectHoleyDerivZipper dzipper))
         , HE.onMouseOver (locs.onMouseOver (InjectHoleyDerivZipper dzipper)) 
         ]
       ])
-    (arrangeHoleExterior locs sort holeInteriorElem renCtx)
+    (arrangeHoleExterior locs label holeInteriorElem renCtx)
 
 renderHoleInterior :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
   Boolean ->
   DerivPath Up l r ->
-  Sort l ->
+  DerivLabel l r ->
   RenderingContext ->
   EditorHTML l r
-renderHoleInterior locs isCursor dpath sort renCtx = do
-  let hdzipper = HoleInteriorHoleyDerivZipper dpath sort
+renderHoleInterior locs isCursor dpath label renCtx = do
+  let hdzipper = HoleInteriorHoleyDerivZipper dpath label
   HH.div
     (Array.concat
       [ [classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []]

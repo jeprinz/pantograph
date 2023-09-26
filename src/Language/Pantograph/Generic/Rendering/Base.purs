@@ -90,12 +90,15 @@ type ArrangeDerivTermSubs l r =
   , renCtx :: RenderingContext
   , rule :: r
   , sort :: Sort l
+--  , renderTerm :: DerivTerm l r -> (whatever type stuff like colonElem has) -- maybe this could be used to render the type in TermHole?
   } -> 
   Array (PreKid l r)
 
 type PreKid l r = 
   (RenderingContext /\ Int) \/ -- reference to kid, with kid's rendering context
   Array (EditorHTML l r) -- static html
+
+type SplitChangeType l = SortChange l -> {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
 
 type EditorSpec l r =
   { dterm :: DerivTerm l r
@@ -104,7 +107,7 @@ type EditorSpec l r =
   -- cursorSort is the right endpoint of downChange and left endpoint of upChange
   -- cursorSort represents the sort at which such a path could be inserted, or alternately
   -- the new cursor sort after deletion of the path
-   , splitChange :: SortChange l -> {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
+   , splitChange :: SplitChangeType l
 
 --  -- | removePathChanges: change → (downChange, upChange, cursorSort)
 --  -- | The input change is the change going up the path to be deleted
@@ -158,7 +161,7 @@ type EditorSpec l r =
 editsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Array (Edit l r)
 editsAtHoleyDerivZipper spec hdzipper = case hdzipper of
   InjectHoleyDerivZipper dz -> spec.editsAtCursor (derivZipperSort dz)
-  HoleInteriorHoleyDerivZipper _ sort -> spec.editsAtHoleInterior sort
+  HoleInteriorHoleyDerivZipper _ label -> spec.editsAtHoleInterior (derivLabelSort label)
 
 -- -- Stuff that's defined inside of the editor component
 -- type EditorLocals l r = 
@@ -247,7 +250,8 @@ data HoleyDerivZipper l r
   = InjectHoleyDerivZipper (DerivZipper l r)
   | HoleInteriorHoleyDerivZipper 
       (DerivPath Up l r) -- the path to the Hole
-      (Sort l) -- the sort of the Hole
+--      (Sort l) -- the sort of the Hole
+      (DerivLabel l r) -- the rule of the Hole
 
 derive instance Generic (HoleyDerivZipper l r) _
 derive instance (Eq l, Eq r) => Eq (HoleyDerivZipper l r)
@@ -256,17 +260,19 @@ instance (Show l, Show r) => Show (HoleyDerivZipper l r) where show x = genericS
 
 instance IsRuleLabel l r => Pretty (HoleyDerivZipper l r) where
   pretty (InjectHoleyDerivZipper dzipper) = pretty dzipper
-  pretty (HoleInteriorHoleyDerivZipper dpath sort) = Expr.prettyPath dpath $ "(⌶{?} : " <> pretty sort <> ")"
+  pretty (HoleInteriorHoleyDerivZipper dpath label) = Expr.prettyPath dpath $ "(⌶{?} : " <> pretty label <> ")"
 
 instance IsRuleLabel l r => Zippable (HoleyDerivZipper l r) where
   zipDowns (InjectHoleyDerivZipper dz) | Just sort <- isHoleDerivTerm (Expr.zipperExpr dz) = do
-    [HoleInteriorHoleyDerivZipper (Expr.zipperPath dz) sort]
+    [HoleInteriorHoleyDerivZipper (Expr.zipperPath dz) (Expr.exprLabel (Expr.zipperExpr dz))]
   zipDowns (InjectHoleyDerivZipper dz) = InjectHoleyDerivZipper <$> Zippable.zipDowns dz
   zipDowns (HoleInteriorHoleyDerivZipper _ _) = []
   zipUp' (InjectHoleyDerivZipper dz) = bimap identity InjectHoleyDerivZipper <$> Zippable.zipUp' dz
-  zipUp' (HoleInteriorHoleyDerivZipper dpath sort) = 
-    assert (just "Zippable (HoleyDerivZipper l r) . zipUp'" (defaultDerivTerm sort)) \dterm ->
-      pure $ 0 /\ InjectHoleyDerivZipper (Expr.Zipper dpath dterm)
+--  zipUp' (HoleInteriorHoleyDerivZipper dpath sort) =
+--    assert (just "Zippable (HoleyDerivZipper l r) . zipUp'" (defaultDerivTerm sort)) \dterm ->
+--      pure $ 0 /\ InjectHoleyDerivZipper (Expr.Zipper dpath dterm)
+  zipUp' (HoleInteriorHoleyDerivZipper dpath label) =
+    pure $ 0 /\ InjectHoleyDerivZipper (Expr.Zipper dpath (Expr.Expr label []))
 
 data HoleyDerivPath dir l r
   = InjectHoleyDerivPath (DerivPath dir l r)
@@ -300,9 +306,10 @@ hdzipperHoleyDerivPath (HoleInteriorHoleyDerivZipper dpath _) = HoleInteriorHole
 
 hdzipperDerivTerm :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivTerm l r
 hdzipperDerivTerm (InjectHoleyDerivZipper dzipper) = Expr.zipperExpr dzipper
-hdzipperDerivTerm (HoleInteriorHoleyDerivZipper dpath sort) = assert (just "hdzipperDerivTerm" (defaultDerivTerm sort)) \dterm ->
-  -- Expr.unzipper $ Expr.Zipper dpath dterm
-  dterm
+hdzipperDerivTerm (HoleInteriorHoleyDerivZipper dpath label) = Expr.Expr label []
+--  assert (just "hdzipperDerivTerm" (defaultDerivTerm sort)) \dterm ->
+--  -- Expr.unzipper $ Expr.Zipper dpath dterm
+--  dterm
 
 hdzipperDerivZipper :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivZipper l r
 hdzipperDerivZipper hdzipper = do

@@ -67,6 +67,16 @@ mapKeys f m =
 union' :: forall v k. Ord k => Map k v -> Map k v -> Map k v
 union' m1 m2 = unionWith (\_ _ -> Bug.bug "duplicate key in union'") m1 m2
 
+------ disjoint union, or returns Nothing if the same key leads to two different values
+--unionCheckConflicts :: forall v k. Ord k => Eq v => Map k v -> Map k v -> Maybe (Map k v)
+--unionCheckConflicts m1 m2 =
+--    foldl (\macc (k /\ v) -> do
+--        acc <- macc
+--        case lookup k acc of
+--            Just v' | not (v' == v) -> Nothing
+--            _ -> pure (Map.insert k v acc))
+--        (Just m1) (toUnfoldable m2 :: List (k /\ v))
+
 readUUID :: String -> UUID
 readUUID str = fromJust' ("failed to parse UUID: " <> str) <<< UUID.parseUUID $ str
 
