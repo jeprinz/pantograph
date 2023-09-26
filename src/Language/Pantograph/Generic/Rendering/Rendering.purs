@@ -94,7 +94,6 @@ arrangeHoleExterior locs sort holeInteriorElem renCtx =
     ]
   ]
 
-
 ------------------------------------------------------------------------------
 -- render term
 ------------------------------------------------------------------------------
@@ -104,7 +103,7 @@ renderDerivTerm :: forall l r. IsRuleLabel l r =>
   Boolean ->
   DerivZipper l r ->
   RenderingContext ->
-  EditorHTML l r
+  EditorHTML l r -- /\ Tree Element
 renderDerivTerm locs isCursor dzipper renCtx =
   HH.div
     (Array.concat
