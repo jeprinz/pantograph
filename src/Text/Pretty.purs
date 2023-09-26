@@ -74,3 +74,13 @@ instance Pretty1 Maybe where pretty1 = pretty
 instance Pretty a => Pretty1 (Tuple a) where pretty1 = pretty
 instance Pretty k => Pretty1 (Map.Map k) where pretty1 = pretty
 instance Pretty1 Set.Set where pretty1 = pretty
+
+--------------------------------------------------------------------------------
+-- PrettyS
+--------------------------------------------------------------------------------
+
+class PrettyS a where
+  prettyS :: a -> String -> String
+
+class PrettyS1 (t :: Type -> Type) where
+  prettyS1 :: forall a. t a -> String -> String
