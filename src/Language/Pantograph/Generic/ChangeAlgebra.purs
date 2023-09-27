@@ -51,6 +51,13 @@ isId (Expr (Inject _) kids) = Array.all isId kids
 isId (Expr (Replace e1 e2) []) = e1 == e2 -- NOTE: I'm not sure if this should be considered an identity, but if not then something needs to be done about (doOperation (Replace a b) ?x)
 isId _ = false
 
+-- Every part of the change is either the identity, or (Replace ?x something) where ?x is a metavariable only.
+isMerelyASubstitution :: forall l. IsExprLabel l => MetaChange l -> Boolean
+isMerelyASubstitution (Expr (Inject _) kids) = Array.all isMerelyASubstitution kids
+isMerelyASubstitution (Expr (Replace (Meta (Left _) % []) _) []) = true
+isMerelyASubstitution (Expr (Replace e1 e2) []) | e1 == e2 = true
+isMerelyASubstitution _ = false
+
 isIdMaybe :: forall l. IsExprLabel l => Change l -> Maybe (Expr l)
 isIdMaybe (Expr (Inject l) kids) = Expr l <$> sequence (map isIdMaybe kids)
 isIdMaybe (Expr (Replace e1 e2) []) | e1 == e2 = Just e1

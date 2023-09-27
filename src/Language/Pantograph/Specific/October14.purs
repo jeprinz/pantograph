@@ -565,6 +565,7 @@ nonlocalBecomesLocal = Smallstep.makeDownRule
     (VarSort %+- [dPLUS CtxConsSort [{-a-}slot, {-ty-}slot] {-ctx-} cSlot [], {-a'-}cSlot, {-ty'-}cSlot, NonLocal %+- []])
     {-i-}slot
     (\[a, ty] [ctx, a', ty'] [_i] ->
+        -- NOTE: the unification stuff can cause (Replace ?x t) to exist in the output. This is probably OK, but I'll need to think this through more carefully.
         if not (ChangeAlgebra.inject a == a' && Maybe.isJust (unify ty (rEndpoint ty'))) then Maybe.Nothing else
         pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [(csor CtxConsSort % [a', ChangeAlgebra.inject ty, ChangeAlgebra.inject (rEndpoint ctx)])
             , a'
@@ -647,7 +648,7 @@ isUpInCall (Expr.Expr (Inject (Grammar.DerivLabel FunctionCall _)) [
         Expr.Expr (Smallstep.Boundary Smallstep.Up ch) [_]
     ])
     | Just ([] /\ [gamma, ty]) <- Expr.matchChange ch (NeutralSort %+- [cSlot, cSlot])
-    = not (ChangeAlgebra.isId ty)
+    = not (ChangeAlgebra.isMerelyASubstitution ty)
 isUpInCall _ = false
 
 stepRules :: List StepRule

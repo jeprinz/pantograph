@@ -173,8 +173,9 @@ unwrapSSTerm' :: forall l r. IsRuleLabel l r =>
     SSTerm l r -> 
     (Grammar.DerivPath Dir.Down l r /\ SSTerm l r) \/ -- DerivPath to an SSTerm
     Grammar.DerivTerm l r -- just a DerivTerm
-unwrapSSTerm' (Expr.Expr (Inject l) kids) =
+unwrapSSTerm' t@(Expr.Expr (Inject l) kids) =
  let kids' = (List.fromFoldable $ map unwrapSSTerm' kids) in
+-- trace ("t is " <> pretty t <> " and kids' is: " <> pretty kids') \_ ->
  case oneOrNone kids' identity of
      -- child didn't have cursor
      Left kids'' -> Right $ Expr.Expr l (Array.fromFoldable (kids''))
@@ -182,7 +183,9 @@ unwrapSSTerm' (Expr.Expr (Inject l) kids) =
      Right (leftKids /\ (Expr.Path p /\ e) /\ rightKids) ->
         let newTooth = l %< ZipList.Path {left: Rev.reverse leftKids, right: rightKids} in
         Left $ Expr.Path (newTooth : p) /\ e
-unwrapSSTerm' t = Left (Expr.Path Nil /\ t)
+unwrapSSTerm' t@(Marker _ % _) = Left (Expr.Path Nil /\ t)
+unwrapSSTerm' t@(Boundary Down _ % [Marker _ % _]) = Left (Expr.Path Nil /\ t)
+unwrapSSTerm' t = Bug.bug ("shouldn't happen in unwrapSSTerm': t was " <> pretty t)
 
 unwrapSSTerm = unwrapSSTerm' >>> case _ of
     Left (p /\ sst) -> Left (Expr.reversePath p /\ sst)

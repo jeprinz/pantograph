@@ -12,6 +12,7 @@ import Data.Maybe (Maybe, maybe)
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
+import Data.Either (Either(..))
 
 class Pretty a where pretty :: a -> String
 
@@ -28,6 +29,9 @@ instance (Pretty k, Pretty v) => Pretty (Map.Map k v) where
     indent (bullets (Map.toUnfoldable m <#> \(Tuple k v) -> pretty k <> " ↦ " <> pretty v))
 instance (Pretty t) => Pretty (Set.Set t) where
   pretty s = "{" <> List.intercalate ", " (Set.map pretty s) <> "}"
+instance (Pretty a, Pretty b) => Pretty (Either a b) where
+    pretty (Left a) = "Left " <> pretty a
+    pretty (Right a) = "Right " <> pretty a
 
 {-
 -- | Pretty `a` that takes an argument of type `b`.
