@@ -1,6 +1,6 @@
 module Main where
 
---import Language.Pantograph.Specific.STLC (editorSpec)
+--import Language.Pantograph.Specific.SULC (editorSpec)
 import Language.Pantograph.Specific.October14 (editorSpec)
 import Prelude
 

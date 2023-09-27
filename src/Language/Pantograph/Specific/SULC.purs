@@ -287,9 +287,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     , pure [Rendering.commentEndElem]
     , Left (renCtx /\ 1)]
   -- hole 
-  TermHole /\ _ -> bug $
-    "[ULC.Grammar.arrangeDerivTermSubs] `TermHole` should be handled generically instead of here"
-  _ -> bug $ 
+  TermHole /\ _ ->
+        [Left (renCtx /\ 0), pure [HH.text ": HOLE"]]
+  _ -> bug $
     "[ULC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
     "  - sort = " <> show sort
@@ -419,7 +419,7 @@ localBecomesNonlocal = SmallStep.makeDownRule
     (\[a] [ctx, a'] [] ->
         if not (ChangeAlgebra.inject a == a') then Maybe.Nothing else
         -- TODO: the bugs here are that the boundaries going up and down are only part, we need the whole bussiness with Var and all its arguments.
-        pure $ SmallStep.wrapBoundary SmallStep.Up (csor VarSort % [ctx, a', Expr.Replace (sor Local % []) (sor NonLocal % []) % []])
+        pure $ SmallStep.wrapBoundary SmallStep.Up (csor VarSort % [ChangeAlgebra.inject (rEndpoint ctx), a', Expr.Replace (sor Local % []) (sor NonLocal % []) % []])
             (SmallStep.wrapBoundary SmallStep.Down (csor VarSort % [ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx), ChangeAlgebra.inject a, csor NonLocal % []])
                 (dTERM FreeVar ["name" /\ a] [])))
 
@@ -439,7 +439,7 @@ nonlocalBecomesLocal = SmallStep.makeDownRule
     {-i-}slot
     (\[a] [ctx, a'] [_i] ->
         if not (ChangeAlgebra.inject a == a') then Maybe.Nothing else
-        pure $ SmallStep.wrapBoundary SmallStep.Up (csor VarSort % [(csor CtxConsSort % [a', ctx]), a', Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
+        pure $ SmallStep.wrapBoundary SmallStep.Up (csor VarSort % [(csor CtxConsSort % [a', ChangeAlgebra.inject (rEndpoint ctx)]), a', Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
             (dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a] []))
 
 stepRules :: List StepRule

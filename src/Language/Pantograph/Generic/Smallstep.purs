@@ -264,16 +264,16 @@ step t@(Expr.Expr l kids) rules =
 
 stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules =
-    trace "start" \_ ->
+--    trace "start" \_ ->
     let res = stepRepeatedly' t rules
     in
-    trace "end" \_ ->
+--    trace "end" \_ ->
     res
 
 
 stepRepeatedly' :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly' t rules =
---    trace ("stepRepeatedly: " <> pretty t) \_ ->
+    trace ("stepRepeatedly: " <> pretty t) \_ ->
     case step t rules of
     Nothing ->
         t

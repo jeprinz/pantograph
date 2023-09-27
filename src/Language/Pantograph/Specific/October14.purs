@@ -566,7 +566,7 @@ nonlocalBecomesLocal = Smallstep.makeDownRule
     {-i-}slot
     (\[a, ty] [ctx, a', ty'] [_i] ->
         if not (ChangeAlgebra.inject a == a' && Maybe.isJust (unify ty (rEndpoint ty'))) then Maybe.Nothing else
-        pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [(csor CtxConsSort % [a', ChangeAlgebra.inject ty, ctx])
+        pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [(csor CtxConsSort % [a', ChangeAlgebra.inject ty, ChangeAlgebra.inject (rEndpoint ctx)])
             , a'
             , ChangeAlgebra.diff (rEndpoint ty') ty
             , Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
