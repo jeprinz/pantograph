@@ -5,8 +5,10 @@ import Prelude
 import Bug as Bug
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.UUID as UUID
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
+import Effect.Unsafe (unsafePerformEffect)
 import Halogen as H
 import Halogen as HH
 import Halogen.HTML.Properties as HP
@@ -22,7 +24,14 @@ import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.Window as Window
 
-type ElementId = String
+newtype ElementId = ElementId String
+
+getElementById (ElementId str) = NonElementParentNode.getElementById str
+
+id (ElementId str) = HP.id str
+
+freshElementId :: Unit -> ElementId
+freshElementId _ = unsafePerformEffect $ ElementId <<< UUID.toString <$> UUID.genUUID
 
 setClassName ∷ ∀ (m ∷ Type -> Type). MonadEffect m ⇒ Element.Element → String → Boolean → m Unit
 setClassName elem className classValue = do

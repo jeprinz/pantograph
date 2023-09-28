@@ -207,7 +207,6 @@ symbolExpr str = L.Fix $ L.SymbolExpr str
 run = VDomDriver.runUI R.editorComponent
   { buffer:
       { 
-        -- expr: lam (symbolExpr "x") $ lam (symbolExpr "y") $ lam (symbolExpr "z") $ ref (symbolExpr "x")
-        expr: lam (symbolExpr "x") $ holeExpr "?"
+        expr: lam (symbolExpr "x") $ lam (symbolExpr "y") $ lam (symbolExpr "z") $ ref (symbolExpr "x")
       , ctx: {}
       , env: {} } }

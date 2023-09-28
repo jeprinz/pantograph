@@ -101,7 +101,7 @@ body {
 
 }
 
-.Ref>div.Expr {
+.Ref .Expr {
   color: green;
   font-style: italic;
 }
