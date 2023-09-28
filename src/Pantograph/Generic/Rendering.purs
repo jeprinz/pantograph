@@ -2,25 +2,23 @@ module Pantograph.Generic.Rendering where
 
 import Pantograph.Generic.Language
 import Prelude hiding (div)
-
 import Bug (bug)
-import Control.Monad.Reader (ReaderT, ask, asks, lift, runReaderT)
-import Control.Monad.State (StateT, evalStateT, get, gets, modify, modify_)
+import Control.Monad.Reader (ReaderT, ask, lift, runReaderT)
+import Control.Monad.State (StateT, evalStateT, get, gets, modify_)
 import Data.Bifunctor (bimap)
 import Data.Const (Const)
 import Data.Derivative (differentiate, integrate)
 import Data.Either (Either(..), either)
 import Data.Identity (Identity)
 import Data.Lazy (Lazy)
-import Data.List (List)
+import Data.List (List, (:))
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Data.Traversable (sequence, traverse)
+import Data.Traversable (sequence)
 import Data.Tuple.Nested ((/\))
 import Debug as Debug
 import Effect.Aff (Aff)
-import Effect.Aff as Aff
 import Effect.Class.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
@@ -44,14 +42,15 @@ type NodeRenderer args ctx env rule joint tooth = Record args -> Array (Renderin
 withFreshId div attrs kids = {html: div ([HU.id elemId] <> attrs) kids, elemId}
   where elemId = HU.freshElementId unit
 
-divOpenExpr :: forall ctx env rule joint tooth. IsEditor rule joint tooth => NodeRenderer (cursor :: OpenExprCursor rule joint tooth) ctx env rule joint tooth
-divOpenExpr {cursor} kids = do
+divOpenExpr :: forall ctx env rule joint tooth. IsEditor rule joint tooth => NodeRenderer (cursor :: OpenExprCursor rule joint tooth, outputToken :: _) ctx env rule joint tooth
+divOpenExpr {cursor, outputToken} kids = do
   ctx <- ask
   withFreshId HH.div
     [ HU.classNames ["Expr"] 
     , HE.onClick \event -> do
         H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-        Console.log $ "[Expr:onClick] cursor = " <> pretty1 cursor
+        -- Console.log $ "[Expr:onClick] cursor = " <> pretty1 cursor
+        HK.raise outputToken $ LogConsoleFromBuffer {label: DebugConsoleLogLabel, html: HH.text $ "[Expr:onClick] cursor = " <> pretty1 cursor}
         HK.modify_ ctx.buffer_id \_ -> CursorBuffer cursor
     ]
     <$> sequence kids
@@ -122,6 +121,7 @@ divPlaceholder str {} kids = do
 type RenderingCtx ctx rule joint tooth =
   { depth :: Int
   , buffer_id :: HK.StateId (Buffer rule joint tooth)
+  , outputToken :: HK.OutputToken (BufferOutput rule joint)
   | ctx }
 
 type RenderingEnv env =
@@ -151,24 +151,27 @@ arrangeOpenExpr :: forall ctx env rule joint tooth. IsEditor rule joint tooth =>
   OpenExprJoint rule joint (OpenExprRenderer ctx env rule joint tooth) ->
   OpenExprRenderer ctx env rule joint tooth
 arrangeOpenExpr path (Expr rule sigma (Hole holeVar)) = do
+  ctx <- ask
   holeIndex <- gets _.holeCount
   modify_ _ {holeCount = holeIndex + 1}
   let expr = Fix $ Expr rule sigma (Hole holeVar)
   {html, elemId} <- divOpenExpr
-    {cursor: Cursor path expr} 
+    {cursor: Cursor path expr, outputToken: ctx.outputToken}
     [pure $ HH.text $ "?" <> show holeIndex]
   pure {expr, html, elemIds: Fix $ ElementIdOpenExprJoint elemId $ Expr rule sigma (Hole holeVar)}
 arrangeOpenExpr path (Expr rule sigma (InjectOpenJoint m_kids)) = do
+  ctx <- ask
   kids <- sequence m_kids
   let expr = Fix $ Expr rule sigma (InjectOpenJoint (kids <#> _.expr))
   {html, elemId} <- divOpenExpr
-    {cursor: Cursor path expr}
+    {cursor: Cursor path expr, outputToken: ctx.outputToken}
     [arrangeOpenExpr' rule sigma kids]
   pure {expr, html, elemIds: Fix $ ElementIdOpenExprJoint elemId $ Expr rule sigma $ InjectOpenJoint $ kids <#> _.elemIds}
 arrangeOpenExpr path (SymbolExpr str) = do
+  ctx <- ask
   let expr = Fix (SymbolExpr str)
   {html, elemId} <- divOpenExpr
-    {cursor: Cursor path expr}
+    {cursor: Cursor path expr, outputToken: ctx.outputToken}
     [pure $ HH.text str]
   pure {expr, html, elemIds: Fix $ ElementIdOpenExprJoint elemId $ SymbolExpr str}
 
@@ -203,13 +206,16 @@ type EditorInput ctx env rule joint =
 type EditorOutput = Void
 
 editorComponent :: forall ctx env rule joint tooth.
-  IsEditor rule joint tooth => Lacks "depth" ctx => Lacks "buffer_id" ctx => Lacks "holeCount" env =>
+  IsEditor rule joint tooth => Lacks "depth" ctx => Lacks "buffer_id" ctx => Lacks "outputToken" ctx => Lacks "holeCount" env =>
   H.Component EditorQuery (EditorInput ctx env rule joint) EditorOutput Aff
-editorComponent = HK.component \_token input -> HK.do
+editorComponent = HK.component \token input -> HK.do
   HK.pure do
     HH.div 
       [HU.classNames ["Editor"]]
-      [HH.slot (Proxy :: Proxy "buffer") unit bufferComponent input.buffer absurd]
+      [ HH.slot (Proxy :: Proxy "buffer") unit bufferComponent input.buffer case _ of
+        LogConsoleFromBuffer log -> HK.tell token.slotToken (Proxy :: Proxy "console") unit $ LogConsole log
+      , HH.slot (Proxy :: Proxy "console") unit consoleComponent unit absurd
+      ]
 
 -- Buffer
 
@@ -219,7 +225,8 @@ type BufferInput ctx env rule joint =
   { expr :: OpenExpr rule joint
   , ctx :: Record ctx
   , env :: Record env }
-type BufferOutput (rule :: Type) (joint :: Type -> Type) = Void
+data BufferOutput (rule :: Type) (joint :: Type -> Type)
+  = LogConsoleFromBuffer ConsoleLog
 
 -- | A `Buffer` is an independent section of code.
 data Buffer rule joint tooth
@@ -228,13 +235,14 @@ data Buffer rule joint tooth
   | TopBuffer (OpenExpr rule joint)
 
 bufferComponent :: forall ctx env rule joint tooth. 
-  IsEditor rule joint tooth => Lacks "depth" ctx => Lacks "buffer_id" ctx => Lacks "holeCount" env =>
+  IsEditor rule joint tooth => Lacks "depth" ctx => Lacks "buffer_id" ctx => Lacks "outputToken" ctx => Lacks "holeCount" env =>
   H.Component (BufferQuery rule joint) (BufferInput ctx env rule joint) (BufferOutput rule joint) Aff
-bufferComponent = HK.component \_token input -> HK.do
+bufferComponent = HK.component \token input -> HK.do
   buffer /\ buffer_id <- HK.useState (CursorBuffer (Cursor mempty input.expr))
   ctx /\ _ctx_id <- HK.useState 
     ( R.insert (Proxy :: Proxy "depth") 0 
     $ R.insert (Proxy :: Proxy "buffer_id") buffer_id
+    $ R.insert (Proxy :: Proxy "outputToken") token.outputToken
     $ input.ctx
     :: RenderingCtx ctx rule joint tooth)
   env /\ _env_id <- HK.useState
@@ -403,17 +411,26 @@ clipboardComponent = HK.component \_token input -> HK.do
 
 type ConsoleSlot = Unit
 data ConsoleQuery a
-  = LogConsole HH.PlainHTML a
+  = LogConsole ConsoleLog a
   | ClearConsole a
 type ConsoleInput = Unit
-data ConsoleOutput
+type ConsoleOutput = Void
 
 type ConsoleLog = {label :: ConsoleLogLabel, html :: HH.PlainHTML}
 data ConsoleLogLabel = ErrorConsoleLogLabel | WarningConsoleLogLabel | InfoConsoleLogLabel | DebugConsoleLogLabel
 
 consoleComponent :: H.Component ConsoleQuery ConsoleInput ConsoleOutput Aff
-consoleComponent = HK.component \_token _ -> HK.do
-  logs /\ _logs_id <- HK.useState (mempty :: List ConsoleLog)
+consoleComponent = HK.component \token _ -> HK.do
+  logs /\ logs_id <- HK.useState (mempty :: List ConsoleLog)
+
+  HK.useQuery token.queryToken case _ of
+    LogConsole log a -> do
+      HK.modify_ logs_id (log : _)
+      pure $ Just a
+    ClearConsole a -> do
+      HK.modify_ logs_id mempty
+      pure $ Just a
+
   HK.pure do
     HH.div
       [HU.classNames ["Console"]]
