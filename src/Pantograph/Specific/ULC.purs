@@ -163,19 +163,19 @@ type Env :: Row Type
 type Env = ()
 
 instance R.IsEditor Rule Joint Tooth where
-  arrangeExpr _rule _sigma (Lam x b) =
+  arrangeOpenExpr' _rule _sigma (Lam x b) =
     pure $ HH.div
       [HU.classNames ["Lam"]]
       [HH.text "(", HH.text "λ", punctuation.space, x.html, punctuation.space, HH.text "↦", punctuation.space, b.html, HH.text ")"]
-  arrangeExpr _rule _sigma (App f a) = do
+  arrangeOpenExpr' _rule _sigma (App f a) = do
     pure $ HH.div
       [HU.classNames ["App"]]
       [HH.text "(", f.html, punctuation.space, a.html, HH.text ")"]
-  arrangeExpr _rule _sigma (Ref x) = do
+  arrangeOpenExpr' _rule _sigma (Ref x) = do
     pure $ HH.div
       [HU.classNames ["Ref"]]
       [HH.text "#", x.html]
-  arrangeExpr _rule _sigma Expr = do
+  arrangeOpenExpr' _rule _sigma Expr = do
     pure $ HH.div
       [HU.classNames ["Expr"]]
       [HH.text "Expr"]
