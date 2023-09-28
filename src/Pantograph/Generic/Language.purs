@@ -27,16 +27,16 @@ import Text.Pretty (class Pretty, class Pretty1, class PrettyS1, angles, braces2
 import Type.Proxy (Proxy(..))
 
 -- TODO: sophisticate
-diff :: forall rule joint tooth. IsLanguage rule joint tooth => HoleSort joint -> HoleSort joint -> HoleChange joint tooth
+diff :: forall rule joint tooth. IsLanguage rule joint tooth => OpenSort joint -> OpenSort joint -> OpenChange joint tooth
 diff sort1 sort2 = Fix $ Replace sort1 sort2
 
 newtype RuleVarSubst a = RuleVarSubst (Map.Map RuleVar a)
 
-substRuleSort :: forall joint. IsJoint joint => RuleVarSubst (HoleSort joint) -> RuleSort joint -> HoleSort joint
+substRuleSort :: forall joint. IsJoint joint => RuleVarSubst (OpenSort joint) -> RuleSort joint -> OpenSort joint
 substRuleSort sigma (Fix (InjectSortJoint (RuleVar ruleVar))) = case substRuleVar sigma ruleVar of
   Nothing -> bug $ "[substRuleSort] A RuleVar was not substituted: " <> pretty ruleVar
   Just sort -> sort
-substRuleSort sigma (Fix (InjectSortJoint (InjectRuleJoint j))) = Fix (InjectSortJoint (InjectHoleJoint (substRuleSort sigma <$> j)))
+substRuleSort sigma (Fix (InjectSortJoint (InjectRuleJoint j))) = Fix (InjectSortJoint (InjectOpenJoint (substRuleSort sigma <$> j)))
 substRuleSort sigma (Fix (SomeSymbol sort)) = Fix (SomeSymbol (substRuleSort sigma sort))
 substRuleSort _sigma (Fix (Symbol str)) = Fix (Symbol str)
 
@@ -82,7 +82,7 @@ class
   ( Functor tooth, Foldable tooth, Traversable tooth, PrettyS1 tooth )
   <= IsTooth tooth
 
--- HoleJoint
+-- OpenJoint
 
 data HoleVar = MakeHoleVar String UUID
 
@@ -94,35 +94,35 @@ freshHoleVar :: String -> HoleVar
 freshHoleVar label = unsafePerformEffect $
   MakeHoleVar label <$> UUID.genUUID
 
-data HoleJoint (joint :: Type -> Type) a 
+data OpenJoint (joint :: Type -> Type) a 
   = Hole HoleVar
-  | InjectHoleJoint (joint a)
+  | InjectOpenJoint (joint a)
 
-data HoleTooth (tooth :: Type -> Type) a
-  = InjectHoleTooth (tooth a)
+data OpenTooth (tooth :: Type -> Type) a
+  = InjectOpenTooth (tooth a)
 
-instance Subtype (joint a) (HoleJoint joint a) where inject = InjectHoleJoint
-instance Subtype (tooth a) (HoleTooth tooth a) where inject = InjectHoleTooth
+instance Subtype (joint a) (OpenJoint joint a) where inject = InjectOpenJoint
+instance Subtype (tooth a) (OpenTooth tooth a) where inject = InjectOpenTooth
 
-instance Pretty1 joint => Pretty1 (HoleJoint joint) where
+instance Pretty1 joint => Pretty1 (OpenJoint joint) where
   pretty1 (Hole holeVar) = pretty holeVar
-  pretty1 (InjectHoleJoint j) = pretty1 j
-derive instance Functor joint => Functor (HoleJoint joint)
-derive instance Foldable joint => Foldable (HoleJoint joint)
-derive instance Traversable joint => Traversable (HoleJoint joint)
+  pretty1 (InjectOpenJoint j) = pretty1 j
+derive instance Functor joint => Functor (OpenJoint joint)
+derive instance Foldable joint => Foldable (OpenJoint joint)
+derive instance Traversable joint => Traversable (OpenJoint joint)
 
-instance PrettyS1 j => PrettyS1 (HoleTooth j) where
-  prettyS1 (InjectHoleTooth j) = prettyS1 j
-instance PrettyS1 tooth => Pretty1 (HoleTooth tooth) where pretty1 j = prettyS1 j "⌶"
-derive instance Functor tooth => Functor (HoleTooth tooth)
-derive instance Foldable tooth => Foldable (HoleTooth tooth)
-derive instance Traversable tooth => Traversable (HoleTooth tooth)
+instance PrettyS1 j => PrettyS1 (OpenTooth j) where
+  prettyS1 (InjectOpenTooth j) = prettyS1 j
+instance PrettyS1 tooth => Pretty1 (OpenTooth tooth) where pretty1 j = prettyS1 j "⌶"
+derive instance Functor tooth => Functor (OpenTooth tooth)
+derive instance Foldable tooth => Foldable (OpenTooth tooth)
+derive instance Traversable tooth => Traversable (OpenTooth tooth)
 
-instance Derivative joint tooth => Derivative (HoleJoint joint) (HoleTooth tooth) where
+instance Derivative joint tooth => Derivative (OpenJoint joint) (OpenTooth tooth) where
   differentiate (Hole holeVar) = Hole holeVar
-  differentiate (InjectHoleJoint j) = InjectHoleJoint $ map (map inject) $ differentiate j
+  differentiate (InjectOpenJoint j) = InjectOpenJoint $ map (map inject) $ differentiate j
 
-  integrate a (InjectHoleTooth j) = InjectHoleJoint $ integrate a j
+  integrate a (InjectOpenTooth j) = InjectOpenJoint $ integrate a j
 
 -- RuleJoint
 
@@ -170,7 +170,7 @@ instance Derivative joint tooth => Derivative (RuleJoint joint) (RuleTooth tooth
 -- | system.
 
 type Sort joint = Fix (SortJoint joint)
-type HoleSort joint = Sort (HoleJoint joint)
+type OpenSort joint = Sort (OpenJoint joint)
 type RuleSort joint = Sort (RuleJoint joint)
 
 data SortJoint joint a
@@ -228,7 +228,7 @@ instance ReversePathDir DownPathDir UpPathDir
 
 newtype Path (dir :: Symbol) (tooth :: Type -> Type) a = Path (List (tooth a))
 
-type HoleExprPath dir rule joint tooth = Path dir (HoleExprTooth rule joint tooth) (HoleExpr rule joint)
+type OpenExprPath dir rule joint tooth = Path dir (OpenExprTooth rule joint tooth) (OpenExpr rule joint)
 
 instance PrettyS1 tooth => PrettyS1 (Path UpPathDir tooth) where prettyS1 path = prettyS1 $ toDownPath path
 instance PrettyS1 tooth => Pretty1 (Path UpPathDir tooth) where pretty1 path = prettyS1 path "⌶"
@@ -248,7 +248,7 @@ data SomePath tooth a
   = UpPath (Path UpPathDir tooth a) 
   | DownPath (Path DownPathDir tooth a)
 
-type SomeHoleExprPath rule joint tooth = SomePath (HoleExprTooth rule joint tooth) (HoleExpr rule joint)
+type SomeOpenExprPath rule joint tooth = SomePath (OpenExprTooth rule joint tooth) (OpenExpr rule joint)
 
 instance PrettyS1 tooth => PrettyS1 (SomePath tooth) where
   prettyS1 = case _ of 
@@ -284,9 +284,9 @@ reversePath (Path ths) = Path (List.reverse ths)
 -- Change
 
 type Change joint tooth = Fix (ChangeJoint joint tooth)
-type HoleChange joint tooth = Fix (HoleChangeJoint joint tooth)
+type OpenChange joint tooth = Fix (OpenChangeJoint joint tooth)
 
-type HoleChangeJoint joint tooth = ChangeJoint (HoleJoint joint) (HoleTooth tooth)
+type OpenChangeJoint joint tooth = ChangeJoint (OpenJoint joint) (OpenTooth tooth)
 
 data ChangeJoint joint (tooth :: Type -> Type) a
   = Plus (SortTooth tooth (Sort joint)) a
@@ -342,11 +342,11 @@ data ExprJoint rule joint a
 
 type Expr rule joint = Fix (ExprJoint rule joint)
 
-type HoleExprJoint rule joint = ExprJoint rule (HoleJoint joint)
-type HoleExpr rule joint = Fix (HoleExprJoint rule joint)
+type OpenExprJoint rule joint = ExprJoint rule (OpenJoint joint)
+type OpenExpr rule joint = Fix (OpenExprJoint rule joint)
 
 data ExprTooth rule joint (tooth :: Type -> Type) a = Expr' rule (RuleVarSubst (Sort joint)) (tooth a)
-type HoleExprTooth rule joint tooth = ExprTooth rule (HoleJoint joint) (HoleTooth tooth)
+type OpenExprTooth rule joint tooth = ExprTooth rule (OpenJoint joint) (OpenTooth tooth)
 
 instance Pretty1 joint => Pretty1 (ExprJoint rule joint) where
   pretty1 (Expr _rule _sigma j) = pretty1 j
@@ -371,7 +371,7 @@ instance Derivative joint tooth => Derivative (ExprJoint rule joint) (ExprTooth 
 -- Cursor
 
 data Cursor tooth a = Cursor (Path UpPathDir tooth a) a
-type HoleExprCursor rule joint tooth = Cursor (HoleExprTooth rule joint tooth) (HoleExpr rule joint)
+type OpenExprCursor rule joint tooth = Cursor (OpenExprTooth rule joint tooth) (OpenExpr rule joint)
 
 instance PrettyS1 tooth => Pretty1 (Cursor tooth) where
   pretty1 (Cursor path a) = prettyS1 path $ braces2 $ pretty a
@@ -379,7 +379,7 @@ instance PrettyS1 tooth => Pretty1 (Cursor tooth) where
 -- Select
 
 data Select tooth a = Select (Path UpPathDir tooth a) (SomePath tooth a) a
-type HoleExprSelect rule joint tooth = Select (HoleExprTooth rule joint tooth) (HoleExpr rule joint)
+type OpenExprSelect rule joint tooth = Select (OpenExprTooth rule joint tooth) (OpenExpr rule joint)
 
 instance PrettyS1 tooth => Pretty1 (Select tooth) where
   pretty1 (Select up mid a) = prettyS1 up $ braces2 $ prettyS1 mid $ braces2 $ pretty a
@@ -399,35 +399,35 @@ class
   -- | The change rules, indexed by `rule`.
   changeRule :: rule -> ChangeRule joint tooth
   -- | The default term (if any) for a sort.
-  defaultExpr :: HoleSort joint -> Maybe (HoleExpr rule joint)
+  defaultExpr :: OpenSort joint -> Maybe (OpenExpr rule joint)
   -- | When a change is yielded at a cursor, split it into a change to propogate
   -- | downwards, and change to propogate upwards, and a new sort at the cursor.
   splitChange :: {change :: Change joint tooth, sort :: Sort joint} -> {down :: Change joint tooth, up :: Change joint tooth, sort :: Sort joint}
   -- | Defines if a cursor is valid as a function of its sort.
-  validCursorSort :: HoleSort joint -> Boolean
+  validCursorSort :: OpenSort joint -> Boolean
   -- | Defines if a selection is valid as a function of its top and bot sorts.
-  validSelectionSorts :: {top :: HoleSort joint, bot :: HoleSort joint} -> Boolean
+  validSelectionSorts :: {top :: OpenSort joint, bot :: OpenSort joint} -> Boolean
 
   -- TODO: are these necessary?
   -- -- | The change propogated upwards when the term is deleted.
-  -- digChange :: HoleSort joint -> Change joint tooth
+  -- digChange :: OpenSort joint -> Change joint tooth
   -- -- | TODO: DOC
-  -- generalize :: HoleSort joint -> Change joint tooth
+  -- generalize :: OpenSort joint -> Change joint tooth
   -- -- | TODO: DOC
-  -- specialize :: {general :: HoleSort joint, special :: HoleSort joint} -> Change joint tooth
+  -- specialize :: {general :: OpenSort joint, special :: OpenSort joint} -> Change joint tooth
 
 newtype ProductionRule joint = ProductionRule
   { parameters :: Set.Set RuleVar
-  , kidSorts :: HoleJoint joint (RuleSort joint)
+  , kidSorts :: OpenJoint joint (RuleSort joint)
   , parentSort :: RuleSort joint }
 
-freshRuleVarSubst :: forall joint. Set.Set RuleVar -> RuleVarSubst (HoleSort joint)
+freshRuleVarSubst :: forall joint. Set.Set RuleVar -> RuleVarSubst (OpenSort joint)
 freshRuleVarSubst = RuleVarSubst <<< mapWithIndex (\(MakeRuleVar str) _ -> Fix $ InjectSortJoint $ Hole $ freshHoleVar str) <<< Set.toMap
 
 -- TODO: DOC
 newtype ChangeRule joint tooth = ChangeRule
   { parameters :: Set.Set RuleVar
-  , kidChanges :: HoleJoint joint (HoleChange joint tooth) }
+  , kidChanges :: OpenJoint joint (OpenChange joint tooth) }
 
 class Zippable a where
   zip :: a -> Maybe a

@@ -15,20 +15,19 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Utilities as HU
 import Halogen.VDom.Driver as VDomDriver
-import Pantograph.Generic.Language (HoleJoint(..), freshHoleVar, idChange)
 import Pantograph.Generic.Language as L
 import Pantograph.Generic.Rendering as R
 import Text.Pretty (class Pretty, class Pretty1, class PrettyS1, pretty)
 import Type.Proxy (Proxy(..))
 
-type HoleSort = L.HoleSort Joint
+type OpenSort = L.OpenSort Joint
 type RuleSort = L.RuleSort Joint
-type HoleExprPath dir = L.HoleExprPath dir Rule Joint Tooth
-type SomeHoleExprPath = L.SomeHoleExprPath Rule Joint Tooth
-type HoleChange = L.HoleChange Joint Tooth
-type HoleExpr = L.HoleExpr Rule Joint
-type HoleExprCursor = L.HoleExprCursor Rule Joint Tooth
-type HoleExprSelect = L.HoleExprSelect Rule Joint Tooth
+type OpenExprPath dir = L.OpenExprPath dir Rule Joint Tooth
+type SomeOpenExprPath = L.SomeOpenExprPath Rule Joint Tooth
+type OpenChange = L.OpenChange Joint Tooth
+type OpenExpr = L.OpenExpr Rule Joint
+type OpenExprCursor = L.OpenExprCursor Rule Joint Tooth
+type OpenExprSelect = L.OpenExprSelect Rule Joint Tooth
 type ProductionRule = L.ProductionRule Joint
 type ChangeRule = L.ChangeRule Joint Tooth
 
@@ -119,22 +118,22 @@ instance L.IsLanguage Rule Joint Tooth where
         let lam_param_sort = label_sort var_label in
         L.ProductionRule
           { parameters: Set.fromFoldable [var_label]
-          , kidSorts: L.InjectHoleJoint $ Lam lam_param_sort term_sort
+          , kidSorts: L.InjectOpenJoint $ Lam lam_param_sort term_sort
           , parentSort: term_sort }
       AppRule ->
         L.ProductionRule
           { parameters: Set.empty
-          , kidSorts: L.InjectHoleJoint $ App term_sort term_sort
+          , kidSorts: L.InjectOpenJoint $ App term_sort term_sort
           , parentSort: term_sort }
       RefRule -> do
         let var_label = L.MakeRuleVar "ref_var_label"
         let var_label_sort = label_sort var_label
         L.ProductionRule
           { parameters: Set.fromFoldable [var_label]
-          , kidSorts: L.InjectHoleJoint $ Ref var_label_sort
+          , kidSorts: L.InjectOpenJoint $ Ref var_label_sort
           , parentSort: term_sort }
       HoleRule -> do
-        let holeVar = freshHoleVar "hole"
+        let holeVar = L.freshHoleVar "hole"
         L.ProductionRule
           { parameters: Set.empty
           , kidSorts: L.Hole holeVar
@@ -142,17 +141,17 @@ instance L.IsLanguage Rule Joint Tooth where
 
   changeRule rule = L.defaultChangeRule rule
 
-  defaultExpr (L.Fix (L.InjectSortJoint (L.InjectHoleJoint Expr))) = Just $ L.Fix $ L.Expr HoleRule (L.RuleVarSubst Map.empty) $ L.Hole $ freshHoleVar "expr"
+  defaultExpr (L.Fix (L.InjectSortJoint (L.InjectOpenJoint Expr))) = Just $ L.Fix $ L.Expr HoleRule (L.RuleVarSubst Map.empty) $ L.Hole $ L.freshHoleVar "expr"
   defaultExpr (L.Fix (L.SomeSymbol (L.Fix (L.Symbol str)))) = Just $ L.Fix $ L.SymbolExpr str
   defaultExpr _ = Nothing
 
-  splitChange {change, sort} = {down: idChange sort, up: change, sort}
+  splitChange {change, sort} = {down: L.idChange sort, up: change, sort}
 
   validCursorSort _ = true
 
   validSelectionSorts 
-    { top: L.Fix (L.InjectSortJoint (L.InjectHoleJoint Expr))
-    , bot: L.Fix (L.InjectSortJoint (L.InjectHoleJoint Expr)) } = true
+    { top: L.Fix (L.InjectSortJoint (L.InjectOpenJoint Expr))
+    , bot: L.Fix (L.InjectSortJoint (L.InjectOpenJoint Expr)) } = true
   validSelectionSorts _ = false
 
 -- IsEditor
@@ -187,22 +186,22 @@ punctuation =
 
 -- run
 
-lam :: _ -> _ -> HoleExpr
-lam x a = L.Fix $ L.Expr LamRule (L.RuleVarSubst $ Map.fromFoldable [L.MakeRuleVar "x" /\ holeSort "x"]) $ L.InjectHoleJoint $ Lam x a
+lam :: _ -> _ -> OpenExpr
+lam x a = L.Fix $ L.Expr LamRule (L.RuleVarSubst $ Map.fromFoldable [L.MakeRuleVar "x" /\ holeSort "x"]) $ L.InjectOpenJoint $ Lam x a
 
-app :: _ -> _ -> HoleExpr
-app f a = L.Fix $ L.Expr AppRule (L.RuleVarSubst Map.empty) $ L.InjectHoleJoint $ App f a
+app :: _ -> _ -> OpenExpr
+app f a = L.Fix $ L.Expr AppRule (L.RuleVarSubst Map.empty) $ L.InjectOpenJoint $ App f a
 
-ref :: _ -> HoleExpr
-ref x = L.Fix $ L.Expr RefRule (L.RuleVarSubst $ Map.fromFoldable [L.MakeRuleVar "x" /\ holeSort "x"]) $ L.InjectHoleJoint $ Ref x
+ref :: _ -> OpenExpr
+ref x = L.Fix $ L.Expr RefRule (L.RuleVarSubst $ Map.fromFoldable [L.MakeRuleVar "x" /\ holeSort "x"]) $ L.InjectOpenJoint $ Ref x
 
-holeExpr :: String -> HoleExpr
-holeExpr str = L.Fix $ L.Expr HoleRule (L.RuleVarSubst Map.empty) $ L.Hole $ freshHoleVar str
+holeExpr :: String -> OpenExpr
+holeExpr str = L.Fix $ L.Expr HoleRule (L.RuleVarSubst Map.empty) $ L.Hole $ L.freshHoleVar str
 
-holeSort :: String -> HoleSort
-holeSort str = L.Fix $ L.InjectSortJoint $ L.Hole $ freshHoleVar str
+holeSort :: String -> OpenSort
+holeSort str = L.Fix $ L.InjectSortJoint $ L.Hole $ L.freshHoleVar str
 
-symbolExpr :: String -> HoleExpr
+symbolExpr :: String -> OpenExpr
 symbolExpr str = L.Fix $ L.SymbolExpr str
 
 run = VDomDriver.runUI R.editorComponent
