@@ -36,6 +36,8 @@ import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
+-- TODO: collapse this datatype with `div`
+
 data EditorHtmlConfig rule joint tooth
   = HoleExprHtmlConfig {cursor :: HoleExprCursor rule joint tooth}
   | SortHtmlConfig {}
