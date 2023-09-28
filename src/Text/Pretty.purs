@@ -83,4 +83,4 @@ class PrettyS a where
   prettyS :: a -> String -> String
 
 class PrettyS1 (t :: Type -> Type) where
-  prettyS1 :: forall a. t a -> String -> String
+  prettyS1 :: forall a. Pretty a => t a -> String -> String

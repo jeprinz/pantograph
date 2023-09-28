@@ -23,360 +23,85 @@ body {
 }
 
 /* 
-  .editor
+  .Generic
 */
 
-.editor {
-  padding: 1rem;
-  font-size: 12pt;
+.Expr {
+  display: inline-block;
+}
+
+.SymbolExpr {
+  display: inline-block;
+}
+
+.Sort {
+  display: inline-block;
+}
+
+.Cursor {
+  display: inline-block;
+  box-shadow: 0 0 0 0.2em blue;
+}
+
+.SelectTop {
+  display: inline-block;
+}
+
+.SelectBot {
+  display: inline-block;
+}
+
+.Console {}
+
+.ConsoleLog {}
+
+.Clipboard {}
+
+.Toolbox {}
+
+.Preview {}
+
+.Buffer {
+  border: 1px solid black;
+  padding: 1em;
+}
+
+.Editor {
+  padding: 1em;
+  font-family: 'Courier New', Courier, monospace;
 }
 
 /* 
-  status
+  .punctuation
 */
 
-.status {
-  padding: 0.5rem 0;
-  margin-bottom: 1rem;
-  font-size: 80%;
-  background-color: rgb(213, 213, 213);
+.punctuation {
+  display: inline-block;
 }
 
-/* .status tr {
-  border-top: 1px solid black;
-  border-bottom: 1px solid black;
-} */
-
-.status td {
-  padding: 0.2rem 0.5rem;
-}
-
-.status td:first-child {
-  border-right: 1px solid black;
-  text-align: right;
-}
-
-.status td:last-child {
-  text-align: left;
-}
-
-.status table,
-.status tr,
-.status td {
-  border-collapse: collapse;
-}
-
-/* 
-  .program
-*/
-
-.program {
-  -webkit-user-select: none;
-  /* Safari */
-  -ms-user-select: none;
-  /* IE 10 and IE 11 */
-  user-select: none;
-  /* Standard syntax */
-
-  /* font-family: 'Iosevka Curly'; */
-  font-family: monospace;
-
-  margin-bottom: 1rem;
-  padding: 0.5rem 0;
-}
-
-/* 
-  .node
-*/
-
-.node {
-  display: inline;
-  cursor: pointer;
-  border-radius: 1rem 1rem / 2rem;
-}
-
-.node.zero {}
-
-.node.suc {}
-
-.node.lam {}
-
-.node.app {}
-
-.node.ref {}
-
-.node.highlight {
-  box-shadow: 0 0 0 2px rgb(190, 190, 255);
-}
-
-.node.select-top {
-  box-shadow: 0 0 0 2px blue;
-  background-color: rgba(157, 157, 255, 0.5);
-}
-
-.node.select-bottom {
-  box-shadow: 0 0 0 2px blue;
-  background-color: white;
-}
-
-.node.cursor {
-  box-shadow: 0 0 0 2px blue;
-}
-
-.subnode.holeExterior-inner {
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
-  background-color: rgba(255, 139, 50, 0.1);
-  box-shadow:
-    inset 0 0 0 2px rgb(255, 139, 50),
-    0 0 2px 0 black;
-}
-
-.subnode.holeInterior-inner {
-  padding: 0 0.2rem;
-  box-shadow: inset 0 0 0 2px rgb(255, 139, 50);
-  /* box-shadow: 0 0 0 4px rgb(255, 139, 50) inset; */
-}
-
-/*
-  .subnode
-*/
-
-.subnode {
-  display: inline;
-  border-radius: 1rem 1rem / 2rem;
-}
-
-.subnode.s-pred {}
-
-.subnode.lam-bind {}
-
-.subnode.app-apl {}
-
-.subnode.ref-var {}
-
-.subnode.hole-interior {}
-
-.subnode.string-inner {
+.punctuation.space {
   white-space: pre;
+}
+
+/* 
+  Specific
+*/
+
+.Lam {
+  display: inline-block;
+}
+
+.App {
+  display: inline-block;
+}
+
+.Ref {
+  display: inline-block;
+
+
+}
+
+.Ref>div.Expr {
   color: green;
-  /* background-color: rgb(227, 227, 227); */
-}
-
-.subnode.string-inner.empty-string {
-  color: gray;
   font-style: italic;
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
-  background-color: rgba(255, 139, 50, 0.1);
-  box-shadow:
-    inset 0 0 0 2px rgb(255, 139, 50),
-    0 0 2px 0 black;
-}
-
-/* 
-  .subnode.punctuation
-*/
-
-.subnode.punctuation {
-  white-space: pre;
-}
-
-.subnode.punctuation.lambda {
-  margin-right: 0.2rem;
-}
-
-.subnode.punctuation.mapsto {
-  padding: 0 0.5rem;
-}
-
-.subnode.punctuation.space {
-  white-space: pre;
-}
-
-.subnode.punctuation.zeroVar {}
-
-.subnode.punctuation.sucVar {}
-
-.subnode.punctuation.interrogative {}
-
-.subnode.punctuation.colon {
-  margin: 0 0.2rem;
-}
-
-.subnode.punctuation.turnstile {
-  margin: 0 0.2rem;
-}
-
-/* 
-  .subnode.buffer
-*/
-
-.subnode.buffer {
-  display: inline;
-  position: relative;
-}
-
-.subnode.buffer>.buffer-inner {
-  position: absolute;
-  left: 0;
-  top: 2rem;
-
-  box-shadow: 0 0 0 1px black;
-  border-radius: 0.2rem;
-}
-
-.subnode.buffer>.buffer-inner>.buffer-results>.buffer-result {
-  /* min-width: 200px; */
-  white-space: nowrap;
-  overflow: hidden;
-  padding: 0.2rem;
-}
-
-.subnode.buffer>.buffer-inner>.buffer-results>.buffer-result.buffer-focus {
-  background-color: rgb(98, 98, 245, 0.25);
-}
-
-.subnode.buffer>.buffer-inner>.buffer-input {
-  outline: none;
-}
-
-/* placeholder-cursor */
-
-.node.placeholderCursor {}
-
-.node.placeholderCursor>.subnode.placeholderCursor-inner {
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
-  background-color: rgba(255, 139, 50, 0.1);
-  box-shadow:
-    0 0 0 2px blue,
-    /* inset 0 0 2px 2px black; */
-    inset 0 0 2px 1px black;
-}
-
-/* preview */
-
-.preview {
-  /* display: inline-block; */
-  border-radius: 1rem 1rem / 2rem;
-  background-color: rgba(0, 234, 179, 0.379);
-}
-
-.preview.wrap.before {
-  margin-right: 0.1rem;
-}
-
-.preview.wrap.before:after {
-  border-radius: 1rem 1rem / 2rem;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  position: relative;
-  display: inline-block;
-  content: 'X';
-
-  background-color: white;
-  color: white;
-}
-
-.preview.wrap.after {
-  margin-left: 0.1rem;
-}
-
-.preview.wrap.after:before {
-  border-radius: 1rem 1rem / 2rem;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  position: relative;
-  display: inline-block;
-  content: 'X';
-
-  background-color: white;
-  color: white;
-}
-
-.preview.fill+.subnode,
-.preview.replace+.subnode {
-  /* border: 2px solid black; */
-  display: none;
-}
-
-
-/* comment */
-
-.commentBegin,
-.commentEnd,
-.commentBegin+.node>.subnode.string-inner {
-  font-style: italic;
-  color: gray !important;
-}
-
-/* small-step */
-
-.smallstep-program {
-  background-color: rgba(166, 0, 255, 0.105);
-}
-
-.node.smallstep {}
-
-.node.smallstep.hole {
-  padding: 0 0.4rem;
-  border-radius: 1rem 1rem / 2rem;
-  box-shadow:
-    inset 0 0 0 2px rgb(255, 139, 50),
-    0 0 2px 0 black;
-  box-shadow:
-    inset 0 0 0 2px rgb(255, 139, 50),
-    0 0 2px 0 black;
-}
-
-.node.smallstep.string {}
-
-.node.smallstep.cursor {}
-
-.node.smallstep.boundary {}
-
-.subnode.smallstep.changeDirection {}
-
-.subnode.smallstep.sortChange {}
-
-/* 
-console
-*/
-
-.console {
-  position: fixed;
-  bottom: 0;
-  padding: 0 0.5rem;
-  margin-bottom: 1rem;
-  width: calc(100vw - 3rem);
-  font-size: 80%;
-  background-color: rgb(213, 213, 213);
-}
-
-.console-header {
-  padding-top: 0.5rem;
-}
-
-.console-controls {
-  padding: 0.5rem 0;
-}
-
-.console-controls button {
-  margin-right: 1em;
-  font-size: inherit;
-  border: none;
-  outline: none;
-  background-color: black;
-  color: white;
-}
-
-.console-logs {
-  max-height: 20rem;;
-  overflow-y: scroll;
-}
-
-.console-log {
-  padding: 0.5rem 0;
-  box-shadow: 0 -1px 0 0 black;
 }

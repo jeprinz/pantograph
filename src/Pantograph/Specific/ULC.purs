@@ -7,28 +7,30 @@ import Data.Derivative (class Derivative, differentiate)
 import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
+import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.Utilities as HU
 import Halogen.VDom.Driver as VDomDriver
-import Hole (hole)
-import Pantograph.Generic.Language (HoleJoint(..))
+import Pantograph.Generic.Language (HoleJoint(..), freshHoleVar, idChange)
 import Pantograph.Generic.Language as L
 import Pantograph.Generic.Rendering as R
-import Text.Pretty (class Pretty, class Pretty1, pretty)
+import Text.Pretty (class Pretty, class Pretty1, class PrettyS1, pretty)
 import Type.Proxy (Proxy(..))
 
-type Sort = L.Sort Joint
+type HoleSort = L.HoleSort Joint
 type RuleSort = L.RuleSort Joint
-type HoleExprPath dir = L.HoleExprPath dir Rule Joint Joint'
-type SomeHoleExprPath = L.SomeHoleExprPath Rule Joint Joint'
-type Change = L.Change Joint Joint'
-type Expr = L.Expr Rule Joint
-type HoleExprCursor = L.HoleExprCursor Rule Joint Joint'
-type HoleExprSelect = L.HoleExprSelect Rule Joint Joint'
+type HoleExprPath dir = L.HoleExprPath dir Rule Joint Tooth
+type SomeHoleExprPath = L.SomeHoleExprPath Rule Joint Tooth
+type HoleChange = L.HoleChange Joint Tooth
+type HoleExpr = L.HoleExpr Rule Joint
+type HoleExprCursor = L.HoleExprCursor Rule Joint Tooth
+type HoleExprSelect = L.HoleExprSelect Rule Joint Tooth
 type ProductionRule = L.ProductionRule Joint
-type ChangeRule = L.ChangeRule Joint Joint'
+type ChangeRule = L.ChangeRule Joint Tooth
 
 -- Joint
 
@@ -53,19 +55,19 @@ instance Pretty1 Joint where
 
 instance L.IsJoint Joint
 
--- Joint'
+-- Tooth
 
-data Joint' a
+data Tooth a
   = Lam'Param a
   | Lam'Body a
   | App'Apl a
   | App'Arg a
   | Ref'Var
 
-derive instance Functor Joint'
-derive instance Foldable Joint'
+derive instance Functor Tooth
+derive instance Foldable Tooth
 
-instance Derivative Joint Joint' where
+instance Derivative Joint Tooth where
   differentiate (Lam x b) = Lam (x /\ Lam'Param b) (b /\ Lam'Body x)
   differentiate (App f a) = App (f /\ App'Apl f) (a /\ App'Apl f)
   differentiate (Ref x) = Ref (x /\ Ref'Var)
@@ -77,7 +79,14 @@ instance Derivative Joint Joint' where
   integrate a (App'Arg f) = App f a
   integrate x Ref'Var = Ref x
 
-instance Pretty1 Joint' where
+instance PrettyS1 Tooth where
+  prettyS1 (Lam'Param b) s = "(λ "<> s <> " ↦ " <> pretty b <> ")"
+  prettyS1 (Lam'Body x) s = "(λ " <> pretty x <> " ↦ " <> s <> ")"
+  prettyS1 (App'Apl a) s = "(" <> s <> " " <> pretty a <> ")"
+  prettyS1 (App'Arg f) s = "(" <> pretty f <> " " <> s <> ")"
+  prettyS1 Ref'Var s = "#" <> s
+
+instance Pretty1 Tooth where
   pretty1 (Lam'Param b) = "(λ ⌶ ↦ " <> pretty b <> ")"
   pretty1 (Lam'Body x) = "(λ " <> pretty x <> " ↦ ⌶)"
   pretty1 (App'Apl a) = "(⌶ " <> pretty a <> ")"
@@ -90,6 +99,7 @@ data Rule
   = LamRule
   | AppRule
   | RefRule
+  | HoleRule
 
 derive instance Generic Rule _
 derive instance Eq Rule
@@ -99,36 +109,44 @@ instance Pretty Rule where pretty = show
 
 -- IsLanguage
 
-instance L.IsLanguage Rule Joint Joint' where
-  productionRule =
-    let term_sort = L.Fix $ L.InjectSortJoint $ L.InjectRuleVarJoint Expr in
-    let label_sort label = L.Fix $ L.SomeSymbol $ L.Fix $ L.InjectSortJoint $ L.RuleVar label in
+instance L.IsLanguage Rule Joint Tooth where
+  productionRule = do
+    let term_sort = L.Fix $ L.InjectSortJoint $ L.InjectRuleJoint Expr
+    let label_sort label = L.Fix $ L.SomeSymbol $ L.Fix $ L.InjectSortJoint $ L.RuleVar label
     case _ of
       LamRule ->
         let var_label = L.MakeRuleVar "lam_var_label" in
         let lam_param_sort = label_sort var_label in
         L.ProductionRule
-          { quantifiers: Set.fromFoldable [var_label]
-          , kidSorts: Lam lam_param_sort term_sort
+          { parameters: Set.fromFoldable [var_label]
+          , kidSorts: L.InjectHoleJoint $ Lam lam_param_sort term_sort
           , parentSort: term_sort }
       AppRule ->
         L.ProductionRule
-          { quantifiers: Set.empty
-          , kidSorts: App term_sort term_sort
+          { parameters: Set.empty
+          , kidSorts: L.InjectHoleJoint $ App term_sort term_sort
           , parentSort: term_sort }
-      RefRule ->
-        let var_label = L.MakeRuleVar "ref_var_label" in
-        let var_label_sort = label_sort var_label in
+      RefRule -> do
+        let var_label = L.MakeRuleVar "ref_var_label"
+        let var_label_sort = label_sort var_label
         L.ProductionRule
-          { quantifiers: Set.fromFoldable [var_label]
-          , kidSorts: Ref var_label_sort
+          { parameters: Set.fromFoldable [var_label]
+          , kidSorts: L.InjectHoleJoint $ Ref var_label_sort
+          , parentSort: term_sort }
+      HoleRule -> do
+        let holeVar = freshHoleVar "hole"
+        L.ProductionRule
+          { parameters: Set.empty
+          , kidSorts: L.Hole holeVar
           , parentSort: term_sort }
 
   changeRule rule = L.defaultChangeRule rule
 
-  defaultExpr = hole "TODO"
+  defaultExpr (L.Fix (L.InjectSortJoint (L.InjectHoleJoint Expr))) = Just $ L.Fix $ L.Expr HoleRule (L.RuleVarSubst Map.empty) $ L.Hole $ freshHoleVar "expr"
+  defaultExpr (L.Fix (L.SomeSymbol (L.Fix (L.Symbol str)))) = Just $ L.Fix $ L.SymbolExpr str
+  defaultExpr _ = Nothing
 
-  splitChange = hole "TODO"
+  splitChange {change, sort} = {down: idChange sort, up: change, sort}
 
   validCursorSort _ = true
 
@@ -137,31 +155,60 @@ instance L.IsLanguage Rule Joint Joint' where
     , bot: L.Fix (L.InjectSortJoint (L.InjectHoleJoint Expr)) } = true
   validSelectionSorts _ = false
 
-  digChange = hole "TODO"
-
-  generalize = hole "TODO"
-
-  specialize = hole "TODO"
-
 -- IsEditor
 
+type Ctx :: Row Type
 type Ctx = ()
 
+type Env :: Row Type
 type Env = ()
 
-instance R.IsEditor Rule Joint Joint' where
+instance R.IsEditor Rule Joint Tooth where
   arrangeExpr _rule _sigma (Lam x b) =
-    pure $ HH.div [] [HH.text "(", HH.text "λ", x.html, HH.text "↦", b.html, HH.text ")"]
+    pure $ HH.div
+      [HU.classNames ["Lam"]]
+      [HH.text "(", HH.text "λ", punctuation.space, x.html, punctuation.space, HH.text "↦", punctuation.space, b.html, HH.text ")"]
   arrangeExpr _rule _sigma (App f a) = do
-    pure $ HH.div [] [HH.text "(", f.html, HH.text " ", a.html, HH.text ")"]
+    pure $ HH.div
+      [HU.classNames ["App"]]
+      [HH.text "(", f.html, punctuation.space, a.html, HH.text ")"]
   arrangeExpr _rule _sigma (Ref x) = do
-    pure $ HH.div [] [HH.text "#", x.html]
+    pure $ HH.div
+      [HU.classNames ["Ref"]]
+      [HH.text "#", x.html]
   arrangeExpr _rule _sigma Expr = do
-    pure $ HH.div [] [HH.text "Expr"]
+    pure $ HH.div
+      [HU.classNames ["Expr"]]
+      [HH.text "Expr"]
+
+punctuation = 
+  { space: HH.div [HU.classNames ["punctuation", "space"]] [HH.text " "]
+  }
 
 -- run
 
+lam :: _ -> _ -> HoleExpr
+lam x a = L.Fix $ L.Expr LamRule (L.RuleVarSubst $ Map.fromFoldable [L.MakeRuleVar "x" /\ holeSort "x"]) $ L.InjectHoleJoint $ Lam x a
+
+app :: _ -> _ -> HoleExpr
+app f a = L.Fix $ L.Expr AppRule (L.RuleVarSubst Map.empty) $ L.InjectHoleJoint $ App f a
+
+ref :: _ -> HoleExpr
+ref x = L.Fix $ L.Expr RefRule (L.RuleVarSubst $ Map.fromFoldable [L.MakeRuleVar "x" /\ holeSort "x"]) $ L.InjectHoleJoint $ Ref x
+
+holeExpr :: String -> HoleExpr
+holeExpr str = L.Fix $ L.Expr HoleRule (L.RuleVarSubst Map.empty) $ L.Hole $ freshHoleVar str
+
+holeSort :: String -> HoleSort
+holeSort str = L.Fix $ L.InjectSortJoint $ L.Hole $ freshHoleVar str
+
+symbolExpr :: String -> HoleExpr
+symbolExpr str = L.Fix $ L.SymbolExpr str
+
 run = VDomDriver.runUI R.editorComponent
-  { expr: L.Fix $ L.Expr RefRule (L.Subst Map.empty) $ L.InjectHoleJoint (Ref (L.Fix (L.SymbolExpr "x")))
-  , ctx: {}
-  , env: {} }
+  { buffer:
+      { 
+        -- expr: lam (symbolExpr "x") $ lam (symbolExpr "y") $ lam (symbolExpr "z") $ ref (symbolExpr "x")
+        expr: lam (symbolExpr "x") $ holeExpr "?"
+      , ctx: {}
+      , env: {} } }
