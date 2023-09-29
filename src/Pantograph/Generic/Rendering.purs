@@ -1,6 +1,6 @@
 module Pantograph.Generic.Rendering where
 
-import Pantograph.Generic.Language
+import Pantograph.Generic.LanguageOld
 import Prelude hiding (div)
 import Bug (bug)
 import Control.Monad.Reader (ReaderT, ask, lift, runReaderT)

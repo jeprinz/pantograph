@@ -33,21 +33,21 @@ id (ElementId str) = HP.id str
 freshElementId :: Unit -> ElementId
 freshElementId _ = unsafePerformEffect $ ElementId <<< UUID.toString <$> UUID.genUUID
 
-setClassName ∷ ∀ (m ∷ Type -> Type). MonadEffect m ⇒ Element.Element → String → Boolean → m Unit
-setClassName elem className classValue = do
-  H.liftEffect do
-    classList <- Element.classList elem
-    void $ DOMTokenList.toggleForce classList className classValue
+-- setClassName ∷ ∀ (m ∷ Type -> Type). MonadEffect m ⇒ Element.Element → String → Boolean → m Unit
+-- setClassName elem className classValue = do
+--   H.liftEffect do
+--     classList <- Element.classList elem
+--     void $ DOMTokenList.toggleForce classList className classValue
 
-setClassNameByElementId ∷ String → String → Boolean → Effect Unit
-setClassNameByElementId elemId className classValue = do
-  doc <- Window.document =<< HTML.window
-  NonElementParentNode.getElementById elemId (Document.toNonElementParentNode $ HTMLDocument.toDocument doc) >>= case _ of
-    Nothing -> do
-      Bug.bug $ "[setClassName] There is no element with this element id: " <> elemId
-    Just elem -> setClassName elem className classValue
+-- setClassNameByElementId ∷ String → String → Boolean → Effect Unit
+-- setClassNameByElementId elemId className classValue = do
+--   doc <- Window.document =<< HTML.window
+--   NonElementParentNode.getElementById elemId (Document.toNonElementParentNode $ HTMLDocument.toDocument doc) >>= case _ of
+--     Nothing -> do
+--       Bug.bug $ "[setClassName] There is no element with this element id: " <> elemId
+--     Just elem -> setClassName elem className classValue
 
 
-classNames = HP.classes <<< map HH.ClassName
+-- classNames = HP.classes <<< map HH.ClassName
 
-foreign import fromInputEventToTargetValue :: Event -> Effect String
+-- foreign import fromInputEventToTargetValue :: Event -> Effect String
