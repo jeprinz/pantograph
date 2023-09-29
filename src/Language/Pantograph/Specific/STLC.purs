@@ -457,7 +457,7 @@ getVarEdits sort =
         -- If its not a TermSort, then there are no var edits
         slot \[_] -> Nil
 
-makeEditFromTerm = DefaultEdits.makeEditFromTerm
+makeEditFromTerm = DefaultEdits.makeSubEditFromTerm
 makeEditFromPath = DefaultEdits.makeEditFromPath languageChanges splitChange
 
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))

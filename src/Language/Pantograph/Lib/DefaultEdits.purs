@@ -55,13 +55,24 @@ makeEditFromPath languageChanges splitChange (path /\ bottomOfPathSort) name cur
     }
     }
 
-makeEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
-makeEditFromTerm dterm name cursorSort = do
+makeSubEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
+makeSubEditFromTerm dterm name cursorSort = do
     _ /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
     pure $ { label : name
     , action : defer \_ -> Edit.FillAction
         {
             sub
+            , dterm : Grammar.subDerivTerm sub dterm
+        }
+    }
+
+makeChangeEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
+makeChangeEditFromTerm dterm name cursorSort = do
+    newCursorSort /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
+    pure $ { label : name
+    , action : defer \_ -> Edit.ReplaceAction
+        {
+            topChange: ChangeAlgebra.diff cursorSort newCursorSort
             , dterm : Grammar.subDerivTerm sub dterm
         }
     }

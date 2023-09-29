@@ -183,6 +183,7 @@ data RuleLabel
   | ArrowRule
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
+  | Error
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -230,6 +231,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
   prettyExprF'_unsafe_RuleLabel (FunctionCall /\ [neu]) = "call" <+> P.parens neu
   prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
+  prettyExprF'_unsafe_RuleLabel (Error /\ [t]) = "{{" <+> t <+> "}}"
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -328,6 +330,11 @@ language = TotalMap.makeTotalMap case _ of
       /\
       ( TermSort %|-* [gamma, ty] )
 
+  Error -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
+    [NeutralSort %|-* [gamma, insideType]]
+    /\
+    ( TermSort %|-* [gamma, outsideType])
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -388,6 +395,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   If /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [ifElem], Left (renCtx /\ 0), pure [Rendering.newlineElem, thenElem], Left (renCtx' /\ 1), pure [Rendering.newlineElem, elseElem], Left (renCtx' /\ 2)]
+  Error /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -407,6 +415,8 @@ arrowElem = Rendering.makePuncElem "arrow" "→"
 ifElem = Rendering.makePuncElem "if" "if"
 thenElem = Rendering.makePuncElem "then" "then"
 elseElem = Rendering.makePuncElem "else" "else"
+errorLeftSide = Rendering.makePuncElem "errorLeft" "{{"
+errorRightSide = Rendering.makePuncElem "errorRight" "}}"
 
 typeElem = Rendering.makePuncElem "Type" "Type"
 
@@ -488,15 +498,14 @@ splitChange c | Maybe.Just ([] /\ [_gamma, _ty]) <- Expr.matchChange c (NeutralS
 -- TODO TODO TODO: Also implement the case where the change is just a metavariable identity! Later: I don't remember why I wrote this, maybe I'll find out later.
 splitChange c = bug ("splitChange - got c = " <> pretty c)
 
-makeEditFromTerm = DefaultEdits.makeEditFromTerm
 makeEditFromPath = DefaultEdits.makeEditFromPath languageChanges splitChange
 
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity [
-        makeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
-        , makeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
-        , makeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
-        , makeEditFromTerm (newTermFromRule If) "If" cursorSort
+        DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
+        , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
+        , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
     ]
 
 editsAtCursor cursorSort = Array.mapMaybe identity
@@ -505,6 +514,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
     , makeEditFromPath (newPathFromRule App 0) "app" cursorSort
+--    , makeEditFromPath (newPathFromRule Error 0) "error" cursorSort
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
@@ -639,6 +649,26 @@ unWrapApp = Smallstep.makeUpRule
         Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             inside))
 
+replaceCallWithError :: StepRule
+replaceCallWithError = Smallstep.makeUpRule
+    (NeutralSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
+    (FunctionCall %# [{-t-}slot])
+    (\[t] -> t /\ (\[] [gamma, ty] inside ->
+            dTERM Error ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint ty, "outsideType" /\ lEndpoint ty]
+                [inside]))
+
+replaceErrorWithCall :: StepRule
+replaceErrorWithCall (Expr.Expr (Inject (Grammar.DerivLabel Error sigma)) [t])
+    =
+    let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
+    let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
+    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma in
+    if insideType == outsideType then
+        pure $ dTERM FunctionCall ["gamma" /\ gamma, "type" /\ insideType] [t]
+    else
+        Nothing
+replaceErrorWithCall _ = Nothing
+
 {-
 This is necessary because the wrapApp rule conflicts with the defaultUp, and the priority order of the list isn't enough
 because defaultUp happens on a term higher up in the tree.
@@ -667,6 +697,8 @@ stepRules = do
     , unWrapApp
     , Smallstep.defaultDown chLang
     , Smallstep.unless isUpInCall (Smallstep.defaultUp chLang)
+    , replaceCallWithError
+    , replaceErrorWithCall
     ]
 
 onDelete :: Sort -> SortChange
