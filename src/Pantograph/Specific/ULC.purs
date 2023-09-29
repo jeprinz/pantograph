@@ -113,9 +113,9 @@ instance L.IsLanguage Rule Joint Tooth where
     let term_sort = L.Fix $ L.InjectSortJoint $ L.InjectRuleJoint Expr
     let label_sort label = L.Fix $ L.SomeSymbol $ L.Fix $ L.InjectSortJoint $ L.RuleVar label
     case _ of
-      LamRule ->
-        let var_label = L.MakeRuleVar "lam_var_label" in
-        let lam_param_sort = label_sort var_label in
+      LamRule -> do
+        let var_label = L.MakeRuleVar "lam_var_label"
+        let lam_param_sort = label_sort var_label
         L.ProductionRule
           { parameters: Set.fromFoldable [var_label]
           , kidSorts: L.InjectOpenJoint $ Lam lam_param_sort term_sort
@@ -184,7 +184,7 @@ punctuation =
   { space: HH.div [HU.classNames ["punctuation", "space"]] [HH.text " "]
   }
 
--- run
+-- shallow
 
 lam :: _ -> _ -> OpenExpr
 lam x a = L.Fix $ L.Expr LamRule (L.RuleVarSubst $ Map.fromFoldable [L.MakeRuleVar "x" /\ holeSort "x"]) $ L.InjectOpenJoint $ Lam x a
@@ -203,6 +203,8 @@ holeSort str = L.Fix $ L.InjectSortJoint $ L.Hole $ L.freshHoleVar str
 
 symbolExpr :: String -> OpenExpr
 symbolExpr str = L.Fix $ L.SymbolExpr str
+
+-- run
 
 run = VDomDriver.runUI R.editorComponent
   { buffer:
