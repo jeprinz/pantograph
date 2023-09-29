@@ -183,7 +183,8 @@ data RuleLabel
   | ArrowRule
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
-  | Error
+  | ErrorCall
+  | ErrorBoundary
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -231,7 +232,8 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
   prettyExprF'_unsafe_RuleLabel (FunctionCall /\ [neu]) = "call" <+> P.parens neu
   prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
-  prettyExprF'_unsafe_RuleLabel (Error /\ [t]) = "{{" <+> t <+> "}}"
+  prettyExprF'_unsafe_RuleLabel (ErrorCall /\ [t]) = "{{" <+> t <+> "}}"
+  prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -330,8 +332,13 @@ language = TotalMap.makeTotalMap case _ of
       /\
       ( TermSort %|-* [gamma, ty] )
 
-  Error -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
+  ErrorCall -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
     [NeutralSort %|-* [gamma, insideType]]
+    /\
+    ( TermSort %|-* [gamma, outsideType])
+
+  ErrorBoundary -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
+    [TermSort %|-* [gamma, insideType]]
     /\
     ( TermSort %|-* [gamma, outsideType])
 
@@ -395,7 +402,8 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   If /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [ifElem], Left (renCtx /\ 0), pure [Rendering.newlineElem, thenElem], Left (renCtx' /\ 1), pure [Rendering.newlineElem, elseElem], Left (renCtx' /\ 2)]
-  Error /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
+  ErrorCall /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
+  ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -514,7 +522,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
     , makeEditFromPath (newPathFromRule App 0) "app" cursorSort
---    , makeEditFromPath (newPathFromRule Error 0) "error" cursorSort
+--    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
@@ -619,7 +627,7 @@ unWrapLambda2 :: StepRule
 unWrapLambda2 (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
         Expr.Expr (Inject (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
     ])
-    | Just ([a] /\ [gamma, b]) <- trace "got hereee" \_ -> Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
     =
     let varName = Util.lookup' (Expr.RuleMetaVar "x") sigma in
     pure $
@@ -635,7 +643,7 @@ wrapApp :: StepRule
 wrapApp = Smallstep.makeUpRule
     (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
     {-t-}slot
-    (\[t] -> t /\ (\[a] [gamma, b] inside ->
+    (\[t] -> t /\ (\[a] [gamma, b] inside -> pure $
         Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
                 [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
@@ -645,20 +653,21 @@ unWrapApp :: StepRule
 unWrapApp = Smallstep.makeUpRule
     (NeutralSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
     (App %# [{-t1-}slot, {-t2-}slot])
-    (\[t1, _t2] -> t1 /\ (\[_a] [gamma, b] inside ->
+    (\[t1, _t2] -> t1 /\ (\[_a] [gamma, b] inside -> pure $
         Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             inside))
 
+-- Two kinds of boundaries that I am thinking of. The first is ErrorCall which replaces FunctionCall:
 replaceCallWithError :: StepRule
 replaceCallWithError = Smallstep.makeUpRule
     (NeutralSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
     (FunctionCall %# [{-t-}slot])
-    (\[t] -> t /\ (\[] [gamma, ty] inside ->
-            dTERM Error ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint ty, "outsideType" /\ lEndpoint ty]
+    (\[t] -> t /\ (\[] [gamma, ty] inside -> pure $
+            dTERM ErrorCall ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint ty, "outsideType" /\ lEndpoint ty]
                 [inside]))
 
 replaceErrorWithCall :: StepRule
-replaceErrorWithCall (Expr.Expr (Inject (Grammar.DerivLabel Error sigma)) [t])
+replaceErrorWithCall (Expr.Expr (Inject (Grammar.DerivLabel ErrorCall sigma)) [t])
     =
     let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
     let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
@@ -669,6 +678,96 @@ replaceErrorWithCall (Expr.Expr (Inject (Grammar.DerivLabel Error sigma)) [t])
         Nothing
 replaceErrorWithCall _ = Nothing
 
+-- The second is Error which wraps a term
+
+wrapCallInErrorUp :: StepRule
+wrapCallInErrorUp ((Inject (Grammar.DerivLabel FunctionCall sigma)) % [
+        (Smallstep.Boundary Smallstep.Up ch) % [inside]
+    ])
+    | Just ([] /\ [gamma, ty]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
+    =
+    if Maybe.isJust (Expr.matchChange ty (dPLUS Arrow [{-a-}slot] {-b-}cSlot [])) || ChangeAlgebra.isMerelyASubstitution ty
+        then Nothing
+        else pure $
+            let outsideType = Util.lookup' (Expr.RuleMetaVar "type") sigma in
+            Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, ChangeAlgebra.inject outsideType]) $
+            dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint ty, "outsideType" /\ lEndpoint ty]
+                [dTERM FunctionCall ["gamma" /\ rEndpoint gamma, "type" /\ rEndpoint ty] [inside ]]
+wrapCallInErrorUp _ = Nothing
+
+--wrapCallInErrorUp2 :: StepRule
+--wrapCallInErrorUp2 = Smallstep.makeUpRule
+--    (NeutralSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
+--    (FunctionCall %# [slot])
+--    (\[t] ->
+--        t /\ (\[] [gamma, ty] inside ->
+--        -- Should only create an error boundary if both 1) this is not a change that could create an application and 2) this is not merely a substitution that could be propagated through
+--        if Maybe.isJust (Expr.matchChange ty (dPLUS Arrow [{-a-}slot] {-b-}cSlot [])) || ChangeAlgebra.isMerelyASubstitution ty
+--            then Nothing
+--            else pure $
+--                Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, ChangeAlgebra.inject (rEndpoint ?h)]) $
+--                dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint ty, "outsideType" /\ lEndpoint ty]
+--                    [dTERM FunctionCall ["gamma" /\ rEndpoint gamma, "type" /\ rEndpoint ty] [inside ]]))
+--wrapCallInErrorUp :: StepRule
+--wrapCallInErrorUp = Smallstep.makeUpRule
+--    (TermSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
+--    {-t-}slot
+--    (\[t] -> t /\ (\[] [gamma, ty] inside ->
+--            case Expr.matchDiffExprs Smallstep.compareMatchLabel t (FunctionCall %# [slot]) of
+--                    Nothing -> Nothing
+--                    Just _ -> pure $
+--                        dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint ty, "outsideType" /\ lEndpoint ty]
+--                            [dTERM FunctionCall ["gamma" /\ rEndpoint gamma, "type" /\ rEndpoint ty] [inside]]))
+wrapCallInErrorDown :: StepRule
+wrapCallInErrorDown ((Smallstep.Boundary Smallstep.Down ch) % [
+        (Inject (Grammar.DerivLabel FunctionCall sigma)) % [inside]
+    ])
+    | Just ([] /\ [gamma, ty]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
+    =
+            if ChangeAlgebra.isMerelyASubstitution ty then Nothing else
+            let insideType = Util.lookup' (Expr.RuleMetaVar "type") sigma in
+            pure $
+            dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint ty, "outsideType" /\ rEndpoint ty]
+                [dTERM FunctionCall ["gamma" /\ rEndpoint gamma, "type" /\ lEndpoint ty] [
+                    Smallstep.wrapBoundary Smallstep.Down (csor NeutralSort % [gamma, ChangeAlgebra.inject insideType]) inside
+                ]]
+wrapCallInErrorDown _ = Nothing
+
+--wrapCallInErrorDown :: StepRule
+--wrapCallInErrorDown = Smallstep.makeDownRule
+--    (TermSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
+--    (FunctionCall %# [{-inside-}slot])
+--    (\[] [gamma, ty] [inside] ->
+--            if ChangeAlgebra.isMerelyASubstitution ty then Nothing else
+--            pure $
+--            dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint ty, "outsideType" /\ rEndpoint ty]
+--                [dTERM FunctionCall ["gamma" /\ rEndpoint gamma, "type" /\ lEndpoint ty] [
+--                    Smallstep.wrapBoundary Smallstep.Down (csor NeutralSort % [gamma, ChangeAlgebra.inject ?h]) inside
+--                ]])
+
+removeError :: StepRule
+removeError (Expr.Expr (Inject (Grammar.DerivLabel ErrorBoundary sigma)) [t])
+    =
+    let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
+    let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
+    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma in
+    if insideType == outsideType then
+        pure t
+    else
+        Nothing
+removeError _ = Nothing
+
+mergeErrors :: StepRule
+mergeErrors (Expr.Expr (Inject (Grammar.DerivLabel ErrorBoundary sigma1)) [
+        Expr.Expr (Inject (Grammar.DerivLabel ErrorBoundary sigma2)) [t]
+    ])
+    =
+    let insideInside = Util.lookup' (Expr.RuleMetaVar "insideType") sigma2 in
+    let outsideOutside = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma1 in
+    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma1 in
+    pure $ dTERM ErrorBoundary ["gamma" /\ gamma, "insideType" /\ insideInside, "outsideType" /\ outsideOutside] [t]
+mergeErrors _ = Nothing
+
 {-
 This is necessary because the wrapApp rule conflicts with the defaultUp, and the priority order of the list isn't enough
 because defaultUp happens on a term higher up in the tree.
@@ -677,8 +776,10 @@ isUpInCall :: SSTerm -> Boolean
 isUpInCall (Expr.Expr (Inject (Grammar.DerivLabel FunctionCall _)) [
         Expr.Expr (Smallstep.Boundary Smallstep.Up ch) [_]
     ])
-    | Just ([] /\ [gamma, ty]) <- Expr.matchChange ch (NeutralSort %+- [cSlot, cSlot])
-    = not (ChangeAlgebra.isMerelyASubstitution ty)
+    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    = true
+--    = not (ChangeAlgebra.isMerelyASubstitution ty)
+--    = ChangeAlgebra.isMerelyASubstitution ty
 isUpInCall _ = false
 
 stepRules :: List StepRule
@@ -695,10 +796,14 @@ stepRules = do
     , unWrapLambda2
     , wrapApp
     , unWrapApp
+    , wrapCallInErrorUp
+    , wrapCallInErrorDown
+    , removeError
+    , mergeErrors
     , Smallstep.defaultDown chLang
     , Smallstep.unless isUpInCall (Smallstep.defaultUp chLang)
-    , replaceCallWithError
-    , replaceErrorWithCall
+--    , replaceCallWithError
+--    , replaceErrorWithCall
     ]
 
 onDelete :: Sort -> SortChange

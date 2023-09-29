@@ -450,7 +450,7 @@ makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
             ( SSTerm l r -- The child that is supposed to be the up boundary (the "makeUpRule" function needs to know which child of the node is supposed to be where the boundary is coming from. You tell it where to look for the boundary by outputing that subterm of the expression we matched against)
             /\ (Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -- If that was a boundary and the change matches, here are the matches
                 -> SSTerm l r -- Here is the term inside the boundary
-                -> SSTerm l r {- This is the output term finally output by the rule -})))
+                -> Maybe (SSTerm l r) {- This is the output term finally output by the rule -})))
     -> StepRule l r
 makeUpRule changeMatch derivMatch output term = do
     derivMatches <- Expr.matchDiffExprs compareMatchLabel term derivMatch
@@ -458,7 +458,7 @@ makeUpRule changeMatch derivMatch output term = do
     case possibleUpBoundary of
         Expr.Expr (Boundary Up inputCh) [kid] -> do
             sortMatches /\ changeMatches <- Expr.matchChange inputCh changeMatch
-            Just $ restOfOutput sortMatches changeMatches kid
+            restOfOutput sortMatches changeMatches kid
         _ -> Nothing
 --
 --makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
