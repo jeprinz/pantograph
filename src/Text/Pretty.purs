@@ -5,7 +5,6 @@ import Prelude
 import Data.Array (concat, foldMap, intercalate)
 import Data.Functor.Compose (Compose(..))
 import Data.List as List
-import Data.List.Rev as Rev
 import Data.Map as Map
 import Data.Set as Set
 import Data.Maybe (Maybe, maybe)

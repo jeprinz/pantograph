@@ -5,7 +5,6 @@ import Data.Tuple.Nested
 import Prelude
 
 import Bug as Bug
-import Bug.Assertion (assert, just)
 import Data.Either (Either(..))
 import Data.List (List)
 import Data.List as List
@@ -34,9 +33,6 @@ head' l = case List.head l of
 fromJust :: forall a . Maybe a -> a
 fromJust (Just x) = x
 fromJust Nothing = Bug.bug "fromJust failed"
-
-fromJust' :: forall a . String -> Maybe a -> a
-fromJust' source mb = assert (just source mb) identity
 
 fromRight :: forall a b. Either a b -> b
 fromRight (Right b) = b
@@ -78,7 +74,7 @@ union' m1 m2 = unionWith (\_ _ -> Bug.bug "duplicate key in union'") m1 m2
 --        (Just m1) (toUnfoldable m2 :: List (k /\ v))
 
 readUUID :: String -> UUID
-readUUID str = fromJust' ("failed to parse UUID: " <> str) <<< UUID.parseUUID $ str
+readUUID str = fromJust <<< UUID.parseUUID $ str
 
 threeCaseUnion :: forall v1 v2 v3 k . Ord k =>
     (v1 -> v3) -> (v2 -> v3) -> (v1 -> v2 -> v3)

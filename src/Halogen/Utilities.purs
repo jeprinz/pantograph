@@ -1,17 +1,13 @@
 module Halogen.Utilities where
 
 import Prelude
-
 import Bug as Bug
 import Data.Maybe (Maybe(..))
-import Data.Newtype (unwrap)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Hooks as HK
-import Log as Log
 import Web.DOM.DOMTokenList as DOMTokenList
 import Web.DOM.Document as Document
 import Web.DOM.Element as Element
@@ -19,10 +15,9 @@ import Web.DOM.NonElementParentNode as NonElementParentNode
 import Web.Event.Internal.Types (Event)
 import Web.HTML as HTML
 import Web.HTML.HTMLDocument as HTMLDocument
-import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.Window as Window
 
-type ElementId = String
+newtype ElementId = ElementId String
 
 setClassName ∷ ∀ (m ∷ Type -> Type). MonadEffect m ⇒ Element.Element → String → Boolean → m Unit
 setClassName elem className classValue = do
@@ -30,8 +25,8 @@ setClassName elem className classValue = do
     classList <- Element.classList elem
     void $ DOMTokenList.toggleForce classList className classValue
 
-setClassNameByElementId ∷ String → String → Boolean → Effect Unit
-setClassNameByElementId elemId className classValue = do
+setClassNameByElementId ∷ ElementId → String → Boolean → Effect Unit
+setClassNameByElementId (ElementId elemId) className classValue = do
   doc <- Window.document =<< HTML.window
   NonElementParentNode.getElementById elemId (Document.toNonElementParentNode $ HTMLDocument.toDocument doc) >>= case _ of
     Nothing -> do
