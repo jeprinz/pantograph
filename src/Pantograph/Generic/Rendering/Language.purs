@@ -5,7 +5,6 @@ import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
 import Util
-
 import Data.Array as Array
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..))
