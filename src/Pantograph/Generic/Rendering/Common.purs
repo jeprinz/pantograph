@@ -4,7 +4,6 @@ import Data.Either.Nested
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Prelude
-
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, evalStateT)
 import Data.Array as Array
@@ -38,7 +37,7 @@ mapRenderM :: forall ctx env r n d s a b. (a -> b) -> (RenderM ctx env r n d s a
 mapRenderM f = map f
 
 type RenderCtx ctx r n d s =
-  { nepth :: Int
+  { depth :: Int
   , bufferId :: HK.StateId (Buffer r n d s)
   , outputToken :: HK.OutputToken (BufferOutput r n d s)
   | ctx }
@@ -92,14 +91,16 @@ data EditorSlotId r n
 -- Buffer
 
 type BufferSlot r n d s = H.Slot (BufferQuery r n d s) (BufferOutput r n d s) (BufferSlotId r n d s)
+data BufferInput r n d s = BufferInput {expr :: Expr r n d s}
 data BufferQuery r n d s a
+  = SetBuffer (Buffer r n d s) a
 data BufferOutput r n d s
 data BufferSlotId r n d s
 
 data Buffer r n d s
   = TopBuffer (Expr r n d s)
-  | SelectBuffer
-  | CursorBuffer
+  | CursorBuffer (Expr r n (CursorData d) s)
+  | SelectBuffer (Expr r n (SelectData d) s)
 
 -- Toolbox
 

@@ -4,12 +4,15 @@ import Prelude
 
 import Data.List (List)
 import Data.Map as Map
+import Data.Maybe (Maybe)
 import Data.Set as Set
+import Record as R
+import Type.Proxy (Proxy(..))
 
 -- Sort
 
 data Sort n d = Sort {node :: SortNode n d, kids :: Array (Sort n d)}
-data SortNode n d = SortNode {node :: n, data :: {|d}}
+data SortNode n d = SortNode {node :: n, dat :: {|d}}
 data SortTooth n d = SortTooth (SortNode n d) Int (Array (Sort n d))
 
 -- RuleSort
@@ -30,25 +33,24 @@ data Change n d
 -- Expr
 
 data Expr r n d s = Expr {node :: ExprNode r n d s, kids :: Array (Expr r n d s)}
-data ExprNode r n d s = ExprNode {rule :: r, node :: n, sigma :: RuleVarSubst s, data :: {|d}}
+data ExprNode r n d s = ExprNode {rule :: r, node :: n, sigma :: RuleVarSubst s, dat :: {|d}}
 data ExprTooth r n d s = ExprTooth (ExprNode r n d s) Int (Array (Expr r n d s))
 type ExprPath r n d s = List (ExprTooth r n d s)
 
+mapExprNode_data :: forall r n d d' s. (Record d -> Record d') -> ExprNode r n d s -> ExprNode r n d' s
+mapExprNode_data f (ExprNode node) = ExprNode node {dat = f node.dat}
+
 -- CursorData, SelectData
 
-type CursorNode n = (cursor :: CursorData | n)
-data CursorData
-  = OutsideCursorNode
-  | AtCursorNode
-  | InsideCursorNode
+type CursorData n = (cursor :: Maybe CursorStatus | n)
+data CursorStatus = CursorStatus
 
-type SelectNode n = (select :: SelectData | n)
-data SelectData
-  = OutsideSelectNode
-  | AtOuterSelectNode
-  | InSelectNode
-  | AtInnerSelectNode
-  | InsideSelectNode
+unCursorData = R.delete (Proxy :: Proxy "cursor")
+
+type SelectData n = (select :: Maybe SelectStatus | n)
+data SelectStatus = OuterSelectStatus | InnerSelectStatus
+
+unSelectData = R.delete (Proxy :: Proxy "select")
 
 -- Language
 
