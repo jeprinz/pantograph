@@ -624,28 +624,26 @@ wrapLambda = Smallstep.makeDownRule
                 ])
 
 -- down{Lam x : A. t}_(Term G (- A -> B)) ~~> down{t}_(Term (-x : A, G) B)
---unWrapLambda :: StepRule
---unWrapLambda = Smallstep.makeDownRule
---    (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
---    (Lam %# [{-name-}slot, {-ty-} slot,{-t-}slot])
---    (\[a] [gamma, b] [name, _ty, t] ->
---        pure $
---            Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.minusChange (sor CtxConsSort) [?name, a] gamma [] , b]) $
---                t
---                )
-
-unWrapLambda2 :: StepRule
-unWrapLambda2 (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
+unWrapLambda :: StepRule
+unWrapLambda (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
         Expr.Expr (Inject (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
     ])
-    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
-    =
-    let varName = Util.lookup' (Expr.RuleMetaVar "x") sigma in
-    pure $
-        Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
-            body
+    = do
+        let varName = Util.lookup' (Expr.RuleMetaVar "x") sigma
+        restOfCh <- case unit of
+                    _ | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+                        -> pure (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [] , b])
+                    -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
+                    _ | Just ([a, b, x] /\ [gamma]) <- Expr.matchChange ch
+                            (TermSort %+- [{-gamma-}cSlot, Expr.replaceChange ((Expr.InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
+                      , (Expr.Meta (Left _) % _) <- x
+                        -> pure (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [], Expr.replaceChange b x])
+                    _ -> Nothing
+        pure $
+            Smallstep.wrapBoundary Smallstep.Down restOfCh $
+                body
 
-unWrapLambda2 _ = Nothing
+unWrapLambda _ = Nothing
 --    = case term of
 --      (Expr.Expr (Boundary Down inputCh) [inputDeriv]) -> do
 
@@ -673,14 +671,23 @@ makeAppGreyed ((Inject (Grammar.DerivLabel App sigma)) % [
         (Smallstep.Boundary Smallstep.Up ch) % [inside]
         , arg
     ])
-    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
-    = pure $
-        let sigma' = Map.insert (Expr.RuleMetaVar "anything") (Smallstep.ssTermSort inside) sigma in -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
-            Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
-                (Smallstep.Inject (Grammar.DerivLabel GreyedApp sigma')) % [
-                    inside
-                    , arg
-                ]
+    = do
+        restOfCh <- case unit of
+                    _ | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+                        -> pure (csor NeutralSort % [gamma, b])
+                    -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
+                    _ | Just ([a, b, x] /\ [gamma]) <- Expr.matchChange ch
+                            (NeutralSort %+- [{-gamma-}cSlot, Expr.replaceChange ((Expr.InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
+                      , (Expr.Meta (Left _) % _) <- x
+                        -> pure (csor NeutralSort % [gamma, Expr.replaceChange b x])
+                    _ -> Nothing
+        let sigma' = Map.insert (Expr.RuleMetaVar "anything") (Smallstep.ssTermSort inside) sigma -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
+        pure $ Smallstep.wrapBoundary Smallstep.Up restOfCh $
+            (Smallstep.Inject (Grammar.DerivLabel GreyedApp sigma')) % [
+                inside
+                , arg
+            ]
+
 makeAppGreyed _ = Nothing
 
 rehydrateApp :: StepRule
@@ -835,7 +842,7 @@ stepRules = do
     , removeSucRule
     , typeBecomeRhsOfChange
     , wrapLambda
-    , unWrapLambda2
+    , unWrapLambda
     , rehydrateApp
     , wrapApp
 --    , unWrapApp
