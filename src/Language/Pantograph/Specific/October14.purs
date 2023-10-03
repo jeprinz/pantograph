@@ -445,20 +445,30 @@ dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
 --------------------------------------------------------------------------------
 -- Edit
 --------------------------------------------------------------------------------
+wrapInSuc :: {-name-}Sort -> {-ty-}Sort -> DerivTerm -> DerivTerm
+wrapInSuc name ty t =
+         Expr.matchExpr (Grammar.derivTermSort t) (sor VarSort %$ [slot, slot, slot, slot]) \[gamma, x, tyX, locality] ->
+         Grammar.makeLabel Suc [ "gamma" /\ gamma , "x" /\ x, "typeX" /\ tyX, "y" /\ name, "typeY" /\ ty, "locality" /\ locality]
+         % [t]
+
+-- gets a free variable in a context
+getFreeVar :: {-The context-}Sort -> {-The name-} Sort -> {-The type-} Sort -> DerivTerm
+getFreeVar ctx fvName fvType = Expr.matchExpr2 ctx
+    (sor CtxConsSort %$ [slot, slot, slot]) (\[name, ty, ctx'] ->
+        wrapInSuc name ty (getFreeVar ctx' fvName fvType)
+    )
+    (sor CtxNilSort %$ []) (\[] ->
+        Grammar.makeLabel FreeVar ["name" /\ fvName, "type" /\ fvType] % []
+    )
 
 -- returns a list of all indices in the context
 getIndices :: Sort -> List DerivTerm
 getIndices ctx = Expr.matchExpr2 ctx
     (sor CtxConsSort %$ [slot, slot, slot]) (\[name, ty, ctx'] ->
-        let wrapInSuc var =
-             Expr.matchExpr (Grammar.derivTermSort var) (sor VarSort %$ [slot, slot, slot, slot]) \[gamma, x, tyX, locality] ->
-             Grammar.makeLabel Suc [ "gamma" /\ gamma , "x" /\ x, "typeX" /\ tyX, "y" /\ name, "typeY" /\ ty, "locality" /\ locality]
-             % [var]
-        in
         -- new var
         (Grammar.makeLabel Zero ["gamma" /\ ctx', "x" /\ name, "type" /\ ty] % [])
         -- wrap vars from ctx' in a Suc
-        : map wrapInSuc (getIndices ctx')
+        : map (wrapInSuc name ty) (getIndices ctx')
     )
     (sor CtxNilSort %$ []) (\[] ->
         Nil
@@ -575,8 +585,9 @@ localBecomesNonlocal = Smallstep.makeDownRule
     (\[a, ty] [ctx, a', ty'] [] ->
         if not (ChangeAlgebra.inject a == a' && ChangeAlgebra.inject ty == ty') then Maybe.Nothing else
         pure $ Smallstep.wrapBoundary Smallstep.Up (csor VarSort % [ChangeAlgebra.inject (rEndpoint ctx), a', ty', Expr.Replace (sor Local % []) (sor NonLocal % []) % []])
-            (Smallstep.wrapBoundary Smallstep.Down (csor VarSort % [ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx), ChangeAlgebra.inject a, ChangeAlgebra.inject ty, csor NonLocal % []])
-                (dTERM FreeVar ["name" /\ a, "type" /\ ty] [])))
+            (Smallstep.termToSSTerm (getFreeVar (rEndpoint ctx) a ty)))
+--            (Smallstep.wrapBoundary Smallstep.Down (csor VarSort % [ChangeAlgebra.diff (CtxNilSort %|-* []) (rEndpoint ctx), ChangeAlgebra.inject a, ChangeAlgebra.inject ty, csor NonLocal % []])
+--                (dTERM FreeVar ["name" /\ a, "type" /\ ty] [])))
 
 -- down{Suc i}_(VarSort (- y : TypeY, ctx) x typeX locality) -> down{i}_(VarSort ctx x typeX locality)
 removeSucRule :: StepRule
