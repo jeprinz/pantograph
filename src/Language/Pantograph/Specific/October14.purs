@@ -51,6 +51,7 @@ import Type.Direction (Up)
 import Util (fromJust)
 import Util as Util
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
+import Language.Pantograph.Lib.GreyedRules as GreyedRules
 
 {-
 This file is the start of the specific langauge that we will try to have working for the user study.
@@ -174,6 +175,7 @@ data RuleLabel
   | Lam
   | Let
   | App
+  | GreyedApp
   | FunctionCall
   | Ref
   | FreeVar
@@ -225,6 +227,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
   prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
+  prettyExprF'_unsafe_RuleLabel (GreyedApp /\ [f, a]) = P.parens $ f <+> "<" <+> a <+> ">"
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ []) = "?"
   prettyExprF'_unsafe_RuleLabel (TypeHole /\ []) = "?<type>"
@@ -251,6 +254,13 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
+appRule :: Rule
+appRule = Grammar.makeRule ["gamma", "a", "b"] \[gamma, a, b] ->
+    [ NeutralSort %|-* [gamma, Arrow %|-* [a, b]]
+    , TermSort %|-* [gamma, a] ]
+    /\ --------
+    ( NeutralSort %|-* [gamma, b] )
+
 language :: Language
 language = TotalMap.makeTotalMap case _ of
 
@@ -276,11 +286,9 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TermSort %|-* [gamma, Arrow %|-* [a, b]])
 
-  App -> Grammar.makeRule ["gamma", "a", "b"] \[gamma, a, b] ->
-    [ NeutralSort %|-* [gamma, Arrow %|-* [a, b]]
-    , TermSort %|-* [gamma, a] ]
-    /\ --------
-    ( NeutralSort %|-* [gamma, b] )
+  App -> appRule
+
+  GreyedApp -> GreyedRules.createGreyedConstruct appRule 0
 
   FreeVar -> Grammar.makeRule ["name", "type"] \[name, ty] ->
     []
@@ -380,6 +388,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   App /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
+  GreyedApp /\ _ ->
+    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
   FunctionCall /\ _ ->
     [Left (renCtx /\ 0)]
   -- types
@@ -657,6 +668,37 @@ unWrapApp = Smallstep.makeUpRule
         Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
             inside))
 
+makeAppGreyed :: StepRule
+makeAppGreyed ((Inject (Grammar.DerivLabel App sigma)) % [
+        (Smallstep.Boundary Smallstep.Up ch) % [inside]
+        , arg
+    ])
+    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    = pure $
+        let sigma' = Map.insert (Expr.RuleMetaVar "anything") (Smallstep.ssTermSort inside) sigma in -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
+            Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
+                (Smallstep.Inject (Grammar.DerivLabel GreyedApp sigma')) % [
+                    inside
+                    , arg
+                ]
+makeAppGreyed _ = Nothing
+
+rehydrateApp :: StepRule
+rehydrateApp ((Inject (Grammar.DerivLabel GreyedApp sigma)) % [
+        (Smallstep.Boundary Smallstep.Up ch) % [inside]
+        , arg
+    ])
+    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    =
+        if not (a == (Util.lookup' (Expr.RuleMetaVar "a") sigma)) then Nothing else pure $
+        let sigma' = Map.delete (Expr.RuleMetaVar "anything") sigma in -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
+            Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
+                (Smallstep.Inject (Grammar.DerivLabel App sigma')) % [
+                    inside
+                    , arg
+                ]
+rehydrateApp _ = Nothing
+
 -- Two kinds of boundaries that I am thinking of. The first is ErrorCall which replaces FunctionCall:
 replaceCallWithError :: StepRule
 replaceCallWithError = Smallstep.makeUpRule
@@ -794,8 +836,10 @@ stepRules = do
     , typeBecomeRhsOfChange
     , wrapLambda
     , unWrapLambda2
+    , rehydrateApp
     , wrapApp
-    , unWrapApp
+--    , unWrapApp
+    , makeAppGreyed
     , wrapCallInErrorUp
     , wrapCallInErrorDown
     , removeError

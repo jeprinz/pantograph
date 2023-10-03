@@ -45,7 +45,7 @@ createGreyedDownRules index regularRuleLabel greyRuleLabel languageChanges =
 createGreyedConstruct :: forall l r.
     Grammar.Rule l -> Int -> Grammar.Rule l
 createGreyedConstruct (Grammar.Rule vars children conclusion) index =
-    let x = Expr.freshMetaVar "anything" in
+    let x = Expr.RuleMetaVar "anything" in
     let xSort = Expr.fromMetaVar x in
     Grammar.Rule
         (Set.insert x vars) -- technically, this maybe should remove any vars that are now unused...

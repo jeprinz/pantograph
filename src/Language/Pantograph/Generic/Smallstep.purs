@@ -63,6 +63,13 @@ data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | {-Marks e.g. where th
     | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
+ssTermSort :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.Sort l
+ssTermSort (Inject dl % _) = Grammar.derivLabelSort dl
+ssTermSort (Boundary Up ch % _) = lEndpoint ch
+ssTermSort (Boundary Down ch % _) = rEndpoint ch
+ssTermSort (Marker 1 % [kid]) = ssTermSort kid
+ssTermSort t@(Marker _ % _) = Bug.bug ("Couldn't find sort of SSTerm " <> show t)
+
 --makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> Array (String /\ Sort l) -> DerivLabel l r
 dTERM :: forall l r. IsRuleLabel l r => r -> Array (String /\ Grammar.Sort l) -> Array (SSTerm l r) -> SSTerm l r
 dTERM ruleLabel values kids = (Inject (Grammar.makeLabel ruleLabel values)) % kids
@@ -329,7 +336,7 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let sort = Grammar.getSortFromSub ruleLabel sub in
  if not ((fst (endpoints ch)) == sort)
-    then Bug.bug ("assertion failed: ch boundary didn't match sort in defaultDown. sort was: " <> pretty sort <> " and ch was " <> pretty ch) else
+    then Bug.bug ("assertion failed: ch boundary didn't match sort in defaultDown. sort was: " <> pretty sort <> " and ch was " <> pretty ch <> " also sub is " <> pretty sub) else
  do
      chSub /\ chBackUp <- doOperation ch parentGSort
      let subFull = map (map Expr.Inject) sub

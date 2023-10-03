@@ -18,7 +18,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Lazy (defer)
 import Data.List (List(..), (:))
 import Data.List as List
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
@@ -30,7 +30,7 @@ import Effect.Exception.Unsafe (unsafeThrow)
 import Halogen.HTML as HH
 import Halogen.Utilities (classNames)
 import Hole (hole)
-import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint)
+import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint, lEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule, newTermFromRule)
 import Language.Pantograph.Generic.Edit as Edit
@@ -48,6 +48,7 @@ import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
 import Util (fromJust)
+import Util as Util
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 
 --------------------------------------------------------------------------------
@@ -351,7 +352,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
   Let /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
-    [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem], Left (renCtx' /\ 3)]
+    [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
+        , pure (if renCtx.isInlined then [] else [Rendering.newlineElem])
+        , Left (renCtx' /\ 3)]
   App /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
@@ -373,9 +376,11 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     , pure [Rendering.commentEndElem]
     , Left (renCtx /\ 1)]
   -- hole 
-  TermHole /\ _ -> bug $
-    "[STLC.Grammar.arrangeDerivTermSubs] `TermHole` should be handled generically instead of here"
-  _ -> bug $ 
+  TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
+    ->  -- TODO TODO TODO: it shouldn't just display the type as text using pretty. Ideally it should produce HTML.
+        [Left (renCtx /\ 0), pure [colonElem, HH.text (pretty ty)]]
+  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
+  _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
     "  - sort = " <> show sort
@@ -391,9 +396,9 @@ equalsElem = Rendering.makePuncElem "equals" "="
 inElem = Rendering.makePuncElem "inLet" "in"
 letElem = Rendering.makePuncElem "let" "let"
 arrowElem = Rendering.makePuncElem "arrow" "→"
-
 nameElem str = HH.span [classNames ["name"]] [HH.text str]
 dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
+typeElem = Rendering.makePuncElem "Type" "Type"
 
 --------------------------------------------------------------------------------
 -- Edit
@@ -462,15 +467,17 @@ makeEditFromPath = DefaultEdits.makeEditFromPath languageChanges splitChange
 
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity [
-        makeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
-        , makeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
-        , makeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+        DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
+        , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
+        , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
     ]
 
 editsAtCursor cursorSort = Array.mapMaybe identity
     [
     makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
+    , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
+    , makeEditFromPath (newPathFromRule App 0) "app" cursorSort
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
@@ -562,6 +569,52 @@ typeBecomeRhsOfChange = Smallstep.makeDownRule
     (TypeSort %+- [{-c-}cSlot])
     {-t-}slot
     (\[] [c] [_t] -> pure (Smallstep.termToSSTerm (sortToType (rEndpoint c))))
+-- down{t}_(Term G (+ A -> B)) ~~> Lam ~ : A. down{t}_(Term (+ ~:A, G) B)
+wrapLambda :: StepRule
+wrapLambda = Smallstep.makeDownRule
+    (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    {-t-}slot
+    (\[a] [gamma, b] [t] ->
+        let varName = (Expr.Meta (Right (Grammar.StringSortLabel "")) % []) in
+        pure $
+            dTERM Lam ["x" /\ varName, "a" /\ a, "b" /\ rEndpoint b, "gamma" /\ rEndpoint gamma] [
+                    Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
+                    , dTERM TermHole ["gamma" /\ rEndpoint gamma, "type" /\ a] []
+                    , Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.plusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
+                        t
+                ])
+
+unWrapLambda :: StepRule
+unWrapLambda (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
+        Expr.Expr (Inject (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
+    ])
+    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    =
+    let varName = Util.lookup' (Expr.RuleMetaVar "x") sigma in
+    pure $
+        Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
+            body
+
+unWrapLambda _ = Nothing
+
+-- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
+wrapApp :: StepRule
+wrapApp = Smallstep.makeUpRule
+    (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    {-t-}slot
+    (\[t] -> t /\ (\[a] [gamma, b] inside -> pure $
+        Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+            dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
+                [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
+
+-- App up{t1}_(Term G (- A -> B)) t2 ~~> up{t1}_(Term G B)
+unWrapApp :: StepRule
+unWrapApp = Smallstep.makeUpRule
+    (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    (App %# [{-t1-}slot, {-t2-}slot])
+    (\[t1, _t2] -> t1 /\ (\[_a] [gamma, b] inside -> pure $
+        Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+            inside))
 
 stepRules :: List StepRule
 stepRules = do
@@ -572,11 +625,13 @@ stepRules = do
     , nonlocalBecomesLocal
     , insertSucRule
     , removeSucRule
---    , arrowWrap
---    , arrowUnWrap
     , typeBecomeRhsOfChange
+    , wrapLambda
+    , unWrapLambda
+    , unWrapApp
     , Smallstep.defaultDown chLang
     , Smallstep.defaultUp chLang
+    , wrapApp
     ]
 
 splitChange ::
@@ -589,8 +644,9 @@ splitChange c | Maybe.Just ([] /\ [ctx, ty]) <- Expr.matchChange c (TermSort %+-
         {upChange: csor TermSort % [ChangeAlgebra.inject ctx2, ty]
         , cursorSort: sor TermSort % [ctx2, ty1]
         , downChange: csor TermSort % [ctx, ChangeAlgebra.inject ty1]}
--- TODO: implement Type case
--- TODO TODO TODO: Also implement the case where the change is just a metavariable identity!
+splitChange c | Maybe.Just ([] /\ [_ty]) <- Expr.matchChange c (TypeSort %+- [cSlot])
+    = {upChange: c, cursorSort: lEndpoint c, downChange: ChangeAlgebra.inject (lEndpoint c)}
+-- TODO TODO TODO: Also implement the case where the change is just a metavariable identity! Later: I don't remember why I wrote this, maybe I'll find out later.
 splitChange c = bug ("splitChange - got c = " <> pretty c)
 
 onDelete :: Sort -> SortChange
