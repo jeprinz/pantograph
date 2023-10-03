@@ -11,7 +11,10 @@ import Data.Maybe (Maybe, maybe)
 import Data.String (Pattern(..))
 import Data.String as String
 import Data.Tuple (Tuple(..))
-import Data.Either (Either(..))
+
+--------------------------------------------------------------------------------
+-- Pretty
+--------------------------------------------------------------------------------
 
 class Pretty a where pretty :: a -> String
 
@@ -28,31 +31,6 @@ instance (Pretty k, Pretty v) => Pretty (Map.Map k v) where
     indent (bullets (Map.toUnfoldable m <#> \(Tuple k v) -> pretty k <> " ↦ " <> pretty v))
 instance (Pretty t) => Pretty (Set.Set t) where
   pretty s = "{" <> List.intercalate ", " (Set.map pretty s) <> "}"
-instance (Pretty a, Pretty b) => Pretty (Either a b) where
-    pretty (Left a) = "Left " <> pretty a
-    pretty (Right a) = "Right " <> pretty a
-
-{-
--- | Pretty `a` that takes an argument of type `b`.
-class Pretty' a b | a -> b where
-  pretty' :: b -> a -> String
-
-instance Pretty a => Pretty' (List.List a) String where pretty' sep xs = "[" <> List.intercalate sep (pretty <$> xs) <> "]"
-instance Pretty a => Pretty' (Rev.RevList a) String where pretty' sep xs = "[" <> List.intercalate sep (pretty <$> Rev.unreverse xs) <> "]"
-instance Pretty a => Pretty' (Array a) String where pretty' sep xs = "[" <> intercalate sep (pretty <$> xs) <> "]"
-instance Pretty a => Pretty' (Maybe a) String where pretty' nothing = maybe nothing pretty
--}
-
-{-
-class PrettyContainer t where prettyContainer :: forall a. Pretty a => t a -> String
-
-instance PrettyContainer List.List where prettyContainer xs = "[" <> List.foldMap pretty xs <> "]"
-instance PrettyContainer Array where prettyContainer xs = "[" <> foldMap pretty xs <> "]"
-instance PrettyContainer Maybe where prettyContainer xs = maybe "NOTHING" pretty xs
-
-instance (PrettyContainer t1, Functor t1, PrettyContainer t2) => PrettyContainer (Compose t1 t2) where prettyContainer (Compose t12) = prettyContainer (prettyContainer <$> t12)
-instance (PrettyContainer t, Functor t, Pretty a) => Pretty (t a) where pretty ta = prettyContainer (pretty <$> ta)
--}
 
 appendSpaced :: String -> String -> String
 appendSpaced str1 str2 | String.null str1 = str2
@@ -82,3 +60,27 @@ newlines = intercalate "\n"
 -- bullets = intercalate "\n  - "
 bullets :: Array String -> String
 bullets = indent <<< foldMap ("\n- " <> _) <<< map (intercalate "\n  " <<< String.split (Pattern "\n"))
+
+--------------------------------------------------------------------------------
+-- Pretty1
+--------------------------------------------------------------------------------
+
+class Pretty1 t where
+  pretty1 :: forall a. Pretty a => t a -> String
+
+instance Pretty1 List.List where pretty1 = pretty
+instance Pretty1 Array where pretty1 = pretty
+instance Pretty1 Maybe where pretty1 = pretty
+instance Pretty a => Pretty1 (Tuple a) where pretty1 = pretty
+instance Pretty k => Pretty1 (Map.Map k) where pretty1 = pretty
+instance Pretty1 Set.Set where pretty1 = pretty
+
+--------------------------------------------------------------------------------
+-- PrettyS
+--------------------------------------------------------------------------------
+
+class PrettyS a where
+  prettyS :: a -> String -> String
+
+class PrettyS1 (t :: Type -> Type) where
+  prettyS1 :: forall a. Pretty a => t a -> String -> String

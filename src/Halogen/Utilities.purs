@@ -1,10 +1,13 @@
 module Halogen.Utilities where
 
 import Prelude
+
 import Bug as Bug
 import Data.Maybe (Maybe(..))
+import Data.UUID as UUID
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
+import Effect.Unsafe (unsafePerformEffect)
 import Halogen as H
 import Halogen as HH
 import Halogen.HTML.Properties as HP
@@ -18,6 +21,12 @@ import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.Window as Window
 
 newtype ElementId = ElementId String
+
+id :: forall r i. ElementId -> HP.IProp (id :: String | r) i
+id (ElementId str) = HP.id str
+
+freshElementId :: Unit -> ElementId
+freshElementId _ = ElementId $ UUID.toString $ unsafePerformEffect UUID.genUUID
 
 setClassName ∷ ∀ (m ∷ Type -> Type). MonadEffect m ⇒ Element.Element → String → Boolean → m Unit
 setClassName elem className classValue = do
