@@ -26,7 +26,9 @@ renderExpr (Renderer ren) (Expr {node: ExprNode node, kids}) = do
   let renderKids = Array.mapWithIndex Tuple kids <#> \(i /\ expr) -> do
         renExpr /\ html <- renderExpr (Renderer ren) expr
         pure {i, expr, renExpr, html}
-  let arrangeKids = renderKids <##> \{i, expr: expr'@(Expr {node: node'}), renExpr, html} -> node' /\ {i, expr: expr', renExpr, html}
+  let arrangeKids = renderKids <##> 
+        \{i, expr: expr'@(Expr {node: node'}), renExpr, html} -> 
+          node' /\ {i, expr: expr', renExpr, html}
   nodes <- ren.arrangeExpr (ExprNode node) arrangeKids
 
   let htmls = nodes # Array.foldMap case _ of
@@ -46,4 +48,3 @@ renderExpr (Renderer ren) (Expr {node: ExprNode node, kids}) = do
         , kids: renKids }
 
   pure $ renExpr /\ html
-
