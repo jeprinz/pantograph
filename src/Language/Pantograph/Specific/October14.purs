@@ -687,8 +687,15 @@ makeAppGreyed ((Inject (Grammar.DerivLabel App sigma)) % [
                 inside
                 , arg
             ]
-
 makeAppGreyed _ = Nothing
+
+removeGreyedHoleArg :: StepRule
+removeGreyedHoleArg ((Inject (Grammar.DerivLabel GreyedApp _)) % [
+        inside
+        , (Inject (Grammar.DerivLabel TermHole _) % _)
+    ])
+    = pure inside
+removeGreyedHoleArg _ = Nothing
 
 rehydrateApp :: StepRule
 rehydrateApp ((Inject (Grammar.DerivLabel GreyedApp sigma)) % [
@@ -855,6 +862,7 @@ stepRules = do
     , Smallstep.unless isUpInCall (Smallstep.defaultUp chLang)
 --    , replaceCallWithError
 --    , replaceErrorWithCall
+    , removeGreyedHoleArg
     ]
 
 onDelete :: Sort -> SortChange
