@@ -16,6 +16,15 @@ import Data.UUID (UUID)
 import Data.UUID as UUID
 import Hole as Hole
 
+mapMap f a = map (map f) a
+infixl 1 mapMap as <$$>
+
+mapMapFlipped a f = mapMap f a
+infixl 1 mapMapFlipped as <##>
+
+-- mapMapFlipped fa f = f <$> fa
+
+
 hole' :: forall a. String -> a
 -- hole' msg = unsafeThrow $ "hole: " <> msg
 hole' msg = Hole.hole msg

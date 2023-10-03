@@ -34,6 +34,9 @@ type RenderM ctx env r n d s =
 runRenderM :: forall ctx env r n d s a. RenderCtx ctx r n d s -> RenderEnv env r n d s -> RenderM ctx env r n d s a -> a
 runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
 
+mapRenderM :: forall ctx env r n d s a b. (a -> b) -> (RenderM ctx env r n d s a -> RenderM ctx env r n d s b)
+mapRenderM f = map f
+
 type RenderCtx ctx r n d s =
   { nepth :: Int
   , bufferId :: HK.StateId (Buffer r n d s)
@@ -49,8 +52,8 @@ type RenderEnv env r n d s =
 newtype Renderer r n d s = Renderer
   { arrangeExpr :: forall ctx env a.
       ExprNode r n d s ->
-      Array (RenderM ctx env r n d s (a /\ ExprNode r n d s)) ->
-      RenderM ctx env r n d s (Array (a \/ Array (Html r n d s)))
+      Array (RenderM ctx env r n d s (ExprNode r n d s /\ a)) ->
+      RenderM ctx env r n d s (Array (Array (Html r n d s) \/ a))
   }
 
   -- TODO: not sure if `arrangeSort` is necessary

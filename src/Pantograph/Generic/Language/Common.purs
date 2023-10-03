@@ -8,8 +8,8 @@ import Data.Set as Set
 
 -- Sort
 
-data Sort n d = Sort (SortNode n d) (Array (Sort n d))
-data SortNode n d = SortNode n {|d}
+data Sort n d = Sort {node :: SortNode n d, kids :: Array (Sort n d)}
+data SortNode n d = SortNode {node :: n, data :: {|d}}
 data SortTooth n d = SortTooth (SortNode n d) Int (Array (Sort n d))
 
 -- RuleSort
@@ -29,8 +29,8 @@ data Change n d
 
 -- Expr
 
-data Expr r n d s = Expr (ExprNode r n d s) (Array (Expr r n d s))
-data ExprNode r n d s = ExprNode r n {|d} (RuleVarSubst s)
+data Expr r n d s = Expr {node :: ExprNode r n d s, kids :: Array (Expr r n d s)}
+data ExprNode r n d s = ExprNode {rule :: r, node :: n, sigma :: RuleVarSubst s, data :: {|d}}
 data ExprTooth r n d s = ExprTooth (ExprNode r n d s) Int (Array (Expr r n d s))
 type ExprPath r n d s = List (ExprTooth r n d s)
 

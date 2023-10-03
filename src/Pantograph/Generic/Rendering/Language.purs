@@ -4,36 +4,46 @@ import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
+import Util
 import Data.Array as Array
 import Data.Either (Either(..), either)
 import Data.Tuple (Tuple(..))
 import Halogen.HTML as HH
 import Halogen.Utilities as HU
+import Hole (hole)
+import Prim.Row (class Lacks)
+import Record as R
+import Type.Proxy (Proxy(..))
 
--- renderExpr :: forall ctx env r n n'. Rendering r n n' =>
---   Expr r n' (Sort n) ->
---   RenderM ctx env r n (Html r n /\ Expr r (RenderNode n') (Sort n))
--- renderExpr (Expr (ExprNode r n sigma) kids) = do
---   let elemId = HU.freshElementId unit
+renderExpr :: forall ctx env r n d s.
+  Lacks "elemId" d =>
+  Renderer r n d s ->
+  Expr r n d s ->
+  RenderM ctx env r n d s (Expr r n (RenderData d) s /\ Html r n d s)
+renderExpr (Renderer ren) (Expr {node: ExprNode node, kids}) = do
+  let elemId = HU.freshElementId unit
 
---   let renderKids = Array.mapWithIndex Tuple kids <#> \(i /\ e) -> do
---         html <- renderExpr e
---         pure $ ((i /\ html) /\ e)
---   nodes <- arrangeExpr (ExprNode r n sigma) renderKids
+  let renderKids = Array.mapWithIndex Tuple kids <#> \(i /\ expr) -> do
+        renExpr /\ html <- renderExpr (Renderer ren) expr
+        pure {i, expr, renExpr, html}
+  let arrangeKids = renderKids <##> \{i, expr: expr'@(Expr {node: node'}), renExpr, html} -> node' /\ {i, expr: expr', renExpr, html}
+  nodes <- ren.arrangeExpr (ExprNode node) arrangeKids
 
---   let htmls = nodes # Array.foldMap case _ of
---         Left (_ /\ html /\ _) -> [html]
---         Right htmls' -> htmls'
---   let html = HH.div 
---         [ HU.id elemId
---           -- TODO: other attrs
---         ]
---         htmls
+  let htmls = nodes # Array.foldMap case _ of
+        Left htmls' -> htmls'
+        Right {html} -> [html]
+  let html = HH.div 
+        [ HU.id elemId
+          -- TODO: other attrs
+        ]
+        htmls
 
---   let kids' = nodes # Array.foldMap case _ of
---         Left (_ /\ _ /\ kid') -> pure kid'
---         Right _ -> []
---   let rend = Expr (ExprNode r (RenderNode elemId n) sigma) kids'
+  let renKids = nodes # Array.foldMap case _ of
+        Left _ -> []
+        Right {renExpr} -> [renExpr]
+  let renExpr = Expr 
+        { node: ExprNode node {data = R.insert (Proxy :: Proxy "elemId") elemId node.data}
+        , kids: renKids }
 
---   pure $ html /\ rend
+  pure $ renExpr /\ html
 
