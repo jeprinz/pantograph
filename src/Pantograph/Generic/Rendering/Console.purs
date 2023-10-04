@@ -1,4 +1,4 @@
-module Pantograph.Generic.Rendering.Console where
+module Pantograph.Generic.Rendering.Terminal where
 
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
@@ -14,27 +14,27 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 
-consoleComponent = HK.component \{queryToken} (ConsoleInput input) -> HK.do
+TerminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
   -- state
-  items /\ itemsStateId <- HK.useState (mempty :: List ConsoleItem)
+  items /\ itemsStateId <- HK.useState (mempty :: List TerminalItem)
 
   -- query
   HK.useQuery queryToken case _ of
-    WriteConsole item a -> do
+    WriteTerminal item a -> do
       HK.modify_ itemsStateId (List.Cons item)
       pure (Just a)
 
   -- render
   HK.pure $ HH.fromPlainHTML $
     HH.div
-      [HP.classes [HH.ClassName "Console"]] $
-      (List.toUnfoldable items <#> \(ConsoleItem item) -> do
+      [HP.classes [HH.ClassName "Terminal"]] $
+      (List.toUnfoldable items <#> \(TerminalItem item) -> do
         HH.div
-          [HP.classes [HH.ClassName "ConsoleItem"]]
-          [ HH.div [HP.classes [HH.ClassName "ConsoleItemTag"]] [renderTag item.tag]
-          , HH.div [HP.classes [HH.ClassName "ConsoleItemContent"]] [item.html] ])
+          [HP.classes [HH.ClassName "TerminalItem"]]
+          [ HH.div [HP.classes [HH.ClassName "TerminalItemTag"]] [renderTag item.tag]
+          , HH.div [HP.classes [HH.ClassName "TerminalItemContent"]] [item.html] ])
 
-renderTag :: ConsoleItemTag -> HH.PlainHTML
+renderTag :: TerminalItemTag -> HH.PlainHTML
 renderTag = case _ of
-  DebugConsoleItemTag -> HH.div [HP.classes [HH.ClassName "DebugConsoleItemTag"]] [HH.text "[debug]"]
+  DebugTerminalItemTag -> HH.div [HP.classes [HH.ClassName "DebugTerminalItemTag"]] [HH.text "[debug]"]

@@ -1,5 +1,5 @@
 export const _log = tag => x => k => {
-  console.log(`--[ ${tag} ]---------------------------------------------------`)
-  console.log(x)
+  Terminal.log(`--[ ${tag} ]---------------------------------------------------`)
+  Terminal.log(x)
   return k({})
 }

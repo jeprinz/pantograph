@@ -82,7 +82,7 @@ type Slots r n d =
   , toolbox :: ToolboxSlot r n
   , preview :: PreviewSlot r n
   , clipboard :: ClipboardSlot r n
-  , console :: ConsoleSlot r n )
+  , Terminal :: TerminalSlot r n )
 
 -- Editor
 
@@ -107,7 +107,7 @@ newtype BufferInput ctx env r n d = BufferInput
 data BufferQuery r n d a
   = SetBuffer (Buffer r n d) a
 data BufferOutput r n d
-  = WriteConsoleFromBuffer ConsoleItem
+  = WriteTerminalFromBuffer TerminalItem
 data BufferSlotId
 
 data Buffer r n d
@@ -139,14 +139,14 @@ data ClipboardQuery r n a
 data ClipboardOutput r n
 data ClipboardSlotId r n
 
--- Console
+-- Terminal
 
-type ConsoleSlot r n = H.Slot ConsoleQuery ConsoleOutput ConsoleSlotId
-newtype ConsoleInput = ConsoleInput {}
-data ConsoleQuery a
-  = WriteConsole ConsoleItem a
-type ConsoleOutput = Void
-type ConsoleSlotId = Unit
+type TerminalSlot r n = H.Slot TerminalQuery TerminalOutput TerminalSlotId
+newtype TerminalInput = TerminalInput {}
+data TerminalQuery a
+  = WriteTerminal TerminalItem a
+type TerminalOutput = Void
+type TerminalSlotId = Unit
 
-data ConsoleItemTag = DebugConsoleItemTag
-newtype ConsoleItem = ConsoleItem {tag :: ConsoleItemTag, html :: HH.PlainHTML}
+data TerminalItemTag = DebugTerminalItemTag
+newtype TerminalItem = TerminalItem {tag :: TerminalItemTag, html :: HH.PlainHTML}

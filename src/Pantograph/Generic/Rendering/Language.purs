@@ -1,20 +1,28 @@
 module Pantograph.Generic.Rendering.Language where
 
-import Data.Tuple.Nested ((/\))
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
 import Util
+
+import Control.Monad.Reader (ask)
+import Control.Monad.State (get)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
+import Data.Tuple.Nested ((/\))
+import Effect.Class (liftEffect)
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Prim.Row (class Lacks)
 import Record as R
 import Type.Proxy (Proxy(..))
+import Web.Event.Event as Event
+import Web.UIEvent.MouseEvent as MouseEvent
 
 renderExpr :: forall ctx env r n d.
   Lacks "elemId" d =>
@@ -22,6 +30,9 @@ renderExpr :: forall ctx env r n d.
   Expr r n d (Sort n d) ->
   RenderM ctx env r n d {renderedExpr :: Expr r n (RenderData d) (Sort n d), html :: Html r n d}
 renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
+  ctx <- ask
+  env <- get
+
   let elemId = HU.freshElementId unit
 
   let renderKids = Array.mapWithIndex Tuple kids <#> \(i /\ expr) -> do
@@ -38,8 +49,9 @@ renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
   let html = HH.div 
         [ HU.id elemId
         , HP.classes (HH.ClassName <$> ["Expr"])
-          -- TODO: onClick ==> raise SetCursor here
-          -- TODO: onClick ==> raise SetSelect here
+        , HE.onMouseDown \mouseEvent -> do
+            liftEffect $ Event.stopPropagation (MouseEvent.toEvent mouseEvent)
+            HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "onMouseDown"}
         ]
         htmls
 
