@@ -55,6 +55,7 @@ cursor    = surround "⌶{" "}"
 angles   = surround "<" ">"
 ticks    = surround "`" "`"
 
+spaces = intercalate " "
 commas = intercalate ", "
 newlines = intercalate "\n"
 -- bullets = intercalate "\n  - "

@@ -10,6 +10,7 @@ import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Hole (hole)
 import Record as R
+import Text.Pretty (class Pretty, parens, pretty, spaces)
 import Type.Proxy (Proxy(..))
 
 -- Sort
@@ -17,6 +18,9 @@ import Type.Proxy (Proxy(..))
 data Sort n d = Sort {node :: SortNode n d, kids :: Array (Sort n d)}
 data SortNode n d = SortNode {n :: n, d :: Record d}
 data SortTooth n d = SortTooth (SortNode n d) Int (Array (Sort n d))
+
+instance Pretty n => Pretty (Sort n d) where
+  pretty (Sort {node: SortNode {n}, kids}) = parens $ spaces $ [pretty n] <> (pretty <$> kids)
 
 makeSort n d kids = Sort {node: SortNode {n, d}, kids}
 

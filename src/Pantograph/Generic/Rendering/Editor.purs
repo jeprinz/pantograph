@@ -8,6 +8,7 @@ import Util
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Pantograph.Generic.Rendering.Buffer (bufferComponent)
 import Pantograph.Generic.Rendering.Console (consoleComponent)
@@ -34,7 +35,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   HK.pure $
     HH.div
-      []
+      [ HP.classes [HH.ClassName "Editor"] ]
       [ bufferHtml
       , consoleHtml
       ]

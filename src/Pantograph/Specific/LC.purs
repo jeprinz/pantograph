@@ -12,10 +12,12 @@ import Data.Either (Either(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
+import Debug as Debug
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Hole (hole)
 import Record as R
+import Text.Pretty (class Pretty, pretty, quotes)
 import Type.Proxy (Proxy(..))
 
 data R = StringRule | VarRule | LamRule | AppRule | HoleRule
@@ -32,6 +34,16 @@ data N
   | StringValueSort String
   | StringSort
   | TermSort
+
+instance Pretty N where
+  pretty String = "String"
+  pretty Var = "#"
+  pretty Lam = "λ"
+  pretty App = "$"
+  pretty Hole = "?"
+  pretty (StringValueSort str) = quotes str
+  pretty StringSort = "StringSort"
+  pretty TermSort = "TermSort"
 
 type D :: Row Type
 type D = ()
@@ -105,11 +117,15 @@ defaultExpr = case _ of
   Sort {node: SortNode {n: StringSort, d: {}}, kids: [s]} ->
     Just $ makeExpr StringRule String (RuleVarSubst $ Map.fromFoldable [MakeRuleVar "s" /\ s]) {} []
   Sort {node: SortNode {n: TermSort, d: {}}, kids: []} ->
-    Just $ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
-  _ -> Nothing
+    -- Just $ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
+    Just $ 
+      makeExpr AppRule App (RuleVarSubst Map.empty) {}
+        [ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
+        , makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} [] ]
+  sort -> Nothing
 
 topSort :: Sort N D
-topSort = makeSort Hole {} []
+topSort = makeSort TermSort {} []
 
 -- Renderer
 
@@ -139,7 +155,7 @@ arrangeExpr (ExprNode {r: AppRule, n: App}) [mf, ma] = do
 arrangeExpr (ExprNode {r: HoleRule, n: Hole}) [] = do
   holeIndex <- State.gets _.holeCount
   State.modify_ (R.modify (Proxy :: Proxy "holeCount") (1 + _))
-  pure [Left [punctuation $ "?" <> show holeIndex]]
+  pure [Left [punctuation "?"], Left [HH.text $ show holeIndex]]
 arrangeExpr _node _kids = bug $ "invalid ExprNode"
 
 punctuation str = HH.span [HP.classes [HH.ClassName "punctuation"]] [HH.text str]
