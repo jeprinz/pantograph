@@ -7,6 +7,7 @@ import Prelude
 
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
+import Effect.Class.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -17,8 +18,8 @@ import Record as R
 import Type.Proxy (Proxy(..))
 
 bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) -> HK.do
-  let Editor editor = input.editor
-  let Renderer renderer = editor.renderer
+  let Engine engine = input.engine
+  let Renderer renderer = engine.renderer
   -- state
   buffer /\ bufferStateId <- HK.useState $ TopBuffer input.expr
   ctx /\ ctxStateId <- HK.useState 
@@ -39,8 +40,18 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
   HK.pure $ do
     let bufferHtml = runRenderM ctx env $ renderBuffer (Renderer renderer) buffer
     HH.div 
-      [HP.classes [HH.ClassName "Buffer"]]
-      [bufferHtml]
+      [HP.classes [HH.ClassName "Panel Buffer"]]
+      [ HH.div
+          [HP.classes [HH.ClassName "PanelHeader"]]
+          [ HH.div
+              [ HP.classes [HH.ClassName "button"]
+              , HE.onClick \_ -> Console.log "TODO: close buffer" ]
+              [HH.text "X"]
+          , HH.text "Buffer" ]
+      , HH.div
+          [HP.classes [HH.ClassName "PanelContent"]]
+          [bufferHtml]
+      ]
 
 renderBuffer :: forall ctx env r n d.
   Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>

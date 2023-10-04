@@ -46,16 +46,15 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
   -- render
   HK.pure $ 
     HH.div
-      [HP.classes [HH.ClassName "Terminal"]] $
+      [HP.classes [HH.ClassName "Panel Terminal"]] $
       [ HH.div
-          [HP.classes [HH.ClassName "TerminalHeader"]]
+          [HP.classes [HH.ClassName "PanelHeader"]]
           [ if isOpen then
               HH.div 
                 [ HP.classes [HH.ClassName "button"]
                 , HE.onClick \mouseEvent -> do
                     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-                    toggleOpenTerminal (Just false)
-                ]
+                    toggleOpenTerminal (Just false) ]
                 [HH.text "↓"]
             else
               HH.div 
@@ -69,13 +68,16 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
           ]
       ] <>
       if not isOpen then [] else
-        [HH.fromPlainHTML $ HH.div
-            [HP.classes [HH.ClassName "TerminalItems"]]
-            (List.toUnfoldable items <#> \(TerminalItem item) -> do
-              HH.div
-                [HP.classes [HH.ClassName "TerminalItem"]]
-                [ HH.div [HP.classes [HH.ClassName "TerminalItemTag"]] [renderTag item.tag]
-                , HH.div [HP.classes [HH.ClassName "TerminalItemContent"]] [item.html] ])]
+        [ HH.div
+            [HP.classes [HH.ClassName "PanelContent"]]
+            [HH.fromPlainHTML $ HH.div
+                [HP.classes [HH.ClassName "TerminalItems"]]
+                (List.toUnfoldable items <#> \(TerminalItem item) -> do
+                  HH.div
+                    [HP.classes [HH.ClassName "TerminalItem"]]
+                    [ HH.div [HP.classes [HH.ClassName "TerminalItemTag"]] [renderTag item.tag]
+                    , HH.div [HP.classes [HH.ClassName "TerminalItemContent"]] [item.html] ])]
+        ]
 
 renderTag :: TerminalItemTag -> HH.PlainHTML
 renderTag = case _ of

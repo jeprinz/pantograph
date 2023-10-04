@@ -90,12 +90,12 @@ type Slots r n d =
 
 type EditorSlot = H.Slot EditorQuery EditorOutput EditorSlotId
 newtype EditorInput ctx env r n d = EditorInput
-  { editor :: Editor ctx env r n d }
+  { engine :: Engine ctx env r n d }
 type EditorQuery = Const Void
 type EditorOutput = Void
 type EditorSlotId = Unit
 
-newtype Editor ctx env r n d = Editor
+newtype Engine ctx env r n d = Engine
   { name :: String
   , language :: Language r n d
   , renderer :: Renderer ctx env r n d }
@@ -104,7 +104,8 @@ newtype Editor ctx env r n d = Editor
 
 type BufferSlot r n d = H.Slot (BufferQuery r n d) (BufferOutput r n d) BufferSlotId
 newtype BufferInput ctx env r n d = BufferInput 
-  { editor :: Editor ctx env r n d
+  { name :: String
+  , engine :: Engine ctx env r n d
   , expr :: Expr r n d (Sort n d) }
 data BufferQuery r n d a
   = SetBuffer (Buffer r n d) a

@@ -29,8 +29,8 @@ import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
-  let Editor editor = input.editor
-  let Language language = editor.language
+  let Engine engine = input.engine
+  let Language language = engine.language
 
   -- keyboard
 
@@ -52,8 +52,9 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   let bufferHtml = do
         let bufferInput = BufferInput 
-              { expr: topExpr (Language language)
-              , editor: Editor editor }
+              { name: "Main"
+              , engine: Engine engine
+              , expr: topExpr (Language language) }
         let bufferHandler = case _ of
               WriteTerminalFromBuffer item -> do
                 HK.tell slotToken (Proxy :: Proxy "terminal") unit (WriteTerminal item)
@@ -70,9 +71,14 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   HK.pure $
     HH.div
-      [ HP.classes [HH.ClassName "Editor"] ]
-      [ bufferHtml
-      , terminalHtml
+      [ HP.classes [HH.ClassName "Panel Editor"] ]
+      [ HH.div 
+          [HP.classes [HH.ClassName "PanelHeader"]]
+          [HH.text "Editor"]
+      , HH.div
+          [HP.classes [HH.ClassName "PanelContent"]]
+          [ bufferHtml
+          , terminalHtml ]
       ]
 
 -- KeyInfo

@@ -166,4 +166,4 @@ topCtx = {}
 topEnv :: Record Env
 topEnv = {}
 
-editor = Editor {name: "LC", language, renderer}
+engine = Engine {name: "LC", language, renderer}
