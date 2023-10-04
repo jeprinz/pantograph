@@ -12,18 +12,22 @@ import Data.Map (Map, toUnfoldable, fromFoldable, lookup, member, delete, unionW
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe (maybe)
+import Data.Newtype (unwrap)
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Hole as Hole
 
+unwrapApply nt f = f (unwrap nt)
+infixl 1 unwrapApply as >.
+
 mapMap f a = map (map f) a
 infixl 1 mapMap as <$$>
 
+mapMapMap f = map (map (map f))
+infixl 4 mapMapMap as <$$$>
+
 mapMapFlipped a f = mapMap f a
 infixl 1 mapMapFlipped as <##>
-
--- mapMapFlipped fa f = f <$> fa
-
 
 hole' :: forall a. String -> a
 -- hole' msg = unsafeThrow $ "hole: " <> msg
@@ -128,3 +132,12 @@ foldNonempty f l = case foldl (\acc el ->
 
 -- represents a hole but for types
 data Hole
+
+stripSuffix :: forall a. Eq a => List.Pattern a -> List a -> Maybe (List a)
+stripSuffix (List.Pattern List.Nil) xs = Just xs
+stripSuffix (List.Pattern suf) xs0 = go List.Nil xs0
+  where
+  go _ List.Nil = Nothing
+  go ys (x List.: xs)
+    | suf == xs = Just (List.reverse (x List.: ys))
+    | otherwise = go (x List.: ys) xs

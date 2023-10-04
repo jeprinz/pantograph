@@ -2,9 +2,11 @@ module Pantograph.Generic.Language.Common where
 
 import Prelude
 
+import Bug (bug)
 import Data.List (List)
 import Data.Map as Map
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Record as R
 import Type.Proxy (Proxy(..))
@@ -55,8 +57,17 @@ unSelectData = R.delete (Proxy :: Proxy "select")
 -- Language
 
 newtype Language r n d = Language
-  { getSortingRule :: r -> SortingRule n d
-  , getChangingRule :: r -> ChangingRule n d }
+  { name :: String
+  , getSortingRule :: r -> SortingRule n d
+  , getChangingRule :: r -> ChangingRule n d
+  , topSort :: Sort n d
+  , defaultExpr :: Sort n d -> Maybe (Expr r n d (Sort n d)) }
+
+derive instance Newtype (Language r n d) _
+
+topExpr (Language language) = case language.defaultExpr language.topSort of
+  Nothing -> bug $ "language.defaultExpr language.topSort == Nothing"
+  Just expr -> expr
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
@@ -65,8 +76,12 @@ newtype SortingRule n d = SortingRule
   , kids :: Array (RuleSort n d)
   , parent :: RuleSort n d }
 
+derive instance Newtype (SortingRule n d) _
+
 -- | A `ChangeRule` specifies the changes from the prent to eahc kid of a
 -- | corresponding `SortingRule`.
 newtype ChangingRule n d = ChangingRule 
   { parameters :: Set.Set RuleVar
   , kids :: Array (Change n d) }
+
+derive instance Newtype (ChangingRule n d) _

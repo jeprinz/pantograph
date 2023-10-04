@@ -4,6 +4,7 @@ import Data.Either.Nested
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Prelude
+
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, evalStateT)
 import Data.Array as Array
@@ -74,7 +75,7 @@ arrangeRenderExpr = hole "TODO"
 type Html r n d s = HH.ComponentHTML (HK.HookM Aff Unit) (Slots r n d s) Aff
 
 type Slots r n d s =
-  ( editor :: EditorSlot r n
+  ( editor :: EditorSlot
   , buffer :: BufferSlot r n d s
   , toolbox :: ToolboxSlot r n
   , preview :: PreviewSlot r n
@@ -83,19 +84,29 @@ type Slots r n d s =
 
 -- Editor
 
-type EditorSlot r n = H.Slot (EditorQuery r n) (EditorOutput r n) (EditorSlotId r n)
-data EditorQuery r n a
-data EditorOutput r n
-data EditorSlotId r n
+type EditorSlot = H.Slot EditorQuery EditorOutput EditorSlotId
+newtype EditorInput ctx env r n d s = EditorInput
+  { ctx :: RenderCtx ctx r n d s 
+  , env :: RenderEnv env r n d s
+  , language :: Language r n d
+  , renderer :: Renderer r n d s }
+type EditorQuery = Const Void
+type EditorOutput = Void
+type EditorSlotId = Unit
 
 -- Buffer
 
-type BufferSlot r n d s = H.Slot (BufferQuery r n d s) (BufferOutput r n d s) (BufferSlotId r n d s)
-data BufferInput r n d s = BufferInput {expr :: Expr r n d s}
+type BufferSlot r n d s = H.Slot (BufferQuery r n d s) (BufferOutput r n d s) BufferSlotId
+newtype BufferInput ctx env r n d s = BufferInput 
+  { expr :: Expr r n d s
+  , ctx :: RenderCtx ctx r n d s 
+  , env :: RenderEnv env r n d s
+  , renderer :: Renderer r n d s }
 data BufferQuery r n d s a
   = SetBuffer (Buffer r n d s) a
 data BufferOutput r n d s
-data BufferSlotId r n d s
+  = WriteConsoleFromBuffer ConsoleItem
+data BufferSlotId
 
 data Buffer r n d s
   = TopBuffer (Expr r n d s)
@@ -105,6 +116,7 @@ data Buffer r n d s
 -- Toolbox
 
 type ToolboxSlot r n = H.Slot (ToolboxQuery r n) (ToolboxOutput r n) (ToolboxSlotId r n)
+newtype ToolboxInput r n = ToolboxInput {}
 data ToolboxQuery r n a
 data ToolboxOutput r n
 data ToolboxSlotId r n
@@ -112,6 +124,7 @@ data ToolboxSlotId r n
 -- Preview
 
 type PreviewSlot r n = H.Slot (PreviewQuery r n) (PreviewOutput r n) (PreviewSlotId r n)
+newtype PreviewInput r n = PreviewInput {}
 data PreviewQuery r n a
 data PreviewOutput r n
 data PreviewSlotId r n
@@ -119,14 +132,19 @@ data PreviewSlotId r n
 -- Clipboard
 
 type ClipboardSlot r n = H.Slot (ClipboardQuery r n) (ClipboardOutput r n) (ClipboardSlotId r n)
+newtype ClipboardInput r n = ClipboardInput {}
 data ClipboardQuery r n a
 data ClipboardOutput r n
 data ClipboardSlotId r n
 
 -- Console
 
-type ConsoleSlot r n = H.Slot (ConsoleQuery r n) (ConsoleOutput r n) (ConsoleSlotId r n)
-data ConsoleQuery r n a
-data ConsoleOutput r n
-data ConsoleSlotId r n
+type ConsoleSlot r n = H.Slot ConsoleQuery ConsoleOutput ConsoleSlotId
+newtype ConsoleInput = ConsoleInput {}
+data ConsoleQuery a
+  = WriteConsole ConsoleItem a
+type ConsoleOutput = Void
+type ConsoleSlotId = Unit
 
+data ConsoleItemTag = DebugConsoleItemTag
+newtype ConsoleItem = ConsoleItem {tag :: ConsoleItemTag, html :: HH.PlainHTML}

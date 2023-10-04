@@ -2,17 +2,22 @@ module Pantograph.Generic.Rendering.Buffer where
 
 import Data.Tuple.Nested
 import Pantograph.Generic.Rendering.Common
+import Pantograph.Generic.Rendering.Language
 import Prelude
+
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Pantograph.Generic.Rendering.Language (renderExpr)
+import Prim.Row (class Lacks)
 
 bufferComponent = HK.component \{queryToken} (BufferInput input) -> HK.do
   -- state
   buffer /\ bufferStateId <- HK.useState $ TopBuffer input.expr
+  ctx /\ ctxStateId <- HK.useState $ input.ctx
+  env /\ envStateId <- HK.useState $ input.env
 
   -- query
   HK.useQuery queryToken case _ of
@@ -21,10 +26,18 @@ bufferComponent = HK.component \{queryToken} (BufferInput input) -> HK.do
       pure $ Just a
 
   -- render
-  HK.pure $
-    HH.div [] [HH.text "<buffer>"]
+  HK.pure $ do
+    let bufferHtml = runRenderM ctx env $ renderBuffer input.renderer buffer
+    HH.div 
+      [HP.classes [HH.ClassName "Buffer"]]
+      [bufferHtml]
 
+renderBuffer :: forall ctx env r n d s.
+  Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
+  Renderer r n d s ->
+  Buffer r n d s ->
+  RenderM ctx env r n d s (Html r n d s)
 renderBuffer renderer = case _ of
-  TopBuffer expr -> renderExpr renderer expr
-  CursorBuffer cursorExpr -> renderCursorExpr renderer cursorExpr
-  SelectBuffer selectExpr -> renderSelectExpr renderer selectExpr
+  TopBuffer expr -> _.html <$> renderExpr renderer expr
+  CursorBuffer cursorExpr -> _.html <$> renderCursorExpr renderer cursorExpr
+  SelectBuffer selectExpr -> _.html <$> renderSelectExpr renderer selectExpr
