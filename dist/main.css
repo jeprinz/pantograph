@@ -35,7 +35,48 @@ body {
 /* Terminal */
 
 .Terminal {
-  
+  display: flex;
+  flex-direction: column;
+
+  background-color: rgb(194, 194, 194);
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  max-height: 20em;
+  overflow: scroll;
+}
+
+.TerminalHeader {
+  display: flex;
+  flex-direction: row;
+  gap: 1em;
+
+  color: white;
+  background-color: black;
+}
+
+.TerminalItem {
+  display: flex;
+  flex-direction: row;
+}
+
+.TerminalItemTag {}
+
+.DebugTerminalItemTag {
+  color: green;
+}
+
+.TerminalItemContent {}
+
+/* UI */
+
+.button {
+  padding: 0 0.5em;
+  color: white;
+  background-color: blue;
+  font-weight: bold;
+  user-select: none;
+  cursor: pointer;
 }
 
 /* Expr */

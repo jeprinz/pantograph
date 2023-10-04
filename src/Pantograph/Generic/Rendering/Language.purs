@@ -51,7 +51,7 @@ renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
         , HP.classes (HH.ClassName <$> ["Expr"])
         , HE.onMouseDown \mouseEvent -> do
             liftEffect $ Event.stopPropagation (MouseEvent.toEvent mouseEvent)
-            HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "onMouseDown"}
+            HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "onMouseDown: " <> show elemId}
         ]
         htmls
 

@@ -12,6 +12,7 @@ import Data.Const (Const)
 import Data.Either (either)
 import Data.Identity (Identity)
 import Data.Map as Map
+import Data.Maybe (Maybe)
 import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
@@ -74,7 +75,8 @@ arrangeRenderExpr = hole "TODO"
 
 -- Html
 
-type Html r n d = HH.ComponentHTML (HK.HookM Aff Unit) (Slots r n d) Aff
+-- type Html r n d = HH.ComponentHTML (HK.HookM Aff Unit) (Slots r n d) Aff
+type Html r n d = HH.ComponentHTML (HK.HookM Aff Unit) () Aff
 
 type Slots r n d =
   ( editor :: EditorSlot
@@ -82,7 +84,7 @@ type Slots r n d =
   , toolbox :: ToolboxSlot r n
   , preview :: PreviewSlot r n
   , clipboard :: ClipboardSlot r n
-  , console :: TerminalSlot r n )
+  , terminal :: TerminalSlot )
 
 -- Editor
 
@@ -141,10 +143,14 @@ data ClipboardSlotId r n
 
 -- Terminal
 
-type TerminalSlot r n = H.Slot TerminalQuery TerminalOutput TerminalSlotId
+type TerminalSlot = H.Slot TerminalQuery TerminalOutput TerminalSlotId
 newtype TerminalInput = TerminalInput {}
 data TerminalQuery a
+  -- Write a new item to the terminal
   = WriteTerminal TerminalItem a
+  -- Toggles the terminal open/close, or set it to a given value for isOpen if
+  -- provided.
+  | ToggleOpenTerminal (Maybe Boolean) a
 type TerminalOutput = Void
 type TerminalSlotId = Unit
 

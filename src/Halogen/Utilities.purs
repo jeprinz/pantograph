@@ -22,6 +22,8 @@ import Web.HTML.Window as Window
 
 newtype ElementId = ElementId String
 
+derive newtype instance Show ElementId
+
 id :: forall r i. ElementId -> HP.IProp (id :: String | r) i
 id (ElementId str) = HP.id str
 
