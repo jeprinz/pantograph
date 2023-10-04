@@ -82,7 +82,7 @@ type Slots r n d =
   , toolbox :: ToolboxSlot r n
   , preview :: PreviewSlot r n
   , clipboard :: ClipboardSlot r n
-  , Terminal :: TerminalSlot r n )
+  , console :: TerminalSlot r n )
 
 -- Editor
 

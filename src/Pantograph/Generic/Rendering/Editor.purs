@@ -11,7 +11,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Pantograph.Generic.Rendering.Buffer (bufferComponent)
-import Pantograph.Generic.Rendering.Terminal (TerminalComponent)
+import Pantograph.Generic.Rendering.Terminal (terminalComponent)
 import Prim.Row (class Lacks)
 import Type.Proxy (Proxy(..))
 
@@ -28,14 +28,14 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
                 HK.tell slotToken (Proxy :: Proxy "Terminal") unit (WriteTerminal item)
         HH.slot (Proxy :: Proxy "buffer") unit bufferComponent bufferInput bufferHandler
 
-  let TerminalHtml = do
-        let TerminalInput = TerminalInput {}
-        let TerminalHandler = absurd
-        HH.slot (Proxy :: Proxy "Terminal") unit TerminalComponent TerminalInput TerminalHandler
+  let terminalHtml = do
+        let terminalInput = TerminalInput {}
+        let terminalHandler = absurd
+        HH.slot (Proxy :: Proxy "Terminal") unit terminalComponent terminalInput terminalHandler
 
   HK.pure $
     HH.div
       [ HP.classes [HH.ClassName "Editor"] ]
       [ bufferHtml
-      , TerminalHtml
+      , terminalHtml
       ]

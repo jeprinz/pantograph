@@ -14,7 +14,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 
-TerminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
+terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
   -- state
   items /\ itemsStateId <- HK.useState (mempty :: List TerminalItem)
