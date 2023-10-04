@@ -209,9 +209,8 @@ termToZipper term =
     -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
     -- Once Henry fixes the rendering code, then I can uncomment the real implementation below.
 
-     trace "start termToZipper" \_ ->
      let res = Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
-     in trace "end termToZipper" \_ -> res
+     in res
   
 --    case unWrapPath term' of
 --       Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
@@ -274,10 +273,12 @@ step t@(Expr.Expr l kids) rules =
 
 stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules =
---    trace "start" \_ ->
-    let res = stepRepeatedly' t rules
+    trace "start" \_ ->
+--    let res = stepRepeatedly' t rules
+    let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
+    let res = fst $ fastStepImpl fullRules false t
     in
---    trace "end" \_ ->
+    trace "end" \_ ->
     res
 
 
@@ -289,6 +290,33 @@ stepRepeatedly' t rules =
         t
     Just t' ->
         stepRepeatedly' t' rules
+
+--------------------------------------------------------------------------------
+------------- Fast smallstep -----------------------------------------------
+
+{-
+This works under the assumption that all stepRules involve at most two adjacent constructors.
+
+Input bool means "assume that at most the top level constructor can step"
+Output bool means "the top level constructor changed"
+-}
+fastStepImpl :: forall l r. IsRuleLabel l r =>
+    List (StepRule l r) -> Boolean -> SSTerm l r -> SSTerm l r /\ Boolean
+fastStepImpl fullRules onlyStepTop0 t0 =
+    let fastStepTCO onlyStepTop outChanged t =
+            let t' /\ changed = case doAnyApply t fullRules of
+                    Just t' -> t' /\ true
+                    Nothing -> t /\ false
+            in
+            let l % kids = t' in
+            let kids' /\ didKidTopLevelChange = if onlyStepTop && (not changed) then kids /\ false
+                else let kids' /\ vals = Array.unzip (map (fastStepImpl fullRules onlyStepTop) kids) in
+                    kids' /\ Array.any identity vals
+            in
+            if changed || didKidTopLevelChange
+                then fastStepTCO true true (l % kids')
+                else l % kids' /\ (changed || outChanged)
+    in fastStepTCO onlyStepTop0 false t0
 
 -------------- Default rules --------------------------------------------
 type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
