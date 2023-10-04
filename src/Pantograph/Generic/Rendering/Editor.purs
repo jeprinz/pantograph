@@ -74,7 +74,9 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
       [ HP.classes [HH.ClassName "Panel Editor"] ]
       [ HH.div 
           [HP.classes [HH.ClassName "PanelHeader"]]
-          [HH.text "Editor"]
+          [ HH.span_ [HH.text $ "Pantograph"]
+          , HH.span_ [HH.text $ engineDescription (Engine engine)]
+          ]
       , HH.div
           [HP.classes [HH.ClassName "PanelContent"]]
           [ bufferHtml

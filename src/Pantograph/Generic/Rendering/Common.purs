@@ -100,6 +100,11 @@ newtype Engine ctx env r n d = Engine
   , language :: Language r n d
   , renderer :: Renderer ctx env r n d }
 
+engineDescription (Engine {name: engineName, language: Language {name: languageName}, renderer: Renderer {name: rendererName}}) =
+  "{engine: " <> engineName <> " {" <>
+    "language: " <> languageName <> ", " <>
+    "renderer: " <> rendererName <> "}}"
+
 -- Buffer
 
 type BufferSlot r n d = H.Slot (BufferQuery r n d) (BufferOutput r n d) BufferSlotId
