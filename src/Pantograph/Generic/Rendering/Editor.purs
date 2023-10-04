@@ -14,25 +14,22 @@ import Pantograph.Generic.Rendering.Console (consoleComponent)
 import Prim.Row (class Lacks)
 import Type.Proxy (Proxy(..))
 
-editorComponent :: forall ctx env r n d. 
-  Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
-  H.Component EditorQuery (EditorInput ctx env r n d (Sort n d)) EditorOutput Aff
-editorComponent = HK.component \{} (EditorInput input) -> HK.do
-  let Language language = input.language
+editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
+  let Editor editor = input.editor
+  let Language language = editor.language
 
   let bufferHtml = do
         let bufferInput = BufferInput 
               { expr: topExpr (Language language)
-              , ctx: input.ctx
-              , env: input.env
-              , renderer: input.renderer }
+              , editor: Editor editor }
         let bufferHandler = case _ of
-              LogFromBuffer typ html -> pure unit
+              WriteConsoleFromBuffer item -> do
+                HK.tell slotToken (Proxy :: Proxy "console") unit (WriteConsole item)
         HH.slot (Proxy :: Proxy "buffer") unit bufferComponent bufferInput bufferHandler
 
   let consoleHtml = do
         let consoleInput = ConsoleInput {}
-        let consoleHandler = ?a
+        let consoleHandler = absurd
         HH.slot (Proxy :: Proxy "console") unit consoleComponent consoleInput consoleHandler
 
   HK.pure $

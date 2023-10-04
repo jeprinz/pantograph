@@ -9,15 +9,25 @@ import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Prim.Row (class Lacks)
+import Record as R
+import Type.Proxy (Proxy(..))
 
-bufferComponent = HK.component \{queryToken} (BufferInput input) -> HK.do
+bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) -> HK.do
+  let Editor editor = input.editor
+  let Renderer renderer = editor.renderer
   -- state
   buffer /\ bufferStateId <- HK.useState $ TopBuffer input.expr
-  ctx /\ ctxStateId <- HK.useState $ input.ctx
-  env /\ envStateId <- HK.useState $ input.env
+  ctx /\ ctxStateId <- HK.useState 
+    $ R.insert (Proxy :: Proxy "depth") 0
+    $ R.insert (Proxy :: Proxy "outputToken") outputToken
+    $ renderer.topCtx
+  env /\ envStateId <- HK.useState
+    $ R.insert (Proxy :: Proxy "holeCount") 0
+    $ renderer.topEnv
 
   -- query
   HK.useQuery queryToken case _ of
@@ -27,16 +37,16 @@ bufferComponent = HK.component \{queryToken} (BufferInput input) -> HK.do
 
   -- render
   HK.pure $ do
-    let bufferHtml = runRenderM ctx env $ renderBuffer input.renderer buffer
+    let bufferHtml = runRenderM ctx env $ renderBuffer (Renderer renderer) buffer
     HH.div 
       [HP.classes [HH.ClassName "Buffer"]]
       [bufferHtml]
 
-renderBuffer :: forall ctx env r n d s.
+renderBuffer :: forall ctx env r n d.
   Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
-  Renderer r n d s ->
-  Buffer r n d s ->
-  RenderM ctx env r n d s (Html r n d s)
+  Renderer ctx env r n d ->
+  Buffer r n d ->
+  RenderM ctx env r n d (Html r n d)
 renderBuffer renderer = case _ of
   TopBuffer expr -> _.html <$> renderExpr renderer expr
   CursorBuffer cursorExpr -> _.html <$> renderCursorExpr renderer cursorExpr

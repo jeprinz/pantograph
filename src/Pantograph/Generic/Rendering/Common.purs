@@ -26,34 +26,36 @@ import Prim.Row (class Lacks)
 
 -- RenderM
 
-type RenderM ctx env r n d s = 
-  ReaderT (RenderCtx ctx r n d s) (
-  StateT (RenderEnv env r n d s) (
+type RenderM ctx env r n d = 
+  ReaderT (RenderCtx ctx r n d) (
+  StateT (RenderEnv env r n d) (
   Identity))
 
-runRenderM :: forall ctx env r n d s a. RenderCtx ctx r n d s -> RenderEnv env r n d s -> RenderM ctx env r n d s a -> a
+runRenderM :: forall ctx env r n d a. RenderCtx ctx r n d -> RenderEnv env r n d -> RenderM ctx env r n d a -> a
 runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
 
-mapRenderM :: forall ctx env r n d s a b. (a -> b) -> (RenderM ctx env r n d s a -> RenderM ctx env r n d s b)
+mapRenderM :: forall ctx env r n d a b. (a -> b) -> (RenderM ctx env r n d a -> RenderM ctx env r n d b)
 mapRenderM f = map f
 
-type RenderCtx ctx r n d s =
+type RenderCtx ctx r n d =
   { depth :: Int
-  , bufferId :: HK.StateId (Buffer r n d s)
-  , outputToken :: HK.OutputToken (BufferOutput r n d s)
+  , outputToken :: HK.OutputToken (BufferOutput r n d)
   | ctx }
 
-type RenderEnv env r n d s =
+type RenderEnv env r n d =
   { holeCount :: Int
   | env }
 
 -- Renderer
 
-newtype Renderer r n d s = Renderer
-  { arrangeExpr :: forall ctx env a.
-      ExprNode r n d s ->
-      Array (RenderM ctx env r n d s (ExprNode r n d s /\ a)) ->
-      RenderM ctx env r n d s (Array (Array (Html r n d s) \/ a))
+newtype Renderer ctx env r n d = Renderer
+  { name :: String
+  , topCtx :: Record ctx
+  , topEnv :: Record env
+  , arrangeExpr :: forall a.
+      ExprNode r n d (Sort n d) ->
+      Array (RenderM ctx env r n d (ExprNode r n d (Sort n d) /\ a)) ->
+      RenderM ctx env r n d (Array (Array (Html r n d) \/ a))
   }
 
   -- TODO: not sure if `arrangeSort` is necessary
@@ -63,20 +65,20 @@ newtype Renderer r n d s = Renderer
 
 type RenderData d = (elemId :: ElementId | d)
 
-arrangeRenderExpr :: forall ctx env r n d s a.
-  Renderer r n d s ->
-  ExprNode r n (RenderData d) s ->
-  Array (RenderM ctx env r n d s (a /\ ExprNode r n (RenderData d) s)) ->
-  RenderM ctx env r n d s (Array (a \/ Array (Html r n d s)))
+arrangeRenderExpr :: forall ctx env r n d a.
+  Renderer ctx env r n d ->
+  ExprNode r n (RenderData d) (Sort n d) ->
+  Array (RenderM ctx env r n d (a /\ ExprNode r n (RenderData d) (Sort n d))) ->
+  RenderM ctx env r n d (Array (a \/ Array (Html r n d)))
 arrangeRenderExpr = hole "TODO"
 
 -- Html
 
-type Html r n d s = HH.ComponentHTML (HK.HookM Aff Unit) (Slots r n d s) Aff
+type Html r n d = HH.ComponentHTML (HK.HookM Aff Unit) (Slots r n d) Aff
 
-type Slots r n d s =
+type Slots r n d =
   ( editor :: EditorSlot
-  , buffer :: BufferSlot r n d s
+  , buffer :: BufferSlot r n d
   , toolbox :: ToolboxSlot r n
   , preview :: PreviewSlot r n
   , clipboard :: ClipboardSlot r n
@@ -85,33 +87,33 @@ type Slots r n d s =
 -- Editor
 
 type EditorSlot = H.Slot EditorQuery EditorOutput EditorSlotId
-newtype EditorInput ctx env r n d s = EditorInput
-  { ctx :: RenderCtx ctx r n d s 
-  , env :: RenderEnv env r n d s
-  , language :: Language r n d
-  , renderer :: Renderer r n d s }
+newtype EditorInput ctx env r n d = EditorInput
+  { editor :: Editor ctx env r n d }
 type EditorQuery = Const Void
 type EditorOutput = Void
 type EditorSlotId = Unit
 
+newtype Editor ctx env r n d = Editor
+  { name :: String
+  , language :: Language r n d
+  , renderer :: Renderer ctx env r n d }
+
 -- Buffer
 
-type BufferSlot r n d s = H.Slot (BufferQuery r n d s) (BufferOutput r n d s) BufferSlotId
-newtype BufferInput ctx env r n d s = BufferInput 
-  { expr :: Expr r n d s
-  , ctx :: RenderCtx ctx r n d s 
-  , env :: RenderEnv env r n d s
-  , renderer :: Renderer r n d s }
-data BufferQuery r n d s a
-  = SetBuffer (Buffer r n d s) a
-data BufferOutput r n d s
+type BufferSlot r n d = H.Slot (BufferQuery r n d) (BufferOutput r n d) BufferSlotId
+newtype BufferInput ctx env r n d = BufferInput 
+  { editor :: Editor ctx env r n d
+  , expr :: Expr r n d (Sort n d) }
+data BufferQuery r n d a
+  = SetBuffer (Buffer r n d) a
+data BufferOutput r n d
   = WriteConsoleFromBuffer ConsoleItem
 data BufferSlotId
 
-data Buffer r n d s
-  = TopBuffer (Expr r n d s)
-  | CursorBuffer (Expr r n (CursorData d) s)
-  | SelectBuffer (Expr r n (SelectData d) s)
+data Buffer r n d
+  = TopBuffer (Expr r n d (Sort n d))
+  | CursorBuffer (Expr r n (CursorData d) (Sort n d))
+  | SelectBuffer (Expr r n (SelectData d) (Sort n d))
 
 -- Toolbox
 

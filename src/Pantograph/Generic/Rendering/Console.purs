@@ -14,7 +14,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 
-consoleComponent :: H.Component ConsoleQuery ConsoleInput ConsoleOutput Aff
 consoleComponent = HK.component \{queryToken} (ConsoleInput input) -> HK.do
 
   -- state

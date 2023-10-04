@@ -16,11 +16,11 @@ import Prim.Row (class Lacks)
 import Record as R
 import Type.Proxy (Proxy(..))
 
-renderExpr :: forall ctx env r n d s.
+renderExpr :: forall ctx env r n d.
   Lacks "elemId" d =>
-  Renderer r n d s ->
-  Expr r n d s ->
-  RenderM ctx env r n d s {renderedExpr :: Expr r n (RenderData d) s, html :: Html r n d s}
+  Renderer ctx env r n d ->
+  Expr r n d (Sort n d) ->
+  RenderM ctx env r n d {renderedExpr :: Expr r n (RenderData d) (Sort n d), html :: Html r n d}
 renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
   let elemId = HU.freshElementId unit
 
@@ -47,16 +47,16 @@ renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
         Left _ -> []
         Right {renderedExpr} -> [renderedExpr]
   let renderedExpr = Expr 
-        { node: ExprNode node {dat = R.insert (Proxy :: Proxy "elemId") elemId node.dat}
+        { node: ExprNode node {d = R.insert (Proxy :: Proxy "elemId") elemId node.d}
         , kids: renKids }
 
   pure $ {renderedExpr, html}
 
-renderCursorExpr :: forall ctx env r n d s.
+renderCursorExpr :: forall ctx env r n d.
   Lacks "elemId" d => Lacks "cursor" d =>
-  Renderer r n d s ->
-  Expr r n (CursorData d) s ->
-  RenderM ctx env r n d s {renderedExpr :: Expr r n (RenderData (CursorData d)) s, html :: Html r n d s}
+  Renderer ctx env r n d ->
+  Expr r n (CursorData d) (Sort n d) ->
+  RenderM ctx env r n d {renderedExpr :: Expr r n (RenderData (CursorData d)) (Sort n d), html :: Html r n d}
 renderCursorExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
   let elemId = HU.freshElementId unit
 
@@ -65,14 +65,14 @@ renderCursorExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
         pure {i, expr, renderedExpr, html}
   let arrangeKids = renderKids <##> 
         \{i, expr: Expr {node: ExprNode node'}, renderedExpr, html} -> 
-          ExprNode node' {dat = unCursorData node.dat} /\ {i, renderedExpr, html}
-  let arrangeExprNode = ExprNode node {dat = unCursorData node.dat}
+          ExprNode node' {d = unCursorData node.d} /\ {i, renderedExpr, html}
+  let arrangeExprNode = ExprNode node {d = unCursorData node.d}
   nodes <- renderer.arrangeExpr arrangeExprNode arrangeKids
 
   let htmls = nodes # Array.foldMap case _ of
         Left htmls' -> htmls'
         Right {html} -> [html]
-  let cursorClasses = case node.dat.cursor of
+  let cursorClasses = case node.d.cursor of
         Nothing -> []
         Just CursorStatus -> [HH.ClassName "Cursor"]
   let html = HH.div 
@@ -87,16 +87,16 @@ renderCursorExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
         Left _ -> []
         Right {renderedExpr} -> [renderedExpr]
   let renderedExpr = Expr 
-        { node: ExprNode node {dat = R.insert (Proxy :: Proxy "elemId") elemId node.dat}
+        { node: ExprNode node {d = R.insert (Proxy :: Proxy "elemId") elemId node.d}
         , kids: renKids }
 
   pure $ {renderedExpr, html}
 
-renderSelectExpr :: forall ctx env r n d s.
+renderSelectExpr :: forall ctx env r n d.
   Lacks "elemId" d => Lacks "select" d =>
-  Renderer r n d s ->
-  Expr r n (SelectData d) s ->
-  RenderM ctx env r n d s {renderedExpr :: Expr r n (RenderData (SelectData d)) s, html :: Html r n d s}
+  Renderer ctx env r n d ->
+  Expr r n (SelectData d) (Sort n d) ->
+  RenderM ctx env r n d {renderedExpr :: Expr r n (RenderData (SelectData d)) (Sort n d), html :: Html r n d}
 renderSelectExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
   let elemId = HU.freshElementId unit
 
@@ -105,14 +105,14 @@ renderSelectExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
         pure {i, expr, renderedExpr, html}
   let arrangeKids = renderKids <##> 
         \{i, expr: Expr {node: ExprNode node'}, renderedExpr, html} -> 
-          ExprNode node' {dat = unSelectData node.dat} /\ {i, renderedExpr, html}
-  let arrangeExprNode = ExprNode node {dat = unSelectData node.dat}
+          ExprNode node' {d = unSelectData node.d} /\ {i, renderedExpr, html}
+  let arrangeExprNode = ExprNode node {d = unSelectData node.d}
   nodes <- renderer.arrangeExpr arrangeExprNode arrangeKids
 
   let htmls = nodes # Array.foldMap case _ of
         Left htmls' -> htmls'
         Right {html} -> [html]
-  let selectClasses = case node.dat.select of
+  let selectClasses = case node.d.select of
         Nothing -> []
         Just OuterSelectStatus -> [HH.ClassName "OuterSelect"]
         Just InnerSelectStatus -> [HH.ClassName "InnerSelect"]
@@ -128,7 +128,7 @@ renderSelectExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
         Left _ -> []
         Right {renderedExpr} -> [renderedExpr]
   let renderedExpr = Expr 
-        { node: ExprNode node {dat = R.insert (Proxy :: Proxy "elemId") elemId node.dat}
+        { node: ExprNode node {d = R.insert (Proxy :: Proxy "elemId") elemId node.d}
         , kids: renKids }
 
   pure $ {renderedExpr, html}
