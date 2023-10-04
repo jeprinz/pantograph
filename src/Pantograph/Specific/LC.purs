@@ -5,7 +5,6 @@ import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering
 import Prelude
-
 import Bug (bug)
 import Control.Monad.State as State
 import Data.Either (Either(..))
@@ -135,7 +134,7 @@ renderer = Renderer {name: "LC", arrangeExpr, topCtx, topEnv}
 arrangeExpr :: forall a.
   ExprNode R N D (Sort N D) ->
   Array (RenderM Ctx Env R N D (ExprNode R N D (Sort N D) /\ a)) ->
-  RenderM Ctx Env R N D (Array (Array (Html R N D) \/ a))
+  RenderM Ctx Env R N D (Array (Array (BufferHtml R N) \/ a))
 arrangeExpr node@(ExprNode {r: StringRule, n: String}) [] = do
   case getExprNodeSort language node of
     Sort {node: SortNode {n: StringSort}, kids: [Sort {node: SortNode {n: StringValueSort str}}]} ->

@@ -24,6 +24,8 @@ import Halogen.Utilities (ElementId(..))
 import Halogen.Utilities as HU
 import Hole (hole)
 import Prim.Row (class Lacks)
+import Record as R
+import Type.Proxy (Proxy(..))
 
 -- RenderM
 
@@ -43,9 +45,18 @@ type RenderCtx ctx r n d =
   , outputToken :: HK.OutputToken (BufferOutput r n d)
   | ctx }
 
+enRenderCtx :: forall ctx r n d. Lacks "depth" ctx => Lacks "outputToken" ctx => RenderCtx () r n d -> Record ctx -> RenderCtx ctx r n d
+enRenderCtx {depth, outputToken} =
+  R.insert (Proxy :: Proxy "depth") depth >>>
+  R.insert (Proxy :: Proxy "outputToken") outputToken
+
 type RenderEnv env r n d =
   { holeCount :: Int
   | env }
+
+enRenderEnv :: forall env r n d. Lacks "holeCount" env => RenderEnv () r n d -> Record env -> RenderEnv env r n d
+enRenderEnv {holeCount} =
+  R.insert (Proxy :: Proxy "holeCount") holeCount
 
 -- Renderer
 
@@ -56,7 +67,7 @@ newtype Renderer ctx env r n d = Renderer
   , arrangeExpr :: forall a.
       ExprNode r n d (Sort n d) ->
       Array (RenderM ctx env r n d (ExprNode r n d (Sort n d) /\ a)) ->
-      RenderM ctx env r n d (Array (Array (Html r n d) \/ a))
+      RenderM ctx env r n d (Array (Array (BufferHtml r n) \/ a))
   }
 
   -- TODO: not sure if `arrangeSort` is necessary
@@ -66,25 +77,19 @@ newtype Renderer ctx env r n d = Renderer
 
 type RenderData d = (elemId :: ElementId | d)
 
+unRenderData :: forall d. Lacks "elemId" d => Record (RenderData d) -> Record d
+unRenderData = R.delete (Proxy :: Proxy "elemId")
+
+enRenderData :: forall d. Lacks "elemId" d => Record (RenderData ()) -> Record d -> Record (RenderData d)
+enRenderData {elemId} = 
+  R.insert (Proxy :: Proxy "elemId") elemId
+
 arrangeRenderExpr :: forall ctx env r n d a.
   Renderer ctx env r n d ->
   ExprNode r n (RenderData d) (Sort n d) ->
   Array (RenderM ctx env r n d (a /\ ExprNode r n (RenderData d) (Sort n d))) ->
-  RenderM ctx env r n d (Array (a \/ Array (Html r n d)))
+  RenderM ctx env r n d (Array (a \/ Array (BufferHtml r n)))
 arrangeRenderExpr = hole "TODO"
-
--- Html
-
--- type Html r n d = HH.ComponentHTML (HK.HookM Aff Unit) (Slots r n d) Aff
-type Html r n d = HH.ComponentHTML (HK.HookM Aff Unit) () Aff
-
-type Slots r n d =
-  ( editor :: EditorSlot
-  , buffer :: BufferSlot r n d
-  , toolbox :: ToolboxSlot r n
-  , preview :: PreviewSlot r n
-  , clipboard :: ClipboardSlot r n
-  , terminal :: TerminalSlot )
 
 -- Editor
 
@@ -113,15 +118,22 @@ newtype BufferInput ctx env r n d = BufferInput
   , engine :: Engine ctx env r n d
   , expr :: Expr r n d (Sort n d) }
 data BufferQuery r n d a
-  = SetBuffer (Buffer r n d) a
+  = SetBuffer (Buffer r n d (Sort n d)) a
 data BufferOutput r n d
   = WriteTerminalFromBuffer TerminalItem
 data BufferSlotId
 
-data Buffer r n d
-  = TopBuffer (Expr r n d (Sort n d))
-  | CursorBuffer (Expr r n (CursorData d) (Sort n d))
-  | SelectBuffer (Expr r n (SelectData d) (Sort n d))
+data Buffer r n d s
+  = TopBuffer (Expr r n d s)
+  | CursorBuffer (Expr r n (CursorData d) s)
+  | SelectBuffer (Expr r n (SelectData d) s)
+
+type BufferHtml r n = 
+  HH.ComponentHTML
+    (HK.HookM Aff Unit) 
+    ( toolbox :: ToolboxSlot r n
+    , preview :: PreviewSlot r n )
+    Aff
 
 -- Toolbox
 

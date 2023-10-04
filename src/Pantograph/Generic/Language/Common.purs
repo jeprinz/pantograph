@@ -9,6 +9,7 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Hole (hole)
+import Prim.Row (class Lacks)
 import Record as R
 import Text.Pretty (class Pretty, parens, pretty, spaces)
 import Type.Proxy (Proxy(..))
@@ -87,15 +88,25 @@ mapExprNode_data f (ExprNode node) = ExprNode node {d = f node.d}
 
 -- CursorData, SelectData
 
+-- TODO: could include more info here, such as OutSideCursorStatus,
+-- InsideCursorState, if its efficient enough to directly manipulate the dom
+-- that much.
+
 type CursorData d = (cursor :: Maybe CursorStatus | d)
 data CursorStatus = CursorStatus
 
 unCursorData = R.delete (Proxy :: Proxy "cursor")
+enCursorData :: forall d. Lacks "cursor" d => Record (CursorData ()) -> Record d -> Record (CursorData d)
+enCursorData {cursor} = 
+  R.insert (Proxy :: Proxy "cursor") cursor
 
 type SelectData d = (select :: Maybe SelectStatus | d)
 data SelectStatus = OuterSelectStatus | InnerSelectStatus
 
 unSelectData = R.delete (Proxy :: Proxy "select")
+enSelectData :: forall d. Lacks "select" d => Record (SelectData ()) -> Record d -> Record (SelectData d)
+enSelectData {select} = 
+  R.insert (Proxy :: Proxy "select") select
 
 -- Language
 
