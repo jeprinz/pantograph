@@ -285,7 +285,7 @@ stepRepeatedly t rules =
 
 stepRepeatedly' :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly' t rules =
-    trace ("stepRepeatedly: " <> pretty t) \_ ->
+--    trace ("stepRepeatedly: " <> pretty t) \_ ->
     case step t rules of
     Nothing ->
         t
@@ -308,17 +308,17 @@ fastStepImpl :: forall l r. IsRuleLabel l r =>
     List (StepRule l r) -> Int -> SSTerm l r -> SSTerm l r /\ Boolean
 fastStepImpl fullRules assumeStepWithin0 t0 =
     let fastStepTCO assumeStepWithin outChanged t =
-            if assumeStepWithin <= 0 then Bug.bug "shouldn't happen fastStepImpl" else
+            if assumeStepWithin == 0 then t /\ false else
             let t' /\ changed = case doAnyApply t fullRules of
                     Just t' -> t' /\ true
                     Nothing -> t /\ false
             in
             let l % kids = t' in
-            let kids' /\ didKidTopLevelChange = if assumeStepWithin == 1 && (not changed) && (not outChanged) then kids /\ false
-                else let kids' /\ vals = Array.unzip (map (fastStepImpl fullRules (max (assumeStepWithin - 1) 2)) kids) in
+            let howFarToLookIntoKids = max (assumeStepWithin - 1) (if changed || outChanged then 2 else 0) in
+            let kids' /\ didKidTopLevelChange =
+                    let kids' /\ vals = Array.unzip (map (fastStepImpl fullRules howFarToLookIntoKids) kids) in
                     kids' /\ Array.any identity vals
             in
---            trace ("got to the fork with " <> pretty t0) \_ ->
             if changed || didKidTopLevelChange
                 then fastStepTCO 2 true (l % kids')
                 else l % kids' /\ (changed || outChanged)
