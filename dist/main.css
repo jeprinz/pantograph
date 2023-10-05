@@ -54,10 +54,13 @@ body {
   display: flex;
   flex-direction: column;
 
-  background-color: rgb(194, 194, 194);
   position: absolute;
   bottom: 0;
   width: 100%;
+}
+
+.TerminalItems {
+  background-color: rgb(194, 194, 194);
   max-height: 20em;
   overflow: scroll;
 }
@@ -81,7 +84,6 @@ body {
   padding: 0 0.5em;
   color: white;
   background-color: blue;
-  font-weight: bold;
   user-select: none;
   cursor: pointer;
 }
@@ -91,8 +93,4 @@ body {
 .Expr {
   display: flex;
   flex-direction: row;
-}
-
-.punctuation {
-  white-space: pre;
 }

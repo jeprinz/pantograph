@@ -16,6 +16,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
+import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -43,12 +44,14 @@ mapRenderM f = map f
 type RenderCtx ctx r n d =
   { depth :: Int
   , outputToken :: HK.OutputToken (BufferOutput r n d)
+  , prerenderBufferRefId :: Ref.Ref (Buffer r n (PrerenderData d) (Sort n d))
   | ctx }
 
-enRenderCtx :: forall ctx r n d. Lacks "depth" ctx => Lacks "outputToken" ctx => RenderCtx () r n d -> Record ctx -> RenderCtx ctx r n d
-enRenderCtx {depth, outputToken} =
+enRenderCtx :: forall ctx r n d. Lacks "depth" ctx => Lacks "outputToken" ctx => Lacks "prerenderBufferRefId" ctx => RenderCtx () r n d -> Record ctx -> RenderCtx ctx r n d
+enRenderCtx {depth, outputToken, prerenderBufferRefId} =
   R.insert (Proxy :: Proxy "depth") depth >>>
-  R.insert (Proxy :: Proxy "outputToken") outputToken
+  R.insert (Proxy :: Proxy "outputToken") outputToken >>>
+  R.insert (Proxy :: Proxy "prerenderBufferRefId") prerenderBufferRefId
 
 type RenderEnv env r n d =
   { holeCount :: Int
@@ -73,21 +76,21 @@ newtype Renderer ctx env r n d = Renderer
   -- TODO: not sure if `arrangeSort` is necessary
   -- arrangeSort :: forall ctx env a. SortNode n -> Array (Sort n /\ a) -> RenderM ctx env r n (Array (a \/ (Html r n)))
 
--- RenderNode
+-- PrerenderData
 
-type RenderData d = (elemId :: ElementId | d)
+type PrerenderData d = (elemId :: ElementId | d)
 
-unRenderData :: forall d. Lacks "elemId" d => Record (RenderData d) -> Record d
-unRenderData = R.delete (Proxy :: Proxy "elemId")
+unPrerenderData :: forall d. Lacks "elemId" d => Record (PrerenderData d) -> Record d
+unPrerenderData = R.delete (Proxy :: Proxy "elemId")
 
-enRenderData :: forall d. Lacks "elemId" d => Record (RenderData ()) -> Record d -> Record (RenderData d)
-enRenderData {elemId} = 
+enPrerenderData :: forall d. Lacks "elemId" d => Record (PrerenderData ()) -> Record d -> Record (PrerenderData d)
+enPrerenderData {elemId} = 
   R.insert (Proxy :: Proxy "elemId") elemId
 
 arrangeRenderExpr :: forall ctx env r n d a.
   Renderer ctx env r n d ->
-  ExprNode r n (RenderData d) (Sort n d) ->
-  Array (RenderM ctx env r n d (a /\ ExprNode r n (RenderData d) (Sort n d))) ->
+  ExprNode r n (PrerenderData d) (Sort n d) ->
+  Array (RenderM ctx env r n d (a /\ ExprNode r n (PrerenderData d) (Sort n d))) ->
   RenderM ctx env r n d (Array (a \/ Array (BufferHtml r n)))
 arrangeRenderExpr = hole "TODO"
 

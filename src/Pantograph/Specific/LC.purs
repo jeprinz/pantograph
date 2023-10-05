@@ -5,6 +5,7 @@ import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering
 import Prelude
+
 import Bug (bug)
 import Control.Monad.State as State
 import Data.Either (Either(..))
@@ -129,7 +130,7 @@ topSort = makeSort TermSort {} []
 -- Renderer
 
 renderer :: Renderer Ctx Env R N D
-renderer = Renderer {name: "LC", arrangeExpr, topCtx, topEnv}
+renderer = Renderer {name: "LC-basic", arrangeExpr, topCtx, topEnv}
 
 arrangeExpr :: forall a.
   ExprNode R N D (Sort N D) ->
@@ -138,7 +139,7 @@ arrangeExpr :: forall a.
 arrangeExpr node@(ExprNode {r: StringRule, n: String}) [] = do
   case getExprNodeSort language node of
     Sort {node: SortNode {n: StringSort}, kids: [Sort {node: SortNode {n: StringValueSort str}}]} ->
-      pure [Left [punctuation "?"], Left [HH.text str]]
+      pure [Left [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
     _ -> bug $ "invalid Sort"
 arrangeExpr (ExprNode {r: VarRule, n: Var}) [ms] = do
   _s /\ sId <- ms
@@ -154,7 +155,7 @@ arrangeExpr (ExprNode {r: AppRule, n: App}) [mf, ma] = do
 arrangeExpr (ExprNode {r: HoleRule, n: Hole}) [] = do
   holeIndex <- State.gets _.holeCount
   State.modify_ (R.modify (Proxy :: Proxy "holeCount") (1 + _))
-  pure [Left [punctuation "?"], Left [HH.text $ show holeIndex]]
+  pure [Left [punctuation "?"], Left [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text $ show holeIndex]]]
 arrangeExpr _node _kids = bug $ "invalid ExprNode"
 
 punctuation str = HH.span [HP.classes [HH.ClassName "punctuation"]] [HH.text str]
@@ -165,4 +166,6 @@ topCtx = {}
 topEnv :: Record Env
 topEnv = {}
 
-engine = Engine {name: "LC", language, renderer}
+-- Engine
+
+engine = Engine {name: "LC-basic", language, renderer}

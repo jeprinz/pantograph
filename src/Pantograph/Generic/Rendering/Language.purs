@@ -29,7 +29,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 renderExpr :: forall ctx env r n d.
   Lacks "elemId" d =>
   Renderer ctx env r n d ->
-  Expr r n (RenderData d) (Sort n d) ->
+  Expr r n (PrerenderData d) (Sort n d) ->
   RenderM ctx env r n d (BufferHtml r n)
 renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
   ctx <- ask
@@ -45,9 +45,9 @@ renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
           node' /\ {i, renderedExpr: renderedExpr', html}
   arrangedHtmls <- 
     renderer.arrangeExpr
-      (ExprNode node {d = unRenderData node.d})
+      (ExprNode node {d = unPrerenderData node.d})
       (arrangeKids <##> \(ExprNode renderedExprNode' /\ {renderedExpr, html}) -> 
-        ExprNode renderedExprNode' {d = unRenderData node.d} /\ {html, renderedExpr})
+        ExprNode renderedExprNode' {d = unPrerenderData node.d} /\ {html, renderedExpr})
 
   let htmls = arrangedHtmls # Array.foldMap case _ of
         Left htmls' -> htmls'
@@ -67,7 +67,7 @@ renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
 --   Lacks "elemId" d => Lacks "cursor" d =>
 --   Renderer ctx env r n d ->
 --   Expr r n (CursorData d) (Sort n d) ->
---   RenderM ctx env r n d {renderedExpr :: Expr r n (RenderData (CursorData d)) (Sort n d), html :: BufferHtml r n}
+--   RenderM ctx env r n d {renderedExpr :: Expr r n (PrerenderData (CursorData d)) (Sort n d), html :: BufferHtml r n}
 -- renderCursorExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
 --   let elemId = HU.freshElementId unit
 
@@ -107,7 +107,7 @@ renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
 --   Lacks "elemId" d => Lacks "select" d =>
 --   Renderer ctx env r n d ->
 --   Expr r n (SelectData d) (Sort n d) ->
---   RenderM ctx env r n d {renderedExpr :: Expr r n (RenderData (SelectData d)) (Sort n d), html :: BufferHtml r n}
+--   RenderM ctx env r n d {renderedExpr :: Expr r n (PrerenderData (SelectData d)) (Sort n d), html :: BufferHtml r n}
 -- renderSelectExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
 --   let elemId = HU.freshElementId unit
 

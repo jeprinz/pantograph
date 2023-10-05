@@ -1,0 +1,9 @@
+.holeIndex {
+  display: inline-block;
+  color: red;
+}
+
+.punctuation {
+  display: inline-block;
+  white-space: pre;
+}
