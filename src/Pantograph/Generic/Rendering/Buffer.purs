@@ -26,7 +26,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
 
   buffer /\ bufferStateId <- HK.useState $ TopBuffer input.expr
   prerenderBuffer /\ prerenderBufferRefId <- HK.useRef $ prerenderBuffer buffer
-  ctx /\ ctxStateId <- HK.useState $ enRenderCtx {depth: 0, outputToken, prerenderBufferRefId} renderer.topCtx
+  ctx /\ ctxStateId <- HK.useState $ enRenderCtx {depth: 0, outputToken} renderer.topCtx
   env /\ envStateId <- HK.useState $ enRenderEnv {holeCount: 0} renderer.topEnv
 
   -- query

@@ -44,14 +44,13 @@ mapRenderM f = map f
 type RenderCtx ctx r n d =
   { depth :: Int
   , outputToken :: HK.OutputToken (BufferOutput r n d)
-  , prerenderBufferRefId :: Ref.Ref (Buffer r n (PrerenderData d) (Sort n d))
+  -- , prerenderBufferRefId :: Ref.Ref (Buffer r n (PrerenderData d) (Sort n d))
   | ctx }
 
-enRenderCtx :: forall ctx r n d. Lacks "depth" ctx => Lacks "outputToken" ctx => Lacks "prerenderBufferRefId" ctx => RenderCtx () r n d -> Record ctx -> RenderCtx ctx r n d
-enRenderCtx {depth, outputToken, prerenderBufferRefId} =
+enRenderCtx :: forall ctx r n d. Lacks "depth" ctx => Lacks "outputToken" ctx => RenderCtx () r n d -> Record ctx -> RenderCtx ctx r n d
+enRenderCtx {depth, outputToken} =
   R.insert (Proxy :: Proxy "depth") depth >>>
-  R.insert (Proxy :: Proxy "outputToken") outputToken >>>
-  R.insert (Proxy :: Proxy "prerenderBufferRefId") prerenderBufferRefId
+  R.insert (Proxy :: Proxy "outputToken") outputToken
 
 type RenderEnv env r n d =
   { holeCount :: Int
