@@ -208,6 +208,7 @@ termToZipper term =
     let _change /\ term' = ssTermStripTopChange term in
     -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
     -- Once Henry fixes the rendering code, then I can uncomment the real implementation below.
+--    trace ("termToZipper given " <> pretty term) \_ ->
 
      let res = Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
      in res
@@ -273,12 +274,12 @@ step t@(Expr.Expr l kids) rules =
 
 stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules =
-    trace "start" \_ ->
-    let res = stepRepeatedly' t rules
---    let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
---    let res = fst $ fastStepImpl fullRules false t
+--    trace "start" \_ ->
+--    let res = stepRepeatedly' t rules
+    let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
+    let res = fst $ fastStepImpl fullRules infinity t
     in
-    trace "end" \_ ->
+--    trace "end" \_ ->
     res
 
 
@@ -297,26 +298,32 @@ stepRepeatedly' t rules =
 {-
 This works under the assumption that all stepRules involve at most two adjacent constructors.
 
-Input bool means "assume that at most the top level constructor can step"
+Input Int is within how many constructors we assume that any possible steps are
 Output bool means "the top level constructor changed"
 -}
+infinity :: Int
+infinity = 999999999
+
 fastStepImpl :: forall l r. IsRuleLabel l r =>
-    List (StepRule l r) -> Boolean -> SSTerm l r -> SSTerm l r /\ Boolean
-fastStepImpl fullRules onlyStepTop0 t0 =
-    let fastStepTCO onlyStepTop outChanged t =
+    List (StepRule l r) -> Int -> SSTerm l r -> SSTerm l r /\ Boolean
+fastStepImpl fullRules assumeStepWithin0 t0 =
+    let fastStepTCO assumeStepWithin outChanged t =
+            if assumeStepWithin <= 0 then Bug.bug "shouldn't happen fastStepImpl" else
             let t' /\ changed = case doAnyApply t fullRules of
                     Just t' -> t' /\ true
                     Nothing -> t /\ false
             in
             let l % kids = t' in
-            let kids' /\ didKidTopLevelChange = if onlyStepTop && (not changed) then kids /\ false
-                else let kids' /\ vals = Array.unzip (map (fastStepImpl fullRules onlyStepTop) kids) in
+            let kids' /\ didKidTopLevelChange = if assumeStepWithin == 1 && (not changed) && (not outChanged) then kids /\ false
+                else let kids' /\ vals = Array.unzip (map (fastStepImpl fullRules (max (assumeStepWithin - 1) 2)) kids) in
                     kids' /\ Array.any identity vals
             in
+--            trace ("got to the fork with " <> pretty t0) \_ ->
             if changed || didKidTopLevelChange
-                then fastStepTCO true true (l % kids')
+                then fastStepTCO 2 true (l % kids')
                 else l % kids' /\ (changed || outChanged)
-    in fastStepTCO onlyStepTop0 false t0
+    in
+        fastStepTCO assumeStepWithin0 false t0
 
 -------------- Default rules --------------------------------------------
 type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
