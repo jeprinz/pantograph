@@ -7,6 +7,7 @@ import Pantograph.Generic.Rendering.Language
 import Prelude
 
 import Data.Maybe (Maybe(..))
+import Data.Tree
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
@@ -23,28 +24,18 @@ import Record as R
 import Type.Proxy (Proxy(..))
 
 bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) -> HK.do
-  let Engine engine = input.engine
-  let Renderer renderer = engine.renderer
+  let Renderer renderer = input.renderer
 
-  buffer /\ bufferStateId <- HK.useState $ TopBuffer input.expr
-  prerenderedBuffer /\ prerenderedBufferRef <- HK.useRef $ prerenderBuffer buffer
+  gyro /\ gyroStateId <- HK.useState $ RootGyro input.expr
 
-  let setBuffer buffer' = do 
-        processBuffer buffer'
-        liftEffect $ Ref.write buffer' prerenderedBufferRef
+  syncGyro /\ syncGyroRef <- HK.useState $ syncGyro gyro
 
-  ctx /\ ctxStateId <- HK.useState $ enRenderCtx {depth: 0, outputToken, setBuffer} renderer.topCtx
-  env /\ envStateId <- HK.useState $ enRenderEnv {holeCount: 0} renderer.topEnv
-
-  -- query
-  HK.useQuery queryToken case _ of
-    SetBuffer buffer' a -> do
-      HK.modify_ bufferStateId (const buffer')
-      pure $ Just a
+  ctx /\ ctxStateId <- HK.useState $ R.union {depth: 0} renderer.topCtx
+  env /\ envStateId <- HK.useState $ R.union {holeCount: 0} renderer.topEnv
 
   -- render
   HK.pure $ do
-    let bufferHtml = runRenderM ctx env $ renderBuffer (Renderer renderer) prerenderedBuffer
+    let gyroHtml = runRenderM ctx env $ renderGyro (Renderer renderer) syncGyro
     HH.div 
       [HP.classes [HH.ClassName "Panel Buffer"]]
       [ HH.div
@@ -56,34 +47,15 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
           , HH.text "Buffer" ]
       , HH.div
           [HP.classes [HH.ClassName "PanelContent"]]
-          [bufferHtml]
-      ]
+          [gyroHtml] ]
 
--- prerender
+syncGyro :: forall el ed sn.
+  ExprGyro el ed sn ->
+  ExprGyro el (SyncExprData ed) sn
+syncGyro = hole "TODO: syncGyro"
 
-prerenderBuffer :: forall r n d.
-  Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
-  Buffer r n d (Sort n d) -> Buffer r n (PrerenderData d) (Sort n d)
-prerenderBuffer = case _ of
-  TopBuffer expr -> TopBuffer $ prerenderExpr expr
-  _ -> hole "TODO"
-
--- render
-
-renderBuffer :: forall ctx env r n d.
-  Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
-  Renderer ctx env r n d ->
-  Buffer r n (PrerenderData d) (Sort n d) ->
-  RenderM ctx env r n d (BufferHtml r n)
-renderBuffer renderer = case _ of
-  TopBuffer expr -> renderExpr renderer expr
-  CursorBuffer cursorExpr -> hole "TODO: render CursorBuffer" -- _.html <$> renderCursorExpr renderer cursorExpr
-  SelectBuffer selectExpr -> hole "TODO: render SelectBuffer" -- _.html <$> renderSelectExpr renderer selectExpr
-
--- process
-
-processBuffer :: forall r n d.
-  Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
-  Buffer r n (PrerenderData d) (Sort n d) -> 
-  HK.HookM Aff Unit
-processBuffer = hole "TODO"
+renderGyro :: forall ctx env el ed sn.
+  Renderer ctx env el ed sn ->
+  ExprGyro el (SyncExprData ed) sn ->
+  RenderM ctx env el ed sn (BufferHtml el ed sn)
+renderGyro = hole "TODO: renderGyro"

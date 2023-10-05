@@ -18,6 +18,8 @@ newtype Cursor a = Cursor {path :: Path a, tree :: Tree a}
 
 newtype Select a = Select {top :: Path a, mid :: Path a, bot :: Tree a}
 
+data Gyro a = RootGyro (Tree a) | CursorGyro (Cursor a) | SelectGyro (Select a)
+
 data Change a
   = Shift ShiftSign a (Change a)
   | Replace (Tree a) (Tree a)

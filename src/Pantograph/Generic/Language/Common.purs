@@ -76,6 +76,7 @@ type ExprTooth el ed sn = Tooth (ExprNode el ed sn)
 type ExprPath el ed sn = Path (ExprNode el ed sn)
 type ExprCursor el ed sn = Cursor (ExprNode el ed sn)
 type ExprSelect el ed sn = Select (ExprNode el ed sn)
+type ExprGyro el ed sn = Gyro (ExprNode el ed sn)
 
 -- Language
 

@@ -1,9 +1,10 @@
 module Pantograph.Generic.Rendering.Common where
 
-import Prelude
 import Data.Either.Nested
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
+import Prelude
+
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, evalStateT)
 import Data.Array as Array
@@ -21,7 +22,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Halogen.Utilities (ElementId(..))
 import Halogen.Utilities as HU
 import Hole (hole)
 import Prim.Row (class Lacks)
@@ -30,18 +30,12 @@ import Type.Proxy (Proxy(..))
 
 -- | # RenderM
 -- |
--- | TODO: description
+-- | A computation that produces the final HTML rendered to the DOM.
 
 type RenderM ctx env el ed sn = 
   ReaderT (RenderCtx ctx el ed sn) (
   StateT (RenderEnv env el ed sn) (
   Identity))
-
-runRenderM :: forall ctx env el ed sn a. RenderCtx ctx el ed sn -> RenderEnv env el ed sn -> RenderM ctx env el ed sn a -> a
-runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
-
-mapRenderM :: forall ctx env el ed sn a b. (a -> b) -> (RenderM ctx env el ed sn a -> RenderM ctx env el ed sn b)
-mapRenderM f = map f
 
 type RenderCtx ctx el ed sn =
   { depth :: Int
@@ -50,6 +44,33 @@ type RenderCtx ctx el ed sn =
 type RenderEnv env el ed sn =
   { holeCount :: Int
   | env }
+
+runRenderM :: forall ctx env el ed sn a. RenderCtx ctx el ed sn -> RenderEnv env el ed sn -> RenderM ctx env el ed sn a -> a
+runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
+
+mapRenderM :: forall ctx env el ed sn a b. (a -> b) -> (RenderM ctx env el ed sn a -> RenderM ctx env el ed sn b)
+mapRenderM f = map f
+
+-- | # HydrateM
+-- |
+-- | A computation that traverses a `SyncExpr` and applies any style changes to
+-- | the sync'ed DOM elements.
+
+type HydrateM el ed sn = 
+  ReaderT (HydrateCtx el ed sn) (
+  StateT (HydrateEnv el ed sn) (
+  Identity))
+
+type HydrateCtx el ed sn =
+  { parentInteractionStatus :: InteractionStatus }
+
+type HydrateEnv el ed sn =
+  {}
+
+data InteractionStatus
+  = NoInteraction
+  | AtCursor | OutsideCursor | InsideCursor
+  | OutsideSelect | AtTopSelect | BetweenSelect | AtBotSelect | InsideSelect
 
 -- | # Renderer
 -- |
@@ -87,15 +108,10 @@ newtype BufferInput ctx env el ed sn = BufferInput
   , renderer :: Renderer ctx env el ed sn
   , expr :: Expr el ed sn }
 data BufferQuery el ed sn a
-  = SetBuffer (Buffer el ed sn) a
+  = SetGyro (ExprGyro el ed sn) a
 data BufferOutput el ed sn
   = WriteTerminalFromBuffer TerminalItem
 data BufferSlotId
-
-data Buffer el ed sn
-  = TopBuffer (Expr el ed sn)
-  | CursorBuffer (ExprCursor el ed sn)
-  | SelectBuffer (ExprSelect el ed sn)
 
 type BufferHtml el ed sn = 
   HH.ComponentHTML
@@ -103,6 +119,8 @@ type BufferHtml el ed sn =
     ( toolbox :: ToolboxSlot el ed sn
     , preview :: PreviewSlot el ed sn )
     Aff
+
+type SyncExprData ed = (elemId :: HU.ElementId | ed)
 
 -- | # Toolbox
 -- |
