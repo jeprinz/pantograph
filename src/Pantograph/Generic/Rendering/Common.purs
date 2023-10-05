@@ -1,16 +1,16 @@
 module Pantograph.Generic.Rendering.Common where
 
+import Prelude
 import Data.Either.Nested
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
-import Prelude
-
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, evalStateT)
 import Data.Array as Array
 import Data.Const (Const)
 import Data.Either (either)
 import Data.Identity (Identity)
+import Data.Lazy (Lazy)
 import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Newtype (unwrap)
@@ -28,140 +28,122 @@ import Prim.Row (class Lacks)
 import Record as R
 import Type.Proxy (Proxy(..))
 
--- RenderM
+-- | # RenderM
+-- |
+-- | TODO: description
 
-type RenderM ctx env r n d = 
-  ReaderT (RenderCtx ctx r n d) (
-  StateT (RenderEnv env r n d) (
+type RenderM ctx env el ed sn = 
+  ReaderT (RenderCtx ctx el ed sn) (
+  StateT (RenderEnv env el ed sn) (
   Identity))
 
-runRenderM :: forall ctx env r n d a. RenderCtx ctx r n d -> RenderEnv env r n d -> RenderM ctx env r n d a -> a
+runRenderM :: forall ctx env el ed sn a. RenderCtx ctx el ed sn -> RenderEnv env el ed sn -> RenderM ctx env el ed sn a -> a
 runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
 
-mapRenderM :: forall ctx env r n d a b. (a -> b) -> (RenderM ctx env r n d a -> RenderM ctx env r n d b)
+mapRenderM :: forall ctx env el ed sn a b. (a -> b) -> (RenderM ctx env el ed sn a -> RenderM ctx env el ed sn b)
 mapRenderM f = map f
 
-type RenderCtx ctx r n d =
+type RenderCtx ctx el ed sn =
   { depth :: Int
-  , outputToken :: HK.OutputToken (BufferOutput r n d)
-  -- , prerenderBufferRefId :: Ref.Ref (Buffer r n (PrerenderData d) (Sort n d))
   | ctx }
 
-enRenderCtx :: forall ctx r n d. Lacks "depth" ctx => Lacks "outputToken" ctx => RenderCtx () r n d -> Record ctx -> RenderCtx ctx r n d
-enRenderCtx {depth, outputToken} =
-  R.insert (Proxy :: Proxy "depth") depth >>>
-  R.insert (Proxy :: Proxy "outputToken") outputToken
-
-type RenderEnv env r n d =
+type RenderEnv env el ed sn =
   { holeCount :: Int
   | env }
 
-enRenderEnv :: forall env r n d. Lacks "holeCount" env => RenderEnv () r n d -> Record env -> RenderEnv env r n d
-enRenderEnv {holeCount} =
-  R.insert (Proxy :: Proxy "holeCount") holeCount
+-- | # Renderer
+-- |
+-- | TODO: description
 
--- Renderer
-
-newtype Renderer ctx env r n d = Renderer
+newtype Renderer ctx env el ed sn = Renderer
   { name :: String
+  , language :: Language el ed sn
   , topCtx :: Record ctx
   , topEnv :: Record env
   , arrangeExpr :: forall a.
-      ExprNode r n d (Sort n d) ->
-      Array (RenderM ctx env r n d (ExprNode r n d (Sort n d) /\ a)) ->
-      RenderM ctx env r n d (Array (Array (BufferHtml r n) \/ a))
-  }
+      ExprNode el ed sn ->
+      Array (RenderM ctx env el ed sn (ExprNode el ed sn /\ a)) ->
+      RenderM ctx env el ed sn (Array (Array (BufferHtml el ed sn) \/ a)) }
 
-  -- TODO: not sure if `arrangeSort` is necessary
-  -- arrangeSort :: forall ctx env a. SortNode n -> Array (Sort n /\ a) -> RenderM ctx env r n (Array (a \/ (Html r n)))
-
--- PrerenderData
-
-type PrerenderData d = (elemId :: ElementId | d)
-
-unPrerenderData :: forall d. Lacks "elemId" d => Record (PrerenderData d) -> Record d
-unPrerenderData = R.delete (Proxy :: Proxy "elemId")
-
-enPrerenderData :: forall d. Lacks "elemId" d => Record (PrerenderData ()) -> Record d -> Record (PrerenderData d)
-enPrerenderData {elemId} = 
-  R.insert (Proxy :: Proxy "elemId") elemId
-
-arrangeRenderExpr :: forall ctx env r n d a.
-  Renderer ctx env r n d ->
-  ExprNode r n (PrerenderData d) (Sort n d) ->
-  Array (RenderM ctx env r n d (a /\ ExprNode r n (PrerenderData d) (Sort n d))) ->
-  RenderM ctx env r n d (Array (a \/ Array (BufferHtml r n)))
-arrangeRenderExpr = hole "TODO"
-
--- Editor
+-- | # Editor
+-- |
+-- | TODO: description
 
 type EditorSlot = H.Slot EditorQuery EditorOutput EditorSlotId
-newtype EditorInput ctx env r n d = EditorInput
-  { engine :: Engine ctx env r n d }
+newtype EditorInput ctx env el ed sn = EditorInput
+  { renderer :: Renderer ctx env el ed sn }
+type EditorQuery :: Type -> Type
 type EditorQuery = Const Void
 type EditorOutput = Void
 type EditorSlotId = Unit
 
-newtype Engine ctx env r n d = Engine
+-- | # Buffer
+-- |
+-- | A "Buffer" is an editable window of code.
+
+type BufferSlot el ed sn = H.Slot (BufferQuery el ed sn) (BufferOutput el ed sn) BufferSlotId
+newtype BufferInput ctx env el ed sn = BufferInput 
   { name :: String
-  , language :: Language r n d
-  , renderer :: Renderer ctx env r n d }
-
-engineDescription (Engine {name: engineName, language: Language {name: languageName}, renderer: Renderer {name: rendererName}}) =
-  "{engine: " <> engineName <> " {" <>
-    "language: " <> languageName <> ", " <>
-    "renderer: " <> rendererName <> "}}"
-
--- Buffer
-
-type BufferSlot r n d = H.Slot (BufferQuery r n d) (BufferOutput r n d) BufferSlotId
-newtype BufferInput ctx env r n d = BufferInput 
-  { name :: String
-  , engine :: Engine ctx env r n d
-  , expr :: Expr r n d (Sort n d) }
-data BufferQuery r n d a
-  = SetBuffer (Buffer r n d (Sort n d)) a
-data BufferOutput r n d
+  , renderer :: Renderer ctx env el ed sn
+  , expr :: Expr el ed sn }
+data BufferQuery el ed sn a
+  = SetBuffer (Buffer el ed sn) a
+data BufferOutput el ed sn
   = WriteTerminalFromBuffer TerminalItem
 data BufferSlotId
 
-data Buffer r n d s
-  = TopBuffer (Expr r n d s)
-  | CursorBuffer (Expr r n (CursorData d) s)
-  | SelectBuffer (Expr r n (SelectData d) s)
+data Buffer el ed sn
+  = TopBuffer (Expr el ed sn)
+  | CursorBuffer (ExprCursor el ed sn)
+  | SelectBuffer (ExprSelect el ed sn)
 
-type BufferHtml r n = 
+type BufferHtml el ed sn = 
   HH.ComponentHTML
     (HK.HookM Aff Unit) 
-    ( toolbox :: ToolboxSlot r n
-    , preview :: PreviewSlot r n )
+    ( toolbox :: ToolboxSlot el ed sn
+    , preview :: PreviewSlot el ed sn )
     Aff
 
--- Toolbox
+-- | # Toolbox
+-- |
+-- | A "Toolbox" is a little box of completions that appears when you start
+-- | typing at a cursor.
 
-type ToolboxSlot r n = H.Slot (ToolboxQuery r n) (ToolboxOutput r n) (ToolboxSlotId r n)
-newtype ToolboxInput r n = ToolboxInput {}
-data ToolboxQuery r n a
-data ToolboxOutput r n
-data ToolboxSlotId r n
+type ToolboxSlot el ed sn = H.Slot (ToolboxQuery el ed sn) (ToolboxOutput el ed sn) (ToolboxSlotId el ed sn)
+newtype ToolboxInput el ed sn = ToolboxInput 
+  { items :: ToolboxItem el ed sn }
+data ToolboxQuery el ed sn a
+data ToolboxOutput el ed sn
+  = SubmitToolboxItem (ToolboxItem el ed sn)
+data ToolboxSlotId el ed sn = ToolboxSlotId (ExprPath el ed sn)
 
--- Preview
+data ToolboxItem el ed sn
+  = ReplaceToolboxItem (Expr el ed sn)
+  | InsertToolboxItem (ExprPath el ed sn)
 
-type PreviewSlot r n = H.Slot (PreviewQuery r n) (PreviewOutput r n) (PreviewSlotId r n)
-newtype PreviewInput r n = PreviewInput {}
-data PreviewQuery r n a
-data PreviewOutput r n
-data PreviewSlotId r n
+-- | # Preview
+-- |
+-- | TODO: description
 
--- Clipboard
+type PreviewSlot el ed sn = H.Slot (PreviewQuery el ed sn) (PreviewOutput el ed sn) (PreviewSlotId el ed sn)
+newtype PreviewInput el ed sn = PreviewInput {}
+data PreviewQuery el ed sn a
+data PreviewOutput el ed sn
+data PreviewSlotId el ed sn
 
-type ClipboardSlot r n = H.Slot (ClipboardQuery r n) (ClipboardOutput r n) (ClipboardSlotId r n)
-newtype ClipboardInput r n = ClipboardInput {}
-data ClipboardQuery r n a
-data ClipboardOutput r n
-data ClipboardSlotId r n
+-- | # Clipboard
+-- |
+-- | TODO: description
 
--- Terminal
+type ClipboardSlot el ed sn = H.Slot (ClipboardQuery el ed sn) (ClipboardOutput el ed sn) (ClipboardSlotId el ed sn)
+newtype ClipboardInput el ed sn = ClipboardInput {}
+data ClipboardQuery el ed sn a
+data ClipboardOutput el ed sn
+data ClipboardSlotId el ed sn
+
+-- | # Terminal
+-- |
+-- | TODO: description
 
 type TerminalSlot = H.Slot TerminalQuery TerminalOutput TerminalSlotId
 newtype TerminalInput = TerminalInput {}

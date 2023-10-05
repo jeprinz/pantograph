@@ -1,147 +1,118 @@
 module Pantograph.Generic.Language.Common where
 
 import Prelude
+import Util
 
 import Bug (bug)
+import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
+import Data.Show.Generic (genericShow)
 import Hole (hole)
 import Prim.Row (class Lacks)
 import Record as R
-import Text.Pretty (class Pretty, parens, pretty, spaces)
+import Text.Pretty (class Pretty, parens, pretty, spaces, ticks)
 import Type.Proxy (Proxy(..))
+import Data.Tree
 
 -- Sort
 
-data Sort n d = Sort {node :: SortNode n d, kids :: Array (Sort n d)}
-data SortNode n d = SortNode {n :: n, d :: Record d}
-data SortTooth n d = SortTooth (SortNode n d) Int (Array (Sort n d))
+data SortNode (sn :: Type)
+  = SortNode sn
 
-instance Pretty n => Pretty (Sort n d) where
-  pretty (Sort {node: SortNode {n}, kids}) = parens $ spaces $ [pretty n] <> (pretty <$> kids)
+derive instance Generic (SortNode sn) _
+instance Show sn => Show (SortNode sn) where show = genericShow
+derive instance Functor SortNode
 
-makeSort n d kids = Sort {node: SortNode {n, d}, kids}
+type Sort sn = Tree (SortNode sn)
+type SortTooth sn = Tooth (SortNode sn)
+type SortPath sn = Path (SortNode sn)
 
 -- RuleSort
 
-data RuleSort n d 
-  = RuleSort {node :: SortNode n d, kids :: Array (RuleSort n d)}
-  | VarRuleSort RuleVar
+data RuleSortNode sn
+  = ConstRuleSortNode (SortNode sn)
+  | VarRuleSortNode RuleSortVar
 
-data RuleSortTooth n d = RuleSortTooth (SortNode n d) Int (Array (RuleSort n d))
+derive instance Generic (RuleSortNode sn) _
+instance Show sn => Show (RuleSortNode sn) where show = genericShow
 
-makeRuleSort n d kids = RuleSort {node: SortNode {n, d}, kids}
-makeVarRuleSort = VarRuleSort
+fromConstRuleSortNode _ (ConstRuleSortNode sn) = sn
+fromConstRuleSortNode msg n = bug $ msg <> "expected " <> ticks "ConstRuleSortNode _" <> " but found " <> ticks (show n)
 
-data RuleVar = MakeRuleVar String
+type RuleSort sn = Tree (RuleSortNode sn)
+type RuleSortTooth sn = Tooth (RuleSortNode sn)
+type RuleSortPath sn = Path (RuleSortNode sn)
 
-derive instance Eq RuleVar
-derive instance Ord RuleVar
+instance ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
+  applyRuleSortVarSubst sigma (Tree {node: ConstRuleSortNode sn, kids}) = Tree {node: sn, kids: applyRuleSortVarSubst sigma <$> kids}
+  applyRuleSortVarSubst sigma (Tree {node: VarRuleSortNode x}) = applyRuleSortVarSubst sigma x
 
-newtype RuleVarSubst a = RuleVarSubst (Map.Map RuleVar a)
+-- SortChange
 
-substRuleVar :: forall a. RuleVarSubst a -> RuleVar -> a
-substRuleVar (RuleVarSubst m) x = case Map.lookup x m of
-  Nothing -> bug $ "a RuleVar was not substituted by the RuleVarSubst"
-  Just a -> a
+type SortChange sn = Change (SortNode sn)
 
-substRuleSort :: forall n d. RuleVarSubst (Sort n d) -> RuleSort n d -> Sort n d
-substRuleSort sigma (RuleSort {node, kids}) = Sort {node, kids: substRuleSort sigma <$> kids}
-substRuleSort sigma (VarRuleSort x) = substRuleVar sigma x
+-- RuleSortChange
 
-substRuleChange :: forall n d. RuleVarSubst (Sort n d) -> RuleChange n d -> Change n d
-substRuleChange = hole "TODO"
+type RuleSortChange sn = Change (RuleSortNode sn)
 
-
--- Change
-
-data Change n d
-  = Plus (SortTooth n d) (Change n d)
-  | Minus (SortTooth n d) (Change n d)
-  | Replace (Sort n d) (Sort n d)
-  | Reflect (SortNode n d) (Array (Change n d))
-
--- RuleChange
-
-data RuleChange n d
-  = RulePlus (RuleSortTooth n d) (RuleChange n d)
-  | RuleMinus (RuleSortTooth n d) (Change n d)
-  | RuleReplace (RuleSort n d) (RuleSort n d)
-  | RuleReflect (SortNode n d) (Array (RuleChange n d))
-
-makeRuleReflect n d kids = RuleReflect (SortNode {n, d}) kids
+instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
+  applyRuleSortVarSubst sigma (Shift sign sn c) = Shift sign (fromConstRuleSortNode "invalid Shift" sn) (applyRuleSortVarSubst sigma c)
+  applyRuleSortVarSubst sigma (Replace s1 s2) = Replace (applyRuleSortVarSubst sigma s1) (applyRuleSortVarSubst sigma s2)
+  applyRuleSortVarSubst sigma (Reflect sn cs) = Reflect (fromConstRuleSortNode "invalid Reflect" sn) (applyRuleSortVarSubst sigma <$> cs)
 
 -- Expr
 
-data Expr r n d s = Expr {node :: ExprNode r n d s, kids :: Array (Expr r n d s)}
-data ExprNode r n d s = ExprNode {r :: r, n :: n, sigma :: RuleVarSubst s, d :: Record d}
-data ExprTooth r n d s = ExprTooth (ExprNode r n d s) Int (Array (Expr r n d s))
-type ExprPath r n d s = List (ExprTooth r n d s)
+newtype ExprNode (el :: Type) (ed :: Row Type) (sn :: Type) = ExprNode 
+  { label :: el
+  , sigma :: RuleSortVarSubst sn
+  , dat :: Record ed }
 
-makeExpr r n sigma d kids = Expr {node: ExprNode {r, n, sigma, d}, kids}
-
-mapExprNode_data :: forall r n d d' s. (Record d -> Record d') -> ExprNode r n d s -> ExprNode r n d' s
-mapExprNode_data f (ExprNode node) = ExprNode node {d = f node.d}
-
--- CursorData, SelectData
-
--- TODO: could include more info here, such as OutSideCursorStatus,
--- InsideCursorState, if its efficient enough to directly manipulate the dom
--- that much.
-
-type CursorData d = (cursor :: Maybe CursorStatus | d)
-data CursorStatus = CursorStatus
-
-unCursorData = R.delete (Proxy :: Proxy "cursor")
-enCursorData :: forall d. Lacks "cursor" d => Record (CursorData ()) -> Record d -> Record (CursorData d)
-enCursorData {cursor} = 
-  R.insert (Proxy :: Proxy "cursor") cursor
-
-type SelectData d = (select :: Maybe SelectStatus | d)
-data SelectStatus = OuterSelectStatus | InnerSelectStatus
-
-unSelectData = R.delete (Proxy :: Proxy "select")
-enSelectData :: forall d. Lacks "select" d => Record (SelectData ()) -> Record d -> Record (SelectData d)
-enSelectData {select} = 
-  R.insert (Proxy :: Proxy "select") select
+type Expr el ed sn = Tree (ExprNode el ed sn)
+type ExprTooth el ed sn = Tooth (ExprNode el ed sn)
+type ExprPath el ed sn = Path (ExprNode el ed sn)
+type ExprCursor el ed sn = Cursor (ExprNode el ed sn)
+type ExprSelect el ed sn = Select (ExprNode el ed sn)
 
 -- Language
 
-newtype Language r n d = Language
+newtype Language el ed sn = Language
   { name :: String
-  , getSortingRule :: r -> SortingRule n d
-  , getChangingRule :: r -> ChangingRule n d
-  , topSort :: Sort n d
-  , defaultExpr :: Sort n d -> Maybe (Expr r n d (Sort n d)) }
-
-derive instance Newtype (Language r n d) _
-
-topExpr (Language language) = case language.defaultExpr language.topSort of
-  Nothing -> bug $ "language.defaultExpr language.topSort == Nothing"
-  Just expr -> expr
-
-getExprNodeSort (Language language) (ExprNode {n, r, sigma, d}) = do
-  let SortingRule sortingRule = language.getSortingRule r
-  substRuleSort sigma sortingRule.parent
-
-getExprSort language (Expr {node}) = getExprNodeSort language node
+  , getSortingRule :: el -> SortingRule sn
+  , getChangingRule :: el -> ChangingRule sn 
+  , topSort :: Sort sn 
+  , defaultExpr :: Sort sn -> Maybe (Expr el ed sn) }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
-newtype SortingRule n d = SortingRule
-  { parameters :: Set.Set RuleVar
-  , kids :: Array (RuleSort n d)
-  , parent :: RuleSort n d }
-
-derive instance Newtype (SortingRule n d) _
+newtype SortingRule sn = SortingRule
+  { parameters :: Set.Set RuleSortVar
+  , kids :: Array (RuleSort sn) 
+  , parent :: RuleSort sn }
 
 -- | A `ChangeRule` specifies the changes from the prent to eahc kid of a
 -- | corresponding `SortingRule`.
-newtype ChangingRule n d = ChangingRule 
-  { parameters :: Set.Set RuleVar
-  , kids :: Array (RuleChange n d) }
+newtype ChangingRule sn = ChangingRule 
+  { parameters :: Set.Set RuleSortVar
+  , kids :: Array (RuleSortChange sn) }
 
-derive instance Newtype (ChangingRule n d) _
+-- RuleSortVar
+
+newtype RuleSortVar = MakeRuleSortVar String
+
+derive newtype instance Show RuleSortVar
+derive instance Eq RuleSortVar
+derive instance Ord RuleSortVar
+
+newtype RuleSortVarSubst sn = RuleSortVarSubst (Map.Map RuleSortVar (Sort sn))
+
+class ApplyRuleSortVarSubst sn a b | a -> b where
+  applyRuleSortVarSubst :: RuleSortVarSubst sn -> a -> b
+
+instance ApplyRuleSortVarSubst sn RuleSortVar (Sort sn) where
+  applyRuleSortVarSubst (RuleSortVarSubst m) x = case Map.lookup x m of
+    Nothing -> bug $ "Could not substitute RuleVar: " <> show x
+    Just s -> s

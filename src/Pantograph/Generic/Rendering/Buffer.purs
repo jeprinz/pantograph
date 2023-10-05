@@ -1,19 +1,21 @@
 module Pantograph.Generic.Rendering.Buffer where
 
-import Prelude
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Pantograph.Generic.Rendering.Language
+import Prelude
+
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
+import Effect.Ref as Ref
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Halogen.Utilities (freshElementId)
 import Hole (hole)
 import Pantograph.Generic.Language (Sort)
 import Prim.Row (class Lacks)
@@ -25,8 +27,13 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
   let Renderer renderer = engine.renderer
 
   buffer /\ bufferStateId <- HK.useState $ TopBuffer input.expr
-  prerenderBuffer /\ prerenderBufferRefId <- HK.useRef $ prerenderBuffer buffer
-  ctx /\ ctxStateId <- HK.useState $ enRenderCtx {depth: 0, outputToken} renderer.topCtx
+  prerenderedBuffer /\ prerenderedBufferRef <- HK.useRef $ prerenderBuffer buffer
+
+  let setBuffer buffer' = do 
+        processBuffer buffer'
+        liftEffect $ Ref.write buffer' prerenderedBufferRef
+
+  ctx /\ ctxStateId <- HK.useState $ enRenderCtx {depth: 0, outputToken, setBuffer} renderer.topCtx
   env /\ envStateId <- HK.useState $ enRenderEnv {holeCount: 0} renderer.topEnv
 
   -- query
@@ -37,7 +44,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
 
   -- render
   HK.pure $ do
-    let bufferHtml = runRenderM ctx env $ renderBuffer (Renderer renderer) prerenderBuffer
+    let bufferHtml = runRenderM ctx env $ renderBuffer (Renderer renderer) prerenderedBuffer
     HH.div 
       [HP.classes [HH.ClassName "Panel Buffer"]]
       [ HH.div
@@ -52,6 +59,8 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
           [bufferHtml]
       ]
 
+-- prerender
+
 prerenderBuffer :: forall r n d.
   Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
   Buffer r n d (Sort n d) -> Buffer r n (PrerenderData d) (Sort n d)
@@ -59,12 +68,7 @@ prerenderBuffer = case _ of
   TopBuffer expr -> TopBuffer $ prerenderExpr expr
   _ -> hole "TODO"
 
-prerenderExpr :: forall r n d.
-  Lacks "elemId" d =>
-  Expr r n d (Sort n d) -> Expr r n (PrerenderData d) (Sort n d)
-prerenderExpr (Expr {node: ExprNode node, kids}) = Expr 
-  { node: ExprNode node {d = enPrerenderData {elemId: freshElementId unit} node.d}
-  , kids: prerenderExpr <$> kids }
+-- render
 
 renderBuffer :: forall ctx env r n d.
   Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
@@ -75,3 +79,11 @@ renderBuffer renderer = case _ of
   TopBuffer expr -> renderExpr renderer expr
   CursorBuffer cursorExpr -> hole "TODO: render CursorBuffer" -- _.html <$> renderCursorExpr renderer cursorExpr
   SelectBuffer selectExpr -> hole "TODO: render SelectBuffer" -- _.html <$> renderSelectExpr renderer selectExpr
+
+-- process
+
+processBuffer :: forall r n d.
+  Lacks "elemId" d => Lacks "cursor" d => Lacks "select" d =>
+  Buffer r n (PrerenderData d) (Sort n d) -> 
+  HK.HookM Aff Unit
+processBuffer = hole "TODO"

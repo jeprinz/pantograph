@@ -5,10 +5,12 @@ import Pantograph.Generic.Rendering.Common
 import Prelude
 import Util
 
-import Control.Monad.Reader (ask)
+import Control.Monad.Reader (ReaderT, ask)
 import Control.Monad.State (get)
 import Data.Array as Array
 import Data.Either (Either(..))
+import Data.Identity (Identity)
+import Data.Lazy (Lazy)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
@@ -18,6 +20,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
+import Hole (hole)
 import Prim.Row (class Lacks)
 import Record as R
 import Safe.Coerce (coerce)
@@ -26,16 +29,40 @@ import Unsafe.Coerce (unsafeCoerce)
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
+-- prerender
+
+type PrerenderM r n d = ReaderT (PrerenderCtx r n d) Identity
+type PrerenderCtx r n d =
+  { cursor :: Lazy (CursorExpr r n (PrerenderData r n d) (Sort n d))
+  }
+
+prerenderExpr :: forall r n d.
+  Lacks "elemId" d => Lacks "cursor" d =>
+  Expr r n d (Sort n d) ->
+  PrerenderM r n d (Expr r n (PrerenderData r n d) (Sort n d))
+prerenderExpr (Expr {node: ExprNode node, kids}) = do
+  {cursor} <- ask
+  let node' = ExprNode node 
+    { d = enPrerenderData {elemId: HU.freshElementId unit, cursor: Just <<< PrerenderCursor <$> cursor} node.d}
+  -- TODO: prerender kids, with appropriately modified contexts
+  hole "TODO"
+  -- Expr 
+  --   { node: ExprNode node {d = enPrerenderData {elemId: HU.freshElementId unit, cursor: hole "TODO"} node.d}
+  --   , kids: prerenderExpr <$> kids }
+
+-- render
+
 renderExpr :: forall ctx env r n d.
-  Lacks "elemId" d =>
+  Lacks "elemId" d => Lacks "cursor" d =>
   Renderer ctx env r n d ->
-  Expr r n (PrerenderData d) (Sort n d) ->
+  Expr r n (PrerenderData r n d) (Sort n d) ->
   RenderM ctx env r n d (BufferHtml r n)
 renderExpr (Renderer renderer) (Expr {node: ExprNode node, kids}) = do
   ctx <- ask
   -- env <- get
 
-  let elemId = HU.freshElementId unit
+  -- let elemId = HU.freshElementId unit
+  let elemId = hole "TODO: get from prerender data"
 
   let renderKids = Array.mapWithIndex Tuple kids <#> \(i /\ renderedExpr) -> do
         html <- renderExpr (Renderer renderer) renderedExpr

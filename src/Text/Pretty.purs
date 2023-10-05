@@ -39,6 +39,9 @@ appendSpaced str1 str2 = str1 <> " " <> str2
 
 infixr 5 appendSpaced as <+>
 
+cursor :: String
+cursor = "⌶"
+
 indent :: String -> String
 indent = intercalate "\n" <<< map ("  " <> _) <<< String.split (Pattern "\n")
 
@@ -51,7 +54,6 @@ parens   = surround "(" ")"
 brackets = surround "[" "]"
 braces   = surround "{" "}"
 braces2   = surround "{{" "}}"
-cursor    = surround "⌶{" "}"
 angles   = surround "<" ">"
 ticks    = surround "`" "`"
 
