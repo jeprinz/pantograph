@@ -10,11 +10,13 @@ import Control.Monad.State (StateT, evalStateT)
 import Data.Array as Array
 import Data.Const (Const)
 import Data.Either (either)
+import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
 import Data.Lazy (Lazy)
 import Data.Map as Map
 import Data.Maybe (Maybe)
 import Data.Newtype (unwrap)
+import Data.Show.Generic (genericShow)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
 import Effect.Ref as Ref
@@ -27,6 +29,9 @@ import Hole (hole)
 import Prim.Row (class Lacks)
 import Record as R
 import Type.Proxy (Proxy(..))
+
+class ToClassName a where
+  toClassName :: a -> HH.ClassName
 
 -- | # RenderM
 -- |
@@ -56,21 +61,28 @@ mapRenderM f = map f
 -- | A computation that traverses a `SyncExpr` and applies any style changes to
 -- | the sync'ed DOM elements.
 
-type HydrateM el ed sn = 
+type HydrateM el ed sn =
   ReaderT (HydrateCtx el ed sn) (
   StateT (HydrateEnv el ed sn) (
-  Identity))
+  Aff))
+
+runHydrateM :: forall el ed sn a. _ -> _ -> HydrateM el ed sn a -> Aff a
+runHydrateM ctx env = flip runReaderT ctx >>> flip evalStateT env
 
 type HydrateCtx el ed sn =
-  { parentInteractionStatus :: InteractionStatus }
+  { gyroPosition :: GyroPosition }
 
 type HydrateEnv el ed sn =
   {}
 
-data InteractionStatus
-  = NoInteraction
+data GyroPosition
+  = InsideRoot
   | AtCursor | OutsideCursor | InsideCursor
   | OutsideSelect | AtTopSelect | BetweenSelect | AtBotSelect | InsideSelect
+
+derive instance Generic GyroPosition _
+instance Show GyroPosition where show = genericShow
+instance ToClassName GyroPosition where toClassName = HH.ClassName <<< show
 
 -- | # Renderer
 -- |
