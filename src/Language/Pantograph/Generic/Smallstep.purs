@@ -274,9 +274,9 @@ step t@(Expr.Expr l kids) rules =
 stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
 stepRepeatedly t rules =
     trace "start" \_ ->
---    let res = stepRepeatedly' t rules
-    let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
-    let res = fst $ fastStepImpl fullRules false t
+    let res = stepRepeatedly' t rules
+--    let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
+--    let res = fst $ fastStepImpl fullRules false t
     in
     trace "end" \_ ->
     res
