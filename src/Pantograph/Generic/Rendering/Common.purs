@@ -33,41 +33,31 @@ import Type.Proxy (Proxy(..))
 class ToClassName a where
   toClassName :: a -> HH.ClassName
 
--- | # RenderM
+-- | # M
+
+type M ctx env el ed sn = ReaderT (Record ctx) (StateT (Record env) (HK.HookM Aff))
+
+-- | ## Sync
 -- |
--- | A computation that produces the final HTML rendered to the DOM.
+-- | Syncronizing happens once per state change. The `SyncExprData` corresponds
+-- | the tree to the rendered DOM.
 
-type RenderM (ctx :: Row Type) (env :: Row Type) el ed sn = 
-  ReaderT (Record (RenderCtx el ed sn ctx)) (
-  StateT (Record (RenderEnv el ed sn env)) (
-  Identity))
+-- | `ExprNode` annotation data that is generated during syncronizing.
+type SyncExprData ed = (elemId :: HU.ElementId | ed)
 
-type RenderCtx el ed sn ctx =
-  ( depth :: Int
-  | ctx )
-
-type RenderEnv el ed sn env =
-  ( holeCount :: Int
-  | env )
-
--- runRenderM :: forall ctx env el ed sn a. RenderCtx el ed sn ctx -> RenderEnv el ed sn env -> RenderM ctx env el ed sn a -> a
--- runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
-
--- mapRenderM :: forall ctx env el ed sn a b. (a -> b) -> (RenderM ctx env el ed sn a -> RenderM ctx env el ed sn b)
--- mapRenderM f = map f
-
--- | # HydrateM
+-- | ## Hydrate
 -- |
--- | A computation that traverses a `SyncExpr` and applies any style changes to
--- | the sync'ed DOM elements.
+-- | Initial hydrating happens once per state change and once per UI interaction
+-- | that modifies hydrate data.
+-- |
+-- | Hydrate data can be used in re-hydrating and generic (not specific)
+-- | rendering.
 
--- type HydrateM el ed sn =
---   ReaderT (HydrateCtx el ed sn) (
---   StateT (HydrateEnv el ed sn) (
---   HK.HookM Aff))
-
--- runHydrateM :: forall el ed sn a. _ -> _ -> HydrateM el ed sn a -> HK.HookM Aff a
--- runHydrateM ctx env = flip runReaderT ctx >>> flip evalStateT env
+type HydrateM ctx env el ed sn = 
+  M
+    (HydrateCtx el ed sn ctx)
+    (HydrateEnv el ed sn ctx)
+    el ed sn
 
 type HydrateCtx el ed sn ctx =
   ( gyroPosition :: GyroPosition 
@@ -77,6 +67,10 @@ type HydrateEnv el ed sn env =
   ( 
   | env )
 
+-- | `ExprNode` annotation data that is generated during initial hydrating and
+-- | mapped when re-hydrating.
+type HydrateExprData ed = (gyroPosition :: GyroPosition | ed)
+
 data GyroPosition
   = InsideRoot
   | AtCursor | OutsideCursor | InsideCursor
@@ -85,6 +79,24 @@ data GyroPosition
 derive instance Generic GyroPosition _
 instance Show GyroPosition where show = genericShow
 instance ToClassName GyroPosition where toClassName = HH.ClassName <<< show
+
+-- | ## Render
+-- |
+-- | Rendering happens once per state change.
+
+type RenderM ctx env el ed sn = 
+  M
+    (RenderCtx el ed sn (HydrateCtx el ed sn ctx))
+    (RenderEnv el ed sn (HydrateEnv el ed sn ctx))
+    el ed sn
+
+type RenderCtx el ed sn ctx =
+  ( depth :: Int
+  | ctx )
+
+type RenderEnv el ed sn env =
+  ( holeCount :: Int
+  | env )
 
 -- | # Renderer
 -- |
@@ -133,8 +145,6 @@ type BufferHtml el ed sn =
     ( toolbox :: ToolboxSlot el ed sn
     , preview :: PreviewSlot el ed sn )
     Aff
-
-type SyncExprData ed = (elemId :: HU.ElementId | ed)
 
 -- | # Toolbox
 -- |
