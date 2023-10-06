@@ -37,48 +37,50 @@ class ToClassName a where
 -- |
 -- | A computation that produces the final HTML rendered to the DOM.
 
-type RenderM ctx env el ed sn = 
-  ReaderT (RenderCtx ctx el ed sn) (
-  StateT (RenderEnv env el ed sn) (
+type RenderM (ctx :: Row Type) (env :: Row Type) el ed sn = 
+  ReaderT (Record (RenderCtx el ed sn ctx)) (
+  StateT (Record (RenderEnv el ed sn env)) (
   Identity))
 
-type RenderCtx ctx el ed sn =
-  { depth :: Int
-  | ctx }
+type RenderCtx el ed sn ctx =
+  ( depth :: Int
+  | ctx )
 
-type RenderEnv env el ed sn =
-  { holeCount :: Int
-  | env }
+type RenderEnv el ed sn env =
+  ( holeCount :: Int
+  | env )
 
-runRenderM :: forall ctx env el ed sn a. RenderCtx ctx el ed sn -> RenderEnv env el ed sn -> RenderM ctx env el ed sn a -> a
-runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
+-- runRenderM :: forall ctx env el ed sn a. RenderCtx el ed sn ctx -> RenderEnv el ed sn env -> RenderM ctx env el ed sn a -> a
+-- runRenderM ctx env = flip runReaderT ctx >>> flip evalStateT env >>> unwrap
 
-mapRenderM :: forall ctx env el ed sn a b. (a -> b) -> (RenderM ctx env el ed sn a -> RenderM ctx env el ed sn b)
-mapRenderM f = map f
+-- mapRenderM :: forall ctx env el ed sn a b. (a -> b) -> (RenderM ctx env el ed sn a -> RenderM ctx env el ed sn b)
+-- mapRenderM f = map f
 
 -- | # HydrateM
 -- |
 -- | A computation that traverses a `SyncExpr` and applies any style changes to
 -- | the sync'ed DOM elements.
 
-type HydrateM el ed sn =
-  ReaderT (HydrateCtx el ed sn) (
-  StateT (HydrateEnv el ed sn) (
-  Aff))
+-- type HydrateM el ed sn =
+--   ReaderT (HydrateCtx el ed sn) (
+--   StateT (HydrateEnv el ed sn) (
+--   HK.HookM Aff))
 
-runHydrateM :: forall el ed sn a. _ -> _ -> HydrateM el ed sn a -> Aff a
-runHydrateM ctx env = flip runReaderT ctx >>> flip evalStateT env
+-- runHydrateM :: forall el ed sn a. _ -> _ -> HydrateM el ed sn a -> HK.HookM Aff a
+-- runHydrateM ctx env = flip runReaderT ctx >>> flip evalStateT env
 
-type HydrateCtx el ed sn =
-  { gyroPosition :: GyroPosition }
+type HydrateCtx el ed sn ctx =
+  ( gyroPosition :: GyroPosition 
+  | ctx )
 
-type HydrateEnv el ed sn =
-  {}
+type HydrateEnv el ed sn env =
+  ( 
+  | env )
 
 data GyroPosition
   = InsideRoot
   | AtCursor | OutsideCursor | InsideCursor
-  | OutsideSelect | AtTopSelect | BetweenSelect | AtBotSelect | InsideSelect
+  | OutsideSelect | AtOutsideSelect | BetweenSelect | AtInsideSelect | InsideSelect
 
 derive instance Generic GyroPosition _
 instance Show GyroPosition where show = genericShow

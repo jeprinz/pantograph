@@ -70,6 +70,7 @@ newtype ExprNode (el :: Type) (ed :: Row Type) (sn :: Type) = ExprNode
   { label :: el
   , sigma :: RuleSortVarSubst sn
   , dat :: Record ed }
+derive instance Newtype (ExprNode el ed sn) _
 
 type Expr el ed sn = Tree (ExprNode el ed sn)
 type ExprTooth el ed sn = Tooth (ExprNode el ed sn)

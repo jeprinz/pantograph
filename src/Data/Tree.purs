@@ -2,21 +2,29 @@ module Data.Tree where
 
 import Prelude
 
+import Data.Foldable (class Foldable)
 import Data.List (List)
+import Data.Traversable (class Traversable)
 
 newtype Tree a = Tree {node :: a, kids :: Array (Tree a)}
 derive instance Functor Tree
+derive instance Foldable Tree
+derive instance Traversable Tree
 
 newtype Tooth a = Tooth {node :: a, i :: Int, zippedKids :: Array (Tree a)}
 derive instance Functor Tooth
+derive instance Foldable Tooth
+derive instance Traversable Tooth
 
 newtype Path a = Path (List (Tooth a))
 derive instance Functor Path
+derive instance Foldable Path
+derive instance Traversable Path
 
-newtype Cursor a = Cursor {path :: Path a, tree :: Tree a}
+newtype Cursor a = Cursor {outside :: Path a, inside :: Tree a}
 derive instance Functor Cursor
 
-newtype Select a = Select {top :: Path a, mid :: Path a, bot :: Tree a}
+newtype Select a = Select {outside :: Path a, middle :: Path a, inside :: Tree a}
 derive instance Functor Select
 
 data Gyro a = RootGyro (Tree a) | CursorGyro (Cursor a) | SelectGyro (Select a)
