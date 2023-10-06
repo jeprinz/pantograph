@@ -112,6 +112,11 @@ newtype Renderer ctx env el ed sn = Renderer
       Array (RenderM ctx env el ed sn (ExprNode el ed sn /\ a)) ->
       RenderM ctx env el ed sn (Array (Array (BufferHtml el ed sn) \/ a)) }
 
+data ArrangeKid el ed sn a
+  = ExprKidArrangeKid a
+  | PunctuationArrangeKid (Array (BufferHtml el ed sn))
+  | IndentationArrangeKid (Array (BufferHtml el ed sn))
+
 -- | # Editor
 -- |
 -- | TODO: description

@@ -35,18 +35,6 @@ import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
--- types
-
--- type M ctx env el ed sn a = ReaderT ctx (StateT env (HK.HookM Aff)) (BufferHtml el ed sn /\ a)
-type M ctx env el ed sn = ReaderT (Record ctx) (StateT (Record env) (HK.HookM Aff))
-
-type HydrateExprData ed = (gyroPosition :: GyroPosition | ed)
-
-data ArrangeKid el ed sn a
-  = ExprKidArrangeKid a
-  | PunctuationArrangeKid (Array (BufferHtml el ed sn))
-  | IndentationArrangeKid (Array (BufferHtml el ed sn))
-
 -- functions
 
 syncExprNode :: forall ctx env el ed ed' sn.
