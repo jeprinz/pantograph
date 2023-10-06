@@ -6,7 +6,7 @@ import Pantograph.Generic.Language
 import Prelude
 
 import Control.Monad.Reader (ReaderT, runReaderT)
-import Control.Monad.State (StateT, evalStateT)
+import Control.Monad.State (StateT, evalStateT, runStateT)
 import Data.Array as Array
 import Data.Const (Const)
 import Data.Either (either)
@@ -26,7 +26,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Hole (hole)
-import Prim.Row (class Lacks)
+import Prim.Row (class Lacks, class Union)
 import Record as R
 import Type.Proxy (Proxy(..))
 
@@ -35,7 +35,10 @@ class ToClassName a where
 
 -- | # M
 
-type M ctx env el ed sn = ReaderT (Record ctx) (StateT (Record env) (HK.HookM Aff))
+type M ctx env el ed sn m = ReaderT (Record ctx) (StateT (Record env) m)
+
+runM :: forall ctx env el ed sn m a. Record ctx -> Record env -> M ctx env el ed sn m a -> m (a /\ Record env)
+runM ctx env = flip runReaderT ctx >>> flip runStateT env
 
 -- | ## Sync
 -- |
@@ -45,31 +48,32 @@ type M ctx env el ed sn = ReaderT (Record ctx) (StateT (Record env) (HK.HookM Af
 -- | `ExprNode` annotation data that is generated during syncronizing.
 type SyncExprData ed = (elemId :: HU.ElementId | ed)
 
--- | ## Hydrate
--- |
--- | Initial hydrating happens once per state change and once per UI interaction
--- | that modifies hydrate data.
--- |
--- | Hydrate data can be used in re-hydrating and generic (not specific)
--- | rendering.
+-- TODO: hydration is now simple a pass rahter than annotator
+-- -- | ## Hydrate
+-- -- |
+-- -- | Initial hydrating happens once per state change and once per UI interaction
+-- -- | that modifies hydrate data.
+-- -- |
+-- -- | Hydrate data can be used in re-hydrating and generic (not specific)
+-- -- | rendering.
 
-type HydrateM ctx env el ed sn = 
-  M
-    (HydrateCtx el ed sn ctx)
-    (HydrateEnv el ed sn ctx)
-    el ed sn
+-- type HydrateM ctx env el ed sn = 
+--   M
+--     (HydrateCtx el ed sn ctx)
+--     (HydrateEnv el ed sn env)
+--     el ed sn (HK.HookM Aff)
 
-type HydrateCtx el ed sn ctx =
-  ( gyroPosition :: GyroPosition 
-  | ctx )
+-- type HydrateCtx el ed sn ctx =
+--   ( gyroPosition :: GyroPosition 
+--   | ctx )
 
-type HydrateEnv el ed sn env =
-  ( 
-  | env )
+-- type HydrateEnv el ed sn env =
+--   ( 
+--   | env )
 
--- | `ExprNode` annotation data that is generated during initial hydrating and
--- | mapped when re-hydrating.
-type HydrateExprData ed = (gyroPosition :: GyroPosition | ed)
+-- -- | `ExprNode` annotation data that is generated during initial hydrating and
+-- -- | mapped when re-hydrating.
+-- type HydrateExprData ed = (gyroPosition :: GyroPosition | ed)
 
 data GyroPosition
   = InsideRoot
@@ -84,11 +88,11 @@ instance ToClassName GyroPosition where toClassName = HH.ClassName <<< show
 -- |
 -- | Rendering happens once per state change.
 
-type RenderM ctx env el ed sn = 
+type RenderM ctx env el ed sn =
   M
-    (RenderCtx el ed sn (HydrateCtx el ed sn ctx))
-    (RenderEnv el ed sn (HydrateEnv el ed sn ctx))
-    el ed sn
+    (RenderCtx el ed sn ctx)
+    (RenderEnv el ed sn env)
+    el ed sn Identity
 
 type RenderCtx el ed sn ctx =
   ( depth :: Int
@@ -107,10 +111,12 @@ newtype Renderer ctx env el ed sn = Renderer
   , language :: Language el ed sn
   , topCtx :: Record ctx
   , topEnv :: Record env
-  , arrangeExpr :: forall a.
-      ExprNode el ed sn ->
-      Array (RenderM ctx env el ed sn (ExprNode el ed sn /\ a)) ->
-      RenderM ctx env el ed sn (Array (Array (BufferHtml el ed sn) \/ a)) }
+  , arrangeExpr :: forall ctx_ ctx' env_ env' ed' a.
+      Union ctx ctx_ ctx' => Union env env_ env' =>
+      ExprNode el ed' sn ->
+      Array (RenderM ctx' env' el ed sn (a /\ ExprNode el ed' sn)) ->
+      RenderM ctx env el ed sn (Array (ArrangeKid el ed sn a))
+  }
 
 data ArrangeKid el ed sn a
   = ExprKidArrangeKid a

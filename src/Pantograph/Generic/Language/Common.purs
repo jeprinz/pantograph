@@ -24,6 +24,7 @@ data SortNode (sn :: Type)
   = SortNode sn
 
 derive instance Generic (SortNode sn) _
+derive instance Eq sn => Eq (SortNode sn)
 instance Show sn => Show (SortNode sn) where show = genericShow
 derive instance Functor SortNode
 
@@ -71,6 +72,7 @@ newtype ExprNode (el :: Type) (ed :: Row Type) (sn :: Type) = ExprNode
   , sigma :: RuleSortVarSubst sn
   , dat :: Record ed }
 derive instance Newtype (ExprNode el ed sn) _
+derive instance (Eq el, Eq (Record ed), Eq sn) => Eq (ExprNode el ed sn)
 
 type Expr el ed sn = Tree (ExprNode el ed sn)
 type ExprTooth el ed sn = Tooth (ExprNode el ed sn)
@@ -110,6 +112,7 @@ derive instance Eq RuleSortVar
 derive instance Ord RuleSortVar
 
 newtype RuleSortVarSubst sn = RuleSortVarSubst (Map.Map RuleSortVar (Sort sn))
+derive instance Eq sn => Eq (RuleSortVarSubst sn)
 
 class ApplyRuleSortVarSubst sn a b | a -> b where
   applyRuleSortVarSubst :: RuleSortVarSubst sn -> a -> b
