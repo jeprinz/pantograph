@@ -47,6 +47,11 @@ fromJust :: forall a . Maybe a -> a
 fromJust (Just x) = x
 fromJust Nothing = Bug.bug "fromJust failed"
 
+fromJust' :: forall t165. String -> Maybe t165 -> t165
+fromJust' _ (Just x) = x
+fromJust' msg Nothing = Bug.bug $ "fromJust failed: " <> msg
+
+
 fromRight :: forall a b. Either a b -> b
 fromRight (Right b) = b
 fromRight _ = Bug.bug "error: fromRight failed"

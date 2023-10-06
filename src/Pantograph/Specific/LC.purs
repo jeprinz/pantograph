@@ -1,6 +1,7 @@
 module Pantograph.Specific.LC where
 
 import Data.Either.Nested
+import Data.Tree
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering
@@ -19,6 +20,14 @@ import Hole (hole)
 import Record as R
 import Text.Pretty (class Pretty, pretty, quotes)
 import Type.Proxy (Proxy(..))
+
+-- TODO: just rewrite all of this, shouldnt take too long
+
+{-
+makeVarRuleSort = ?a
+makeRuleSort = ?a
+makeRuleReflect = ?a
+makeSort = ?a
 
 data R = StringRule | VarRule | LamRule | AppRule | HoleRule
 
@@ -60,13 +69,13 @@ language = Language {name: "LC", getSortingRule, getChangingRule, defaultExpr, t
 getSortingRule :: R -> SortingRule N D
 getSortingRule = case _ of
   StringRule -> do
-    let s = MakeRuleVar "s"
+    let s = MakeRuleSortVar "s"
     SortingRule
       { parameters: Set.fromFoldable [s]
       , kids: [makeVarRuleSort s]
       , parent: makeRuleSort StringSort {} [makeVarRuleSort s] }
   VarRule -> do
-    let s = MakeRuleVar "s"
+    let s = MakeRuleSortVar "s"
     SortingRule
       { parameters: Set.fromFoldable [s]
       , kids: [makeRuleSort StringSort {} [makeVarRuleSort s]]
@@ -90,15 +99,15 @@ getSortingRule = case _ of
 getChangingRule :: R -> ChangingRule N D
 getChangingRule = case _ of
   StringRule -> do
-    let s = MakeRuleVar "s"
+    let s = MakeRuleSortVar "s"
     ChangingRule
       { parameters: Set.fromFoldable [s]
-      , kids: [RuleReplace (makeRuleSort StringSort {} [makeVarRuleSort s]) (makeRuleSort StringSort {} [makeVarRuleSort s])] }
+      , kids: [Replace (makeRuleSort StringSort {} [makeVarRuleSort s]) (makeRuleSort StringSort {} [makeVarRuleSort s])] }
   VarRule -> do
-    let s = MakeRuleVar "s"
+    let s = MakeRuleSortVar "s"
     ChangingRule
       { parameters: Set.fromFoldable [s]
-      , kids: [RuleReplace (makeVarRuleSort s) (makeRuleSort StringSort {} [makeRuleSort TermSort {} []])] }
+      , kids: [Replace (makeVarRuleSort s) (makeRuleSort StringSort {} [makeRuleSort TermSort {} []])] }
   LamRule -> do
     ChangingRule
       { parameters: Set.empty
@@ -113,16 +122,18 @@ getChangingRule = case _ of
       , kids: [] }
 
 defaultExpr :: Sort N D -> Maybe (Expr R N D (Sort N D))
-defaultExpr = case _ of
-  Sort {node: SortNode {n: StringSort, d: {}}, kids: [s]} ->
-    Just $ makeExpr StringRule String (RuleVarSubst $ Map.fromFoldable [MakeRuleVar "s" /\ s]) {} []
-  Sort {node: SortNode {n: TermSort, d: {}}, kids: []} ->
-    -- Just $ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
-    Just $ 
-      makeExpr AppRule App (RuleVarSubst Map.empty) {}
-        [ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
-        , makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} [] ]
-  sort -> Nothing
+defaultExpr = 
+  -- case _ of
+  -- Sort {node: SortNode {n: StringSort, d: {}}, kids: [s]} ->
+  --   Just $ makeExpr StringRule String (RuleVarSubst $ Map.fromFoldable [MakeRuleSortVar "s" /\ s]) {} []
+  -- Sort {node: SortNode {n: TermSort, d: {}}, kids: []} ->
+  --   -- Just $ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
+  --   Just $ 
+  --     makeExpr AppRule App (RuleVarSubst Map.empty) {}
+  --       [ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
+  --       , makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} [] ]
+  -- sort -> Nothing
+  hole "TODO"
 
 topSort :: Sort N D
 topSort = makeSort TermSort {} []
@@ -130,33 +141,33 @@ topSort = makeSort TermSort {} []
 -- Renderer
 
 renderer :: Renderer Ctx Env R N D
-renderer = Renderer {name: "LC-basic", arrangeExpr, topCtx, topEnv}
+renderer = Renderer {name: "LC-basic", arrangeExpr: hole "TODO", topCtx, topEnv}
 
-arrangeExpr :: forall a.
-  ExprNode R N D (Sort N D) ->
-  Array (RenderM Ctx Env R N D (ExprNode R N D (Sort N D) /\ a)) ->
-  RenderM Ctx Env R N D (Array (Array (BufferHtml R N) \/ a))
-arrangeExpr node@(ExprNode {r: StringRule, n: String}) [] = do
-  case getExprNodeSort language node of
-    Sort {node: SortNode {n: StringSort}, kids: [Sort {node: SortNode {n: StringValueSort str}}]} ->
-      pure [Left [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
-    _ -> bug $ "invalid Sort"
-arrangeExpr (ExprNode {r: VarRule, n: Var}) [ms] = do
-  _s /\ sId <- ms
-  pure [Left [punctuation "#"], Right sId]
-arrangeExpr (ExprNode {r: LamRule, n: Lam}) [mx, mb] = do
-  _x /\ xId <- mx
-  _b /\ bId <- mb
-  pure [Left [punctuation "("], Left [punctuation "λ"], Right xId, Left [punctuation "↦"], Right bId, Left [punctuation ")"]]
-arrangeExpr (ExprNode {r: AppRule, n: App}) [mf, ma] = do
-  _f /\ fId <- mf
-  _a /\ aId <- ma
-  pure [Left [punctuation "("], Right fId, Left [punctuation " "], Right aId, Left [punctuation ")"]]
-arrangeExpr (ExprNode {r: HoleRule, n: Hole}) [] = do
-  holeIndex <- State.gets _.holeCount
-  State.modify_ (R.modify (Proxy :: Proxy "holeCount") (1 + _))
-  pure [Left [punctuation "?"], Left [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text $ show holeIndex]]]
-arrangeExpr _node _kids = bug $ "invalid ExprNode"
+-- arrangeExpr :: forall a.
+--   ExprNode R N D (Sort N D) ->
+--   Array (RenderM Ctx Env R N D (ExprNode R N D (Sort N D) /\ a)) ->
+--   RenderM Ctx Env R N D (Array (Array (BufferHtml R N) \/ a))
+-- arrangeExpr node@(ExprNode {r: StringRule, n: String}) [] = do
+--   case getExprNodeSort language node of
+--     Sort {node: SortNode {n: StringSort}, kids: [Sort {node: SortNode {n: StringValueSort str}}]} ->
+--       pure [Left [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
+--     _ -> bug $ "invalid Sort"
+-- arrangeExpr (ExprNode {r: VarRule, n: Var}) [ms] = do
+--   _s /\ sId <- ms
+--   pure [Left [punctuation "#"], Right sId]
+-- arrangeExpr (ExprNode {r: LamRule, n: Lam}) [mx, mb] = do
+--   _x /\ xId <- mx
+--   _b /\ bId <- mb
+--   pure [Left [punctuation "("], Left [punctuation "λ"], Right xId, Left [punctuation "↦"], Right bId, Left [punctuation ")"]]
+-- arrangeExpr (ExprNode {r: AppRule, n: App}) [mf, ma] = do
+--   _f /\ fId <- mf
+--   _a /\ aId <- ma
+--   pure [Left [punctuation "("], Right fId, Left [punctuation " "], Right aId, Left [punctuation ")"]]
+-- arrangeExpr (ExprNode {r: HoleRule, n: Hole}) [] = do
+--   holeIndex <- State.gets _.holeCount
+--   State.modify_ (R.modify (Proxy :: Proxy "holeCount") (1 + _))
+--   pure [Left [punctuation "?"], Left [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text $ show holeIndex]]]
+-- arrangeExpr _node _kids = bug $ "invalid ExprNode"
 
 punctuation str = HH.span [HP.classes [HH.ClassName "punctuation"]] [HH.text str]
 
@@ -165,7 +176,4 @@ topCtx = {}
 
 topEnv :: Record Env
 topEnv = {}
-
--- Engine
-
-engine = Engine {name: "LC-basic", language, renderer}
+-}

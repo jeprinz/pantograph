@@ -1,10 +1,9 @@
 module Pantograph.Generic.Rendering.Common where
 
+import Prelude
 import Data.Either.Nested
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
-import Prelude
-
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, evalStateT, runStateT)
 import Data.Array as Array
@@ -35,9 +34,9 @@ class ToClassName a where
 
 -- | # M
 
-type M ctx env el ed sn m = ReaderT (Record ctx) (StateT (Record env) m)
+type M ctx env m = ReaderT (Record ctx) (StateT (Record env) m)
 
-runM :: forall ctx env el ed sn m a. Record ctx -> Record env -> M ctx env el ed sn m a -> m (a /\ Record env)
+runM :: forall ctx env el ed sn m a. Record ctx -> Record env -> M ctx env m a -> m (a /\ Record env)
 runM ctx env = flip runReaderT ctx >>> flip runStateT env
 
 -- | ## Sync
@@ -57,7 +56,7 @@ type SyncExprData ed = (elemId :: HU.ElementId | ed)
 -- -- | Hydrate data can be used in re-hydrating and generic (not specific)
 -- -- | rendering.
 
--- type HydrateM ctx env el ed sn = 
+-- type HydrateM ctx env = 
 --   M
 --     (HydrateCtx el ed sn ctx)
 --     (HydrateEnv el ed sn env)
@@ -92,7 +91,7 @@ type RenderM ctx env el ed sn =
   M
     (RenderCtx el ed sn ctx)
     (RenderEnv el ed sn env)
-    el ed sn Identity
+    Identity
 
 type RenderCtx el ed sn ctx =
   ( depth :: Int
@@ -111,10 +110,9 @@ newtype Renderer ctx env el ed sn = Renderer
   , language :: Language el ed sn
   , topCtx :: Record ctx
   , topEnv :: Record env
-  , arrangeExpr :: forall ctx_ ctx' env_ env' ed' a.
-      Union ctx ctx_ ctx' => Union env env_ env' =>
+  , arrangeExpr :: forall ctx env ed' a.
       ExprNode el ed' sn ->
-      Array (RenderM ctx' env' el ed sn (a /\ ExprNode el ed' sn)) ->
+      Array (RenderM ctx env el ed sn (a /\ ExprNode el ed' sn)) ->
       RenderM ctx env el ed sn (Array (ArrangeKid el ed sn a))
   }
 
@@ -122,6 +120,10 @@ data ArrangeKid el ed sn a
   = ExprKidArrangeKid a
   | PunctuationArrangeKid (Array (BufferHtml el ed sn))
   | IndentationArrangeKid (Array (BufferHtml el ed sn))
+
+rendererFullName :: forall ctx env el ed sn. Renderer ctx env el ed sn -> String
+rendererFullName (Renderer renderer@{language: Language language}) =
+  "renderer '" <> renderer.name <> "' for language '" <> language.name <> "'"
 
 -- | # Editor
 -- |
