@@ -35,53 +35,111 @@ import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
+-- component
+
+bufferComponent :: forall sn el ctx env. H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
+bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) -> HK.do
+  let Renderer renderer = input.renderer
+
+  renderCtx /\ renderCtxStateId <- HK.useState $
+    R.union
+      { depth: 0, outputToken }
+      renderer.topCtx 
+  renderEnv /\ renderEnvStateId <- HK.useState $
+    R.union
+      { holeCount: 0 }
+      renderer.topEnv
+
+  let runRenderM = unwrap <<< runM renderCtx renderEnv
+
+  exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
+  _ /\ hydratedExprGyroRef <- HK.useRef (Nothing :: Maybe (HydrateExprGyro sn el ()))
+
+  -- runs before each render
+  let syncedExprGyro = syncExprGyro exprGyro
+  let gyroHtml /\ _ = runRenderM $ renderExprGyro (Renderer renderer) syncedExprGyro
+
+  -- runs after each render
+  HK.captures {} HK.useTickEffect do
+    hydratedExprGyro <- hydrateExprGyro syncedExprGyro
+    liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
+    pure Nothing
+
+  -- render
+  HK.pure $ do
+    HH.div 
+      [HP.classes [HH.ClassName "Panel Buffer"]]
+      [ HH.div
+          [HP.classes [HH.ClassName "PanelHeader"]]
+          [ HH.div
+              [ HP.classes [HH.ClassName "button"]
+              , HE.onClick \_ -> Console.log "TODO: close buffer" ]
+              [HH.text "X"]
+          , HH.text "Buffer" ]
+      , HH.div
+          [HP.classes [HH.ClassName "PanelContent"]]
+          [gyroHtml] ]
+
 -- sync
 
-syncExprGyro :: forall el ed sn. ExprGyro el ed sn -> ExprGyro el (SyncExprData ed) sn
-syncExprGyro = map \(ExprNode node) -> ExprNode node {dat = R.union {elemId: HU.freshElementId unit} node.dat}
+syncExprGyro :: forall sn el er. AnnExprGyro sn el er -> SyncExprGyro sn el er
+syncExprGyro = map \(ExprNode node) -> ExprNode $ R.union {elemId: HU.freshElementId unit} node
 
 -- hydrate
 
-type HydrateM = M (gyroPosition :: GyroPosition) () (HK.HookM Aff)
+hydrateExprGyro :: forall sn el er. SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+hydrateExprGyro = hole "TODO: hydrateExprGyro"
 
-hydrateExprGyro :: forall el ed sn. ExprGyro el (SyncExprData ed) sn -> HK.HookM Aff Unit
+rehydrateExprGyro :: forall sn el er. HydrateExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+rehydrateExprGyro = hole "TODO: rehydrateExprGyro"
+
+-- render
+
+renderExprGyro :: forall sn el er ctx env. Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (BufferHtml sn el)
+renderExprGyro = hole "TODO: renderExprGyro"
+
+{-
+
+-- hydrate
+
+hydrateExprGyro :: forall el ed sn. SyncExprGyro sn el -> HK.HookM Aff (HydrateExprGyro sn el)
 hydrateExprGyro = case _ of
   (RootGyro expr) -> do
-    void 
-      $ runM {gyroPosition: InsideRoot} {}
-      $ hydrateExpr expr
+    fst <$> runM {gyroPosition: InsideRoot} {} (hydrateExpr expr)
   (CursorGyro (Cursor cursor)) -> do
-    void
-      $ runM {gyroPosition: OutsideCursor} {}
-      $ hydrateExprPath cursor.outside
-    void
-      $ runM {gyroPosition: AtCursor} {}
-      $ hydrateExpr cursor.inside
+    -- void
+    --   $ runM {gyroPosition: OutsideCursor} {}
+    --   $ hydrateExprPath cursor.outside
+    -- void
+    --   $ runM {gyroPosition: AtCursor} {}
+    --   $ hydrateExpr cursor.inside
+    hole "TODO"
   (SelectGyro (Select select)) -> do
-    void
-      $ runM {gyroPosition: OutsideSelect} {}
-      $ hydrateExprPath select.outside
-    void
-      $ runM {gyroPosition: AtOutsideSelect} {}
-      $ hydrateExprPath select.middle
-    void
-      $ runM {gyroPosition: AtInsideSelect} {}
-      $ hydrateExpr select.inside
+    -- void
+    --   $ runM {gyroPosition: OutsideSelect} {}
+    --   $ hydrateExprPath select.outside
+    -- void
+    --   $ runM {gyroPosition: AtOutsideSelect} {}
+    --   $ hydrateExprPath select.middle
+    -- void
+    --   $ runM {gyroPosition: AtInsideSelect} {}
+    --   $ hydrateExpr select.inside
+    hole "TODO"
 
-hydrateExpr :: forall el ed sn. Expr el (SyncExprData ed) sn -> HydrateM Unit
-hydrateExpr expr = hydrateExprNode `traverse_` expr
+hydrateExpr :: forall sn el er. SyncExpr sn el er -> HydrateM sn el (HydrateExprGyro sn el er)
+hydrateExpr expr = hole "hydrateExprNode `traverse_` expr"
 
-hydrateExprPath :: forall el ed sn. ExprPath el (SyncExprData ed) sn -> HydrateM Unit
-hydrateExprPath (Path Nil) = pure unit
-hydrateExprPath (Path (Cons (Tooth tooth) ts)) = do
-  hydrateExprNode tooth.node
-  local (\ctx -> ctx {gyroPosition = kidGyroPosition ctx.gyroPosition}) $
-    hydrateExprPath (Path ts)
+-- hydrateExprPath :: forall el ed sn. ExprPath el (SyncExprAnn ed) sn -> HydrateM el ed sn Unit
+-- hydrateExprPath (Path Nil) = pure unit
+-- hydrateExprPath (Path (Cons (Tooth tooth) ts)) = do
+--   hydrateExprNode tooth.node
+--   local (\ctx -> ctx {gyroPosition = kidGyroPosition ctx.gyroPosition}) $
+--     hydrateExprPath (Path ts)
 
-hydrateExprNode :: forall el ed sn. ExprNode el (SyncExprData ed) sn -> HydrateM Unit
-hydrateExprNode (ExprNode node) = do
-  ctx <- ask
-  void $ liftEffect $ HU.setClassName node.dat.elemId $ toClassName ctx.gyroPosition
+-- hydrateExprNode :: forall el ed sn. ExprNode el (SyncExprAnn ed) sn -> HydrateM el ed sn Unit
+-- hydrateExprNode (ExprNode node) = do
+--   ctx <- ask
+--   void $ liftEffect $ HU.setClassName node.dat.elemId $ toClassName ctx.gyroPosition
 
 -- | Given the parent's GyroPosition, naively computes each kid's GyroPosition.
 -- | For the following transitions, need to be handled before calling the
@@ -100,17 +158,19 @@ kidGyroPosition = case _ of
 
 -- render
 
-renderExprGyro :: forall ctx env el ed sn. Renderer ctx env el ed sn -> ExprGyro el (SyncExprData ed) sn -> RenderM ctx env el ed sn (BufferHtml el ed sn)
+renderExprGyro :: forall sn el ctx env. Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM ctx env el ed sn (BufferHtml sn el)
 renderExprGyro renderer (RootGyro expr) = renderExpr renderer expr
 renderExprGyro renderer (CursorGyro (Cursor cursor)) = hole "TODO: renderExprGyro"
 renderExprGyro renderer (SelectGyro (Select select)) = hole "TODO: renderExprGyro"
 
 renderExprNode :: forall ctx env el ed sn.
   Renderer ctx env el ed sn ->
-  ExprNode el (SyncExprData ed) sn ->
-  { arrangedKids :: Array (ArrangeKid el ed sn (BufferHtml el ed sn)) } ->
-  RenderM ctx env el ed sn (BufferHtml el ed sn)
+  ExprNode el (SyncExprAnn ed) sn ->
+  { arrangedKids :: Array (ArrangeKid el ed sn (BufferHtml sn el)) } ->
+  RenderM ctx env el ed sn (BufferHtml sn el)
 renderExprNode (Renderer renderer) (ExprNode node) {arrangedKids} = do
+  ctx <- ask
+
   -- TODO: do some styling to reflect what kind of ArrangeKid they are, for the same of highlighting
   let htmlKids = arrangedKids # foldMap case _ of
         (ExprKidArrangeKid html) -> [html]
@@ -121,21 +181,23 @@ renderExprNode (Renderer renderer) (ExprNode node) {arrangedKids} = do
     [ HU.id $ node.dat.elemId
     , HE.onMouseDown \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        hole "TODO: renderExpr onMouseDown"
+        -- Console.log "TODO: renderExpr onMouseDown"
+        HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseDown] id = " <> show node.dat.elemId}
     , HE.onMouseUp \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        hole "TODO: renderExpr onMouseUp"
+        -- Console.log "TODO: renderExpr onMouseUp"
+        HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseUp] id = " <> show node.dat.elemId}
     ]
     htmlKids
 
-renderExpr :: forall ctx env el ed sn. Renderer ctx env el ed sn -> Expr el (SyncExprData ed) sn -> RenderM ctx env el ed sn (BufferHtml el ed sn)
+renderExpr :: forall ctx env el ed sn. Renderer ctx env el ed sn -> Expr el (SyncExprAnn ed) sn -> RenderM ctx env el ed sn (BufferHtml sn el)
 renderExpr (Renderer renderer) (Tree expr@{node: ExprNode node}) = do
   let arrangeKids = expr.kids <#> \kid@(Tree {node}) -> renderExpr (Renderer renderer) kid <#> (_ /\ node)
   arrangedKids <- renderer.arrangeExpr expr.node arrangeKids
   renderExprNode (Renderer renderer) (ExprNode node)
     {arrangedKids}
 
--- renderExprPath :: forall ctx env el ed sn. Renderer ctx env el ed sn -> ExprPath el (SyncExprData ed) sn -> RenderM ctx env el ed sn (BufferHtml el ed sn) -> RenderM ctx env el ed sn (BufferHtml el ed sn)
+-- renderExprPath :: forall ctx env el ed sn. Renderer ctx env el ed sn -> ExprPath el (SyncExprAnn ed) sn -> RenderM ctx env el ed sn (BufferHtml sn el) -> RenderM ctx env el ed sn (BufferHtml sn el)
 -- renderExprPath (Renderer renderer) (Path Nil) inside = inside
 -- renderExprPath (Renderer renderer) (Path (Cons (Tooth tooth) ts)) inside = hole inside
 
@@ -147,14 +209,15 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
 
   renderCtx /\ renderCtxStateId <- HK.useState $
     R.union
-      { depth: 0 }
+      { depth: 0, outputToken }
       renderer.topCtx 
   renderEnv /\ renderEnvStateId <- HK.useState $
     R.union
       { holeCount: 0 }
       renderer.topEnv
 
-  exprGyro /\ exprGyroStateId <- HK.useState $ RootGyro input.expr
+  exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
+  _ /\ hydratedExprGyroRef <- HK.useRef (Nothing :: Maybe (ExprGyro el (HydrateExprAnn (SyncExprAnn ed)) sn))
 
   -- runs before each render
   let syncedExprGyro = syncExprGyro exprGyro
@@ -162,7 +225,8 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
-    hydrateExprGyro syncedExprGyro
+    hydratedExprGyro <- hydrateExprGyro syncedExprGyro
+    liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
     pure Nothing
 
   -- render
@@ -181,7 +245,6 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
           [gyroHtml] ]
 
 
-{-
 
 -- NOTE: this is old work i did to combine sync+hydrate+render into one pass
 
@@ -198,12 +261,12 @@ arrangeExpr = hole "TODO: placeholder arrangeExpr"
 
 syncExprNode :: forall ctx env el ed ed' sn.
   ExprNode el ed' sn ->
-  M ctx env el ed sn (ExprNode el (SyncExprData ed') sn)
+  M ctx env el ed sn (ExprNode el (SyncExprAnn ed') sn)
 syncExprNode = hole "TODO: hydrateExprNode"
 
 hydrateExprNode :: forall ctx env el ed ed' sn.
-  ExprNode el (SyncExprData ed') sn ->
-  HydrateM ctx env el ed sn  (ExprNode el (HydrateExprData ed') sn)
+  ExprNode el (SyncExprAnn ed') sn ->
+  HydrateM ctx env el ed sn  (ExprNode el (HydrateExprAnn ed') sn)
 hydrateExprNode = hole "TODO: hydrateExprNode"
 
 setupExprKid :: forall ctx env el ed ed' sn a.
@@ -212,20 +275,20 @@ setupExprKid :: forall ctx env el ed ed' sn a.
   HydrateM ctx env el ed sn a
 setupExprKid = hole "TODO: setupExprKid"
 
-hydrateClassName :: forall el ed sn. ExprNode el (HydrateExprData ed) sn -> HH.ClassName
+hydrateClassName :: forall el ed sn. ExprNode el (HydrateExprAnn ed) sn -> HH.ClassName
 hydrateClassName = hole "TODO: hydrateClassName"
 
 -- sync, hydrate, render
 renderExpr :: forall ctx env el ed sn.
-  Expr el (SyncExprData ed) sn ->
-  RenderHydrateM ctx env el ed sn {html :: BufferHtml el ed sn, hydratedExpr :: Expr el (SyncExprData ed) sn}
+  Expr el (SyncExprAnn ed) sn ->
+  RenderHydrateM ctx env el ed sn {html :: BufferHtml sn el, hydratedExpr :: Expr el (SyncExprAnn ed) sn}
 renderExpr (Tree expr) = do
-  hydratedExprNode <- -- :: ExprNode el (HydrateExprData (SyncExprData ed)) sn <- 
+  hydratedExprNode <- -- :: ExprNode el (HydrateExprAnn (SyncExprAnn ed)) sn <- 
     expr.node # (syncExprNode >=> hydrateExprNode)
   
   arrangedHtmls <- do
     let 
-      -- arrangeKids :: Array (M (RenderCtx el ed sn ctx) (RenderEnv el ed sn env) el ed sn ({html :: BufferHtml el ed sn, expr :: Expr el (HydrateExprData (SyncExprData ed)) sn} /\ ExprNode el (HydrateExprData (SyncExprData ed)) sn))
+      -- arrangeKids :: Array (M (RenderCtx el ed sn ctx) (RenderEnv el ed sn env) el ed sn ({html :: BufferHtml sn el, expr :: Expr el (HydrateExprAnn (SyncExprAnn ed)) sn} /\ ExprNode el (HydrateExprAnn (SyncExprAnn ed)) sn))
       arrangeKids = expr.kids <#>
         renderExpr >>>
         setupExprKid expr.node >>>
@@ -239,7 +302,7 @@ renderExpr (Tree expr) = do
       IndentationArrangeKid htmls -> htmls
 
   let
-    hydratedExprKids :: Array (Expr el (HydrateExprData (SyncExprData ed)) sn)
+    hydratedExprKids :: Array (Expr el (HydrateExprAnn (SyncExprAnn ed)) sn)
     hydratedExprKids = arrangedHtmls # foldMap case _ of
       ExprKidArrangeKid {hydratedExpr: hydratedKid} -> [hydratedKid]
       PunctuationArrangeKid _ -> []

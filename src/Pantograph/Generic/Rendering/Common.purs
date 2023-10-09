@@ -36,43 +36,56 @@ class ToClassName a where
 
 type M ctx env m = ReaderT (Record ctx) (StateT (Record env) m)
 
-runM :: forall ctx env el ed sn m a. Record ctx -> Record env -> M ctx env m a -> m (a /\ Record env)
+runM :: forall sn el ctx env m a. Record ctx -> Record env -> M ctx env m a -> m (a /\ Record env)
 runM ctx env = flip runReaderT ctx >>> flip runStateT env
 
 -- | ## Sync
 -- |
--- | Syncronizing happens once per state change. The `SyncExprData` corresponds
+-- | Syncronizing happens once per state change. The `SyncExprAnn` corresponds
 -- | the tree to the rendered DOM.
 
 -- | `ExprNode` annotation data that is generated during syncronizing.
-type SyncExprData ed = (elemId :: HU.ElementId | ed)
+type SyncExprRow sn el er = 
+  ( elemId :: HU.ElementId 
+  | er )
+type SyncExpr sn el er = AnnExpr sn el (SyncExprRow sn el er)
+type SyncExprTooth sn el er = AnnExprTooth sn el (SyncExprRow sn el er)
+type SyncExprPath sn el er = AnnExprPath sn el (SyncExprRow sn el er)
+type SyncExprCursor sn el er = AnnExprCursor sn el (SyncExprRow sn el er)
+type SyncExprSelect sn el er = AnnExprSelect sn el (SyncExprRow sn el er)
+type SyncExprGyro sn el er = AnnExprGyro sn el (SyncExprRow sn el er)
 
--- TODO: hydration is now simple a pass rahter than annotator
--- -- | ## Hydrate
--- -- |
--- -- | Initial hydrating happens once per state change and once per UI interaction
--- -- | that modifies hydrate data.
--- -- |
--- -- | Hydrate data can be used in re-hydrating and generic (not specific)
--- -- | rendering.
+-- | ## Hydrate
+-- |
+-- | Initial hydrating happens once per state change and once per UI interaction
+-- | that modifies hydrate data.
+-- |
+-- | Hydrate data can be used in re-hydrating and generic (not specific)
+-- | rendering.
 
--- type HydrateM ctx env = 
---   M
---     (HydrateCtx el ed sn ctx)
---     (HydrateEnv el ed sn env)
---     el ed sn (HK.HookM Aff)
+type HydrateM sn el = 
+  M
+    (HydrateCtx sn el)
+    (HydrateEnv sn el)
+    (HK.HookM Aff)
 
--- type HydrateCtx el ed sn ctx =
---   ( gyroPosition :: GyroPosition 
---   | ctx )
+type HydrateCtx sn el =
+  ( gyroPosition :: GyroPosition )
 
--- type HydrateEnv el ed sn env =
---   ( 
---   | env )
+type HydrateEnv sn el =
+  ( )
 
--- -- | `ExprNode` annotation data that is generated during initial hydrating and
--- -- | mapped when re-hydrating.
--- type HydrateExprData ed = (gyroPosition :: GyroPosition | ed)
+-- | `ExprNode` annotation data that is generated during initial hydrating and
+-- | mapped when re-hydrating.
+type HydrateExprRow sn el er =
+  ( gyroPosition :: GyroPosition 
+  | SyncExprRow sn el er )
+type HydrateExpr sn el er = AnnExpr sn el (HydrateExprRow sn el er)
+type HydrateExprTooth sn el er = AnnExprTooth sn el (HydrateExprRow sn el er)
+type HydrateExprPath sn el er = AnnExprPath sn el (HydrateExprRow sn el er)
+type HydrateExprCursor sn el er = AnnExprCursor sn el (HydrateExprRow sn el er)
+type HydrateExprSelect sn el er = AnnExprSelect sn el (HydrateExprRow sn el er)
+type HydrateExprGyro sn el er = AnnExprGyro sn el (HydrateExprRow sn el er)
 
 data GyroPosition
   = InsideRoot
@@ -87,17 +100,18 @@ instance ToClassName GyroPosition where toClassName = HH.ClassName <<< show
 -- |
 -- | Rendering happens once per state change.
 
-type RenderM ctx env el ed sn =
+type RenderM sn el ctx env =
   M
-    (RenderCtx el ed sn ctx)
-    (RenderEnv el ed sn env)
+    (RenderCtx sn el ctx)
+    (RenderEnv sn el env)
     Identity
 
-type RenderCtx el ed sn ctx =
+type RenderCtx sn el ctx =
   ( depth :: Int
+  , outputToken :: HK.OutputToken (BufferOutput sn el)
   | ctx )
 
-type RenderEnv el ed sn env =
+type RenderEnv sn el env =
   ( holeCount :: Int
   | env )
 
@@ -105,33 +119,37 @@ type RenderEnv el ed sn env =
 -- |
 -- | TODO: description
 
-newtype Renderer ctx env el ed sn = Renderer
+newtype Renderer sn el ctx env = Renderer
   { name :: String
-  , language :: Language el ed sn
+  , language :: Language sn el
   , topCtx :: Record ctx
   , topEnv :: Record env
-  , arrangeExpr :: forall ctx env ed' a.
-      ExprNode el ed' sn ->
-      Array (RenderM ctx env el ed sn (a /\ ExprNode el ed' sn)) ->
-      RenderM ctx env el ed sn (Array (ArrangeKid el ed sn a))
+  , arrangeExpr :: forall er a.
+      AnnExprNode sn el er ->
+      Array (RenderM sn el ctx env (a /\ AnnExprNode sn el er)) ->
+      RenderM sn el ctx env (Array (ArrangeKid sn el a))
   }
 
-data ArrangeKid el ed sn a
+data ArrangeKid sn el a
   = ExprKidArrangeKid a
-  | PunctuationArrangeKid (Array (BufferHtml el ed sn))
-  | IndentationArrangeKid (Array (BufferHtml el ed sn))
+  | PunctuationArrangeKid (Array (BufferHtml sn el))
+  | IndentationArrangeKid (Array (BufferHtml sn el))
 
-rendererFullName :: forall ctx env el ed sn. Renderer ctx env el ed sn -> String
+rendererFullName :: forall sn el ctx env. Renderer sn el ctx env -> String
 rendererFullName (Renderer renderer@{language: Language language}) =
-  "renderer '" <> renderer.name <> "' for language '" <> language.name <> "'"
+  "{" <> 
+  "language: " <> language.name <>
+  ", " <> 
+  "renderer: " <> renderer.name <> 
+  "}"
 
 -- | # Editor
 -- |
 -- | TODO: description
 
 type EditorSlot = H.Slot EditorQuery EditorOutput EditorSlotId
-newtype EditorInput ctx env el ed sn = EditorInput
-  { renderer :: Renderer ctx env el ed sn }
+newtype EditorInput sn el ctx env = EditorInput
+  { renderer :: Renderer sn el ctx env }
 type EditorQuery :: Type -> Type
 type EditorQuery = Const Void
 type EditorOutput = Void
@@ -141,22 +159,22 @@ type EditorSlotId = Unit
 -- |
 -- | A "Buffer" is an editable window of code.
 
-type BufferSlot el ed sn = H.Slot (BufferQuery el ed sn) (BufferOutput el ed sn) BufferSlotId
-newtype BufferInput ctx env el ed sn = BufferInput 
+type BufferSlot sn el = H.Slot (BufferQuery sn el) (BufferOutput sn el) BufferSlotId
+newtype BufferInput sn el ctx env = BufferInput 
   { name :: String
-  , renderer :: Renderer ctx env el ed sn
-  , expr :: Expr el ed sn }
-data BufferQuery el ed sn a
-  = SetGyro (ExprGyro el ed sn) a
-data BufferOutput el ed sn
+  , renderer :: Renderer sn el ctx env
+  , expr :: Expr sn el }
+data BufferQuery sn el a
+  = SetGyro (ExprGyro sn el) a
+data BufferOutput sn el
   = WriteTerminalFromBuffer TerminalItem
 data BufferSlotId
 
-type BufferHtml el ed sn = 
+type BufferHtml sn el = 
   HH.ComponentHTML
     (HK.HookM Aff Unit) 
-    ( toolbox :: ToolboxSlot el ed sn
-    , preview :: PreviewSlot el ed sn )
+    ( toolbox :: ToolboxSlot sn el
+    , preview :: PreviewSlot sn el )
     Aff
 
 -- | # Toolbox
@@ -164,37 +182,37 @@ type BufferHtml el ed sn =
 -- | A "Toolbox" is a little box of completions that appears when you start
 -- | typing at a cursor.
 
-type ToolboxSlot el ed sn = H.Slot (ToolboxQuery el ed sn) (ToolboxOutput el ed sn) (ToolboxSlotId el ed sn)
-newtype ToolboxInput el ed sn = ToolboxInput 
-  { items :: ToolboxItem el ed sn }
-data ToolboxQuery el ed sn a
-data ToolboxOutput el ed sn
-  = SubmitToolboxItem (ToolboxItem el ed sn)
-data ToolboxSlotId el ed sn = ToolboxSlotId (ExprPath el ed sn)
+type ToolboxSlot sn el = H.Slot (ToolboxQuery sn el) (ToolboxOutput sn el) (ToolboxSlotId sn el)
+newtype ToolboxInput sn el = ToolboxInput 
+  { items :: ToolboxItem sn el }
+data ToolboxQuery sn el a
+data ToolboxOutput sn el
+  = SubmitToolboxItem (ToolboxItem sn el)
+data ToolboxSlotId sn el = ToolboxSlotId (ExprPath sn el)
 
-data ToolboxItem el ed sn
-  = ReplaceToolboxItem (Expr el ed sn)
-  | InsertToolboxItem (ExprPath el ed sn)
+data ToolboxItem sn el
+  = ReplaceToolboxItem (Expr sn el)
+  | InsertToolboxItem (ExprPath sn el)
 
 -- | # Preview
 -- |
 -- | TODO: description
 
-type PreviewSlot el ed sn = H.Slot (PreviewQuery el ed sn) (PreviewOutput el ed sn) (PreviewSlotId el ed sn)
-newtype PreviewInput el ed sn = PreviewInput {}
-data PreviewQuery el ed sn a
-data PreviewOutput el ed sn
-data PreviewSlotId el ed sn
+type PreviewSlot sn el = H.Slot (PreviewQuery sn el) (PreviewOutput sn el) (PreviewSlotId sn el)
+newtype PreviewInput sn el = PreviewInput {}
+data PreviewQuery sn el a
+data PreviewOutput sn el
+data PreviewSlotId sn el
 
 -- | # Clipboard
 -- |
 -- | TODO: description
 
-type ClipboardSlot el ed sn = H.Slot (ClipboardQuery el ed sn) (ClipboardOutput el ed sn) (ClipboardSlotId el ed sn)
-newtype ClipboardInput el ed sn = ClipboardInput {}
-data ClipboardQuery el ed sn a
-data ClipboardOutput el ed sn
-data ClipboardSlotId el ed sn
+type ClipboardSlot sn el = H.Slot (ClipboardQuery sn el) (ClipboardOutput sn el) (ClipboardSlotId sn el)
+newtype ClipboardInput sn el = ClipboardInput {}
+data ClipboardQuery sn el a
+data ClipboardOutput sn el
+data ClipboardSlotId sn el
 
 -- | # Terminal
 -- |

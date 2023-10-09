@@ -13,167 +13,119 @@ import Data.Either (Either(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
+import Data.Traversable (sequence)
+import Data.Tuple (curry, uncurry)
 import Debug as Debug
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Hole (hole)
+import Partial.Unsafe (unsafePartial)
 import Record as R
 import Text.Pretty (class Pretty, pretty, quotes)
 import Type.Proxy (Proxy(..))
 
--- TODO: just rewrite all of this, shouldnt take too long
+data EL = StringRule | VarRule | LamRule | AppRule | HoleRule
 
-{-
-makeVarRuleSort = ?a
-makeRuleSort = ?a
-makeRuleReflect = ?a
-makeSort = ?a
+type ED = ()
 
-data R = StringRule | VarRule | LamRule | AppRule | HoleRule
+data SN = StringValue String | StringSort | TermSort
 
-data N
-  -- StringSort
-  = String
-  -- TermSort
-  | Var
-  | Lam
-  | App
-  | Hole
-  -- Sort
-  | StringValueSort String
-  | StringSort
-  | TermSort
+language :: Language EL ED SN
+language = Language
+  { name: "lambda calculus"
+  , getSortingRule: case _ of
+      StringRule -> do
+        let str = MakeRuleSortVar "str"
+        SortingRule
+          { parameters: Set.fromFoldable [str]
+          , kids: []
+          , parent: makeConstRuleSort StringSort [makeVarRuleSort str] }
+      VarRule -> do
+        let x = MakeRuleSortVar "x"
+        SortingRule
+          { parameters: Set.fromFoldable [x]
+          , kids: [makeConstRuleSort StringSort [makeVarRuleSort x]]
+          , parent: makeConstRuleSort TermSort [] }
+      LamRule -> do
+        let x = MakeRuleSortVar "x"
+        SortingRule
+          { parameters: Set.fromFoldable [x]
+          , kids: [makeConstRuleSort StringSort [makeVarRuleSort x], makeConstRuleSort TermSort []]
+          , parent: makeConstRuleSort TermSort [] }
+      AppRule -> do
+        SortingRule
+          { parameters: Set.fromFoldable []
+          , kids: [makeConstRuleSort TermSort [], makeConstRuleSort TermSort []]
+          , parent: makeConstRuleSort TermSort [] }
+      HoleRule -> do
+        SortingRule
+          { parameters: Set.fromFoldable []
+          , kids: []
+          , parent: makeConstRuleSort TermSort [] }
+  , getChangingRule: case _ of
+      StringRule -> do
+        ChangingRule
+          { parameters: Set.fromFoldable []
+          , kids: []  }
+      VarRule -> do
+        let x = MakeRuleSortVar "x"
+        ChangingRule
+          { parameters: Set.fromFoldable [x]
+          , kids: [Replace (makeConstRuleSort StringSort [makeVarRuleSort x]) (makeConstRuleSort TermSort [])] }
+      LamRule -> do
+        let x = MakeRuleSortVar "x"
+        ChangingRule
+          { parameters: Set.fromFoldable [x]
+          , kids: [Replace (makeConstRuleSort StringSort [makeVarRuleSort x]) (makeConstRuleSort TermSort []), Replace (makeConstRuleSort TermSort []) (makeConstRuleSort TermSort [])]  }
+      AppRule -> do
+        ChangingRule
+          { parameters: Set.fromFoldable []
+          , kids: [Replace (makeConstRuleSort TermSort []) (makeConstRuleSort TermSort []), Replace (makeConstRuleSort TermSort []) (makeConstRuleSort TermSort [])] }
+      HoleRule -> do
+        ChangingRule
+          { parameters: Set.fromFoldable []
+          , kids: []  }
+  , defaultExpr: case _ of
+      Tree {node: SortNode (StringValue _)} -> Nothing
+      Tree {node: SortNode StringSort} -> Just $ makeExpr StringRule (RuleSortVarSubst $ Map.fromFoldable [MakeRuleSortVar "str" /\ makeSort (StringValue "") []]) {} []
+      Tree {node: SortNode TermSort} ->
+        -- Just (makeExpr HoleRule (RuleSortVarSubst $ Map.fromFoldable []) {} [])
+        Just $ makeApp (makeApp makeHole makeHole) (makeApp makeHole makeHole)
+  , topSort: makeSort TermSort []
+  }
 
-instance Pretty N where
-  pretty String = "String"
-  pretty Var = "#"
-  pretty Lam = "λ"
-  pretty App = "$"
-  pretty Hole = "?"
-  pretty (StringValueSort str) = quotes str
-  pretty StringSort = "StringSort"
-  pretty TermSort = "TermSort"
+makeVar str =
+  makeExpr VarRule (RuleSortVarSubst $ Map.fromFoldable [MakeRuleSortVar "s" /\ makeSort StringSort [makeSort (StringValue str ) []]]) {}
+    [makeExpr StringRule (RuleSortVarSubst $ Map.fromFoldable [MakeRuleSortVar "str" /\ makeSort (StringValue str ) []]) {} []]
 
-type D :: Row Type
-type D = ()
+makeHole = makeExpr HoleRule (RuleSortVarSubst $ Map.fromFoldable []) {} []
 
-type Ctx = ()
+makeApp f a = makeExpr AppRule (RuleSortVarSubst $ Map.fromFoldable []) {} [f, a]
 
-type Env = ()
-
--- Language
-
-language :: Language R N D
-language = Language {name: "LC", getSortingRule, getChangingRule, defaultExpr, topSort}
-
-getSortingRule :: R -> SortingRule N D
-getSortingRule = case _ of
-  StringRule -> do
-    let s = MakeRuleSortVar "s"
-    SortingRule
-      { parameters: Set.fromFoldable [s]
-      , kids: [makeVarRuleSort s]
-      , parent: makeRuleSort StringSort {} [makeVarRuleSort s] }
-  VarRule -> do
-    let s = MakeRuleSortVar "s"
-    SortingRule
-      { parameters: Set.fromFoldable [s]
-      , kids: [makeRuleSort StringSort {} [makeVarRuleSort s]]
-      , parent: makeRuleSort TermSort {} [] }
-  LamRule -> do
-    SortingRule
-      { parameters: Set.empty
-      , kids: [makeRuleSort TermSort {} [], makeRuleSort TermSort {} []]
-      , parent: makeRuleSort TermSort {} [] }
-  AppRule -> do
-    SortingRule
-      { parameters: Set.empty
-      , kids: [makeRuleSort TermSort {} [], makeRuleSort TermSort {} []]
-      , parent: makeRuleSort TermSort {} [] }
-  HoleRule -> do
-    SortingRule
-      { parameters: Set.empty 
-      , kids: []
-      , parent: makeRuleSort TermSort {} [] }
-
-getChangingRule :: R -> ChangingRule N D
-getChangingRule = case _ of
-  StringRule -> do
-    let s = MakeRuleSortVar "s"
-    ChangingRule
-      { parameters: Set.fromFoldable [s]
-      , kids: [Replace (makeRuleSort StringSort {} [makeVarRuleSort s]) (makeRuleSort StringSort {} [makeVarRuleSort s])] }
-  VarRule -> do
-    let s = MakeRuleSortVar "s"
-    ChangingRule
-      { parameters: Set.fromFoldable [s]
-      , kids: [Replace (makeVarRuleSort s) (makeRuleSort StringSort {} [makeRuleSort TermSort {} []])] }
-  LamRule -> do
-    ChangingRule
-      { parameters: Set.empty
-      , kids: [makeRuleReflect TermSort {} [], makeRuleReflect TermSort {} []] }
-  AppRule -> do
-    ChangingRule
-      { parameters: Set.empty
-      , kids: [makeRuleReflect TermSort {} [], makeRuleReflect TermSort {} []] }
-  HoleRule -> do
-    ChangingRule
-      { parameters: Set.empty
-      , kids: [] }
-
-defaultExpr :: Sort N D -> Maybe (Expr R N D (Sort N D))
-defaultExpr = 
-  -- case _ of
-  -- Sort {node: SortNode {n: StringSort, d: {}}, kids: [s]} ->
-  --   Just $ makeExpr StringRule String (RuleVarSubst $ Map.fromFoldable [MakeRuleSortVar "s" /\ s]) {} []
-  -- Sort {node: SortNode {n: TermSort, d: {}}, kids: []} ->
-  --   -- Just $ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
-  --   Just $ 
-  --     makeExpr AppRule App (RuleVarSubst Map.empty) {}
-  --       [ makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} []
-  --       , makeExpr HoleRule Hole (RuleVarSubst Map.empty) {} [] ]
-  -- sort -> Nothing
-  hole "TODO"
-
-topSort :: Sort N D
-topSort = makeSort TermSort {} []
-
--- Renderer
-
-renderer :: Renderer Ctx Env R N D
-renderer = Renderer {name: "LC-basic", arrangeExpr: hole "TODO", topCtx, topEnv}
-
--- arrangeExpr :: forall a.
---   ExprNode R N D (Sort N D) ->
---   Array (RenderM Ctx Env R N D (ExprNode R N D (Sort N D) /\ a)) ->
---   RenderM Ctx Env R N D (Array (Array (BufferHtml R N) \/ a))
--- arrangeExpr node@(ExprNode {r: StringRule, n: String}) [] = do
---   case getExprNodeSort language node of
---     Sort {node: SortNode {n: StringSort}, kids: [Sort {node: SortNode {n: StringValueSort str}}]} ->
---       pure [Left [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
---     _ -> bug $ "invalid Sort"
--- arrangeExpr (ExprNode {r: VarRule, n: Var}) [ms] = do
---   _s /\ sId <- ms
---   pure [Left [punctuation "#"], Right sId]
--- arrangeExpr (ExprNode {r: LamRule, n: Lam}) [mx, mb] = do
---   _x /\ xId <- mx
---   _b /\ bId <- mb
---   pure [Left [punctuation "("], Left [punctuation "λ"], Right xId, Left [punctuation "↦"], Right bId, Left [punctuation ")"]]
--- arrangeExpr (ExprNode {r: AppRule, n: App}) [mf, ma] = do
---   _f /\ fId <- mf
---   _a /\ aId <- ma
---   pure [Left [punctuation "("], Right fId, Left [punctuation " "], Right aId, Left [punctuation ")"]]
--- arrangeExpr (ExprNode {r: HoleRule, n: Hole}) [] = do
---   holeIndex <- State.gets _.holeCount
---   State.modify_ (R.modify (Proxy :: Proxy "holeCount") (1 + _))
---   pure [Left [punctuation "?"], Left [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text $ show holeIndex]]]
--- arrangeExpr _node _kids = bug $ "invalid ExprNode"
-
-punctuation str = HH.span [HP.classes [HH.ClassName "punctuation"]] [HH.text str]
-
-topCtx :: Record Ctx
-topCtx = {}
-
-topEnv :: Record Env
-topEnv = {}
--}
+-- renderer :: Renderer () (holeCount :: Int) EL ED SN
+renderer = Renderer
+  { name: "basic"
+  , language
+  , topCtx: {}
+  -- , topEnv: {holeCount: 0}
+  , topEnv: {}
+  , arrangeExpr: curry case _ of
+      ExprNode {label: StringRule} /\ [] -> do
+        pure []
+      ExprNode {label: VarRule} /\ [mx] -> do
+        x_ /\ x <- mx
+        pure [PunctuationArrangeKid [HH.text "#"], ExprKidArrangeKid x_]
+      ExprNode {label: LamRule} /\ [mx, mb] -> do
+        x_ /\ x <- mx 
+        b_ /\ b <- mb 
+        pure [PunctuationArrangeKid [HH.text "(λ"], ExprKidArrangeKid x_, ExprKidArrangeKid b_, PunctuationArrangeKid [HH.text ")"]]
+      ExprNode {label: AppRule} /\ [mf, ma] -> do
+        f_ /\ f <- mf 
+        a_ /\ a <- ma 
+        pure [PunctuationArrangeKid [HH.text "("], ExprKidArrangeKid f_, ExprKidArrangeKid a_, PunctuationArrangeKid [HH.text ")"]]
+      ExprNode {label: HoleRule} /\ [] -> do
+        holeCount <- State.gets _.holeCount
+        State.modify_ _ {holeCount = holeCount + 1}
+        pure [PunctuationArrangeKid [HH.text $ "?" <> show holeCount]]
+      _ -> bug $ "invalid Expr"
+  }

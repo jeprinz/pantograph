@@ -81,4 +81,4 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
 renderTag :: TerminalItemTag -> HH.PlainHTML
 renderTag = case _ of
-  DebugTerminalItemTag -> HH.div [HP.classes [HH.ClassName "DebugTerminalItemTag"]] [HH.text "[debug]"]
+  DebugTerminalItemTag -> HH.div [HP.classes [HH.ClassName "DebugTerminalItemTag"]] [HH.text "debug"]

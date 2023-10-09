@@ -37,11 +37,21 @@ body {
 
 .PanelContent {}
 
-
 /* Editor */
 
 .Editor {
   font-family: 'Courier New', Courier, monospace;
+}
+
+.PanelHeader .title {
+  display: inline-block;
+  color: blue;
+  border: 1px solid blue;
+}
+
+.PanelHeader .info {
+  display: inline-block;
+  color: blue;
 }
 
 /* Buffer */
@@ -60,6 +70,10 @@ body {
 }
 
 .TerminalItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+
   background-color: rgb(194, 194, 194);
   max-height: 20em;
   overflow: scroll;
@@ -68,9 +82,18 @@ body {
 .TerminalItem {
   display: flex;
   flex-direction: row;
+  gap: 0.4em;
+  margin: 0.4em;
+  padding: 0.4em;
+
+  box-shadow: 2px 2px 8px 2px black;
 }
 
-.TerminalItemTag {}
+.TerminalItemTag {
+  display: inline-block;
+  padding: 0 0.4em;
+  box-shadow: 2px 2px 8px 2px black;
+}
 
 .DebugTerminalItemTag {
   color: green;

@@ -18,6 +18,11 @@ import Text.Pretty (class Pretty, parens, pretty, spaces, ticks)
 import Type.Proxy (Proxy(..))
 import Data.Tree
 
+makeConstRuleSort n kids = Tree {node: ConstRuleSortNode (SortNode n), kids}
+makeVarRuleSort x = Tree {node: VarRuleSortNode x, kids: []}
+makeSort sn kids = Tree {node: SortNode sn, kids}
+makeExpr label sigma dat kids = Tree {node: ExprNode {label, sigma}, kids}
+
 -- Sort
 
 data SortNode (sn :: Type)
@@ -65,30 +70,37 @@ instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn)
   applyRuleSortVarSubst sigma (Replace s1 s2) = Replace (applyRuleSortVarSubst sigma s1) (applyRuleSortVarSubst sigma s2)
   applyRuleSortVarSubst sigma (Reflect sn cs) = Reflect (fromConstRuleSortNode "invalid Reflect" sn) (applyRuleSortVarSubst sigma <$> cs)
 
--- Expr
+-- AnnExpr
 
-newtype ExprNode (el :: Type) (ed :: Row Type) (sn :: Type) = ExprNode 
-  { label :: el
-  , sigma :: RuleSortVarSubst sn
-  , dat :: Record ed }
-derive instance Newtype (ExprNode el ed sn) _
-derive instance (Eq el, Eq (Record ed), Eq sn) => Eq (ExprNode el ed sn)
+type AnnExprNodeRow (sn :: Type) (el :: Type) (er :: Row Type) = (sigma :: RuleSortVarSubst sn, label :: el | er)
+newtype AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = ExprNode (Record (AnnExprNodeRow sn el er))
+derive instance Newtype (AnnExprNode sn el er) _
+derive instance (Eq sn, Eq (Record (AnnExprNodeRow sn el er))) => Eq (AnnExprNode sn el er)
 
-type Expr el ed sn = Tree (ExprNode el ed sn)
-type ExprTooth el ed sn = Tooth (ExprNode el ed sn)
-type ExprPath el ed sn = Path (ExprNode el ed sn)
-type ExprCursor el ed sn = Cursor (ExprNode el ed sn)
-type ExprSelect el ed sn = Select (ExprNode el ed sn)
-type ExprGyro el ed sn = Gyro (ExprNode el ed sn)
+type AnnExpr sn el er = Tree (AnnExprNode sn el er)
+type AnnExprTooth sn el er = Tooth (AnnExprNode sn el er)
+type AnnExprPath sn el er = Path (AnnExprNode sn el er)
+type AnnExprCursor sn el er = Cursor (AnnExprNode sn el er)
+type AnnExprSelect sn el er = Select (AnnExprNode sn el er)
+type AnnExprGyro sn el er = Gyro (AnnExprNode sn el er)
+
+-- Expr (no annotation)
+
+type Expr sn el = AnnExpr sn el ()
+type ExprTooth sn el = AnnExprTooth sn el ()
+type ExprPath sn el = AnnExprPath sn el ()
+type ExprCursor sn el = AnnExprCursor sn el ()
+type ExprSelect sn el = AnnExprSelect sn el ()
+type ExprGyro sn el = AnnExprGyro sn el ()
 
 -- Language
 
-newtype Language el ed sn = Language
+newtype Language sn el = Language
   { name :: String
   , getSortingRule :: el -> SortingRule sn
   , getChangingRule :: el -> ChangingRule sn 
   , topSort :: Sort sn 
-  , defaultExpr :: Sort sn -> Maybe (Expr el ed sn) }
+  , defaultExpr :: Sort sn -> Maybe (Expr sn el) }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.

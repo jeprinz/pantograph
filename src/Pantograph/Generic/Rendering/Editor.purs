@@ -28,6 +28,7 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 
+editorComponent :: forall q5 o8 ctx214 env215 el216 ed217 sn218. H.Component q5 (EditorInput ctx214 env215 el216 ed217 sn218) o8 Aff
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
   let Renderer renderer = input.renderer
   let Language language = renderer.language
@@ -74,8 +75,8 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
       [ HP.classes [HH.ClassName "Panel Editor"] ]
       [ HH.div 
           [HP.classes [HH.ClassName "PanelHeader"]]
-          [ HH.span_ [HH.text $ "Pantograph"]
-          , HH.span_ [HH.text $ rendererFullName (Renderer renderer)]
+          [ HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Pantograph"]
+          , HH.div [HP.classes [HH.ClassName "info"]] [HH.text $ rendererFullName (Renderer renderer)]
           ]
       , HH.div
           [HP.classes [HH.ClassName "PanelContent"]]
@@ -88,7 +89,10 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 shouldPreventDefault :: _ -> Boolean
 shouldPreventDefault ki =
   -- blacklist
-  Array.all not
-    [ ki.cmd && ki.key == "Tab"
-    , ki.cmd && ki.key == "r" ]
+  -- Array.all not
+  --   [ ki.cmd && ki.key == "Tab"
+  --   , ki.cmd && ki.key == "r"
+  --   , (ki.cmd || ki.alt) && ki.key == "i"
+  --   ]
+  false
 
