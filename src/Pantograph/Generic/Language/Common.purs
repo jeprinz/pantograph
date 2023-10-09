@@ -21,7 +21,7 @@ import Data.Tree
 makeConstRuleSort n kids = Tree {node: ConstRuleSortNode (SortNode n), kids}
 makeVarRuleSort x = Tree {node: VarRuleSortNode x, kids: []}
 makeSort sn kids = Tree {node: SortNode sn, kids}
-makeExpr label sigma dat kids = Tree {node: ExprNode {label, sigma}, kids}
+makeExpr label sigma dat kids = Tree {node: AnnExprNode {label, sigma}, kids}
 
 -- Sort
 
@@ -73,7 +73,7 @@ instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn)
 -- AnnExpr
 
 type AnnExprNodeRow (sn :: Type) (el :: Type) (er :: Row Type) = (sigma :: RuleSortVarSubst sn, label :: el | er)
-newtype AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = ExprNode (Record (AnnExprNodeRow sn el er))
+newtype AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = AnnExprNode (Record (AnnExprNodeRow sn el er))
 derive instance Newtype (AnnExprNode sn el er) _
 derive instance (Eq sn, Eq (Record (AnnExprNodeRow sn el er))) => Eq (AnnExprNode sn el er)
 
@@ -87,6 +87,7 @@ type AnnExprGyro sn el er = Gyro (AnnExprNode sn el er)
 -- Expr (no annotation)
 
 type Expr sn el = AnnExpr sn el ()
+type ExprNode sn el = AnnExprNode sn el ()
 type ExprTooth sn el = AnnExprTooth sn el ()
 type ExprPath sn el = AnnExprPath sn el ()
 type ExprCursor sn el = AnnExprCursor sn el ()

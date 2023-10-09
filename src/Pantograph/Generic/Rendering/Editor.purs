@@ -28,7 +28,7 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 
-editorComponent :: forall q5 o8 ctx214 env215 el216 ed217 sn218. H.Component q5 (EditorInput ctx214 env215 el216 ed217 sn218) o8 Aff
+editorComponent :: forall sn el ctx env. H.Component EditorQuery (EditorInput sn el ctx env) EditorOutput Aff
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
   let Renderer renderer = input.renderer
   let Language language = renderer.language

@@ -75,10 +75,10 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
                 (List.toUnfoldable items <#> \(TerminalItem item) -> do
                   HH.div
                     [HP.classes [HH.ClassName "TerminalItem"]]
-                    [ HH.div [HP.classes [HH.ClassName "TerminalItemTag"]] [renderTag item.tag]
+                    [ renderTag item.tag
                     , HH.div [HP.classes [HH.ClassName "TerminalItemContent"]] [item.html] ])]
         ]
 
 renderTag :: TerminalItemTag -> HH.PlainHTML
 renderTag = case _ of
-  DebugTerminalItemTag -> HH.div [HP.classes [HH.ClassName "DebugTerminalItemTag"]] [HH.text "debug"]
+  DebugTerminalItemTag -> HH.div [HP.classes [HH.ClassName "TerminalItemTag DebugTerminalItemTag"]] [HH.text "debug"]

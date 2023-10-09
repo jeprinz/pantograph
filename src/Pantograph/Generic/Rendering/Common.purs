@@ -1,9 +1,10 @@
 module Pantograph.Generic.Rendering.Common where
 
-import Prelude
 import Data.Either.Nested
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
+import Prelude
+
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, evalStateT, runStateT)
 import Data.Array as Array
@@ -28,6 +29,7 @@ import Hole (hole)
 import Prim.Row (class Lacks, class Union)
 import Record as R
 import Type.Proxy (Proxy(..))
+import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
 class ToClassName a where
   toClassName :: a -> HH.ClassName
@@ -49,6 +51,7 @@ type SyncExprRow sn el er =
   ( elemId :: HU.ElementId 
   | er )
 type SyncExpr sn el er = AnnExpr sn el (SyncExprRow sn el er)
+type SyncExprNode sn el er = AnnExprNode sn el (SyncExprRow sn el er)
 type SyncExprTooth sn el er = AnnExprTooth sn el (SyncExprRow sn el er)
 type SyncExprPath sn el er = AnnExprPath sn el (SyncExprRow sn el er)
 type SyncExprCursor sn el er = AnnExprCursor sn el (SyncExprRow sn el er)
@@ -81,6 +84,7 @@ type HydrateExprRow sn el er =
   ( gyroPosition :: GyroPosition 
   | SyncExprRow sn el er )
 type HydrateExpr sn el er = AnnExpr sn el (HydrateExprRow sn el er)
+type HydrateExprNode sn el er = AnnExprNode sn el (HydrateExprRow sn el er)
 type HydrateExprTooth sn el er = AnnExprTooth sn el (HydrateExprRow sn el er)
 type HydrateExprPath sn el er = AnnExprPath sn el (HydrateExprRow sn el er)
 type HydrateExprCursor sn el er = AnnExprCursor sn el (HydrateExprRow sn el er)
@@ -109,6 +113,7 @@ type RenderM sn el ctx env =
 type RenderCtx sn el ctx =
   ( depth :: Int
   , outputToken :: HK.OutputToken (BufferOutput sn el)
+  , modifyHydratedExprGyro :: (HydrateExprGyro sn el () -> HydrateExprGyro sn el ()) -> HK.HookM Aff Unit
   | ctx )
 
 type RenderEnv sn el env =
@@ -165,10 +170,14 @@ newtype BufferInput sn el ctx env = BufferInput
   , renderer :: Renderer sn el ctx env
   , expr :: Expr sn el }
 data BufferQuery sn el a
-  = SetGyro (ExprGyro sn el) a
+  = SetExprGyro (ExprGyro sn el) a
+  | KeyboardEventBufferQuery KeyboardEvent.KeyboardEvent a
 data BufferOutput sn el
   = WriteTerminalFromBuffer TerminalItem
 data BufferSlotId
+
+-- data BufferMode sn el
+--   = 
 
 type BufferHtml sn el = 
   HH.ComponentHTML

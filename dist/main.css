@@ -12,9 +12,16 @@
   src: url(./assets/fonts/FiraCode-Regular.ttf) format('truetype');
 } */
 
-/* 
-  html
-*/
+/* variables */
+
+:root {
+  /* colors */
+  --accent1-color: rgb(42, 237, 255);
+  --accent2-color: rgb(252, 154, 25);
+  --debug-color: rgb(0, 200, 0);
+}
+
+/*  html */
 
 html,
 body {
@@ -30,8 +37,9 @@ body {
   display: flex;
   flex-direction: row;
   gap: 1em;
-
+  padding: 0.4em;
   color: white;
+  border-bottom: 0.4em solid var(--accent2-color);
   background-color: black;
 }
 
@@ -44,14 +52,19 @@ body {
 }
 
 .PanelHeader .title {
-  display: inline-block;
-  color: blue;
-  border: 1px solid blue;
+  color: var(--accent1-color);
+  /* border: 1px solid var(--accent1-color); */
+  padding: 0 0.6em;
+  box-shadow:
+    -2px 0 0 0 var(--accent1-color) inset,
+    -4px 0 0 0 var(--accent2-color) inset,
+    2px 0 0 0 var(--accent1-color) inset,
+    4px 0 0 0 var(--accent2-color) inset;
 }
 
 .PanelHeader .info {
   display: inline-block;
-  color: blue;
+  color: var(--accent1-color);
 }
 
 /* Buffer */
@@ -73,9 +86,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.4em;
+  padding: 0.4em;
 
   background-color: rgb(194, 194, 194);
-  max-height: 20em;
+  max-height: 40vh;
   overflow: scroll;
 }
 
@@ -83,30 +97,33 @@ body {
   display: flex;
   flex-direction: row;
   gap: 0.4em;
-  margin: 0.4em;
-  padding: 0.4em;
-
-  box-shadow: 2px 2px 8px 2px black;
 }
 
 .TerminalItemTag {
-  display: inline-block;
   padding: 0 0.4em;
-  box-shadow: 2px 2px 8px 2px black;
+  height: 100%;
+  background-color: black;
+  color: white;
 }
 
 .DebugTerminalItemTag {
-  color: green;
+  color: var(--debug-color);
+  box-shadow: 0 0 0 1px var(--debug-color);
 }
 
-.TerminalItemContent {}
+.TerminalItemContent {
+  padding: 0 0.4em;
+  box-shadow: 0 0 0 1px black;
+  width: 100%;
+}
 
 /* UI */
 
 .button {
   padding: 0 0.5em;
-  color: white;
-  background-color: blue;
+  color: var(--accent1-color);
+  box-shadow: 0 0 0 1px var(--accent1-color);
+  background-color: black;
   user-select: none;
   cursor: pointer;
 }

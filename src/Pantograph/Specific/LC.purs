@@ -26,11 +26,9 @@ import Type.Proxy (Proxy(..))
 
 data EL = StringRule | VarRule | LamRule | AppRule | HoleRule
 
-type ED = ()
-
 data SN = StringValue String | StringSort | TermSort
 
-language :: Language EL ED SN
+language :: Language SN EL
 language = Language
   { name: "lambda calculus"
   , getSortingRule: case _ of
@@ -110,20 +108,20 @@ renderer = Renderer
   -- , topEnv: {holeCount: 0}
   , topEnv: {}
   , arrangeExpr: curry case _ of
-      ExprNode {label: StringRule} /\ [] -> do
+      AnnExprNode {label: StringRule} /\ [] -> do
         pure []
-      ExprNode {label: VarRule} /\ [mx] -> do
+      AnnExprNode {label: VarRule} /\ [mx] -> do
         x_ /\ x <- mx
         pure [PunctuationArrangeKid [HH.text "#"], ExprKidArrangeKid x_]
-      ExprNode {label: LamRule} /\ [mx, mb] -> do
+      AnnExprNode {label: LamRule} /\ [mx, mb] -> do
         x_ /\ x <- mx 
         b_ /\ b <- mb 
         pure [PunctuationArrangeKid [HH.text "(λ"], ExprKidArrangeKid x_, ExprKidArrangeKid b_, PunctuationArrangeKid [HH.text ")"]]
-      ExprNode {label: AppRule} /\ [mf, ma] -> do
+      AnnExprNode {label: AppRule} /\ [mf, ma] -> do
         f_ /\ f <- mf 
         a_ /\ a <- ma 
         pure [PunctuationArrangeKid [HH.text "("], ExprKidArrangeKid f_, ExprKidArrangeKid a_, PunctuationArrangeKid [HH.text ")"]]
-      ExprNode {label: HoleRule} /\ [] -> do
+      AnnExprNode {label: HoleRule} /\ [] -> do
         holeCount <- State.gets _.holeCount
         State.modify_ _ {holeCount = holeCount + 1}
         pure [PunctuationArrangeKid [HH.text $ "?" <> show holeCount]]

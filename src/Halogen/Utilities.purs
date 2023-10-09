@@ -51,8 +51,8 @@ updateClassName elemId (HH.ClassName className) mb_classValue = do
     Just true -> void $ DOMTokenList.add classList className
     Just false -> void $ DOMTokenList.remove classList className
 
-setClassName :: ElementId -> HH.ClassName -> Effect (Effect Unit)
+setClassName :: ElementId -> HH.ClassName -> Effect Unit
 setClassName elemId (HH.ClassName className) =
-  Element.setClassName className <$> getElementById elemId
+  Element.setClassName className =<< getElementById elemId
 
 foreign import fromInputEventToTargetValue :: Event -> Effect String

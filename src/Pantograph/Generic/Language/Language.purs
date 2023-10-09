@@ -7,7 +7,7 @@ import Data.Tree
 defaultTopExpr (Language language) =
   language.defaultExpr $ language.topSort
 
-getExprNodeSort (Language language) (ExprNode {label, sigma}) =
+getExprNodeSort (Language language) (AnnExprNode {label, sigma}) =
   let SortingRule sortingRule = language.getSortingRule label in
   applyRuleSortVarSubst sigma (sortingRule.parent)
 
