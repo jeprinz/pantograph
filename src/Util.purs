@@ -16,10 +16,14 @@ import Data.Maybe (maybe)
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Hole as Hole
+import Data.Array as Array
 
 hole' :: forall a. String -> a
 -- hole' msg = unsafeThrow $ "hole: " <> msg
 hole' msg = Hole.hole msg
+
+index' :: forall a. Array a -> Int -> a
+index' a i = fromJust $ Array.index a i
 
 lookup' :: forall k v. Ord k => k -> Map k v -> v
 lookup' x m = case lookup x m of

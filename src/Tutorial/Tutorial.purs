@@ -18,16 +18,29 @@ import Type.Proxy (Proxy(..))
 import Data.Tuple.Nested
 import Data.List (List(..), (:))
 import Bug as Bug
+import Data.Array as Array
+import Util as Util
+import Debug (trace)
 
 runTutorial :: Effect Unit
 runTutorial = HA.runHalogenAff do
   Console.log "[runTutorial]"
   body <- HA.awaitBody
-  VDomDriver.runUI (tutorialComponent {component: exampleTutorialSubject}) unit body
+  VDomDriver.runUI (tutorialComponent lessons) unit body
+
+lessons :: Array Lesson
+lessons = [
+    {component: exampleLesson}
+    , {component: exampleLesson}
+    , {component: exampleLesson}
+    , {component: exampleLesson}
+]
+
+--------------------------------------------------------------------------------
 
 data TutorialSubjectOutput = TaskCompleted
 
-type TutorialSubject a = {
+type Lesson = {
     component :: forall q m. H.Component q Unit TutorialSubjectOutput m
 }
 
@@ -37,78 +50,64 @@ type TutorialSubject a = {
 type Slots = ( subject :: forall query. H.Slot query TutorialSubjectOutput Int)
 _subject = Proxy :: Proxy "subject" -- what is this nonsense. Look me in the eye and tell me this is good design, whoever designed this crap
 
-data TutorialAction = SubjectSolved TutorialSubjectOutput
+data TutorialAction =
+    SubjectSolved TutorialSubjectOutput
+    | NextLesson
+    | PreviousLesson
 
-tutorialComponent :: forall a.
-    TutorialSubject a
+tutorialComponent ::
+    Array Lesson
     ->
     forall query input output m. H.Component query input output m
-tutorialComponent subject =
+tutorialComponent lessons =
     H.mkComponent
         { initialState
         , render
         , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
         }
     where
-    initialState _ = false
+    initialState _ = {
+        activeLesson : 0
+        , lessonsSolved : Array.replicate (Array.length lessons) false
+    }
 
-    render :: forall m. Boolean -> H.ComponentHTML TutorialAction Slots m
+    render :: forall m. _ -> H.ComponentHTML TutorialAction Slots m
     render state =
-        HH.div_
-            [ HH.text "Hello this is a tutorial"
-            , HH.slot _subject 0 subject.component unit SubjectSolved
-            , HH.text (if state then "SOLVED" else "NOT YET SOLVED")
+        trace ("state is " <> show state) \_ ->
+        HH.div_ (
+            [ HH.text ("Lesson number " <> show state.activeLesson)]
+            <> (if not (state.activeLesson == 0) then
+                [HH.button [ HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]]
+                else [])
+            <> (if  state.activeLesson < Array.length lessons - 1 then
+                [HH.button [ HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]]
+                else [])
+            <>
+            [
+            HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
+            , HH.slot _subject state.activeLesson (Util.index' lessons state.activeLesson).component unit SubjectSolved
             ]
+            )
 
-    handleAction :: forall output m. TutorialAction -> H.HalogenM Boolean TutorialAction Slots output m Unit
+    handleAction :: forall output m. TutorialAction -> H.HalogenM _ TutorialAction Slots output m Unit
     handleAction = case _ of
         SubjectSolved TaskCompleted ->
-            H.modify_ \_state -> true
-
-type ConsSlots query input output = ( cons1 :: forall query. H.Slot query output input
-                 , cons2 :: forall query. H.Slot query output (Int /\ input))
-_cons1 = Proxy :: Proxy "cons1"
-_cons2 = Proxy :: Proxy "cons2"
-
--- This is a component which will display the n'th component that it is given
---makeOneOfListComponent :: forall query input output m. List (H.Component query input output m) -> H.Component query (Int /\ input) output m
---makeOneOfListComponent = case _ of
---    Nil ->
---        let error :: forall t. t
---            error = Bug.bug "list component index out of bounds"
---        in
---        H.mkComponent {
---            initialState: \_ -> unit
---            , render: \_ -> error
---            , eval: H.mkEval $ H.defaultEval { handleAction = \_ -> error }
---        }
---    component : components ->
---      H.mkComponent
---        { initialState
---        , render
---        , eval: H.mkEval H.defaultEval {
---            handleAction = handleAction
---            , receive = Just
---          }
---        }
---      where
---      initialState input = input
---
---      render state = if state == 0 then
---        -- Render this child component
---        ?h
---        else
---        -- Go to next cons in list
---        ?h
---
---      handleAction input =
---            H.modify_ \_ -> input
+            H.modify_ \state ->
+                state{
+                    lessonsSolved= Util.fromJust' "11" $ Array.updateAt state.activeLesson true state.lessonsSolved
+                }
+        NextLesson ->
+            H.modify_ \state ->
+                state {activeLesson= state.activeLesson + 1}
+        PreviousLesson ->
+            H.modify_ \state ->
+                state {activeLesson= state.activeLesson - 1}
 
 
-data ExampleTutorialSubjectAction = Click
+data ExampleLessonAction = Click
 
-exampleTutorialSubject :: forall q m. H.Component q Unit TutorialSubjectOutput m
-exampleTutorialSubject =
+exampleLesson :: forall q m. H.Component q Unit TutorialSubjectOutput m
+exampleLesson =
   H.mkComponent
     { initialState
     , render
@@ -119,7 +118,7 @@ exampleTutorialSubject =
 
   render state =
     HH.div_
-      [ HH.button [ HE.onClick \_ -> Click ] [ HH.text "-" ]
+      [ HH.button [ HE.onClick \_ -> Click ] [ HH.text "Click here to solve this lesson" ]
       ]
 
   handleAction = case _ of
