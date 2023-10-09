@@ -2,7 +2,9 @@ module Language.Pantograph.Tutorial.TutorialExample where
 
 import Prelude
 
+import Effect (Effect)
 import Data.Array as Array
+import Halogen.Aff as HA
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -10,8 +12,14 @@ import Halogen.HTML.Events as HE
 import Hole (hole)
 import Type.Proxy (Proxy(..))
 import Util (fromJust)
+import Halogen.VDom.Driver as VDomDriver
 
 -- tutorial
+
+runTutorial :: Effect Unit
+runTutorial = HA.runHalogenAff do
+  body <- HA.awaitBody
+  VDomDriver.runUI tutorialComponent (TutorialInput {lessonStates : [LessonState {n : 10}]}) body
 
 newtype TutorialInput = TutorialInput
   { lessonStates :: Array LessonState }
