@@ -18,7 +18,7 @@ import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
-import Data.Tree.Move (moveGyroLeft, moveGyroRight)
+import Data.Tree.Move (escapeGyro, moveGyroLeft, moveGyroRight)
 import Data.Tuple (fst, snd)
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -104,6 +104,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
       let ki = getKeyInfo keyboardEvent
 
       if false then pure unit
+      else if ki.key == "Escape" then modifyHydratedExprGyro escapeGyro
       else if ki.key == "ArrowLeft" then modifyHydratedExprGyro moveGyroLeft
       else if ki.key == "ArrowRight" then modifyHydratedExprGyro moveGyroRight
       else pure unit
@@ -234,7 +235,7 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
         ExprKidArrangeKid html -> [html]
         PunctuationArrangeKid htmls -> htmls
         IndentationArrangeKid htmls -> 
-          [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "\\n"]
+          [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"]
           , HH.br_ ] <>
           htmls
   pure $ HH.div

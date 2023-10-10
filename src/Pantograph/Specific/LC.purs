@@ -152,13 +152,15 @@ language = PL.Language
         --     (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
         --     (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
         -- Just $ makeExample 10
-        Just $ makeApp (makeLam "x" (makeVar "x")) (makeLam "x" makeHole)
+        Just $ makeExample 4
+        -- Just $ makeApp (makeLam "x" (makeVar "x")) (makeLam "x" makeHole)
+
   , topSort: PL.makeSort TermSort []
   }
 
 makeExample :: Int -> Expr
 makeExample 0 = makeHole
-makeExample n = makeApp (makeIndent (makeExample (n - 1))) (makeExample (n - 1))
+makeExample n = makeApp (makeLam "x" (makeExample (n - 1))) (makeIndent (makeExample (n - 1)))
 
 makeVar :: String -> Expr
 makeVar str =
@@ -194,8 +196,7 @@ basicRenderer = PR.Renderer
         case label of
           StringRule -> assertValidTreeKids msg node \[] -> do
             let Tree {node: PL.SortNode StringSort, kids: [Tree {node: PL.SortNode (StringValue str)}]} = PL.getExprNodeSort language node
-            -- Debug.traceM $ "sort = " <> show (PL.getExprNodeSort language node)
-            pure [PR.PunctuationArrangeKid [HH.text str]]
+            pure [PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
           VarRule -> assertValidTreeKids msg node \[mx] -> do
             x_ /\ x <- mx
             pure [punc "#", PR.ExprKidArrangeKid x_]
@@ -210,7 +211,7 @@ basicRenderer = PR.Renderer
           HoleRule -> assertValidTreeKids msg node \[] -> do
             holeIndex <- State.gets _.holeCount
             State.modify_ _ {holeCount = holeIndex + 1}
-            pure [punc ("?" <> show holeIndex)]
+            pure [PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text ("?" <> show holeIndex)]]]
           FormatRule Indent -> assertValidTreeKids msg node \[ma] -> do
             ctx <- ask
             a_ /\ a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
@@ -236,7 +237,7 @@ scratchRenderer = PR.Renderer
             pure [PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
           VarRule -> assertValidTreeKids msg node \[mx] -> do
             x_ /\ _x <- mx
-            pure [PR.ExprKidArrangeKid x_]
+            pure [puncDiv "#", PR.ExprKidArrangeKid x_]
           LamRule -> assertValidTreeKids msg node \[mx, mb] -> do
             x_ /\ _x <- mx 
             b_ /\ _b <- mb 
@@ -248,8 +249,8 @@ scratchRenderer = PR.Renderer
           HoleRule -> assertValidTreeKids msg node \[] -> do
             holeIndex <- State.gets _.holeCount
             State.modify_ _ {holeCount = holeIndex + 1}
-            pure [PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text (show holeIndex)]]]
+            pure [puncDiv "?", PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text (show holeIndex)]]]
           FormatRule Indent -> assertValidTreeKids msg node \[ma] -> do
-            a_ /\ _a <- ma
-            pure [PR.ExprKidArrangeKid a_]
+            a_ /\ a <- ma
+            pure [PR.IndentationArrangeKid [], PR.ExprKidArrangeKid a_]
   }

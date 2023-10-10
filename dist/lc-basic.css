@@ -1,9 +1,14 @@
+.Panel.Buffer .PanelContent {
+  font-size: 14pt;
+}
+
 .holeIndex {
   display: inline-block;
+  margin: 0 0.2em;
+  box-shadow: 0 0 0 1px red inset;
   color: red;
 }
 
-.punctuation {
-  display: inline-block;
-  white-space: pre;
+.string {
+  color: green;
 }

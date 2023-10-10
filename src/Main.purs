@@ -14,5 +14,8 @@ main = HA.runHalogenAff do
   Console.log "[main]"
   body <- HA.awaitBody
   let editorInput = EditorInput
-        { renderer: scratchRenderer }
+        { renderer:
+            basicRenderer 
+            -- scratchRenderer 
+        }
   VDomDriver.runUI editorComponent editorInput body

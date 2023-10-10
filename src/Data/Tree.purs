@@ -44,7 +44,7 @@ derive instance Eq a => Eq (Path a)
 derive instance Functor Path
 derive instance Foldable Path
 derive instance Traversable Path
-derive newtype instance Semigroup (Path a)
+instance Semigroup (Path a) where append (Path ts1) (Path ts2) = Path (ts2 <> ts1)
 derive newtype instance Monoid (Path a)
 
 consPath :: forall a. Path a -> Tooth a -> Path a
@@ -60,7 +60,7 @@ instance Show a => Show (Cursor a) where show x = genericShow x
 derive instance Eq a => Eq (Cursor a)
 derive instance Functor Cursor
 
-newtype Select a = Select {outside :: Path a, middle :: Path a, inside :: Tree a}
+newtype Select a = Select {outside :: Path a, middle :: Path a, inside :: Tree a, isReversed :: Boolean}
 derive instance Generic (Select a) _
 instance Show a => Show (Select a) where show x = genericShow x
 derive instance Eq a => Eq (Select a)

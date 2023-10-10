@@ -12,6 +12,15 @@ import Util (fromJust')
 
 -- Gyro
 
+escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
+escapeGyro (RootGyro _) = Nothing
+escapeGyro (CursorGyro (Cursor {outside, inside})) = pure $ RootGyro (unPath outside inside)
+escapeGyro (SelectGyro (Select {outside, middle, inside, isReversed})) =
+  if isReversed
+    then pure $ CursorGyro (Cursor {outside, inside: unPath middle inside})
+    else pure $ CursorGyro (Cursor {outside: outside <> middle, inside})
+
+
 moveGyroLeft :: forall a. Gyro a -> Maybe (Gyro a)
 moveGyroLeft (RootGyro tree) = pure $ normalizeGyro $ CursorGyro (Cursor {outside: Path Nil, inside: tree})
 moveGyroLeft (CursorGyro cursor) = normalizeGyro <<< CursorGyro <$> moveCursorLeft cursor
@@ -25,9 +34,9 @@ moveGyroRight (SelectGyro select) = hole "TODO: moveGyroRight (SelectGyro select
 normalizeGyro :: forall a. Gyro a -> Gyro a
 normalizeGyro (RootGyro gyro) = (RootGyro gyro)
 normalizeGyro (CursorGyro (Cursor {outside, inside})) = CursorGyro (Cursor {outside, inside})
-normalizeGyro (SelectGyro (Select {outside, middle, inside})) = case middle of
+normalizeGyro (SelectGyro (Select {outside, middle, inside, isReversed})) = case middle of
   Path Nil -> normalizeGyro $ CursorGyro (Cursor {outside, inside})
-  _ -> (SelectGyro (Select {outside, middle, inside}))
+  _ -> (SelectGyro (Select {outside, middle, inside, isReversed}))
 
 -- Cursor
 
