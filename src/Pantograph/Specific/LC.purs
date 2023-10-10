@@ -152,7 +152,7 @@ language = PL.Language
         --     (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
         --     (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
         -- Just $ makeExample 10
-        Just $ makeLam "x" (makeVar "x")
+        Just $ makeApp (makeLam "x" (makeVar "x")) (makeLam "x" makeHole)
   , topSort: PL.makeSort TermSort []
   }
 
@@ -180,8 +180,8 @@ makeHole = PL.makeExpr HoleRule (PL.RuleSortVarSubst $ Map.fromFoldable []) {} [
 makeIndent :: Expr -> Expr
 makeIndent a = PL.makeExpr (FormatRule Indent) (PL.RuleSortVarSubst $ Map.fromFoldable []) {} [a]
 
-renderer :: Renderer
-renderer = PR.Renderer
+basicRenderer :: Renderer
+basicRenderer = PR.Renderer
   { name: "basic"
   , language
   , topCtx: {indentLevel: 0}
@@ -208,11 +208,48 @@ renderer = PR.Renderer
             a_ /\ a <- ma 
             pure [punc "(", PR.ExprKidArrangeKid f_, punc " ", PR.ExprKidArrangeKid a_, punc ")"]
           HoleRule -> assertValidTreeKids msg node \[] -> do
-            holeCount <- State.gets _.holeCount
-            State.modify_ _ {holeCount = holeCount + 1}
-            pure [punc ("?" <> show holeCount)]
+            holeIndex <- State.gets _.holeCount
+            State.modify_ _ {holeCount = holeIndex + 1}
+            pure [punc ("?" <> show holeIndex)]
           FormatRule Indent -> assertValidTreeKids msg node \[ma] -> do
             ctx <- ask
             a_ /\ a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
             pure [ind ctx.indentLevel, PR.ExprKidArrangeKid a_]
+  }
+
+scratchRenderer :: PR.Renderer SN EL () ()
+scratchRenderer = PR.Renderer
+  { name: "scratch"
+  , language
+  , topCtx: {}
+  , topEnv: {}
+  , arrangeExpr:
+      let puncSpan str = PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "puncSpan"]] [HH.text str]] in
+      let puncDiv str = PR.PunctuationArrangeKid [HH.div [HP.classes [HH.ClassName "puncDiv"]] [HH.text str]] in
+      \node@(PL.AnnExprNode {label}) ->
+        let msg = "arrangeExpr " <> "{" <> "label: " <> show label <> "}" in
+        case label of
+          StringRule -> assertValidTreeKids msg node \[] -> do
+            let Tree {node: PL.SortNode StringSort, kids: [Tree {node: PL.SortNode (StringValue str)}]} = PL.getExprNodeSort language node
+            -- Debug.traceM $ "sort = " <> show (PL.getExprNodeSort language node)
+            -- pure [PR.PunctuationArrangeKid [HH.text str]]
+            pure [PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
+          VarRule -> assertValidTreeKids msg node \[mx] -> do
+            x_ /\ _x <- mx
+            pure [PR.ExprKidArrangeKid x_]
+          LamRule -> assertValidTreeKids msg node \[mx, mb] -> do
+            x_ /\ _x <- mx 
+            b_ /\ _b <- mb 
+            pure [puncDiv "λ", PR.ExprKidArrangeKid x_, puncSpan ".", PR.ExprKidArrangeKid b_]
+          AppRule -> assertValidTreeKids msg node \[mf, ma] -> do
+            f_ /\ _f <- mf 
+            a_ /\ _a <- ma 
+            pure [puncDiv "$", PR.ExprKidArrangeKid f_, puncSpan " ", PR.ExprKidArrangeKid a_]
+          HoleRule -> assertValidTreeKids msg node \[] -> do
+            holeIndex <- State.gets _.holeCount
+            State.modify_ _ {holeCount = holeIndex + 1}
+            pure [PR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text (show holeIndex)]]]
+          FormatRule Indent -> assertValidTreeKids msg node \[ma] -> do
+            a_ /\ _a <- ma
+            pure [PR.ExprKidArrangeKid a_]
   }
