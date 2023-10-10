@@ -11,6 +11,7 @@ import Language.Pantograph.Generic.Rendering.Editor (editorComponent) as Renderi
 import Partial.Unsafe as Partial
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Halogen as H
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
@@ -21,6 +22,7 @@ import Bug as Bug
 import Data.Array as Array
 import Util as Util
 import Debug (trace)
+import Halogen.Utilities (classNames)
 
 runTutorial :: Effect Unit
 runTutorial = HA.runHalogenAff do
@@ -31,7 +33,7 @@ runTutorial = HA.runHalogenAff do
 lessons :: Array Lesson
 lessons = [
     {component: exampleLesson}
-    , {component: exampleLesson}
+    , {component: exampleLesson2}
     , {component: exampleLesson}
     , {component: exampleLesson}
 ]
@@ -42,13 +44,14 @@ data TutorialSubjectOutput = TaskCompleted
 
 type Lesson = {
     component :: forall q m. H.Component q Unit TutorialSubjectOutput m
+    --, instructions:: HH.HTML
 }
 
 -- I think that I will need to build cons and nil components to form a list. Each component can only have finite children seemingly.
 -- The list components will take a number as input, and decide which child to render based on that.
 
-type Slots = ( subject :: forall query. H.Slot query TutorialSubjectOutput Int)
-_subject = Proxy :: Proxy "subject" -- what is this nonsense. Look me in the eye and tell me this is good design, whoever designed this crap
+type Slots = ( lesson :: forall query. H.Slot query TutorialSubjectOutput Int)
+_lesson = Proxy :: Proxy "lesson" -- what is this nonsense. Look me in the eye and tell me this is good design, whoever designed this crap
 
 data TutorialAction =
     SubjectSolved TutorialSubjectOutput
@@ -73,20 +76,19 @@ tutorialComponent lessons =
 
     render :: forall m. _ -> H.ComponentHTML TutorialAction Slots m
     render state =
-        trace ("state is " <> show state) \_ ->
         HH.div_ (
-            [ HH.text ("Lesson number " <> show state.activeLesson)]
-            <> (if not (state.activeLesson == 0) then
-                [HH.button [ HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]]
-                else [])
-            <> (if  state.activeLesson < Array.length lessons - 1 then
-                [HH.button [ HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]]
-                else [])
-            <>
-            [
-            HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
-            , HH.slot _subject state.activeLesson (Util.index' lessons state.activeLesson).component unit SubjectSolved
+            [ HH.text ("Lesson number " <> show state.activeLesson)
+            , HH.div [ classNames ["hidden"] ] [ HH.text "dunkus" ]
+            , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
+            , HH.button [ HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
+            , HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
             ]
+            <>
+            (Array.mapWithIndex (\i lesson ->
+                HH.div (if state.activeLesson == i then [] else [classNames ["hidden"]]) [
+                    HH.slot _lesson i (Util.index' lessons i).component unit SubjectSolved
+                ]
+                ) lessons)
             )
 
     handleAction :: forall output m. TutorialAction -> H.HalogenM _ TutorialAction Slots output m Unit
@@ -114,7 +116,7 @@ exampleLesson =
     , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
-  initialState _ = 0
+  initialState _ = unit
 
   render state =
     HH.div_
@@ -123,5 +125,31 @@ exampleLesson =
 
   handleAction = case _ of
     Click ->
+        H.raise TaskCompleted
+
+data ExampleLesson2Action = SetTextArea String | Click2
+
+exampleLesson2 :: forall q m. H.Component q Unit TutorialSubjectOutput m
+exampleLesson2 =
+  H.mkComponent
+    { initialState
+    , render
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+    }
+  where
+  initialState _ = "default text 1"
+
+  render state =
+    HH.div_
+      [
+--        HH.textarea []
+        HH.element (HH.ElemName "textarea") [HE.onValueChange (\s -> SetTextArea s)] [HH.text state]
+      , HH.button [ HE.onClick \_ -> Click2 ] [ HH.text "Click here to solve this lesson" ]
+      ]
+
+  handleAction = case _ of
+    SetTextArea str ->
+        H.modify_ \_ -> str
+    Click2 ->
         H.raise TaskCompleted
 

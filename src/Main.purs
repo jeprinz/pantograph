@@ -20,12 +20,12 @@ import Language.Pantograph.Generic.Grammar as Grammar
 -- Maybe in the future we can make a better way, but for now you can switch which thing gets run by uncommenting the correct main function
 
 -- October14
---main :: Effect Unit
---main = runEditorForLang October14.editorSpec
+main :: Effect Unit
+main = runEditorForLang October14.editorSpec
 
 -- Tutorial test
-main :: Effect Unit
-main = Tutorial.runTutorial
+--main :: Effect Unit
+--main = Tutorial.runTutorial
 
 -- Henry Tutorial
 --main :: Effect Unit

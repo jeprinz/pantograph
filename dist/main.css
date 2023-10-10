@@ -396,3 +396,9 @@ console
   padding: 0.5em 0;
   box-shadow: 0 -1px 0 0 black;
 }
+
+
+/*Stuff added by Jacob, feel free to tell me how to reorganize this*/
+.hidden {
+  display: none
+}
