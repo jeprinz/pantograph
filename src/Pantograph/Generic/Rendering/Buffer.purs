@@ -126,7 +126,6 @@ flushExprNode (AnnExprNode node) = do
   liftEffect $ HU.setClassName node.elemId (node.gyroPosition # toClassName)
 
 hydrateExprGyro :: forall sn el er. SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-
 hydrateExprGyro (RootGyro expr) = do
   expr' /\ _ <-
     ( let ctx = {gyroPosition: InsideRoot} in
@@ -134,7 +133,6 @@ hydrateExprGyro (RootGyro expr) = do
       runM ctx env ) $
     hydrateExpr expr
   pure $ RootGyro expr'
-
 hydrateExprGyro (CursorGyro (Cursor {outside, inside})) = do
   (outside' /\ inside') /\ _ <-
     ( let ctx = {gyroPosition: OutsideCursor} in 
@@ -144,7 +142,6 @@ hydrateExprGyro (CursorGyro (Cursor {outside, inside})) = do
       local (\ctx -> ctx {gyroPosition = AtCursor})
         (hydrateExpr inside)
   pure $ CursorGyro $ Cursor {outside: outside', inside: inside'}
-
 hydrateExprGyro (SelectGyro (Select {outside, middle, inside})) = hole "TODO: hydrateExprGyro"
 
 -- | hydrate and flush
