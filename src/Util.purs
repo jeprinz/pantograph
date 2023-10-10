@@ -4,7 +4,9 @@ import Data.Foldable
 import Data.Tuple.Nested
 import Prelude
 
+import Bug (bug)
 import Bug as Bug
+import Data.Array as Array
 import Data.Either (Either(..))
 import Data.List (List)
 import Data.List as List
@@ -146,3 +148,14 @@ stripSuffix (List.Pattern suf) xs0 = go List.Nil xs0
   go ys (x List.: xs)
     | suf == xs = Just (List.reverse (x List.: ys))
     | otherwise = go (x List.: ys) xs
+
+insertAt :: forall a. String -> Int -> a -> Array a -> Array a
+insertAt msg i x xs = case Array.insertAt i x xs of
+  Nothing -> bug $ "failed insertAt: " <> msg
+  Just xs' -> xs'
+
+deleteAt :: forall a. String -> Int -> Array a -> Array a
+deleteAt msg i xs = case Array.deleteAt i xs of
+  Nothing -> bug $ "failed deleteAt: " <> msg
+  Just xs' -> xs'
+

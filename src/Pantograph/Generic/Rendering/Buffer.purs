@@ -7,6 +7,7 @@ import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
 import Util
+
 import Bug (bug)
 import Control.Monad.Reader (ReaderT, ask, local)
 import Control.Monad.State (StateT)
@@ -18,10 +19,11 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
 import Data.Tuple (fst, snd)
+import Debug as Debug
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
-import Halogen (liftAff, liftEffect)
+import Halogen (defer, liftAff, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -30,10 +32,13 @@ import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Hole (hole)
 import Pantograph.Generic.Language (Sort)
+import Pantograph.Generic.Language.Common (unAnnExprTooth)
 import Pantograph.Generic.Rendering.Keyboard (getKeyInfo)
 import Prim.Row (class Lacks, class Union)
 import Prim.RowList (class RowToList)
 import Record as R
+import Text.Pretty (pretty)
+import Text.Pretty as Pretty
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 import Web.Event.Event as Event
@@ -41,7 +46,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
-bufferComponent :: forall sn el ctx env. H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
+bufferComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
 bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) -> HK.do
   let Renderer renderer = input.renderer
 
@@ -61,13 +66,15 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
         liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
 
   renderCtx /\ renderCtxStateId <- HK.useState $
-    R.union
-      { depth: 0, outputToken, modifyHydratedExprGyro }
-      renderer.topCtx 
+    renderer.topCtx # R.union
+      { depth: 0
+      , outputToken
+      , setExprGyro: \exprGyro' -> HK.modify_ exprGyroStateId (const exprGyro')
+      }
   renderEnv /\ renderEnvStateId <- HK.useState $
-    R.union
-      { holeCount: 0 }
-      renderer.topEnv
+    renderer.topEnv # R.union
+      { holeCount: 0 
+      }
 
   let runRenderM = unwrap <<< runM renderCtx renderEnv
 
@@ -199,33 +206,37 @@ rehydrateExprNode = hole "TODO: rehydrateExprNode"
 
 -- render
 
-renderExprGyro :: forall sn el er ctx env. Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (BufferHtml sn el)
+renderExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (BufferHtml sn el)
 renderExprGyro renderer (RootGyro expr) = renderExpr renderer (Path Nil) expr
 renderExprGyro renderer (CursorGyro (Cursor {outside, inside})) = renderExpr renderer (Path Nil) $ unPath outside inside
 renderExprGyro renderer (SelectGyro (Select {outside, middle, inside})) = renderExpr renderer (Path Nil) $ unPath outside $ unPath middle inside
 
 renderExpr :: forall sn el er ctx env.
+  Show sn => Show el => PrettyTreeNode el =>
   Renderer sn el ctx env ->
   SyncExprPath sn el er ->
   SyncExpr sn el er ->
   RenderM sn el ctx env (BufferHtml sn el)
-renderExpr (Renderer renderer) (Path tooths) (Tree {node: node@(AnnExprNode {elemId}), kids}) = do
+renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}), kids}) = do
   ctx <- ask
   arrangedKids <- renderer.arrangeExpr node $
     kids # Array.mapWithIndex \i kid@(Tree {node: kidNode}) -> do
-      let tooth = Tooth {node: kidNode, i, kids: fromJust' "renderExpr" $ Array.deleteAt i kids}
-      renderExpr (Renderer renderer) (Path (Cons tooth tooths)) kid <#> (_ /\ kidNode)
+      let tooth = Tooth {node, i, kids: deleteAt "renderExpr" i kids}
+      renderExpr (Renderer renderer) (consPath tooth path) kid <#> (_ /\ kidNode)
   let htmls = arrangedKids # foldMap case _ of
         ExprKidArrangeKid html -> [html]
         PunctuationArrangeKid htmls -> htmls
         IndentationArrangeKid htmls -> htmls
   pure $ HH.div
     [ HU.id $ elemId
-    , HE.onMouseDown \mouseEvent -> do
+    -- , HE.onMouseDown \mouseEvent -> do
+    --     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
+    --     HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseDown] id = " <> show elemId}
+    -- , HE.onMouseUp \mouseEvent -> do
+    --     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
+    --     HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseUp] id = " <> show elemId}
+    , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseDown] id = " <> show elemId}
-    , HE.onMouseUp \mouseEvent -> do
-        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseUp] id = " <> show elemId}
+        ctx.setExprGyro (CursorGyro (Cursor {outside: unAnnExprPath path, inside: unAnnExpr expr}))
     ]
     htmls

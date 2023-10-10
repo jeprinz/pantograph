@@ -57,6 +57,9 @@ braces2   = surround "{{" "}}"
 angles   = surround "<" ">"
 ticks    = surround "`" "`"
 
+outer = surround "<{" "}>"
+inner = surround "{>" "<}"
+
 spaces = intercalate " "
 commas = intercalate ", "
 newlines = intercalate "\n"

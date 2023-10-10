@@ -81,7 +81,7 @@ type HydrateEnv sn el =
 -- | `ExprNode` annotation data that is generated during initial hydrating and
 -- | mapped when re-hydrating.
 type HydrateExprRow sn el er =
-  ( gyroPosition :: GyroPosition 
+  ( gyroPosition :: GyroPosition
   | SyncExprRow sn el er )
 type HydrateExpr sn el er = AnnExpr sn el (HydrateExprRow sn el er)
 type HydrateExprNode sn el er = AnnExprNode sn el (HydrateExprRow sn el er)
@@ -113,7 +113,7 @@ type RenderM sn el ctx env =
 type RenderCtx sn el ctx =
   ( depth :: Int
   , outputToken :: HK.OutputToken (BufferOutput sn el)
-  , modifyHydratedExprGyro :: (HydrateExprGyro sn el () -> HydrateExprGyro sn el ()) -> HK.HookM Aff Unit
+  , setExprGyro :: ExprGyro sn el -> HK.HookM Aff Unit
   | ctx )
 
 type RenderEnv sn el env =

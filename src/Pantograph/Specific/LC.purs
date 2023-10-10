@@ -9,24 +9,50 @@ import Prelude
 
 import Bug (bug)
 import Control.Monad.State as State
+import Data.Array as Array
 import Data.Either (Either(..))
+import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
+import Data.Show.Generic (genericShow)
 import Data.Traversable (sequence)
 import Data.Tuple (curry, uncurry)
 import Debug as Debug
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Hole (hole)
+import Pantograph.Generic.Language.Common (unAnnExprNode)
 import Partial.Unsafe (unsafePartial)
 import Record as R
-import Text.Pretty (class Pretty, pretty, quotes)
+import Text.Pretty (class Pretty, pretty, (<+>))
+import Text.Pretty as Pretty
 import Type.Proxy (Proxy(..))
 
 data EL = StringRule | VarRule | LamRule | AppRule | HoleRule
+derive instance Generic EL _
+derive instance Eq EL
+derive instance Ord EL
+instance Show EL where show = genericShow
+
+instance PrettyTreeNode EL where
+  prettyTreeNode = curry case _ of
+    StringRule /\ [str] -> str
+    VarRule /\ [x] -> x
+    LamRule /\ [x, b] -> "λ" <> x <> "." <> b
+    AppRule /\ [f, a] -> f <+> a
+    HoleRule /\ [] -> "?"
+    el /\ kids -> bug $ Pretty.newlines
+      [ "invalid Expr:"
+      , "  - el: " <> show el
+      , "  - kids: " <> show kids
+      ]
 
 data SN = StringValue String | StringSort | TermSort
+derive instance Generic SN _
+derive instance Eq SN
+derive instance Ord SN
+instance Show SN where show = genericShow
 
 language :: Language SN EL
 language = Language
@@ -87,8 +113,9 @@ language = Language
       Tree {node: SortNode (StringValue _)} -> Nothing
       Tree {node: SortNode StringSort} -> Just $ makeExpr StringRule (RuleSortVarSubst $ Map.fromFoldable [MakeRuleSortVar "str" /\ makeSort (StringValue "") []]) {} []
       Tree {node: SortNode TermSort} ->
-        -- Just (makeExpr HoleRule (RuleSortVarSubst $ Map.fromFoldable []) {} [])
-        Just $ makeApp (makeApp makeHole makeHole) (makeApp makeHole makeHole)
+        -- Just $ makeHole
+        Just $ makeApp makeHole makeHole
+        -- Just $ makeApp (makeApp makeHole makeHole) (makeApp makeHole makeHole)
   , topSort: makeSort TermSort []
   }
 
@@ -125,5 +152,11 @@ renderer = Renderer
         holeCount <- State.gets _.holeCount
         State.modify_ _ {holeCount = holeCount + 1}
         pure [PunctuationArrangeKid [HH.text $ "?" <> show holeCount]]
-      _ -> bug $ "invalid Expr"
+      node /\ mkids -> do
+        _ /\ kids <- Array.unzip <$> sequence mkids
+        bug $ Pretty.newlines
+          [ "invalid Expr:"
+          , "  - node: " <> show (unAnnExprNode node)
+          , "  - kids: " <> show (unAnnExprNode <$> kids)
+          ]
   }

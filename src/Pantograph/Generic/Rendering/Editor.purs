@@ -7,6 +7,7 @@ import Util
 
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
+import Data.Tree (class PrettyTreeNode)
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Halogen (liftEffect)
@@ -28,7 +29,7 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 
-editorComponent :: forall sn el ctx env. H.Component EditorQuery (EditorInput sn el ctx env) EditorOutput Aff
+editorComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el => H.Component EditorQuery (EditorInput sn el ctx env) EditorOutput Aff
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
   let Renderer renderer = input.renderer
   let Language language = renderer.language

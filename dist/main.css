@@ -19,6 +19,7 @@
   --accent1-color: rgb(42, 237, 255);
   --accent2-color: rgb(252, 93, 25);
   --debug-color: rgb(0, 200, 0);
+  --cursor-color: rgb(0, 0, 255);
 }
 
 /*  html */
@@ -134,3 +135,28 @@ body {
   display: flex;
   flex-direction: row;
 }
+
+/* RootGyro */
+.InsideRoot {}
+
+/* CursorGyro */
+
+.OutsideCursor {}
+
+.AtCursor {
+  box-shadow: 0 0 0 1px var(--cursor-color);
+}
+
+.InsideCursor {}
+
+/* SelectGyro */
+
+.OutsideSelect {}
+
+.AtOutsideSelect {}
+
+.BetweenSelect {}
+
+.AtInsideSelect {}
+
+.InsideSelect {}
