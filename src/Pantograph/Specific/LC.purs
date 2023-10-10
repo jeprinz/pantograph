@@ -6,7 +6,7 @@ import Data.Tuple.Nested
 import Prelude
 
 import Bug (bug)
-import Control.Monad.Reader (ask)
+import Control.Monad.Reader (ask, local)
 import Control.Monad.State as State
 import Data.Array as Array
 import Data.Either (Either(..))
@@ -66,9 +66,15 @@ derive instance Eq SN
 derive instance Ord SN
 instance Show SN where show = genericShow
 
+type RenderCtx :: Row Type
+type RenderCtx = (indentLevel :: Int)
+
+type RenderEnv :: Row Type
+type RenderEnv = ()
+
 type Expr = PL.Expr SN EL
 type Language = PL.Language SN EL
-type Renderer = PR.Renderer SN EL () ()
+type Renderer = PR.Renderer SN EL RenderCtx RenderEnv
 
 language :: Language
 language = PL.Language
@@ -178,11 +184,11 @@ renderer :: Renderer
 renderer = PR.Renderer
   { name: "basic"
   , language
-  , topCtx: {}
+  , topCtx: {indentLevel: 0}
   , topEnv: {}
   , arrangeExpr:
       let punc str = PR.PunctuationArrangeKid [HH.span_ [HH.text str]] in
-      let ind i = PR.IndentationArrangeKid (Array.replicate i (HH.text "  ")) in
+      let ind i = PR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
       \node -> case node of
         PL.AnnExprNode {label: StringRule} -> assertValidTreeKids "prettyTreeNode" node \[mstr] -> do
           str_ /\ _ <- mstr
@@ -204,6 +210,6 @@ renderer = PR.Renderer
           pure [punc ("?" <> show holeCount)]
         PL.AnnExprNode {label: FormatRule Indent} -> assertValidTreeKids "prettyTreeNode" node \[ma] -> do
           ctx <- ask
-          a_ /\ a <- ma
-          pure [ind ctx.depth, PR.ExprKidArrangeKid a_]
+          a_ /\ a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
+          pure [ind ctx.indentLevel, PR.ExprKidArrangeKid a_]
   }
