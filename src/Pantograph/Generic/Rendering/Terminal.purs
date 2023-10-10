@@ -28,7 +28,6 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
   isOpen /\ isOpenStateId <- HK.useState true
 
   let toggleOpenTerminal mb_isOpen = do
-        Console.log $ "[toggleOpenTerminal] mb_isOpen = " <> show mb_isOpen
         case mb_isOpen of
           Nothing -> HK.modify_ isOpenStateId not
           Just b -> HK.modify_ isOpenStateId (const b)
@@ -36,7 +35,6 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
   -- query
   HK.useQuery queryToken case _ of
     WriteTerminal item a -> do
-      Console.log $ "[terminalComponent.useQuery] WriteTerminal"
       HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
       pure (Just a)
     ToggleOpenTerminal mb_isOpen a -> do

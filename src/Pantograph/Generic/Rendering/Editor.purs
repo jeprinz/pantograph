@@ -46,9 +46,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
       if false then pure unit
       else if ki.ctrl && ki.key == "`" then HK.tell slotToken (Proxy :: Proxy "terminal") unit $ ToggleOpenTerminal Nothing
-      else pure unit
-
-      HK.tell slotToken (Proxy :: Proxy "terminal") unit $ WriteTerminal $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "key = " <> show ki.key}
+      else HK.tell slotToken (Proxy :: Proxy "buffer") unit $ KeyboardEventBufferQuery keyboardEvent
 
   -- buffer
 

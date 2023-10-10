@@ -18,6 +18,7 @@ import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
+import Data.Tree.Move (moveGyroLeft, moveGyroRight)
 import Data.Tuple (fst, snd)
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -62,8 +63,11 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
         hydratedExprGyro <- liftEffect (Ref.read hydratedExprGyroRef) >>= case _ of
           Nothing -> bug "[rehydrate] hydratedExprGyroRef should already be `Just _` by now"
           Just hydratedExprGyro -> pure hydratedExprGyro
-        hydratedExprGyro <- rehydrateExprGyro (f hydratedExprGyro)
-        liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
+        case f hydratedExprGyro of
+          Nothing -> pure unit
+          Just hydratedExprGyro' -> do
+            hydratedExprGyro <- rehydrateExprGyro hydratedExprGyro'
+            liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
 
   renderCtx /\ renderCtxStateId <- HK.useState $
     renderer.topCtx # R.union
@@ -100,7 +104,8 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
       let ki = getKeyInfo keyboardEvent
 
       if false then pure unit
-      else if ki.key == "ArrowLeft" then hole "TODO: move cursor to the left"
+      else if ki.key == "ArrowLeft" then modifyHydratedExprGyro moveGyroLeft
+      else if ki.key == "ArrowRight" then modifyHydratedExprGyro moveGyroRight
       else pure unit
 
       pure $ Just a
@@ -200,9 +205,9 @@ hydratePath (Path (Cons (Tooth {node, i, kids}) ts)) k =
 rehydrateExprGyro :: forall sn el er. HydrateExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
 rehydrateExprGyro = unsafeCoerce >>> hydrateExprGyro
 
--- | hydrate and flush (if updated)
-rehydrateExprNode :: forall sn el er. HydrateExprNode sn el er -> HydrateM sn el (HydrateExprNode sn el er)
-rehydrateExprNode = hole "TODO: rehydrateExprNode"
+-- -- | hydrate and flush (if updated)
+-- rehydrateExprNode :: forall sn el er. HydrateExprNode sn el er -> HydrateM sn el (HydrateExprNode sn el er)
+-- rehydrateExprNode = hole "TODO: rehydrateExprNode"
 
 -- render
 
@@ -224,7 +229,7 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
       let tooth = Tooth {node, i, kids: deleteAt "renderExpr" i kids}
       local
         ( R.modify (Proxy :: Proxy "depth") (1 + _) )
-        $ renderExpr (Renderer renderer) (consPath tooth path) kid <#> (_ /\ kidNode)
+        $ renderExpr (Renderer renderer) (consPath path tooth) kid <#> (_ /\ kidNode)
   let htmls = arrangedKids # foldMap case _ of
         ExprKidArrangeKid html -> [html]
         PunctuationArrangeKid htmls -> htmls

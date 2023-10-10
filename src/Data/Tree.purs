@@ -47,8 +47,8 @@ derive instance Traversable Path
 derive newtype instance Semigroup (Path a)
 derive newtype instance Monoid (Path a)
 
-consPath :: forall a. Tooth a -> Path a -> Path a
-consPath a (Path as) = Path (Cons a as)
+consPath :: forall a. Path a -> Tooth a -> Path a
+consPath (Path as) a = Path (Cons a as)
 
 unPath :: forall a. Path a -> Tree a -> Tree a
 unPath (Path Nil) tree = tree
