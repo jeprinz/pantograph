@@ -31,8 +31,8 @@ import Record as R
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
-class ToClassName a where
-  toClassName :: a -> HH.ClassName
+class ToClassNames a where
+  toClassNames :: a -> Array HH.ClassName
 
 -- | # M
 
@@ -98,7 +98,8 @@ data GyroPosition
 
 derive instance Generic GyroPosition _
 instance Show GyroPosition where show = genericShow
-instance ToClassName GyroPosition where toClassName = HH.ClassName <<< show
+instance ToClassNames GyroPosition where
+  toClassNames gp = [HH.ClassName "Expr", HH.ClassName (show gp)]
 
 -- | ## Render
 -- |

@@ -4,7 +4,9 @@ import Prelude
 
 import Bug (bug)
 import Bug as Bug
+import Data.Array as Array
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
 import Data.UUID as UUID
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
@@ -52,7 +54,13 @@ updateClassName elemId (HH.ClassName className) mb_classValue = do
     Just false -> void $ DOMTokenList.remove classList className
 
 setClassName :: ElementId -> HH.ClassName -> Effect Unit
-setClassName elemId (HH.ClassName className) =
-  Element.setClassName className =<< getElementById elemId
+setClassName elemId (HH.ClassName className) = do
+  elem <- getElementById elemId
+  Element.setClassName className elem
+
+setClassNames :: ElementId -> Array HH.ClassName -> Effect Unit
+setClassNames elemId classNames = do
+  elem <- getElementById elemId
+  Element.setClassName (classNames # map unwrap >>> Array.intercalate " ") elem
 
 foreign import fromInputEventToTargetValue :: Event -> Effect String

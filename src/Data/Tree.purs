@@ -2,6 +2,7 @@ module Data.Tree where
 
 import Prelude
 
+import Bug (bug)
 import Data.Array as Array
 import Data.Eq (class Eq1)
 import Data.Foldable (class Foldable)
@@ -9,6 +10,7 @@ import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
+import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as Pretty
 import Util (fromJust', insertAt)
@@ -89,7 +91,16 @@ instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
 
-class PrettyTreeNode a where
+class TreeNode a where
+  kidsCount :: a -> Int
+
+assertValidTreeKids :: forall a b c. TreeNode a => String -> a -> (Partial => Array b -> c) -> Array b -> c
+assertValidTreeKids msg a k bs = unsafePartial
+  if kidsCount a == Array.length bs
+    then k bs
+    else bug $ "invalid tree kids: " <> msg
+
+class TreeNode a <= PrettyTreeNode a where
   prettyTreeNode :: a -> Array String -> String
 
 instance PrettyTreeNode a => Pretty (Tree a) where

@@ -18,8 +18,14 @@
   /* colors */
   --accent1-color: rgb(42, 237, 255);
   --accent2-color: rgb(252, 93, 25);
+
   --debug-color: rgb(0, 200, 0);
-  --cursor-color: rgb(0, 0, 255);
+
+  --cursor-background-color: rgb(240, 240, 255);
+  --cursor-border-color: rgb(0, 0, 255);
+
+  --hover-background-color: rgb(250, 238, 255);
+  --hover-border-color: rgb(179, 0, 255);
 }
 
 /*  html */
@@ -32,7 +38,10 @@ body {
 
 /* Panel */
 
-.Panel {}
+.Panel {
+  box-shadow: 0 0 0 1px black;
+  background-color: white;
+}
 
 .PanelHeader {
   display: flex;
@@ -44,12 +53,8 @@ body {
   background-color: black;
 }
 
-.PanelContent {}
-
-/* Editor */
-
-.Editor {
-  font-family: 'Courier New', Courier, monospace;
+.PanelContent {
+  padding: 0.4em;
 }
 
 .PanelHeader .title {
@@ -68,9 +73,21 @@ body {
   color: var(--accent1-color);
 }
 
+/* Editor */
+
+.Editor {
+  font-family: 'Courier New', Courier, monospace;
+}
+
 /* Buffer */
 
 .Buffer {}
+
+.Buffer>.PanelContent {
+  overflow: scroll;
+  max-height: calc(100vh - 10em);
+  max-width: calc(100vw - 1em);
+}
 
 /* Terminal */
 
@@ -80,16 +97,16 @@ body {
 
   position: absolute;
   bottom: 0;
-  width: 100%;
+  width: calc(100% - 1em);
 }
 
 .TerminalItems {
   display: flex;
   flex-direction: column;
   gap: 0.4em;
-  padding: 0.4em;
+  padding: 1px;
 
-  background-color: rgb(194, 194, 194);
+  /* background-color: rgb(194, 194, 194); */
   max-height: 40vh;
   overflow: scroll;
 }
@@ -132,31 +149,52 @@ body {
 /* Expr */
 
 .Expr {
-  display: flex;
-  flex-direction: row;
+  display: inline;
+  white-space: pre;
+  cursor: pointer;
+  user-select: none;
+}
+
+.Expr.hover {
+  background-color: var(--hover-background-color);
+  box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
+}
+
+.newline-header {
+  color: rgba(0, 0, 0, 0);
+}
+
+.Expr.hover>.newline-header {
+  color: gray;
+}
+
+.Expr.AtCursor>.newline-header {
+  color: gray;
 }
 
 /* RootGyro */
-.InsideRoot {}
+.Expr.InsideRoot {}
 
 /* CursorGyro */
 
-.OutsideCursor {}
+.Expr.OutsideCursor {}
 
-.AtCursor {
-  box-shadow: 0 0 0 1px var(--cursor-color);
+.Expr.AtCursor,
+.Expr.AtCursor.hover {
+  background-color: var(--cursor-background-color);
+  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
 }
 
-.InsideCursor {}
+.Expr.InsideCursor {}
 
 /* SelectGyro */
 
-.OutsideSelect {}
+.Expr.OutsideSelect {}
 
-.AtOutsideSelect {}
+.Expr.AtOutsideSelect {}
 
-.BetweenSelect {}
+.Expr.BetweenSelect {}
 
-.AtInsideSelect {}
+.Expr.AtInsideSelect {}
 
-.InsideSelect {}
+.Expr.InsideSelect {}

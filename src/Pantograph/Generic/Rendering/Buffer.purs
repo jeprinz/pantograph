@@ -130,7 +130,7 @@ syncExprGyro = map \(AnnExprNode node) -> AnnExprNode $ R.union {elemId: HU.fres
 flushExprNode :: forall sn el er. HydrateExprNode sn el er -> HydrateM sn el Unit
 flushExprNode (AnnExprNode node) = do
   -- gyroPosition
-  liftEffect $ HU.setClassName node.elemId (node.gyroPosition # toClassName)
+  liftEffect $ HU.setClassNames node.elemId (node.gyroPosition # toClassNames)
 
 hydrateExprGyro :: forall sn el er. SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
 hydrateExprGyro (RootGyro expr) = do
@@ -222,11 +222,16 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
   arrangedKids <- renderer.arrangeExpr node $
     kids # Array.mapWithIndex \i kid@(Tree {node: kidNode}) -> do
       let tooth = Tooth {node, i, kids: deleteAt "renderExpr" i kids}
-      renderExpr (Renderer renderer) (consPath tooth path) kid <#> (_ /\ kidNode)
+      local
+        ( R.modify (Proxy :: Proxy "depth") (1 + _) )
+        $ renderExpr (Renderer renderer) (consPath tooth path) kid <#> (_ /\ kidNode)
   let htmls = arrangedKids # foldMap case _ of
         ExprKidArrangeKid html -> [html]
         PunctuationArrangeKid htmls -> htmls
-        IndentationArrangeKid htmls -> htmls
+        IndentationArrangeKid htmls -> 
+          [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "\\n"]
+          , HH.br_ ] <>
+          htmls
   pure $ HH.div
     [ HU.id $ elemId
     -- , HE.onMouseDown \mouseEvent -> do
@@ -238,5 +243,11 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
         ctx.setExprGyro (CursorGyro (Cursor {outside: unAnnExprPath path, inside: unAnnExpr expr}))
+    , HE.onMouseOver \mouseEvent -> do
+        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
+        liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just true)
+    , HE.onMouseOut \mouseEvent -> do
+        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
+        liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just false)
     ]
     htmls

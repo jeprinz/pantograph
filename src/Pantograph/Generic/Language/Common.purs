@@ -19,7 +19,8 @@ import Text.Pretty (class Pretty, parens, pretty, spaces, ticks)
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-makeConstRuleSort n kids = Tree {node: ConstRuleSortNode (SortNode n), kids}
+makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
+makeConstRuleSort n kids = Tree {node: makeConstRuleSortNode n, kids}
 makeVarRuleSort x = Tree {node: VarRuleSortNode x, kids: []}
 makeSort sn kids = Tree {node: SortNode sn, kids}
 makeExpr label sigma dat kids = Tree {node: AnnExprNode {label, sigma}, kids}
@@ -79,6 +80,9 @@ newtype AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = AnnExprNode (Re
 derive instance Newtype (AnnExprNode sn el er) _
 derive newtype instance (Eq (Record (AnnExprNodeRow sn el er))) => Eq (AnnExprNode sn el er)
 derive newtype instance (Show (Record (AnnExprNodeRow sn el er))) => Show (AnnExprNode sn el er)
+
+instance TreeNode el => TreeNode (AnnExprNode sn el er) where
+  kidsCount (AnnExprNode {label}) = kidsCount label
 
 instance PrettyTreeNode el => PrettyTreeNode (AnnExprNode sn el er) where
   prettyTreeNode (AnnExprNode {label}) prettiedKids = prettyTreeNode label prettiedKids
