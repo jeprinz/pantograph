@@ -116,11 +116,11 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
       [HP.classes [HH.ClassName "Panel Buffer"]]
       [ HH.div
           [HP.classes [HH.ClassName "PanelHeader"]]
-          [ HH.div
-              [ HP.classes [HH.ClassName "button"]
-              , HE.onClick \_ -> Console.log "TODO: close buffer" ]
-              [HH.text "X"]
-          , HH.text "Buffer" ]
+          [ -- HH.div
+            --   [ HP.classes [HH.ClassName "button"]
+            --   , HE.onClick \_ -> Console.log "TODO: close buffer" ]
+            --   [HH.text "X"]
+           HH.text "Buffer" ]
       , HH.div
           [HP.classes [HH.ClassName "PanelContent"]]
           [gyroHtml] ]

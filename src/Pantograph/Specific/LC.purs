@@ -22,7 +22,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Hole (hole)
 import Pantograph.Generic.Language as PL
-import Pantograph.Generic.Language.Common (unAnnExprNode)
 import Pantograph.Generic.Rendering as PR
 import Partial.Unsafe (unsafePartial)
 import Record as R
@@ -38,7 +37,7 @@ instance Show EL where show = genericShow
 
 instance TreeNode EL where
   kidsCount = case _ of
-    StringRule -> 1
+    StringRule -> 0
     VarRule -> 1
     LamRule -> 2
     AppRule -> 2
@@ -47,7 +46,7 @@ instance TreeNode EL where
 
 instance PrettyTreeNode EL where
   prettyTreeNode el = case el of
-    StringRule -> assertValidTreeKids "prettyTreeNode" el \[str] -> str
+    StringRule -> assertValidTreeKids "prettyTreeNode" el \[] -> "<string>"
     VarRule -> assertValidTreeKids "prettyTreeNode" el \[x] -> x
     LamRule -> assertValidTreeKids "prettyTreeNode" el \[x, b] -> "λ" <> x <> "." <> b
     AppRule -> assertValidTreeKids "prettyTreeNode" el \[f, a] -> f <+> a
@@ -148,11 +147,12 @@ language = PL.Language
         -- Just $ makeApp makeHole makeHole
         -- Just $ makeApp (makeApp (makeLam "x" (makeApp (makeLam "x" makeHole) makeHole)) (makeApp (makeLam "x" makeHole) makeHole)) (makeApp (makeApp (makeLam "x" makeHole) makeHole) (makeApp (makeLam "x" makeHole) makeHole))
         -- Just $ makeApp (makeIndent (makeApp makeHole makeHole)) (makeApp (makeIndent (makeApp makeHole (makeIndent makeHole))) makeHole)
-        Just $ 
-          makeApp
-            (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
-            (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
+        -- Just $ 
+        --   makeApp
+        --     (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
+        --     (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole (makeIndent (makeApp makeHole makeHole))))))
         -- Just $ makeExample 10
+        Just $ makeLam "x" (makeVar "x")
   , topSort: PL.makeSort TermSort []
   }
 
@@ -189,27 +189,30 @@ renderer = PR.Renderer
   , arrangeExpr:
       let punc str = PR.PunctuationArrangeKid [HH.span_ [HH.text str]] in
       let ind i = PR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
-      \node -> case node of
-        PL.AnnExprNode {label: StringRule} -> assertValidTreeKids "prettyTreeNode" node \[mstr] -> do
-          str_ /\ _ <- mstr
-          pure [PR.ExprKidArrangeKid str_]
-        PL.AnnExprNode {label: VarRule} -> assertValidTreeKids "prettyTreeNode" node \[mx] -> do
-          x_ /\ x <- mx
-          pure [punc "#", PR.ExprKidArrangeKid x_]
-        PL.AnnExprNode {label: LamRule} -> assertValidTreeKids "prettyTreeNode" node \[mx, mb] -> do
-          x_ /\ x <- mx 
-          b_ /\ b <- mb 
-          pure [punc "(", punc "λ", PR.ExprKidArrangeKid x_, punc ".", PR.ExprKidArrangeKid b_, punc ")"]
-        PL.AnnExprNode {label: AppRule} -> assertValidTreeKids "prettyTreeNode" node \[mf, ma] -> do
-          f_ /\ f <- mf 
-          a_ /\ a <- ma 
-          pure [punc "(", PR.ExprKidArrangeKid f_, punc " ", PR.ExprKidArrangeKid a_, punc ")"]
-        PL.AnnExprNode {label: HoleRule} -> assertValidTreeKids "prettyTreeNode" node \[] -> do
-          holeCount <- State.gets _.holeCount
-          State.modify_ _ {holeCount = holeCount + 1}
-          pure [punc ("?" <> show holeCount)]
-        PL.AnnExprNode {label: FormatRule Indent} -> assertValidTreeKids "prettyTreeNode" node \[ma] -> do
-          ctx <- ask
-          a_ /\ a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
-          pure [ind ctx.indentLevel, PR.ExprKidArrangeKid a_]
+      \node@(PL.AnnExprNode {label}) ->
+        let msg = "arrangeExpr " <> "{" <> "label: " <> show label <> "}" in
+        case label of
+          StringRule -> assertValidTreeKids msg node \[] -> do
+            let Tree {node: PL.SortNode StringSort, kids: [Tree {node: PL.SortNode (StringValue str)}]} = PL.getExprNodeSort language node
+            -- Debug.traceM $ "sort = " <> show (PL.getExprNodeSort language node)
+            pure [PR.PunctuationArrangeKid [HH.text str]]
+          VarRule -> assertValidTreeKids msg node \[mx] -> do
+            x_ /\ x <- mx
+            pure [punc "#", PR.ExprKidArrangeKid x_]
+          LamRule -> assertValidTreeKids msg node \[mx, mb] -> do
+            x_ /\ x <- mx 
+            b_ /\ b <- mb 
+            pure [punc "(", punc "λ", PR.ExprKidArrangeKid x_, punc ".", PR.ExprKidArrangeKid b_, punc ")"]
+          AppRule -> assertValidTreeKids msg node \[mf, ma] -> do
+            f_ /\ f <- mf 
+            a_ /\ a <- ma 
+            pure [punc "(", PR.ExprKidArrangeKid f_, punc " ", PR.ExprKidArrangeKid a_, punc ")"]
+          HoleRule -> assertValidTreeKids msg node \[] -> do
+            holeCount <- State.gets _.holeCount
+            State.modify_ _ {holeCount = holeCount + 1}
+            pure [punc ("?" <> show holeCount)]
+          FormatRule Indent -> assertValidTreeKids msg node \[ma] -> do
+            ctx <- ask
+            a_ /\ a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
+            pure [ind ctx.indentLevel, PR.ExprKidArrangeKid a_]
   }
