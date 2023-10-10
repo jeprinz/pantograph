@@ -69,6 +69,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
             hydratedExprGyro <- rehydrateExprGyro hydratedExprGyro'
             liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
 
+  -- TODO: actually, setExprGyro should work over a SyncExprGyro, since I don't actually need to rerender, but I need to reword snycedExprGyro to be a Ref rather than a computed value probably?
   renderCtx /\ renderCtxStateId <- HK.useState $
     renderer.topCtx # R.union
       { depth: 0
