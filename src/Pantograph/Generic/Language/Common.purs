@@ -3,7 +3,7 @@ module Pantograph.Generic.Language.Common where
 import Data.Tree
 import Prelude
 import Util
-
+import Data.Tuple.Nested ((/\))
 import Bug (bug)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
@@ -23,7 +23,8 @@ makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
 makeConstRuleSort n kids = Tree {node: makeConstRuleSortNode n, kids}
 makeVarRuleSort x = Tree {node: VarRuleSortNode x, kids: []}
 makeSort sn kids = Tree {node: SortNode sn, kids}
-makeExpr label sigma dat kids = Tree {node: AnnExprNode {label, sigma}, kids}
+-- makeExpr label sigma kids = Tree {node: AnnExprNode {label, sigma}, kids}
+makeExpr label sigma kids = Tree {node: AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}, kids}
 
 -- Sort
 
