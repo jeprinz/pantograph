@@ -113,7 +113,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
       pure $ Just a
 
   -- render
-  HK.pure $ do
+  HK.pure $
     HH.div 
       [HP.classes [HH.ClassName "Panel Buffer"]]
       [ HH.div
