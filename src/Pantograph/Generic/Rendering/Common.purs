@@ -116,8 +116,8 @@ type RenderM sn el ctx env =
 type RenderCtx sn el ctx =
   ( depth :: Int
   , outputToken :: HK.OutputToken (BufferOutput sn el)
-  , setExprGyro :: ExprGyro sn el -> HK.HookM Aff Unit
-  , setSyncedExprGyro :: SyncExprGyro sn el () -> HK.HookM Aff Unit
+  , modifyExprGyro :: (ExprGyro sn el -> Maybe (ExprGyro sn el)) -> HK.HookM Aff Unit
+  , modifySyncedExprGyro :: (SyncExprGyro sn el () -> Maybe (SyncExprGyro sn el ())) -> HK.HookM Aff Unit
   | ctx )
 
 type RenderEnv sn el env =

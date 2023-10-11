@@ -14,6 +14,7 @@ import Bug (bug)
 import Control.Monad.Reader (ReaderT, ask, local)
 import Control.Monad.State (StateT)
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Foldable (foldM, foldMap)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List(..))
@@ -52,13 +53,18 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
   let Renderer renderer = input.renderer
 
   exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
-
   initialSyncedExprGyro /\ syncedExprGyroRef <- HK.useRef (syncExprGyro exprGyro)
-
   _ /\ hydratedExprGyroRef <- HK.useRef (Nothing :: Maybe (HydrateExprGyro sn el ()))
 
-  -- runs after each update to syncedExprGyroRef or hydratedExprGyroRef
   let
+    modifyExprGyro f = do
+      case f exprGyro of
+        Nothing -> pure unit
+        Just exprGyro' -> do
+          let syncedExprGyro' = syncExprGyro exprGyro'
+          liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
+          HK.modify_ exprGyroStateId (const exprGyro') -- causes a re-render
+
     modifySyncedExprGyro f = do
       syncedExprGyro <- liftEffect $ Ref.read syncedExprGyroRef
       case f syncedExprGyro of
@@ -78,20 +84,18 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
           hydratedExprGyro <- rehydrateExprGyro (Renderer renderer) hydratedExprGyro'
           liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
 
-  -- TODO: actually, setExprGyro should work over a SyncExprGyro, since I don't actually need to rerender, but I need to reword snycedExprGyro to be a Ref rather than a computed value probably?
   renderCtx /\ renderCtxStateId <- HK.useState $
     renderer.topCtx # R.union
       { depth: 0
       , outputToken
-      , setExprGyro: \exprGyro' -> HK.modify_ exprGyroStateId (const exprGyro')
-      , setSyncedExprGyro: \syncedExprGyro' -> modifySyncedExprGyro (const (Just syncedExprGyro'))
+      , modifyExprGyro
+      , modifySyncedExprGyro
       }
   renderEnv /\ renderEnvStateId <- HK.useState $
     renderer.topEnv # R.union
       { holeCount: 0 
       }
 
-  -- runs before each render
   let
     runRenderM = unwrap <<< runM renderCtx renderEnv
     gyroHtml /\ _ = runRenderM $ renderExprGyro (Renderer renderer) initialSyncedExprGyro
@@ -225,23 +229,12 @@ rehydrateExprGyro (Renderer renderer) = unsafeCoerce >>> hydrateExprGyro (Render
 
 renderExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (BufferHtml sn el)
 renderExprGyro renderer (RootGyro expr) = renderExpr renderer (Path Nil) expr
-renderExprGyro renderer (CursorGyro (Cursor {outside, inside})) = renderExpr renderer (Path Nil) $ unPath outside inside
+renderExprGyro renderer (CursorGyro (Cursor {outside, inside})) = renderExprPath renderer mempty outside inside $ renderExpr renderer outside inside
 renderExprGyro renderer (SelectGyro (Select {outside, middle, inside})) = renderExpr renderer (Path Nil) $ unPath outside $ unPath middle inside
 
-renderExpr :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
-  Renderer sn el ctx env ->
-  SyncExprPath sn el er ->
-  SyncExpr sn el er ->
-  RenderM sn el ctx env (BufferHtml sn el)
-renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}), kids}) = do
+renderExprHelper :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprPath sn el er -> SyncExpr sn el er -> Array (ArrangeKid sn el (BufferHtml sn el)) -> RenderM sn el ctx env (BufferHtml sn el)
+renderExprHelper (Renderer renderer) outside expr@(Tree {node: AnnExprNode {elemId}}) arrangedKids = do
   ctx <- ask
-  arrangedKids <- renderer.arrangeExpr node $
-    kids # Array.mapWithIndex \i kid@(Tree {node: kidNode}) -> do
-      let tooth = Tooth {node, i, kids: deleteAt "renderExpr" i kids}
-      local
-        ( R.modify (Proxy :: Proxy "depth") (1 + _) )
-        $ renderExpr (Renderer renderer) (consPath path tooth) kid <#> (_ /\ kidNode)
   let htmls = arrangedKids # foldMap case _ of
         ExprKidArrangeKid html -> [html]
         PunctuationArrangeKid htmls' -> htmls'
@@ -253,7 +246,8 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
     [ HU.id $ elemId
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        ctx.setSyncedExprGyro (CursorGyro (Cursor {outside: shrinkAnnExprPath path, inside: shrinkAnnExpr expr}))
+        ctx.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
+        -- ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
     , HE.onMouseOver \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
         liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just true)
@@ -262,3 +256,43 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
         liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just false)
     ]
     htmls
+
+renderExpr :: forall sn el er ctx env.
+  Show sn => Show el => PrettyTreeNode el =>
+  Renderer sn el ctx env ->
+  SyncExprPath sn el er ->
+  SyncExpr sn el er ->
+  RenderM sn el ctx env (BufferHtml sn el)
+renderExpr (Renderer renderer) outside expr@(Tree {node, kids}) = do
+  arrangedKids <- renderer.arrangeExpr node $
+    kids # Array.mapWithIndex \i kid@(Tree {node: kidNode}) -> do
+      let tooth = Tooth {node, i, kids: deleteAt "renderExpr" i kids}
+      local
+        ( R.modify (Proxy :: Proxy "depth") (1 + _) )
+        $ renderExpr (Renderer renderer) (consPath outside tooth) kid <#> (_ /\ kidNode)
+  renderExprHelper (Renderer renderer) outside expr arrangedKids
+ 
+renderExprPath :: forall sn el er ctx env.
+  Show sn => Show el => PrettyTreeNode el =>
+  Renderer sn el ctx env ->
+  SyncExprPath sn el er ->
+  SyncExprPath sn el er ->
+  SyncExpr sn el er ->
+  RenderM sn el ctx env (BufferHtml sn el) -> RenderM sn el ctx env (BufferHtml sn el)
+renderExprPath _ _ (Path Nil) _ renderInside = renderInside
+renderExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, kids, i}) tooths)) expr renderInside = do
+  let path' = Path tooths
+  let expr' = unTooth tooth expr
+  renderExprPath (Renderer renderer) outside path' expr' do
+    let kids' = insertAt "renderExprPath" i expr kids
+    arrangedKids <- renderer.arrangeExpr node $
+      kids # map Just # insertAt "renderExprPath" i Nothing # Array.mapWithIndex \i' -> case _ of
+        Nothing -> renderInside <#> (_ /\ node)
+        Just kid@(Tree {node: kidNode}) -> do
+          let tooth' = Tooth {node, i: i', kids: deleteAt "renderExpr" i kids'}
+          local
+            ( R.modify (Proxy :: Proxy "depth") (1 + _) )
+            $ renderExpr (Renderer renderer) (consPath outside tooth') kid <#> (_ /\ kidNode)        
+    renderExprHelper (Renderer renderer) (outside <> path') expr' arrangedKids
+
+ 
