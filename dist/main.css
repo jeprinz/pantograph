@@ -402,3 +402,15 @@ console
 .hidden {
   display: none
 }
+
+.vertical-bar {
+    width: 10px;
+    background-color: grey;
+    height: 100%;
+    float: right;
+}
+
+.horizontal-bar {
+    height: 10px;
+    background-color: grey;
+}
