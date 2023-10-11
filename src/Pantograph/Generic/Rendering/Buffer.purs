@@ -241,12 +241,6 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
           htmls
   pure $ HH.div
     [ HU.id $ elemId
-    -- , HE.onMouseDown \mouseEvent -> do
-    --     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-    --     HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseDown] id = " <> show elemId}
-    -- , HE.onMouseUp \mouseEvent -> do
-    --     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-    --     HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ TerminalItem {tag: DebugTerminalItemTag, html: HH.text $ "[onMouseUp] id = " <> show elemId}
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
         ctx.setExprGyro (CursorGyro (Cursor {outside: unAnnExprPath path, inside: unAnnExpr expr}))
