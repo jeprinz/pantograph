@@ -7,12 +7,13 @@ import Pantograph.Generic.Language
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Pantograph.Generic.Rendering.Keyboard
+import Pantograph.Generic.Rendering.Language
 import Prelude
 import Util
 
 import Bug (bug)
 import Control.Monad.Reader (ReaderT, ask, local)
-import Control.Monad.State (StateT)
+import Control.Monad.State (StateT, get)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Foldable (foldM, foldMap)
@@ -33,9 +34,12 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Hole (hole)
+import Pantograph.Generic.Rendering.Preview (previewComponent)
+import Pantograph.Generic.Rendering.Toolbox (toolboxComponent)
 import Prim.Row (class Lacks, class Union)
 import Prim.RowList (class RowToList)
 import Record as R
@@ -49,7 +53,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 -- component
 
 bufferComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
-bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) -> HK.do
+bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
   let Renderer renderer = input.renderer
 
   exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
@@ -88,6 +92,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
     renderer.topCtx # R.union
       { depth: 0
       , outputToken
+      , slotToken
       , modifyExprGyro
       , modifySyncedExprGyro
       }
@@ -98,7 +103,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
 
   let
     runRenderM = unwrap <<< runM renderCtx renderEnv
-    gyroHtmls /\ _ = runRenderM $ renderExprGyro (Renderer renderer) initialSyncedExprGyro
+    gyroHtmls /\ _ = runRenderM $ renderSyncExprGyro (Renderer renderer) initialSyncedExprGyro
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
@@ -137,11 +142,6 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
       , HH.div
           [HP.classes [HH.ClassName "PanelContent"]]
           gyroHtmls ]
-
--- sync
-
-syncExprGyro :: forall sn el er. AnnExprGyro sn el er -> SyncExprGyro sn el er
-syncExprGyro = map \(AnnExprNode node) -> AnnExprNode $ R.union {elemId: HU.freshElementId unit} node
 
 -- hydrate
 
@@ -227,88 +227,40 @@ rehydrateExprGyro (Renderer renderer) = unsafeCoerce >>> hydrateExprGyro (Render
 
 -- render
 
-renderExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderExprGyro renderer (RootGyro expr) =
-  renderExpr renderer (Path Nil) expr
-renderExprGyro renderer (CursorGyro cursor) = renderExprCursor renderer cursor
-renderExprGyro renderer (SelectGyro (Select {outside, middle, inside})) =
-  renderExpr renderer (Path Nil) $
+renderSyncExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprGyro renderer (RootGyro expr) =
+  renderSyncExpr renderer (Path Nil) expr
+renderSyncExprGyro renderer (CursorGyro cursor) = renderSyncExprCursor renderer cursor
+renderSyncExprGyro renderer (SelectGyro (Select {outside, middle, inside})) =
+  renderSyncExpr renderer (Path Nil) $
     unPath outside $
       unPath middle inside
 
-renderExprCursor :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderExprCursor (Renderer renderer) (Cursor {outside, inside}) = 
-  renderExprPath (Renderer renderer) mempty outside inside $
-    map (\htmls -> [HH.text "{{"] <> htmls <> [HH.text "}}"]) $
-      renderExpr (Renderer renderer) outside inside
-
-renderExprHelper :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprPath sn el er -> SyncExpr sn el er -> Array (ArrangeKid sn el (Array (BufferHtml sn el))) -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderExprHelper (Renderer renderer) outside expr@(Tree {node: AnnExprNode {elemId}}) arrangedKids = do
+renderSyncExprCursor :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
   ctx <- ask
-  let htmls = arrangedKids # foldMap case _ of
-        ExprKidArrangeKid html -> html
-        PunctuationArrangeKid htmls' -> htmls'
-        IndentationArrangeKid htmls' -> 
-          [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"]
-          , HH.br_ ] <>
-          htmls'
-  pure $ [HH.div
-    [ HU.id $ elemId
-    , HE.onClick \mouseEvent -> do
-        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-
-        if true then do
-          -- NOTE: `modifyExprGyro` modifies the state, which causes a re-render
-          ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
-        else do
-          -- NOTE: `modifySyncedExprGyro` only modifies a ref, which doesn not cause a re-render
-          ctx.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
-
-    , HE.onMouseOver \mouseEvent -> do
-        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just true)
-    , HE.onMouseOut \mouseEvent -> do
-        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just false)
-    ]
-    htmls]
-
-renderExpr :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
-  Renderer sn el ctx env ->
-  SyncExprPath sn el er ->
-  SyncExpr sn el er ->
-  RenderM sn el ctx env (Array (BufferHtml sn el))
-renderExpr (Renderer renderer) outside expr@(Tree {node, kids}) = do
-  arrangedKids <- renderer.arrangeExpr node $
-    kids # Array.mapWithIndex \i kid@(Tree {node: kidNode}) -> do
-      let tooth = Tooth {node, i, kids: deleteAt "renderExpr" i kids}
-      local
-        ( R.modify (Proxy :: Proxy "depth") (1 + _) )
-        $ renderExpr (Renderer renderer) (consPath outside tooth) kid <#> (_ /\ kidNode)
-  renderExprHelper (Renderer renderer) outside expr arrangedKids
- 
-renderExprPath :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
-  Renderer sn el ctx env ->
-  SyncExprPath sn el er ->
-  SyncExprPath sn el er ->
-  SyncExpr sn el er ->
-  RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderExprPath _ _ (Path Nil) _ renderInside = renderInside
-renderExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, kids, i}) tooths)) expr renderInside = do
-  let path' = Path tooths
-  let expr' = unTooth tooth expr
-  renderExprPath (Renderer renderer) outside path' expr' do
-    let kids' = insertAt "renderExprPath" i expr kids
-    arrangedKids <- renderer.arrangeExpr node $
-      kids # map Just # insertAt "renderExprPath" i Nothing # Array.mapWithIndex \i' -> case _ of
-        Nothing -> renderInside <#> (_ /\ node)
-        Just kid@(Tree {node: kidNode}) -> do
-          let tooth' = Tooth {node, i: i', kids: deleteAt "renderExpr" i kids'}
-          local
-            ( R.modify (Proxy :: Proxy "depth") (1 + _) )
-            $ renderExpr (Renderer renderer) (consPath outside tooth') kid <#> (_ /\ kidNode)        
-    renderExprHelper (Renderer renderer) (outside <> path') expr' arrangedKids
-
- 
+  env <- get
+  let toolboxHandler = case _ of
+        SubmitToolboxItem item -> hole "TODO"
+        PreviewToolboxItem item -> do
+          HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition (ModifyItemPreview (const (Just item)))
+          HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition (ModifyItemPreview (const (Just item)))
+  renderSyncExprPath (Renderer renderer) mempty outside inside $
+    map
+      (\htmls -> do
+        let toolboxInput = ToolboxInput
+              { items: [] }
+        let previewInput position = PreviewInput 
+              { renderer: Renderer renderer
+              , ctx
+              , env
+              , position
+              , maybeItem: Nothing }
+        Array.concat
+          [ [HH.slot (Proxy :: Proxy "toolbox") unit toolboxComponent toolboxInput toolboxHandler]
+          , [HH.slot_ (Proxy :: Proxy "preview") LeftPreviewPosition previewComponent (previewInput LeftPreviewPosition)]
+          , htmls
+          , [HH.slot_ (Proxy :: Proxy "preview") RightPreviewPosition previewComponent (previewInput RightPreviewPosition)] 
+          ]
+      )
+      (renderSyncExpr (Renderer renderer) outside inside)

@@ -116,6 +116,7 @@ type RenderM sn el ctx env =
 type RenderCtx sn el ctx =
   ( depth :: Int
   , outputToken :: HK.OutputToken (BufferOutput sn el)
+  , slotToken :: HK.SlotToken (BufferSlots sn el)
   , modifyExprGyro :: (ExprGyro sn el -> Maybe (ExprGyro sn el)) -> HK.HookM Aff Unit
   , modifySyncedExprGyro :: (SyncExprGyro sn el () -> Maybe (SyncExprGyro sn el ())) -> HK.HookM Aff Unit
   | ctx )
@@ -184,25 +185,24 @@ data BufferSlotId
 -- data BufferMode sn el
 --   = 
 
-type BufferHtml sn el = 
-  HH.ComponentHTML
-    (HK.HookM Aff Unit) 
-    ( toolbox :: ToolboxSlot sn el
-    , preview :: PreviewSlot sn el )
-    Aff
+type BufferHtml sn el = HH.ComponentHTML (HK.HookM Aff Unit) (BufferSlots sn el) Aff
+type BufferSlots sn el = 
+  ( toolbox :: ToolboxSlot sn el
+  , preview :: PreviewSlot sn el )
 
 -- | # Toolbox
 -- |
 -- | A "Toolbox" is a little box of completions that appears when you start
 -- | typing at a cursor.
 
-type ToolboxSlot sn el = H.Slot (ToolboxQuery sn el) (ToolboxOutput sn el) (ToolboxSlotId sn el)
+type ToolboxSlot sn el = H.Slot (ToolboxQuery sn el) (ToolboxOutput sn el) ToolboxSlotId
 newtype ToolboxInput sn el = ToolboxInput 
-  { items :: ToolboxItem sn el }
+  { items :: Array (Array (ToolboxItem sn el)) }
 data ToolboxQuery sn el a
 data ToolboxOutput sn el
   = SubmitToolboxItem (ToolboxItem sn el)
-data ToolboxSlotId sn el = ToolboxSlotId (ExprPath sn el)
+  | PreviewToolboxItem (ToolboxItem sn el)
+type ToolboxSlotId = Unit
 
 data ToolboxItem sn el
   = ReplaceToolboxItem (Expr sn el)
@@ -212,11 +212,21 @@ data ToolboxItem sn el
 -- |
 -- | TODO: description
 
-type PreviewSlot sn el = H.Slot (PreviewQuery sn el) (PreviewOutput sn el) (PreviewSlotId sn el)
-newtype PreviewInput sn el = PreviewInput {}
+type PreviewSlot sn el = H.Slot (PreviewQuery sn el) PreviewOutput PreviewSlotId
+newtype PreviewInput sn el ctx env = PreviewInput
+  { renderer :: Renderer sn el ctx env
+  , ctx :: Record (RenderCtx sn el ctx)
+  , env :: Record (RenderEnv sn el env)
+  , position :: PreviewPosition
+  , maybeItem :: Maybe (ToolboxItem sn el) }
 data PreviewQuery sn el a
-data PreviewOutput sn el
-data PreviewSlotId sn el
+  = ModifyItemPreview (Maybe (ToolboxItem sn el) -> Maybe (ToolboxItem sn el)) a
+type PreviewOutput = Void
+type PreviewSlotId = PreviewPosition
+
+data PreviewPosition = LeftPreviewPosition | RightPreviewPosition
+derive instance Eq PreviewPosition
+derive instance Ord PreviewPosition
 
 -- | # Clipboard
 -- |
