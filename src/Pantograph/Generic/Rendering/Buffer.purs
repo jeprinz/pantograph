@@ -234,11 +234,11 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
         $ renderExpr (Renderer renderer) (consPath path tooth) kid <#> (_ /\ kidNode)
   let htmls = arrangedKids # foldMap case _ of
         ExprKidArrangeKid html -> [html]
-        PunctuationArrangeKid htmls -> htmls
-        IndentationArrangeKid htmls -> 
+        PunctuationArrangeKid htmls' -> htmls'
+        IndentationArrangeKid htmls' -> 
           [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"]
           , HH.br_ ] <>
-          htmls
+          htmls'
   pure $ HH.div
     [ HU.id $ elemId
     , HE.onClick \mouseEvent -> do
