@@ -246,8 +246,14 @@ renderExprHelper (Renderer renderer) outside expr@(Tree {node: AnnExprNode {elem
     [ HU.id $ elemId
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        ctx.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
-        -- ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
+
+        if true then do
+          -- NOTE: `modifyExprGyro` modifies the state, which causes a re-render
+          ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
+        else do
+          -- NOTE: `modifySyncedExprGyro` only modifies a ref, which doesn not cause a re-render
+          ctx.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr expr}
+
     , HE.onMouseOver \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
         liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just true)
