@@ -19,7 +19,7 @@ import Data.Either (Either(..))
 import Data.Foldable (foldM, foldMap)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List(..))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
 import Data.TraversableWithIndex (traverseWithIndex)
@@ -118,13 +118,25 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     KeyboardEventBufferQuery keyboardEvent a -> do
       let ki = getKeyInfo keyboardEvent
 
-      if false then pure unit
-      else if ki.key == "Escape" then modifyHydratedExprGyro escapeGyro
-      else if ki.key == "ArrowLeft" then modifyHydratedExprGyro moveGyroLeft
-      else if ki.key == "ArrowRight" then modifyHydratedExprGyro moveGyroRight
-      else if ki.key == "ArrowUp" then modifyHydratedExprGyro (moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine)
-      else if ki.key == "ArrowDown" then modifyHydratedExprGyro (moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine)
-      else pure unit
+      isEnabledToolbox <- HK.request slotToken (Proxy :: Proxy "toolbox") unit GetIsEnabledToolbox <#> fromMaybe false
+
+      if isEnabledToolbox then do
+        if false then pure unit
+        else if ki.key == "Escape" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifyIsEnabledToolbox (const false))
+        else if ki.key == "ArrowLeft" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx - 1)))
+        else if ki.key == "ArrowRight" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx + 1)))
+        else if ki.key == "ArrowDown" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx + 1) colIx))
+        else if ki.key == "ArrowUp" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx - 1) colIx))
+        else pure unit
+      else do
+        if false then pure unit
+        else if ki.key == "Escape" then modifyHydratedExprGyro escapeGyro
+        else if ki.key == "ArrowLeft" then modifyHydratedExprGyro moveGyroLeft
+        else if ki.key == "ArrowRight" then modifyHydratedExprGyro moveGyroRight
+        else if ki.key == "ArrowUp" then modifyHydratedExprGyro (moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine)
+        else if ki.key == "ArrowDown" then modifyHydratedExprGyro (moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine)
+        else if ki.key == " " then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifyIsEnabledToolbox (const true))
+        else pure unit
 
       pure $ Just a
 
@@ -249,12 +261,20 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
     map
       (\htmls -> do
         let toolboxInput = ToolboxInput
-              { items: [] }
+              { renderer: Renderer renderer
+              , ctx
+              , env
+              , outside: shrinkAnnExprPath outside
+              , inside: shrinkAnnExpr inside
+              , isEnabled: false
+              , itemRows: [] }
         let previewInput position = PreviewInput 
               { renderer: Renderer renderer
               , ctx
               , env
               , position
+              , outside: shrinkAnnExprPath outside
+              , inside: shrinkAnnExpr inside
               , maybeItem: Nothing }
         Array.concat
           [ [HH.slot (Proxy :: Proxy "toolbox") unit toolboxComponent toolboxInput toolboxHandler]

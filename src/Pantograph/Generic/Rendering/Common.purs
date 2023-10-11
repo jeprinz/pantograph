@@ -8,6 +8,7 @@ import Prelude
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, evalStateT, runStateT)
 import Data.Array as Array
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Const (Const)
 import Data.Either (either)
 import Data.Generic.Rep (class Generic)
@@ -196,13 +197,24 @@ type BufferSlots sn el =
 -- | typing at a cursor.
 
 type ToolboxSlot sn el = H.Slot (ToolboxQuery sn el) (ToolboxOutput sn el) ToolboxSlotId
-newtype ToolboxInput sn el = ToolboxInput 
-  { items :: Array (Array (ToolboxItem sn el)) }
+newtype ToolboxInput sn el ctx env = ToolboxInput 
+  { renderer :: Renderer sn el ctx env
+  , ctx :: Record (RenderCtx sn el ctx)
+  , env :: Record (RenderEnv sn el env)
+  , outside :: SyncExprPath sn el ()
+  , inside :: SyncExpr sn el ()
+  , isEnabled :: Boolean
+  , itemRows :: Array (NonEmptyArray (ToolboxItem sn el)) }
 data ToolboxQuery sn el a
+  = ModifyIsEnabledToolbox (Boolean -> Boolean) a
+  | ModifySelectToolbox (ToolboxSelect -> ToolboxSelect) a
+  | GetIsEnabledToolbox (Boolean -> a)
 data ToolboxOutput sn el
   = SubmitToolboxItem (ToolboxItem sn el)
   | PreviewToolboxItem (ToolboxItem sn el)
 type ToolboxSlotId = Unit
+
+data ToolboxSelect = ToolboxSelect Int Int
 
 data ToolboxItem sn el
   = ReplaceToolboxItem (Expr sn el)
@@ -217,6 +229,8 @@ newtype PreviewInput sn el ctx env = PreviewInput
   { renderer :: Renderer sn el ctx env
   , ctx :: Record (RenderCtx sn el ctx)
   , env :: Record (RenderEnv sn el env)
+  , outside :: SyncExprPath sn el ()
+  , inside :: SyncExpr sn el ()
   , position :: PreviewPosition
   , maybeItem :: Maybe (ToolboxItem sn el) }
 data PreviewQuery sn el a

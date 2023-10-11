@@ -198,3 +198,37 @@ body {
 .Expr.AtInsideSelect {}
 
 .Expr.InsideSelect {}
+
+/* Toolbox */
+
+.Toolbox {
+  display: inline-block;
+  position: relative;
+}
+
+.ToolboxInterior {
+  position: absolute;
+  top: 1.2em;
+  background-color: white;
+  box-shadow: 0 0 0 1px black;
+}
+
+.ToolboxItems {}
+
+.ToolboxItemsRow {}
+
+.ToolboxItemRow.SelectedToolboxItemRow {
+  background-color: rgb(209, 209, 255);
+}
+
+.ToolboxItem {}
+
+/* Preview */
+
+.Preview {
+  display: inline-block;
+}
+
+.PreviewLeft {}
+
+.PreviewRight {}

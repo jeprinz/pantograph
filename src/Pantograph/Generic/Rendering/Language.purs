@@ -33,9 +33,6 @@ import Web.UIEvent.MouseEvent as MouseEvent
 syncExprGyro :: forall sn el er. AnnExprGyro sn el er -> SyncExprGyro sn el er
 syncExprGyro = map \(AnnExprNode node) -> AnnExprNode $ R.union {elemId: HU.freshElementId unit} node
 
--- syncExpr :: forall sn el er. AnnExprGyro sn el er -> SyncExprGyro sn el er
--- syncExpr 
-
 -- render
 
 type MakeAnnExprProps sn el er ctx env =
