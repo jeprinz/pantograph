@@ -22,6 +22,7 @@ import Data.Array as Array
 import Util as Util
 import Debug (trace, traceM)
 import Halogen.Utilities (classNames)
+import Web.HTML.Common (AttrName(..))
 --import Data.Coyoneda as Coyoneda
 
 runTutorial :: Effect Unit
@@ -30,9 +31,12 @@ runTutorial = HA.runHalogenAff do
   body <- HA.awaitBody
   VDomDriver.runUI (tutorialComponent lessons) unit body
 
+longString :: String
+longString = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
+
 lessons :: Array Lesson
 lessons = [
-    {component: \_ -> exampleLesson, instructions: HH.text "lesson1"}
+    {component: \_ -> exampleLesson, instructions: HH.text (longString <> longString <> longString)}
     , {component: \_ -> exampleLesson2, instructions: HH.text "lesson2"}
     , {component: \_ -> exampleLesson, instructions: HH.text "lesson3"}
     , {component: \_ -> exampleLesson, instructions: HH.text "lesson4"}
@@ -82,25 +86,34 @@ tutorialComponent lessons =
 
     render :: _ -> H.ComponentHTML TutorialAction Slots Aff
     render state =
-        HH.div_ (
-            [ HH.text ("Lesson number " <> show state.activeLesson)
-            , HH.button [ HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
-            , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
-            , HH.button [ HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
-            , HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
+        HH.div [classNames["vertical-container"]]
+            [
+            HH.div [classNames["horizontal-container", "padded"]] [
+                HH.text ("Lesson number " <> show state.activeLesson)
+                , HH.button [ HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
+                , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
+                , HH.button [ HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
+                , HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
+            ]
+--            , HH.hr [HP.style "width: 5px"]
             , HH.div [ classNames ["horizontal-bar"] ] []
-            , HH.span [] [
-                HH.div_
-                (Array.mapWithIndex (\i lessonComponent ->
-                    HH.div (if state.activeLesson == i then [] else [classNames ["hidden"]]) [
-                        HH.slot _lesson i lessonComponent LessonInput SubjectSolved
-                    ]
-                    ) state.lessonComponents)
+--            , HH.div [ classNames ["horizontal-container sidebar-container"] ] [
+            , HH.div [ classNames ["horizontal-container", "fill-space"] ] [
+                HH.main [ classNames ["fill-space", "padded"]] [
+                    HH.div_
+                    (Array.mapWithIndex (\i lessonComponent ->
+                        HH.div (if state.activeLesson == i then [] else [classNames ["hidden"]]) [
+                            HH.slot _lesson i lessonComponent LessonInput SubjectSolved
+                        ]
+                        ) state.lessonComponents)
                 ]
-                , HH.div [ classNames ["vertical-bar"] ] []
-                , HH.div [HP.style "float:right"] [(Util.index' lessons state.activeLesson).instructions]
+--                , HH.div [ classNames ["resize-handle--x"] ] []
+                , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside" ] []
+                , HH.aside [ classNames ["padded"], HP.style "width: 19em"] [
+                    HH.div [HP.style "float:right"] [(Util.index' lessons state.activeLesson).instructions]
                 ]
-            )
+            ]
+        ]
 
     handleAction :: forall output. TutorialAction -> H.HalogenM _ TutorialAction Slots output Aff Unit
     handleAction = case _ of

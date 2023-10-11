@@ -27,10 +27,6 @@ main = runEditorForLang October14.editorSpec
 --main :: Effect Unit
 --main = Tutorial.runTutorial
 
--- Henry Tutorial
---main :: Effect Unit
---main = HenryTutorial.runTutorial
-
 runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r -> Effect Unit
 runEditorForLang l = HA.runHalogenAff do
   Console.log "[main]"

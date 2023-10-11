@@ -1,0 +1,125 @@
+/*I got this from https://codepen.io/Zodiase/pen/qmjyKL*/
+
+html {
+  height: 100%;
+}
+
+/*
+body {
+  box-sizing: border-box;
+  height: 100%;
+  margin: 0;
+  padding: 30px;
+  background-color: black;
+}
+*/
+
+.sidebar-container {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: white;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-content: stretch;
+  align-items: stretch;
+
+  /*
+  & > aside {
+    -webkit-order: 0;
+    -ms-flex-order: 0;
+    order: 0;
+    -webkit-flex: 0 0 auto;
+    -ms-flex: 0 0 auto;
+    flex: 0 0 auto;
+    -webkit-align-self: auto;
+    -ms-flex-item-align: auto;
+    align-self: auto;
+  }
+
+  & > main {
+    -webkit-order: 0;
+    -ms-flex-order: 0;
+    order: 0;
+    -webkit-flex: 1 1 auto;
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    -webkit-align-self: auto;
+    -ms-flex-item-align: auto;
+    align-self: auto;
+  }
+  */
+}
+
+.sidebar-container > aside,
+.sidebar-container > main {
+  /* padding: 10px; */
+  /* overflow: auto; */
+}
+
+.resize-handle--x {
+  margin: 0;
+  padding: 0;
+  position: relative;
+  box-sizing: border-box;
+  width: 3px;
+  height: 100%;
+
+
+  border-left-width: 1px;
+  border-left-style: solid;
+  border-left-color: black;
+  border-right-width: 1px;
+  border-right-style: solid;
+  border-right-color: black;
+  cursor: ew-resize;
+
+  /*
+  -webkit-flex: 0 0 auto;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+
+
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+
+  @handleSize: 18px;
+  @handleThickness: 1px;
+  @handleDistance: 2px;
+  */
+
+  /*
+  &:before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    right: 100%;
+    height: @handleSize;
+    width: @handleDistance;
+    margin-top: -@handleSize/2;
+    border-left-color: black;
+    border-left-width: @handleThickness;
+    border-left-style: solid;
+  }
+  &:after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 100%;
+    height: @handleSize;
+    width: @handleDistance;
+    margin-top: -@handleSize/2;
+    border-right-color: black;
+    border-right-width: @handleThickness;
+    border-right-style: solid;
+  }
+  */
+}

@@ -20,6 +20,7 @@ html,
 body {
   margin: 0;
   padding: 0;
+  height: 100vh;
 }
 
 /* 
@@ -404,13 +405,36 @@ console
 }
 
 .vertical-bar {
-    width: 10px;
-    background-color: grey;
+    width: .1em;
+    background-color: black;
     height: 100%;
     float: right;
 }
 
 .horizontal-bar {
-    height: 10px;
-    background-color: grey;
+    height: .1em;
+    background-color: black;
+}
+
+.horizontal-container {
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+}
+
+.vertical-container {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.fill-space {
+    flex-grow: 1
+}
+
+.padded {
+    padding: .6em
 }
