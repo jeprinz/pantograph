@@ -98,7 +98,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
 
   let
     runRenderM = unwrap <<< runM renderCtx renderEnv
-    gyroHtml /\ _ = runRenderM $ renderExprGyro (Renderer renderer) initialSyncedExprGyro
+    gyroHtmls /\ _ = runRenderM $ renderExprGyro (Renderer renderer) initialSyncedExprGyro
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
@@ -136,7 +136,7 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
            HH.text "Buffer" ]
       , HH.div
           [HP.classes [HH.ClassName "PanelContent"]]
-          [gyroHtml] ]
+          gyroHtmls ]
 
 -- sync
 
@@ -227,22 +227,32 @@ rehydrateExprGyro (Renderer renderer) = unsafeCoerce >>> hydrateExprGyro (Render
 
 -- render
 
-renderExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (BufferHtml sn el)
-renderExprGyro renderer (RootGyro expr) = renderExpr renderer (Path Nil) expr
-renderExprGyro renderer (CursorGyro (Cursor {outside, inside})) = renderExprPath renderer mempty outside inside $ renderExpr renderer outside inside
-renderExprGyro renderer (SelectGyro (Select {outside, middle, inside})) = renderExpr renderer (Path Nil) $ unPath outside $ unPath middle inside
+renderExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderExprGyro renderer (RootGyro expr) =
+  renderExpr renderer (Path Nil) expr
+renderExprGyro renderer (CursorGyro cursor) = renderExprCursor renderer cursor
+renderExprGyro renderer (SelectGyro (Select {outside, middle, inside})) =
+  renderExpr renderer (Path Nil) $
+    unPath outside $
+      unPath middle inside
 
-renderExprHelper :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprPath sn el er -> SyncExpr sn el er -> Array (ArrangeKid sn el (BufferHtml sn el)) -> RenderM sn el ctx env (BufferHtml sn el)
+renderExprCursor :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderExprCursor (Renderer renderer) (Cursor {outside, inside}) = 
+  renderExprPath (Renderer renderer) mempty outside inside $
+    map (\htmls -> [HH.text "{{"] <> htmls <> [HH.text "}}"]) $
+      renderExpr (Renderer renderer) outside inside
+
+renderExprHelper :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprPath sn el er -> SyncExpr sn el er -> Array (ArrangeKid sn el (Array (BufferHtml sn el))) -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderExprHelper (Renderer renderer) outside expr@(Tree {node: AnnExprNode {elemId}}) arrangedKids = do
   ctx <- ask
   let htmls = arrangedKids # foldMap case _ of
-        ExprKidArrangeKid html -> [html]
+        ExprKidArrangeKid html -> html
         PunctuationArrangeKid htmls' -> htmls'
         IndentationArrangeKid htmls' -> 
           [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"]
           , HH.br_ ] <>
           htmls'
-  pure $ HH.div
+  pure $ [HH.div
     [ HU.id $ elemId
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
@@ -261,14 +271,14 @@ renderExprHelper (Renderer renderer) outside expr@(Tree {node: AnnExprNode {elem
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
         liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just false)
     ]
-    htmls
+    htmls]
 
 renderExpr :: forall sn el er ctx env.
   Show sn => Show el => PrettyTreeNode el =>
   Renderer sn el ctx env ->
   SyncExprPath sn el er ->
   SyncExpr sn el er ->
-  RenderM sn el ctx env (BufferHtml sn el)
+  RenderM sn el ctx env (Array (BufferHtml sn el))
 renderExpr (Renderer renderer) outside expr@(Tree {node, kids}) = do
   arrangedKids <- renderer.arrangeExpr node $
     kids # Array.mapWithIndex \i kid@(Tree {node: kidNode}) -> do
@@ -284,7 +294,7 @@ renderExprPath :: forall sn el er ctx env.
   SyncExprPath sn el er ->
   SyncExprPath sn el er ->
   SyncExpr sn el er ->
-  RenderM sn el ctx env (BufferHtml sn el) -> RenderM sn el ctx env (BufferHtml sn el)
+  RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderExprPath _ _ (Path Nil) _ renderInside = renderInside
 renderExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, kids, i}) tooths)) expr renderInside = do
   let path' = Path tooths
