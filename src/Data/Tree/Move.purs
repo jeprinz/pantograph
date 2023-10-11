@@ -7,6 +7,7 @@ import Prelude
 import Data.Array as Array
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Debug as Debug
 import Hole (hole)
 import Util (fromJust')
 
@@ -91,3 +92,41 @@ moveCursorUpRightNext cursor@(Cursor {inside: Tree {kids}}) = do
 --   case Array.index (tooths inside) 0 of
 --     Nothing -> cursor
 --     Just {kid, tooth} -> moveCursorDownLeftMost (Cursor {outside: consPath outside tooth, inside: kid})
+
+-- moveGyroLeftUntil
+
+moveGyroLeftUntil :: forall a. (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+moveGyroLeftUntil _cond gyro@(RootGyro _) = moveGyroLeft gyro
+moveGyroLeftUntil cond (CursorGyro cursor) = CursorGyro <$> moveCursorLeftUntil cond cursor
+moveGyroLeftUntil cond (SelectGyro _) = hole "TODO: moveGyroLeftUntil cond (SelectGyro _)"
+
+moveCursorLeftUntil :: forall a. (a -> Boolean) -> Cursor a -> Maybe (Cursor a)
+moveCursorLeftUntil cond cursor = do
+  cursorLeft <- moveCursorLeft cursor
+  pure $ fromMaybe cursorLeft $ go cursorLeft
+  where
+  go :: Cursor a -> Maybe (Cursor a)
+  go cursor' = do
+    cursorLeft@(Cursor {inside: Tree {node}}) <- moveCursorLeft cursor'
+    if cond node
+      then pure cursorLeft
+      else go cursorLeft
+
+-- moveGyroRightUntil
+
+moveGyroRightUntil :: forall a. (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+moveGyroRightUntil _cond gyro@(RootGyro _) = moveGyroRight gyro
+moveGyroRightUntil cond (CursorGyro cursor) = CursorGyro <$> moveCursorRightUntil cond cursor
+moveGyroRightUntil cond (SelectGyro _) = hole "TODO"
+
+moveCursorRightUntil :: forall a. (a -> Boolean) -> Cursor a -> Maybe (Cursor a)
+moveCursorRightUntil cond cursor = do
+  cursorRight <- moveCursorRight cursor
+  pure $ fromMaybe cursorRight $ go cursorRight
+  where
+  go :: Cursor a -> Maybe (Cursor a)
+  go cursor' = do
+    cursorRight@(Cursor {inside: Tree {node}}) <- moveCursorRight cursor'
+    if cond node
+      then pure cursorRight
+      else go cursorRight

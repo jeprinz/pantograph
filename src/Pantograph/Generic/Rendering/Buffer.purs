@@ -4,7 +4,9 @@ import Data.Either.Nested
 import Data.Tree
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
+import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
+import Pantograph.Generic.Rendering.Keyboard
 import Prelude
 import Util
 
@@ -18,7 +20,8 @@ import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
-import Data.Tree.Move (escapeGyro, moveGyroLeft, moveGyroRight)
+import Data.TraversableWithIndex (traverseWithIndex)
+import Data.Tree.Move (escapeGyro, moveGyroLeft, moveGyroLeftUntil, moveGyroRight, moveGyroRightUntil)
 import Data.Tuple (fst, snd)
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -32,9 +35,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Hole (hole)
-import Pantograph.Generic.Language (Sort)
-import Pantograph.Generic.Language.Common (unAnnExprTooth)
-import Pantograph.Generic.Rendering.Keyboard (getKeyInfo)
 import Prim.Row (class Lacks, class Union)
 import Prim.RowList (class RowToList)
 import Record as R
@@ -53,21 +53,30 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
 
   exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
 
-  _ /\ hydratedExprGyroRef <- HK.useRef (Nothing :: Maybe (HydrateExprGyro sn el ()))
-  -- The last `HydrateExpr`, which is used for moving the cursor
-  _ /\ lastHydratedExprRef <- HK.useRef (Nothing :: Maybe (HydrateExpr sn el ()))
-  -- The last `HydratedExprCursor`, which is used for moving the select
-  _ /\ lastHydratedExprCursorRef <- HK.useRef (Nothing :: Maybe (HydrateExprCursor sn el ()))
+  initialSyncedExprGyro /\ syncedExprGyroRef <- HK.useRef (syncExprGyro exprGyro)
 
-  let modifyHydratedExprGyro f = do
-        hydratedExprGyro <- liftEffect (Ref.read hydratedExprGyroRef) >>= case _ of
-          Nothing -> bug "[rehydrate] hydratedExprGyroRef should already be `Just _` by now"
-          Just hydratedExprGyro -> pure hydratedExprGyro
-        case f hydratedExprGyro of
-          Nothing -> pure unit
-          Just hydratedExprGyro' -> do
-            hydratedExprGyro <- rehydrateExprGyro hydratedExprGyro'
-            liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
+  _ /\ hydratedExprGyroRef <- HK.useRef (Nothing :: Maybe (HydrateExprGyro sn el ()))
+
+  -- runs after each update to syncedExprGyroRef or hydratedExprGyroRef
+  let
+    modifySyncedExprGyro f = do
+      syncedExprGyro <- liftEffect $ Ref.read syncedExprGyroRef
+      case f syncedExprGyro of
+        Nothing -> pure unit
+        Just syncedExprGyro' -> do
+          liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
+          hydratedExprGyro' <- hydrateExprGyro (Renderer renderer) syncedExprGyro'
+          modifyHydratedExprGyro (const (Just hydratedExprGyro'))
+
+    modifyHydratedExprGyro f = do
+      hydratedExprGyro <- liftEffect (Ref.read hydratedExprGyroRef) >>= case _ of
+        Nothing -> bug "[modifyHydratedExprGyro] hydratedExprGyroRef should already be `Just _` by now"
+        Just hydratedExprGyro -> pure hydratedExprGyro
+      case f hydratedExprGyro of
+        Nothing -> pure unit
+        Just hydratedExprGyro' -> do
+          hydratedExprGyro <- rehydrateExprGyro (Renderer renderer) hydratedExprGyro'
+          liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
 
   -- TODO: actually, setExprGyro should work over a SyncExprGyro, since I don't actually need to rerender, but I need to reword snycedExprGyro to be a Ref rather than a computed value probably?
   renderCtx /\ renderCtxStateId <- HK.useState $
@@ -75,31 +84,27 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
       { depth: 0
       , outputToken
       , setExprGyro: \exprGyro' -> HK.modify_ exprGyroStateId (const exprGyro')
+      , setSyncedExprGyro: \syncedExprGyro' -> modifySyncedExprGyro (const (Just syncedExprGyro'))
       }
   renderEnv /\ renderEnvStateId <- HK.useState $
     renderer.topEnv # R.union
       { holeCount: 0 
       }
 
-  let runRenderM = unwrap <<< runM renderCtx renderEnv
-
   -- runs before each render
-  let syncedExprGyro = syncExprGyro exprGyro
-  let gyroHtml /\ _ = runRenderM $ renderExprGyro (Renderer renderer) syncedExprGyro
+  let
+    runRenderM = unwrap <<< runM renderCtx renderEnv
+    gyroHtml /\ _ = runRenderM $ renderExprGyro (Renderer renderer) initialSyncedExprGyro
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
-    hydratedExprGyro <- hydrateExprGyro syncedExprGyro
+    hydratedExprGyro <- hydrateExprGyro (Renderer renderer) initialSyncedExprGyro
     liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
-    case hydratedExprGyro of
-      RootGyro hydratedExpr -> liftEffect $ Ref.write (Just hydratedExpr) lastHydratedExprRef
-      CursorGyro hydratedExprCursor -> liftEffect $ Ref.write (Just hydratedExprCursor) lastHydratedExprCursorRef
-      SelectGyro hydratedExprSelect -> pure unit
     pure Nothing
 
   HK.useQuery queryToken case _ of
-    SetExprGyro exprGyro a -> do
-      HK.modify_ exprGyroStateId (const exprGyro)
+    SetExprGyro exprGyro' a -> do
+      HK.modify_ exprGyroStateId (const exprGyro')
       pure $ Just a
     KeyboardEventBufferQuery keyboardEvent a -> do
       let ki = getKeyInfo keyboardEvent
@@ -108,6 +113,8 @@ bufferComponent = HK.component \{queryToken, outputToken} (BufferInput input) ->
       else if ki.key == "Escape" then modifyHydratedExprGyro escapeGyro
       else if ki.key == "ArrowLeft" then modifyHydratedExprGyro moveGyroLeft
       else if ki.key == "ArrowRight" then modifyHydratedExprGyro moveGyroRight
+      else if ki.key == "ArrowUp" then modifyHydratedExprGyro (moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine)
+      else if ki.key == "ArrowDown" then modifyHydratedExprGyro (moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine)
       else pure unit
 
       pure $ Just a
@@ -139,31 +146,32 @@ flushExprNode (AnnExprNode node) = do
   -- gyroPosition
   liftEffect $ HU.setClassNames node.elemId (node.gyroPosition # toClassNames)
 
-hydrateExprGyro :: forall sn el er. SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-hydrateExprGyro (RootGyro expr) = do
+hydrateExprGyro :: forall sn el er ctx env. Renderer sn el ctx env -> SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+hydrateExprGyro (Renderer renderer) (RootGyro expr) = do
   expr' /\ _ <-
-    ( let ctx = {gyroPosition: InsideRoot} in
+    ( let ctx = {gyroPosition: InsideRoot, beginsLine: true} in
       let env = {} in
       runM ctx env ) $
-    hydrateExpr expr
+    hydrateExpr (Renderer renderer) expr
   pure $ RootGyro expr'
-hydrateExprGyro (CursorGyro (Cursor {outside, inside})) = do
+hydrateExprGyro (Renderer renderer) (CursorGyro (Cursor {outside, inside})) = do
   (outside' /\ inside') /\ _ <-
-    ( let ctx = {gyroPosition: OutsideCursor} in 
+    ( let ctx = {gyroPosition: OutsideCursor, beginsLine: true} in 
       let env = {} in 
       runM ctx env ) $
-    hydratePath outside \outside' -> (outside' /\ _) <$>
+    hydratePath (Renderer renderer) outside \outside' -> (outside' /\ _) <$>
       local (\ctx -> ctx {gyroPosition = AtCursor})
-        (hydrateExpr inside)
+        (hydrateExpr (Renderer renderer) inside)
   pure $ CursorGyro $ Cursor {outside: outside', inside: inside'}
-hydrateExprGyro (SelectGyro (Select {outside, middle, inside})) = hole "TODO: hydrateExprGyro"
+hydrateExprGyro (Renderer renderer) (SelectGyro (Select {outside, middle, inside})) = hole "TODO: hydrateExprGyro"
 
 -- | hydrate and flush
 hydrateExprNode :: forall sn el er. SyncExprNode sn el er -> HydrateM sn el (HydrateExprNode sn el er)
 hydrateExprNode (AnnExprNode node) = do
   ctx <- ask
   let exprNode = AnnExprNode $ node # R.union
-        { gyroPosition: ctx.gyroPosition }
+        { gyroPosition: ctx.gyroPosition
+        , beginsLine: ctx.beginsLine }
   flushExprNode exprNode
   pure exprNode
 
@@ -182,30 +190,32 @@ kidGyroPosition = case _ of
   AtInsideSelect -> InsideSelect
   InsideSelect -> InsideSelect
 
-hydrateBelow :: forall sn el er a. HydrateExprNode sn el er -> HydrateM sn el a -> HydrateM sn el a
-hydrateBelow (AnnExprNode _node) ma = do
+hydrateBelow :: forall sn el er ctx env a. Renderer sn el ctx env -> {parent :: HydrateExprNode sn el er, i :: Int, kid :: SyncExprNode sn el er} -> HydrateM sn el a -> HydrateM sn el a
+hydrateBelow (Renderer renderer) {parent, i, kid} ma = do
   ma #
     (local $
-      R.modify (Proxy :: Proxy "gyroPosition") kidGyroPosition)
+      R.modify (Proxy :: Proxy "gyroPosition") kidGyroPosition >>>
+      R.modify (Proxy :: Proxy "beginsLine") (const (renderer.beginsLine {parent, i, kid})))
 
-hydrateExpr :: forall sn el er. SyncExpr sn el er -> HydrateM sn el (HydrateExpr sn el er)
-hydrateExpr (Tree {node, kids}) = do
+hydrateExpr :: forall sn el er ctx env. Renderer sn el ctx env -> SyncExpr sn el er -> HydrateM sn el (HydrateExpr sn el er)
+hydrateExpr (Renderer renderer) (Tree {node, kids}) = do
   hydratedNode <- hydrateExprNode node
-  hydratedKids <- hydrateBelow hydratedNode $ kids # traverse hydrateExpr
+  hydratedKids <- kids # traverseWithIndex \i kid@(Tree {node: kidNode}) -> hydrateBelow (Renderer renderer) {parent: hydratedNode, i, kid: kidNode} (hydrateExpr (Renderer renderer) kid)
   pure $ Tree {node: hydratedNode, kids: hydratedKids}
 
-hydratePath :: forall sn el er a. SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el a) -> HydrateM sn el a
-hydratePath (Path Nil) k = k $ Path Nil
-hydratePath (Path (Cons (Tooth {node, i, kids}) ts)) k =
-  hydratePath (Path ts) \(Path ts') -> do
+hydratePath :: forall sn el er ctx env a. Renderer sn el ctx env -> SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el a) -> HydrateM sn el a
+hydratePath _ (Path Nil) k = k $ Path Nil
+hydratePath (Renderer renderer) (Path (Cons (Tooth {node, i, kids}) ts)) k =
+  hydratePath (Renderer renderer) (Path ts) \(Path ts') -> do
     hydratedNode <- hydrateExprNode node
-    hydratedKids <- hydrateBelow hydratedNode $ kids # traverse hydrateExpr
+    -- hydratedKids <- hydrateBelow hydratedNode $ kids # traverse hydrateExpr
+    hydratedKids <- kids # traverseWithIndex \i kid@(Tree {node: kidNode}) -> hydrateBelow (Renderer renderer) {parent: hydratedNode, i, kid: kidNode} (hydrateExpr (Renderer renderer) kid)
     let tooth = Tooth {node: hydratedNode, i, kids: hydratedKids}
     k $ Path (Cons tooth ts')
 
 -- TODO: should this do anything special?
-rehydrateExprGyro :: forall sn el er. HydrateExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-rehydrateExprGyro = unsafeCoerce >>> hydrateExprGyro
+rehydrateExprGyro :: forall sn el er ctx env. Renderer sn el ctx env -> HydrateExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+rehydrateExprGyro (Renderer renderer) = unsafeCoerce >>> hydrateExprGyro (Renderer renderer) 
 
 -- -- | hydrate and flush (if updated)
 -- rehydrateExprNode :: forall sn el er. HydrateExprNode sn el er -> HydrateM sn el (HydrateExprNode sn el er)
@@ -243,7 +253,7 @@ renderExpr (Renderer renderer) path expr@(Tree {node: node@(AnnExprNode {elemId}
     [ HU.id $ elemId
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        ctx.setExprGyro (CursorGyro (Cursor {outside: unAnnExprPath path, inside: unAnnExpr expr}))
+        ctx.setSyncedExprGyro (CursorGyro (Cursor {outside: shrinkAnnExprPath path, inside: shrinkAnnExpr expr}))
     , HE.onMouseOver \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
         liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just true)

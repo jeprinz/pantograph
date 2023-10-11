@@ -6,17 +6,13 @@ import Util
 import Data.Tuple.Nested ((/\))
 import Bug (bug)
 import Data.Generic.Rep (class Generic)
-import Data.List (List)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
-import Hole (hole)
-import Prim.Row (class Lacks, class Union)
-import Record as R
-import Text.Pretty (class Pretty, parens, pretty, spaces, ticks)
-import Type.Proxy (Proxy(..))
+import Prim.Row (class Union)
+import Text.Pretty (ticks)
 import Unsafe.Coerce (unsafeCoerce)
 
 makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
@@ -106,20 +102,20 @@ type ExprSelect sn el = AnnExprSelect sn el ()
 type ExprGyro sn el = AnnExprGyro sn el ()
 
 -- erase annotations without mapping
-unAnnExprNode :: forall sn el er. AnnExprNode sn el er -> ExprNode sn el
-unAnnExprNode = unsafeCoerce
-unAnnExpr :: forall sn el er. AnnExpr sn el er -> Expr sn el
-unAnnExpr = unsafeCoerce
-unAnnExprTooth :: forall sn el er. AnnExprTooth sn el er -> ExprTooth sn el
-unAnnExprTooth = unsafeCoerce
-unAnnExprPath :: forall sn el er. AnnExprPath sn el er -> ExprPath sn el
-unAnnExprPath = unsafeCoerce
-unAnnExprCursor :: forall sn el er. AnnExprCursor sn el er -> ExprCursor sn el
-unAnnExprCursor = unsafeCoerce
-unAnnExprSelect :: forall sn el er. AnnExprSelect sn el er -> ExprSelect sn el
-unAnnExprSelect = unsafeCoerce
-unAnnExprGyro :: forall sn el er. AnnExprGyro sn el er -> ExprGyro sn el
-unAnnExprGyro = unsafeCoerce
+shrinkAnnExprNode :: forall sn el er er_ er'. Union er' er_ er => AnnExprNode sn el er -> AnnExprNode sn el er'
+shrinkAnnExprNode = unsafeCoerce
+shrinkAnnExpr :: forall sn el er er_ er'. Union er' er_ er => AnnExpr sn el er -> AnnExpr sn el er'
+shrinkAnnExpr = unsafeCoerce
+shrinkAnnExprTooth :: forall sn el er er_ er'. Union er' er_ er => AnnExprTooth sn el er -> AnnExprTooth sn el er'
+shrinkAnnExprTooth = unsafeCoerce
+shrinkAnnExprPath :: forall sn el er er_ er'. Union er' er_ er => AnnExprPath sn el er -> AnnExprPath sn el er'
+shrinkAnnExprPath = unsafeCoerce
+shrinkAnnExprCursor :: forall sn el er er_ er'. Union er' er_ er => AnnExprCursor sn el er -> AnnExprCursor sn el er'
+shrinkAnnExprCursor = unsafeCoerce
+shrinkAnnExprSelect :: forall sn el er er_ er'. Union er' er_ er => AnnExprSelect sn el er -> AnnExprSelect sn el er'
+shrinkAnnExprSelect = unsafeCoerce
+shrinkAnnExprGyro :: forall sn el er er_ er'. Union er' er_ er => AnnExprGyro sn el er -> AnnExprGyro sn el er'
+shrinkAnnExprGyro = unsafeCoerce
 
 -- Language
 

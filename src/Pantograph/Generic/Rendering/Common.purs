@@ -66,22 +66,24 @@ type SyncExprGyro sn el er = AnnExprGyro sn el (SyncExprRow sn el er)
 -- | Hydrate data can be used in re-hydrating and generic (not specific)
 -- | rendering.
 
-type HydrateM sn el = 
+type HydrateM sn el =
   M
     (HydrateCtx sn el)
     (HydrateEnv sn el)
     (HK.HookM Aff)
 
 type HydrateCtx sn el =
-  ( gyroPosition :: GyroPosition )
+  ( gyroPosition :: GyroPosition
+  , beginsLine :: Boolean )
 
 type HydrateEnv sn el =
-  ( )
+  ()
 
 -- | `ExprNode` annotation data that is generated during initial hydrating and
 -- | mapped when re-hydrating.
 type HydrateExprRow sn el er =
   ( gyroPosition :: GyroPosition
+  , beginsLine :: Boolean
   | SyncExprRow sn el er )
 type HydrateExpr sn el er = AnnExpr sn el (HydrateExprRow sn el er)
 type HydrateExprNode sn el er = AnnExprNode sn el (HydrateExprRow sn el er)
@@ -115,6 +117,7 @@ type RenderCtx sn el ctx =
   ( depth :: Int
   , outputToken :: HK.OutputToken (BufferOutput sn el)
   , setExprGyro :: ExprGyro sn el -> HK.HookM Aff Unit
+  , setSyncedExprGyro :: SyncExprGyro sn el () -> HK.HookM Aff Unit
   | ctx )
 
 type RenderEnv sn el env =
@@ -134,6 +137,7 @@ newtype Renderer sn el ctx env = Renderer
       AnnExprNode sn el er ->
       Array (RenderM sn el ctx env (a /\ AnnExprNode sn el er)) ->
       RenderM sn el ctx env (Array (ArrangeKid sn el a))
+  , beginsLine :: forall er1 er2. {parent :: AnnExprNode sn el er1, i :: Int, kid :: AnnExprNode sn el er2} -> Boolean
   }
 
 data ArrangeKid sn el a

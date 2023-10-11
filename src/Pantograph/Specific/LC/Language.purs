@@ -60,9 +60,10 @@ instance PrettyTreeNode EL where
     AppRule -> assertValidTreeKids "prettyTreeNode" el \[f, a] -> f <+> a
     LetRule -> assertValidTreeKids "prettyTreeNode" el \[x, a, b] -> "let" <+> x <+> "=" <+> a <+> "in" <+> b
     HoleRule -> assertValidTreeKids "prettyTreeNode" el \[] -> "?"
-    FormatRule Indent -> assertValidTreeKids "prettyTreeNode" el \[a] -> "<indent>" <+> a
+    FormatRule IndentedNewline -> assertValidTreeKids "prettyTreeNode" el \[a] -> "<indent>" <+> a
+    FormatRule Newline -> assertValidTreeKids "prettyTreeNode" el \[a] -> "<newline>" <+> a
 
-data Format = Indent
+data Format = IndentedNewline | Newline
 derive instance Generic Format _
 derive instance Eq Format
 derive instance Ord Format
@@ -163,18 +164,18 @@ language = PL.Language
       Tree {node: PL.SortNode (StringValue _)} -> Nothing
       Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
       Tree {node: PL.SortNode TermSort} ->
-        Just $ term.hole
+        -- Just $ term.hole
         -- Just $ term.app term.hole term.hole
         -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
-        -- Just $ term.app (makeIndent (term.app term.hole term.hole)) (term.app (makeIndent (term.app term.hole (makeIndent term.hole))) term.hole)
+        -- Just $ term.app (makeIndentedNewline (term.app term.hole term.hole)) (term.app (makeIndentedNewline (term.app term.hole (makeIndentedNewline term.hole))) term.hole)
         -- Just $ 
         --   term.app
-        --     (makeIndent (term.app term.hole (makeIndent (term.app term.hole (makeIndent (term.app term.hole term.hole))))))
-        --     (makeIndent (term.app term.hole (makeIndent (term.app term.hole (makeIndent (term.app term.hole term.hole))))))
+        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
+        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         -- Just $ term.example 10
         -- Just $ term.example 4
         -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
-
+        Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
   , topSort: sort.term
   }
 
@@ -188,14 +189,17 @@ sort = {stringValue, string, term}
 
 term = {var, string, lam, let_, hole, indent, example}
   where
-  var str = PL.makeExpr VarRule ["s" /\ sort.string str] []
   string str = PL.makeExpr StringRule ["str" /\ sort.stringValue str] []
+  var str = PL.makeExpr VarRule ["s" /\ sort.string str] [string str]
   lam str b = PL.makeExpr LamRule ["s" /\ sort.string str] [string str, b]
   app f a = PL.makeExpr AppRule [] [f, a]
-  let_ str a b = PL.makeExpr LetRule ["s" /\ sort.string str] [string str, a, b]
+  let_ str a b = PL.makeExpr LetRule ["s" /\ sort.string str] [string str, a, newline b]
   hole = PL.makeExpr HoleRule [] []
-  indent a = PL.makeExpr (FormatRule Indent) [] [a]
+  indent a = PL.makeExpr (FormatRule IndentedNewline) [] [a]
+  newline a = PL.makeExpr (FormatRule Newline) [] [a]
 
   example 0 = hole
-  example n = app (lam "x" (example n')) (indent (example n'))
+  example n = 
+    let_ "x" (lam "y" (indent (example n'))) (app (var "x") (indent (example n')))
+    -- let_ "x" app (lam "y" (example n')) (indent (example n'))
     where n' = n - 1

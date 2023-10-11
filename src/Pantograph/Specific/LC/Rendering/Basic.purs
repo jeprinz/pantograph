@@ -28,7 +28,8 @@ renderer = PGR.Renderer
   , topEnv: {}
   , arrangeExpr:
       let punc str = PGR.PunctuationArrangeKid [HH.span_ [HH.text str]] in
-      let ind i = PGR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
+      let indent i = PGR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
+      let newline i = PGR.IndentationArrangeKid (Array.replicate i (HH.text "  ")) in
       \node@(PGL.AnnExprNode {label}) ->
         let msg = "arrangeExpr " <> "{" <> "label: " <> show label <> "}" in
         let ass = assertValidTreeKids msg node in
@@ -48,17 +49,26 @@ renderer = PGR.Renderer
             a_ /\ _a <- ma 
             pure [punc "(", PGR.ExprKidArrangeKid f_, punc " ", PGR.ExprKidArrangeKid a_, punc ")"]
           LetRule -> ass \[mx, ma, mb] -> do
+            ctx <- ask
             x_ /\ _x <- mx
             a_ /\ _a <- ma
             b_ /\ _b <- mb
-            pure [punc "(", punc "let", punc " ", PGR.ExprKidArrangeKid x_, punc " ", punc "=", punc " ", PGR.ExprKidArrangeKid a_, punc " ", punc "in", punc " ", PGR.ExprKidArrangeKid b_]
+            pure [punc "(", punc "let", punc " ", PGR.ExprKidArrangeKid x_, punc " ", punc "=", punc " ", PGR.ExprKidArrangeKid a_, punc " ", punc "in", punc " ", PGR.ExprKidArrangeKid b_, punc ")"]
           HoleRule -> ass \[] -> do
             holeIndex <- State.gets _.holeCount
             State.modify_ _ {holeCount = holeIndex + 1}
             pure [PGR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text ("?" <> show holeIndex)]]]
-          FormatRule Indent -> ass \[ma] -> do
+          FormatRule IndentedNewline -> ass \[ma] -> do
             ctx <- ask
             a_ /\ _a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
-            pure [ind ctx.indentLevel, PGR.ExprKidArrangeKid a_]
+            pure [indent ctx.indentLevel, PGR.ExprKidArrangeKid a_]
+          FormatRule Newline -> ass \[ma] -> do
+            ctx <- ask
+            a_ /\ _a <- ma
+            pure [newline ctx.indentLevel, PGR.ExprKidArrangeKid a_]
+  , beginsLine: \{parent: PGL.AnnExprNode parent, kid: _, i: _} -> case parent.label of
+      FormatRule IndentedNewline -> true
+      FormatRule Newline -> true
+      _ -> false
   }
 
