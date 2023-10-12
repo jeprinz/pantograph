@@ -13,6 +13,7 @@ import Effect.Class.Console as Console
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Pantograph.Generic.Rendering.Html as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
@@ -69,19 +70,16 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   -- render
 
-  HK.pure $
-    HH.div
-      [ HP.classes [HH.ClassName "Panel Editor"] ]
-      [ HH.div 
-          [HP.classes [HH.ClassName "PanelHeader"]]
-          [ HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Pantograph"]
-          , HH.div [HP.classes [HH.ClassName "info"]] [HH.text $ rendererFullName (Renderer renderer)]
-          ]
-      , HH.div
-          [HP.classes [HH.ClassName "PanelContent"]]
-          [ bufferHtml
-          , terminalHtml ]
-      ]
+  HK.pure $ HH.panel
+    { name: "EditorPanel"
+    , header: 
+        [ HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Pantograph"]
+        , HH.div [HP.classes [HH.ClassName "info"]] [HH.text $ rendererFullName (Renderer renderer)]
+        ]
+    , content:
+        [ bufferHtml
+        , terminalHtml ]
+    }
 
 -- KeyInfo
 

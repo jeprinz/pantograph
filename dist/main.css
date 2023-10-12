@@ -54,6 +54,10 @@ body {
 }
 
 .PanelContent {
+  overflow-y: scroll;
+}
+
+.PanelContentInterior {
   padding: 0.4em;
 }
 
@@ -73,42 +77,53 @@ body {
   color: var(--accent1-color);
 }
 
-/* Editor */
+/* EditorPanel */
 
-.Editor {
+.EditorPanel {
   font-family: 'Courier New', Courier, monospace;
+  height: 100vh;
 }
 
 /* Buffer */
 
-.Buffer {}
+.BufferPanel {}
 
-.Buffer>.PanelContent {
+.BufferPanel>.PanelContent {
   overflow: scroll;
-  max-height: calc(100vh - 10em);
+  height: calc(100vh - 10em);
   max-width: calc(100vw - 1em);
 }
 
-/* Terminal */
+.BufferPanel>.PanelContent>.PanelContentInterior {
+  margin-bottom: 4em;
+  margin-top: 4em;
+}
 
-.Terminal {
+/* TerminalPanel */
+
+.TerminalPanel {
   display: flex;
   flex-direction: column;
 
   position: absolute;
   bottom: 0;
-  width: calc(100% - 1em);
+  width: calc(100vw - 2*0.4em);
+}
+
+.TerminalPanel>.PanelContent{
+  overflow: scroll;
+  max-height: 40vh;
 }
 
 .TerminalItems {
   display: flex;
   flex-direction: column;
   gap: 0.4em;
-  padding: 1px;
-
+  
+  /* padding: 1px; */
   /* background-color: rgb(194, 194, 194); */
-  max-height: 40vh;
-  overflow: scroll;
+  /* max-height: 40vh; */
+  /* overflow: scroll; */
 }
 
 .TerminalItem {

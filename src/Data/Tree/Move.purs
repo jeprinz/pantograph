@@ -6,6 +6,7 @@ import Prelude
 
 import Data.Array as Array
 import Data.List (List(..))
+import Data.List as List
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Debug as Debug
 import Hole (hole)
@@ -15,12 +16,8 @@ import Util (fromJust')
 
 escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
 escapeGyro (RootGyro _) = Nothing
-escapeGyro (CursorGyro (Cursor {outside, inside})) = pure $ RootGyro (unPath outside inside)
-escapeGyro (SelectGyro (Select {outside, middle, inside, isReversed})) =
-  if isReversed
-    then pure $ CursorGyro (Cursor {outside, inside: unPath middle inside})
-    else pure $ CursorGyro (Cursor {outside: outside <> middle, inside})
-
+escapeGyro (CursorGyro (Cursor {outside, inside})) = Just $ RootGyro (unPath outside inside)
+escapeGyro (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
 moveGyroLeft :: forall a. Gyro a -> Maybe (Gyro a)
 moveGyroLeft (RootGyro tree) = pure $ normalizeGyro $ CursorGyro (Cursor {outside: Path Nil, inside: tree})
@@ -33,11 +30,24 @@ moveGyroRight (CursorGyro cursor) = normalizeGyro <<< CursorGyro <$> moveCursorR
 moveGyroRight (SelectGyro select) = hole "TODO: moveGyroRight (SelectGyro select)"
 
 normalizeGyro :: forall a. Gyro a -> Gyro a
-normalizeGyro (RootGyro gyro) = (RootGyro gyro)
+normalizeGyro gyro@(RootGyro _) = gyro
 normalizeGyro (CursorGyro (Cursor {outside, inside})) = CursorGyro (Cursor {outside, inside})
 normalizeGyro (SelectGyro (Select {outside, middle, inside, isReversed})) = case middle of
   Path Nil -> normalizeGyro $ CursorGyro (Cursor {outside, inside})
   _ -> (SelectGyro (Select {outside, middle, inside, isReversed}))
+
+-- If `ensureGyroIsCursor gyro == Nothing` then then `gyro` is already a
+-- `Cursor`.
+ensureGyroIsCursor :: forall a. Gyro a -> Maybe (Gyro a)
+ensureGyroIsCursor (RootGyro expr) = Just $ CursorGyro (Cursor {outside: mempty, inside: expr})
+ensureGyroIsCursor (CursorGyro _) = Nothing
+ensureGyroIsCursor (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
+
+escapeSelect :: forall a. Select a -> Cursor a
+escapeSelect (Select {outside, middle, inside, isReversed}) =
+  if isReversed
+    then Cursor {outside, inside: unPath middle inside}
+    else Cursor {outside: outside <> middle, inside}
 
 -- Cursor
 

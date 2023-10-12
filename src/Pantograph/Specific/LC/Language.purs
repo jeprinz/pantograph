@@ -55,7 +55,7 @@ instance TreeNode EL where
 instance PrettyTreeNode EL where
   prettyTreeNode el = case el of
     StringRule -> assertValidTreeKids "prettyTreeNode" el \[] -> "<string>"
-    VarRule -> assertValidTreeKids "prettyTreeNode" el \[x] -> x
+    VarRule -> assertValidTreeKids "prettyTreeNode" el \[x] -> "#" <> x
     LamRule -> assertValidTreeKids "prettyTreeNode" el \[x, b] -> "λ" <> x <> "." <> b
     AppRule -> assertValidTreeKids "prettyTreeNode" el \[f, a] -> f <+> a
     LetRule -> assertValidTreeKids "prettyTreeNode" el \[x, a, b] -> "let" <+> x <+> "=" <+> a <+> "in" <+> b
@@ -173,9 +173,10 @@ language = PL.Language
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         -- Just $ term.example 10
-        Just $ term.example 4
+        -- Just $ term.example 4
         -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
         -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
+        Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
   , topSort: sort.term
   }
 
@@ -187,7 +188,7 @@ sort = {stringValue, string, term}
   string str = PL.makeSort StringSort [stringValue str]
   term = PL.makeSort TermSort []
 
-term = {var, string, lam, let_, hole, indent, example}
+term = {var, string, lam, app, let_, hole, indent, example}
   where
   string str = PL.makeExpr StringRule ["str" /\ sort.stringValue str] []
   var str = PL.makeExpr VarRule ["s" /\ sort.string str] [string str]

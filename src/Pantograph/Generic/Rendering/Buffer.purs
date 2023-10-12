@@ -19,11 +19,11 @@ import Data.Either (Either(..))
 import Data.Foldable (foldM, foldMap)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List(..))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
 import Data.TraversableWithIndex (traverseWithIndex)
-import Data.Tree.Move (escapeGyro, moveGyroLeft, moveGyroLeftUntil, moveGyroRight, moveGyroRightUntil)
+import Data.Tree.Move (ensureGyroIsCursor, escapeGyro, moveGyroLeft, moveGyroLeftUntil, moveGyroRight, moveGyroRightUntil)
 import Data.Tuple (fst, snd)
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -38,6 +38,7 @@ import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Hole (hole)
+import Pantograph.Generic.Rendering.Html as HH
 import Pantograph.Generic.Rendering.Preview (previewComponent)
 import Pantograph.Generic.Rendering.Toolbox (toolboxComponent)
 import Prim.Row (class Lacks, class Union)
@@ -48,6 +49,7 @@ import Text.Pretty as Pretty
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 import Web.Event.Event as Event
+import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
@@ -56,11 +58,21 @@ bufferComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el
 bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
   let Renderer renderer = input.renderer
 
+  -- The original ExprGyro before rendering.
   exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
+
+  -- The SyncExprGyro of the current facade.
   initialSyncedExprGyro /\ syncedExprGyroRef <- HK.useRef (syncExprGyro exprGyro)
+
+  -- The HydrateExprGyro of the current facade.
   _ /\ hydratedExprGyroRef <- HK.useRef (Nothing :: Maybe (HydrateExprGyro sn el ()))
 
   let
+    getHydratedExprGyro = do
+      liftEffect (Ref.read hydratedExprGyroRef) >>= case _ of
+        Nothing -> bug "[modifyHydratedExprGyro] hydratedExprGyroRef should already be `Just _` by now"
+        Just hydratedExprGyro -> pure hydratedExprGyro
+
     modifyExprGyro f = do
       case f exprGyro of
         Nothing -> pure unit
@@ -68,6 +80,18 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           let syncedExprGyro' = syncExprGyro exprGyro'
           liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
           HK.modify_ exprGyroStateId (const exprGyro') -- causes a re-render
+
+    -- If the exprGyro is not fresh, updates the exprGyro to correspond to the
+    -- syncedExprGyro.
+    ensureFreshExprGyro = do
+      hydratedExprGyro <- getHydratedExprGyro
+      modifyExprGyro (const (Just (shrinkAnnExprGyro hydratedExprGyro)))
+
+    ensureExprGyroIsCursor = do
+      hydratedExprGyro <- getHydratedExprGyro
+      case ensureGyroIsCursor hydratedExprGyro of
+        Nothing -> ensureFreshExprGyro
+        Just hydratedExprGyro' -> modifyExprGyro (const (Just (shrinkAnnExprGyro hydratedExprGyro')))
 
     modifySyncedExprGyro f = do
       syncedExprGyro <- liftEffect $ Ref.read syncedExprGyroRef
@@ -79,9 +103,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           modifyHydratedExprGyro (const (Just hydratedExprGyro'))
 
     modifyHydratedExprGyro f = do
-      hydratedExprGyro <- liftEffect (Ref.read hydratedExprGyroRef) >>= case _ of
-        Nothing -> bug "[modifyHydratedExprGyro] hydratedExprGyroRef should already be `Just _` by now"
-        Just hydratedExprGyro -> pure hydratedExprGyro
+      hydratedExprGyro <- getHydratedExprGyro
       case f hydratedExprGyro of
         Nothing -> pure unit
         Just hydratedExprGyro' -> do
@@ -96,6 +118,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       , modifyExprGyro
       , modifySyncedExprGyro
       }
+
   renderEnv /\ renderEnvStateId <- HK.useState $
     renderer.topEnv # R.union
       { holeCount: 0 
@@ -116,44 +139,64 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       HK.modify_ exprGyroStateId (const exprGyro')
       pure $ Just a
     KeyboardEventBufferQuery keyboardEvent a -> do
+      let event = KeyboardEvent.toEvent keyboardEvent
       let ki = getKeyInfo keyboardEvent
 
-      isEnabledToolbox <- HK.request slotToken (Proxy :: Proxy "toolbox") unit GetIsEnabledToolbox <#> fromMaybe false
+      maybeIsEnabledToolbox <- HK.request slotToken (Proxy :: Proxy "toolbox") unit GetIsEnabledToolbox
+      let isEnabledToolbox = maybeIsEnabledToolbox == Just true
+      let isExistingToolbox = isJust maybeIsEnabledToolbox 
 
       if isEnabledToolbox then do
         if false then pure unit
-        else if ki.key == "Escape" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifyIsEnabledToolbox (const false))
-        else if ki.key == "ArrowLeft" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx - 1)))
-        else if ki.key == "ArrowRight" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx + 1)))
-        else if ki.key == "ArrowDown" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx + 1) colIx))
-        else if ki.key == "ArrowUp" then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx - 1) colIx))
+        else if ki.key == "Escape" then do
+          liftEffect $ Event.preventDefault event
+          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const false)
+        else if ki.key == "ArrowLeft" then do
+          liftEffect $ Event.preventDefault event
+          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx - 1))
+        else if ki.key == "ArrowRight" then do
+          liftEffect $ Event.preventDefault event
+          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx + 1))
+        else if ki.key == "ArrowDown" then do
+          liftEffect $ Event.preventDefault event
+          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx + 1) colIx)
+        else if ki.key == "ArrowUp" then do
+          liftEffect $ Event.preventDefault event
+          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx - 1) colIx)
         else pure unit
+
       else do
         if false then pure unit
-        else if ki.key == "Escape" then modifyHydratedExprGyro escapeGyro
-        else if ki.key == "ArrowLeft" then modifyHydratedExprGyro moveGyroLeft
-        else if ki.key == "ArrowRight" then modifyHydratedExprGyro moveGyroRight
-        else if ki.key == "ArrowUp" then modifyHydratedExprGyro (moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine)
-        else if ki.key == "ArrowDown" then modifyHydratedExprGyro (moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine)
-        else if ki.key == " " then HK.tell slotToken (Proxy :: Proxy "toolbox") unit (ModifyIsEnabledToolbox (const true))
+        else if ki.key == "Escape" then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro escapeGyro
+        else if ki.key == "ArrowLeft" then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro moveGyroLeft
+        else if ki.key == "ArrowRight" then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro moveGyroRight
+        else if ki.key == "ArrowUp" then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
+        else if ki.key == "ArrowDown" then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
+        else if ki.key == " " then do
+          ensureExprGyroIsCursor
+          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const true)
         else pure unit
 
       pure $ Just a
 
   -- render
-  HK.pure $
-    HH.div 
-      [HP.classes [HH.ClassName "Panel Buffer"]]
-      [ HH.div
-          [HP.classes [HH.ClassName "PanelHeader"]]
-          [ -- HH.div
-            --   [ HP.classes [HH.ClassName "button"]
-            --   , HE.onClick \_ -> Console.log "TODO: close buffer" ]
-            --   [HH.text "X"]
-           HH.text "Buffer" ]
-      , HH.div
-          [HP.classes [HH.ClassName "PanelContent"]]
-          gyroHtmls ]
+  HK.pure $ HH.panel
+    { name: "BufferPanel"
+    , header: 
+        [HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Buffer"]]
+    , content: 
+        gyroHtmls
+    }
 
 -- hydrate
 
@@ -242,7 +285,8 @@ rehydrateExprGyro (Renderer renderer) = unsafeCoerce >>> hydrateExprGyro (Render
 renderSyncExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprGyro renderer (RootGyro expr) =
   renderSyncExpr renderer (Path Nil) expr
-renderSyncExprGyro renderer (CursorGyro cursor) = renderSyncExprCursor renderer cursor
+renderSyncExprGyro renderer (CursorGyro cursor) =
+  renderSyncExprCursor renderer cursor
 renderSyncExprGyro renderer (SelectGyro (Select {outside, middle, inside})) =
   renderSyncExpr renderer (Path Nil) $
     unPath outside $
@@ -254,9 +298,11 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
   env <- get
   let toolboxHandler = case _ of
         SubmitToolboxItem item -> hole "TODO"
-        PreviewToolboxItem item -> do
+        PreviewToolboxItem item -> do 
           HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition (ModifyItemPreview (const (Just item)))
           HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition (ModifyItemPreview (const (Just item)))
+  Debug.traceM $ "[renderSyncExprCursor] outside = " <> pretty outside
+  Debug.traceM $ "[renderSyncExprCursor] inside = " <> pretty inside
   renderSyncExprPath (Renderer renderer) mempty outside inside $
     map
       (\htmls -> do

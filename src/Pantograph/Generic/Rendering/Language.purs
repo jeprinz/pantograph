@@ -9,8 +9,8 @@ import Prelude
 import Util
 
 import Control.Monad.Reader (ask, local)
-import DOM.HTML.Indexed as HPI
 import Control.Monad.State (get)
+import DOM.HTML.Indexed as HPI
 import Data.Array as Array
 import Data.Foldable (foldMap)
 import Data.List (List(..))
@@ -24,6 +24,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Record as R
+import Text.Pretty (pretty)
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
@@ -90,6 +91,7 @@ renderAnnExprPath _ _ (Path Nil) _ _ renderInside = renderInside
 renderAnnExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, kids, i}) tooths)) expr makeAnnExprProps renderInside = do
   let path' = Path tooths
   let expr' = unTooth tooth expr
+  let outside' = outside <> path'
   renderAnnExprPath (Renderer renderer) outside path' expr' makeAnnExprProps do
     let kids' = insertAt "renderAnnExprPath" i expr kids
     arrangedKids <- renderer.arrangeExpr node $
@@ -99,10 +101,10 @@ renderAnnExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, ki
           let tooth' = Tooth {node, i: i', kids: deleteAt "renderAnnExprPath" i kids'}
           local
             ( R.modify (Proxy :: Proxy "depth") (1 + _) )
-            $ renderAnnExpr (Renderer renderer) (consPath outside tooth') kid makeAnnExprProps <#> (_ /\ kidNode)        
-    renderAnnExprHelper (Renderer renderer) (outside <> path') expr' makeAnnExprProps arrangedKids
+            $ renderAnnExpr (Renderer renderer) (consPath outside' tooth') kid makeAnnExprProps <#> (_ /\ kidNode)        
+    renderAnnExprHelper (Renderer renderer) outside' expr' makeAnnExprProps arrangedKids
 
-makeSyncExprProps :: forall sn el er ctx env. MakeSyncExprProps sn el er ctx env
+makeSyncExprProps :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => MakeSyncExprProps sn el er ctx env
 makeSyncExprProps (Renderer renderer) outside inside@(Tree {node: AnnExprNode {elemId}}) = do
   ctx <- ask
   env <- get
@@ -111,7 +113,16 @@ makeSyncExprProps (Renderer renderer) outside inside@(Tree {node: AnnExprNode {e
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
 
-        if true then do
+        HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ terminalItem.debug $ HH.div_
+          [ HH.text "SyncExpr/onClick"
+          , HH.ul_
+              [ HH.li_ [HH.text $ "outside: " <> pretty (shrinkAnnExprPath outside :: ExprPath sn el)]
+              , HH.li_ [HH.text $ "inside: " <> pretty (shrinkAnnExpr inside :: Expr sn el)]
+              ]
+          ]
+
+        let isModifyExprGyro = true
+        if isModifyExprGyro then do
           -- NOTE: `modifyExprGyro` modifies the state, which causes a re-render
           ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside}
         else do

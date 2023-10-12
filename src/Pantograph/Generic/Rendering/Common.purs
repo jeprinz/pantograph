@@ -269,3 +269,8 @@ type TerminalSlotId = Unit
 
 data TerminalItemTag = DebugTerminalItemTag
 newtype TerminalItem = TerminalItem {tag :: TerminalItemTag, html :: HH.PlainHTML}
+
+terminalItem = {debug, debugString}
+  where
+  debug html = TerminalItem {tag: DebugTerminalItemTag, html}
+  debugString = debug <<< HH.text
