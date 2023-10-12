@@ -173,9 +173,9 @@ language = PL.Language
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         -- Just $ term.example 10
-        -- Just $ term.example 4
+        Just $ term.example 4
         -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
-        Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
+        -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
   , topSort: sort.term
   }
 
