@@ -34,6 +34,9 @@ derive instance Traversable Tooth
 tooths :: forall a. Tree a -> Array {tooth :: Tooth a, kid :: Tree a}
 tooths (Tree {node, kids}) = kids # Array.mapWithIndex \i kid -> {tooth: Tooth {node, i, kids: fromJust' "tooths" $ Array.deleteAt i kids}, kid}
 
+-- toothAt :: forall a. Int -> Tree a -> Tooth a
+-- toothAt
+
 unTooth :: forall a. Tooth a -> Tree a -> Tree a
 unTooth (Tooth {node, i, kids}) kid = Tree {node, kids: fromJust' "unTooth" $ Array.insertAt i kid kids}
 

@@ -11,7 +11,6 @@ import Util
 import Control.Monad.Reader (ask, local)
 import Control.Monad.State (get)
 import DOM.HTML.Indexed as HPI
-import Data.Array as Array
 import Data.Foldable (foldMap)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
@@ -52,7 +51,7 @@ renderAnnExprHelper :: forall sn el er ctx env.
   MakeAnnExprProps sn el er ctx env ->
   Array (ArrangeKid sn el (Array (BufferHtml sn el))) ->
   RenderM sn el ctx env (Array (BufferHtml sn el))
-renderAnnExprHelper renderer outside expr@(Tree {node: AnnExprNode node}) makeAnnExprProps arrangedKids = do
+renderAnnExprHelper renderer outside expr makeAnnExprProps arrangedKids = do
   props <- makeAnnExprProps renderer outside expr
   let htmls = arrangedKids # foldMap case _ of
         ExprKidArrangeKid html -> html
@@ -70,10 +69,9 @@ renderAnnExpr :: forall sn el er ctx env.
   AnnExpr sn el er ->
   MakeAnnExprProps sn el er ctx env ->
   RenderM sn el ctx env (Array (BufferHtml sn el))
-renderAnnExpr (Renderer renderer) outside expr@(Tree {node, kids}) makeAnnExprProps = do
+renderAnnExpr (Renderer renderer) outside expr@(Tree {node}) makeAnnExprProps = do
   arrangedKids <- renderer.arrangeExpr node $
-    kids # Array.mapWithIndex \i kid@(Tree {node: kidNode}) -> do
-      let tooth = Tooth {node, i, kids: deleteAt "renderAnnExpr" i kids}
+    tooths expr <#> \{tooth, kid: kid@(Tree {node: kidNode})} -> do
       local
         ( R.modify (Proxy :: Proxy "depth") (1 + _) )
         $ renderAnnExpr (Renderer renderer) (consPath outside tooth) kid makeAnnExprProps <#> (_ /\ kidNode)
@@ -88,21 +86,20 @@ renderAnnExprPath :: forall sn el er ctx env.
   MakeAnnExprProps sn el er ctx env ->
   RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderAnnExprPath _ _ (Path Nil) _ _ renderInside = renderInside
-renderAnnExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, kids, i}) tooths)) expr makeAnnExprProps renderInside = do
-  let path' = Path tooths
+renderAnnExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, i}) ts)) expr makeAnnExprProps renderInside = do
+  let path' = Path ts
   let expr' = unTooth tooth expr
-  let outside' = outside <> path'
+  let interiorOutside = outside <> path'
   renderAnnExprPath (Renderer renderer) outside path' expr' makeAnnExprProps do
-    let kids' = insertAt "renderAnnExprPath" i expr kids
     arrangedKids <- renderer.arrangeExpr node $
-      kids # map Just # insertAt "renderAnnExprPath" i Nothing # Array.mapWithIndex \i' -> case _ of
-        Nothing -> renderInside <#> (_ /\ node)
-        Just kid@(Tree {node: kidNode}) -> do
-          let tooth' = Tooth {node, i: i', kids: deleteAt "renderAnnExprPath" i kids'}
+      tooths expr' <#> \{tooth: tooth'@(Tooth {i: i'}), kid: kid@(Tree {node: kidNode})} -> do
+        if i == i' then 
+          renderInside <#> (_ /\ kidNode)
+        else
           local
             ( R.modify (Proxy :: Proxy "depth") (1 + _) )
-            $ renderAnnExpr (Renderer renderer) (consPath outside' tooth') kid makeAnnExprProps <#> (_ /\ kidNode)        
-    renderAnnExprHelper (Renderer renderer) outside' expr' makeAnnExprProps arrangedKids
+            $ renderAnnExpr (Renderer renderer) (consPath interiorOutside tooth') kid makeAnnExprProps <#> (_ /\ kidNode)
+    renderAnnExprHelper (Renderer renderer) interiorOutside expr' makeAnnExprProps arrangedKids
 
 makeSyncExprProps :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => MakeSyncExprProps sn el er ctx env
 makeSyncExprProps (Renderer renderer) outside inside@(Tree {node: AnnExprNode {elemId}}) = do

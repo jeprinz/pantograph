@@ -176,7 +176,8 @@ language = PL.Language
         -- Just $ term.example 4
         -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
         -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
-        Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
+        -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
+        Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
   , topSort: sort.term
   }
 
