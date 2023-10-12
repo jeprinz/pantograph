@@ -88,7 +88,7 @@ tutorialComponent lessons =
     render state =
         HH.div [classNames["vertical-container"]]
             [
-            HH.div [classNames["horizontal-container", "padded"]] [
+            HH.div [classNames["horizontal-container", "padded"], HP.style "height: 2em"] [
                 HH.text ("Lesson number " <> show state.activeLesson)
                 , HH.button [ HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
                 , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
@@ -96,10 +96,10 @@ tutorialComponent lessons =
                 , HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
             ]
 --            , HH.hr [HP.style "width: 5px"]
-            , HH.div [ classNames ["horizontal-bar"] ] []
+            , HH.div [ classNames ["horizontal-bar"], HP.style "height: 2px;" ] []
 --            , HH.div [ classNames ["horizontal-container sidebar-container"] ] [
-            , HH.div [ classNames ["horizontal-container", "fill-space"] ] [
-                HH.main [ classNames ["fill-space", "padded"]] [
+            , HH.div [ classNames ["horizontal-container", "fill-space"], HP.style "height: calc(100vh - 3em - 2px);" ] [
+                HH.main [ classNames ["fill-space", "padded"], HP.style "overflow: auto"] [
                     HH.div_
                     (Array.mapWithIndex (\i lessonComponent ->
                         HH.div (if state.activeLesson == i then [] else [classNames ["hidden"]]) [
@@ -108,8 +108,8 @@ tutorialComponent lessons =
                         ) state.lessonComponents)
                 ]
 --                , HH.div [ classNames ["resize-handle--x"] ] []
-                , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside" ] []
-                , HH.aside [ classNames ["padded"], HP.style "width: 19em"] [
+                , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside"] []
+                , HH.aside [ classNames ["padded"], HP.style "width: 19em; overflow: auto;"] [
                     HH.div [HP.style "float:right"] [(Util.index' lessons state.activeLesson).instructions]
                 ]
             ]
