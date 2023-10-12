@@ -6,19 +6,19 @@ import Prelude
 import Util
 
 import Data.Array as Array
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tree (class PrettyTreeNode)
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
-import Pantograph.Generic.Rendering.Html as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Pantograph.Generic.Rendering.Buffer (bufferComponent)
+import Pantograph.Generic.Rendering.Html as HH
 import Pantograph.Generic.Rendering.Keyboard (getKeyInfo, showKeyInfo, useKeyboardEffect)
 import Pantograph.Generic.Rendering.Terminal (terminalComponent)
 import Prim.Row (class Lacks)
@@ -39,15 +39,19 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   useKeyboardEffect \keyboardEvent -> do
       let ki = getKeyInfo keyboardEvent
-      
       Console.log $ "[editorComponent.handleKeyboardEvent] " <>  showKeyInfo ki
 
-      when (shouldPreventDefault ki) $
-        liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent keyboardEvent
-
+      terminalIsFocused <- HK.request slotToken (Proxy :: Proxy "terminal") unit GetFocusedTerminal <#>
+        fromJust' "editorComponent.useKeyboardEffect"
+      
       if false then pure unit
       else if ki.ctrl && ki.key == "`" then HK.tell slotToken (Proxy :: Proxy "terminal") unit $ ToggleOpenTerminal Nothing
-      else HK.tell slotToken (Proxy :: Proxy "buffer") unit $ KeyboardEventBufferQuery keyboardEvent
+      else if terminalIsFocused then pure unit else do
+        when (shouldPreventDefault ki) $
+          liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent keyboardEvent
+
+        if false then pure unit
+        else HK.tell slotToken (Proxy :: Proxy "buffer") unit $ KeyboardEventBufferQuery keyboardEvent
 
   -- buffer
 
@@ -72,10 +76,12 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   HK.pure $ HH.panel
     { name: "EditorPanel"
-    , header: 
+    , info: 
         [ HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Pantograph"]
         , HH.div [HP.classes [HH.ClassName "info"]] [HH.text $ rendererFullName (Renderer renderer)]
         ]
+    , control:
+        []
     , content:
         [ bufferHtml
         , terminalHtml ]

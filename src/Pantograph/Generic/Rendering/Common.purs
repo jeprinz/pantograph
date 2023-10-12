@@ -264,6 +264,7 @@ data TerminalQuery a
   -- Toggles the terminal open/close, or set it to a given value for isOpen if
   -- provided.
   | ToggleOpenTerminal (Maybe Boolean) a
+  | GetFocusedTerminal (Boolean -> a)
 type TerminalOutput = Void
 type TerminalSlotId = Unit
 

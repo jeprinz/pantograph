@@ -6,9 +6,12 @@ import Data.Array as Array
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
-panel {name, header, content} =
+panel {name, info, control, content} =
   HH.div [HP.classes [HH.ClassName "Panel", HH.ClassName name]]
-    [ HH.div [HP.classes [HH.ClassName "PanelHeader"]] header
+    [ HH.div [HP.classes [HH.ClassName "PanelHeader"]]
+        [ HH.div [HP.classes [HH.ClassName "PanelHeaderInfo"]] info
+        , HH.div [HP.classes [HH.ClassName "PanelHeaderControl"]] control
+        ]
     , HH.div [HP.classes [HH.ClassName "PanelContent"]] $ Array.singleton $
         HH.div [HP.classes [HH.ClassName "PanelContentInterior"]]
           content

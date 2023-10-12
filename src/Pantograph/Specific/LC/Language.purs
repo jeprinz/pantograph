@@ -56,9 +56,9 @@ instance PrettyTreeNode EL where
   prettyTreeNode el = case el of
     StringRule -> assertValidTreeKids "prettyTreeNode" el \[] -> "<string>"
     VarRule -> assertValidTreeKids "prettyTreeNode" el \[x] -> "#" <> x
-    LamRule -> assertValidTreeKids "prettyTreeNode" el \[x, b] -> "λ" <> x <> "." <> b
-    AppRule -> assertValidTreeKids "prettyTreeNode" el \[f, a] -> f <+> a
-    LetRule -> assertValidTreeKids "prettyTreeNode" el \[x, a, b] -> "let" <+> x <+> "=" <+> a <+> "in" <+> b
+    LamRule -> assertValidTreeKids "prettyTreeNode" el \[x, b] -> Pretty.parens $ "λ" <> x <> "." <> b
+    AppRule -> assertValidTreeKids "prettyTreeNode" el \[f, a] -> Pretty.parens $ f <+> a
+    LetRule -> assertValidTreeKids "prettyTreeNode" el \[x, a, b] -> Pretty.parens $ "let" <+> x <+> "=" <+> a <+> "in" <+> b
     HoleRule -> assertValidTreeKids "prettyTreeNode" el \[] -> "?"
     FormatRule IndentedNewline -> assertValidTreeKids "prettyTreeNode" el \[a] -> "<indent>" <+> a
     FormatRule Newline -> assertValidTreeKids "prettyTreeNode" el \[a] -> "<newline>" <+> a

@@ -16,16 +16,19 @@
 
 :root {
   /* colors */
-  --accent1-color: rgb(42, 237, 255);
-  --accent2-color: rgb(252, 93, 25);
+  --color1: #2AEDFF;
+  --color2: #cf6d27;
+  --color3: #eed69b;
 
-  --debug-color: rgb(0, 200, 0);
+  --debug-color: rgb(0, 196, 0);
 
   --cursor-background-color: rgb(240, 240, 255);
   --cursor-border-color: rgb(0, 0, 255);
 
   --hover-background-color: rgb(250, 238, 255);
   --hover-border-color: rgb(179, 0, 255);
+
+  --it: 0.6em;
 }
 
 /*  html */
@@ -39,104 +42,189 @@ body {
 /* Panel */
 
 .Panel {
+  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  align-content: flex-start;
+
   box-shadow: 0 0 0 1px black;
   background-color: white;
 }
 
 .PanelHeader {
+  padding: var(--it);
+  width: calc(100% - 2*var(--it));
+
   display: flex;
   flex-direction: row;
-  gap: 1em;
-  padding: 0.4em;
-  color: white;
-  border-bottom: 0.4em solid var(--accent2-color);
+  gap: var(--it);
+  justify-content: space-between;
+
+  color: var(--color3);
+  border-bottom: var(--it) solid var(--color2);
   background-color: black;
 }
 
+.PanelHeaderInfo {
+  display: flex;
+  flex-direction: row;
+  gap: var(--it);
+}
+
+/* .PanelHeaderInfo>* {
+  display: inline-block;
+} */
+
+.PanelHeaderInfo>.title {
+  color: var(--color1);
+  padding: 0 var(--it);
+  box-shadow:
+    -4px 0 0 0 var(--color1) inset,
+    -8px 0 0 0 var(--color2) inset,
+    4px 0 0 0 var(--color1) inset,
+    8px 0 0 0 var(--color2) inset;
+  font-weight: bold;
+}
+
+.PanelHeaderInfo>.subtitle {
+  color: var(--color2);
+  font-weight: bold;
+}
+
+.PanelHeaderControl {
+  display: flex;
+  flex-direction: row;
+  gap: var(--it);
+}
+
+.PanelHeaderControl>.button {
+  padding: 0 calc(0.5*var(--it));
+  user-select: none;
+  cursor: pointer;
+
+  color: var(--color2);
+  box-shadow: 0 0 0 1px var(--color2);
+  background-color: black;
+}
+
+.PanelHeaderControl>.button:hover {
+  color: black;
+  box-shadow: 0 0 0 1px black;
+  background-color: var(--color2);
+}
+
 .PanelContent {
-  overflow-y: scroll;
+  width: 100%;
+  height: 100%;
+  flex-grow: 1;
 }
 
 .PanelContentInterior {
-  padding: 0.4em;
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  align-content: flex-start;
 }
 
-.PanelHeader .title {
-  color: var(--accent1-color);
-  /* border: 1px solid var(--accent1-color); */
-  padding: 0 0.6em;
-  box-shadow:
-    -4px 0 0 0 var(--accent1-color) inset,
-    -8px 0 0 0 var(--accent2-color) inset,
-    4px 0 0 0 var(--accent1-color) inset,
-    8px 0 0 0 var(--accent2-color) inset;
-}
-
-.PanelHeader .info {
-  display: inline-block;
-  color: var(--accent1-color);
-}
 
 /* EditorPanel */
 
 .EditorPanel {
-  font-family: 'Courier New', Courier, monospace;
+  width: 100vw;
   height: 100vh;
+
+  font-family: 'Courier New', Courier, monospace;
 }
+
+.EditorPanel>.PanelContent {}
+
+.EditorPanel>.PanelContent>.PanelContentInterior {}
 
 /* Buffer */
 
-.BufferPanel {}
+.BufferPanel {
+  flex-grow: 1;
+}
 
 .BufferPanel>.PanelContent {
   overflow: scroll;
-  height: calc(100vh - 10em);
-  max-width: calc(100vw - 1em);
 }
 
-.BufferPanel>.PanelContent>.PanelContentInterior {
-  margin-bottom: 4em;
-  margin-top: 4em;
+.BufferPanel>.PanelContent>.PanelContentInterior {}
+
+.BufferPanel>.PanelContent>.PanelContentInterior>.program {
+  padding: var(--it);
 }
 
 /* TerminalPanel */
 
 .TerminalPanel {
-  display: flex;
-  flex-direction: column;
-
-  position: absolute;
-  bottom: 0;
-  width: calc(100vw - 2*0.4em);
+  flex-grow: 0;
+  height: auto;
 }
 
-.TerminalPanel>.PanelContent{
+.TerminalPanel>.PanelContent {
+  height: auto;
+  max-height: 40vw;
   overflow: scroll;
-  max-height: 40vh;
+}
+
+.TerminalContent {}
+
+.TerminalContent.closed {
+  display: none;
+}
+
+.TerminalInput {
+  display: block;
+  width: calc(100vw - 2*var(--it));
+  padding: var(--it);
+}
+
+.TerminalInput>input {
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  user-select: none;
+  box-shadow: 0 0 0 1px black;
+  width: 100%;
 }
 
 .TerminalItems {
   display: flex;
   flex-direction: column;
-  gap: 0.4em;
-  
-  /* padding: 1px; */
-  /* background-color: rgb(194, 194, 194); */
-  /* max-height: 40vh; */
-  /* overflow: scroll; */
+  gap: var(--it);
+  width: calc(100% - 2*var(--it));
+  padding: var(--it);
 }
 
 .TerminalItem {
   display: flex;
   flex-direction: row;
-  gap: 0.4em;
+  gap: var(--it);
+  width: 100%;
 }
 
 .TerminalItemTag {
-  padding: 0 0.4em;
-  height: 100%;
+  padding: 0 var(--it);
+  height: fit-content;
   background-color: black;
+  box-shadow: 0 0 0 1px black;
   color: white;
+  font-weight: bold;
 }
 
 .DebugTerminalItemTag {
@@ -145,21 +233,11 @@ body {
 }
 
 .TerminalItemContent {
-  padding: 0 0.4em;
+  padding: 0 var(--it);
   box-shadow: 0 0 0 1px black;
   width: 100%;
 }
 
-/* UI */
-
-.button {
-  padding: 0 0.5em;
-  color: var(--accent1-color);
-  box-shadow: 0 0 0 1px var(--accent1-color);
-  background-color: black;
-  user-select: none;
-  cursor: pointer;
-}
 
 /* Expr */
 

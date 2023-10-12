@@ -192,10 +192,13 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
   -- render
   HK.pure $ HH.panel
     { name: "BufferPanel"
-    , header: 
-        [HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Buffer"]]
-    , content: 
-        gyroHtmls
+    , info:
+        [ HH.div [HP.classes [HH.ClassName "subtitle"]] [HH.text input.name] 
+        ]
+    , control:
+        [ HH.div [HP.classes [HH.ClassName "button"]] [HH.text "x"] ]
+    , content:
+        [HH.div [HP.classes [HH.ClassName "program"]] gyroHtmls]
     }
 
 -- hydrate
