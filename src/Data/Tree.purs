@@ -8,6 +8,9 @@ import Data.Eq (class Eq1)
 import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
+import Data.List as List
+import Data.List.Types (NonEmptyList(..))
+import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
 import Partial.Unsafe (unsafePartial)
@@ -57,17 +60,39 @@ unPath :: forall a. Path a -> Tree a -> Tree a
 unPath (Path Nil) tree = tree
 unPath (Path (Cons t ts)) tree = unPath (Path ts) (unTooth t tree)
 
+newtype NonEmptyPath a = NonEmptyPath (NonEmptyList (Tooth a))
+derive instance Generic (NonEmptyPath a) _
+instance Show a => Show (NonEmptyPath a) where show x = genericShow x
+derive instance Eq a => Eq (NonEmptyPath a)
+derive instance Functor NonEmptyPath
+derive instance Foldable NonEmptyPath
+derive instance Traversable NonEmptyPath
+instance Semigroup (NonEmptyPath a) where append (NonEmptyPath ts1) (NonEmptyPath ts2) = NonEmptyPath (ts2 <> ts1)
+
+toPath :: forall a. NonEmptyPath a -> Path a
+toPath (NonEmptyPath ts) = Path (List.fromFoldable ts)
+
+fromPath :: forall a. String -> Path a -> NonEmptyPath a
+fromPath msg (Path Nil) = bug $ "[fromPath] null path: " <> msg
+fromPath _ (Path (Cons t ts)) = NonEmptyPath (NonEmptyList (t NonEmpty.:| ts))
+
 newtype Cursor a = Cursor {outside :: Path a, inside :: Tree a}
 derive instance Generic (Cursor a) _
 instance Show a => Show (Cursor a) where show x = genericShow x
 derive instance Eq a => Eq (Cursor a)
 derive instance Functor Cursor
 
-newtype Select a = Select {outside :: Path a, middle :: Path a, inside :: Tree a, isReversed :: Boolean}
+newtype Select a = Select {outside :: Path a, middle :: NonEmptyPath a, inside :: Tree a, orientation :: SelectOrientation}
 derive instance Generic (Select a) _
 instance Show a => Show (Select a) where show x = genericShow x
 derive instance Eq a => Eq (Select a)
 derive instance Functor Select
+
+data SelectOrientation = OutsideSelectOrientation | InsideSelectOrientation
+derive instance Generic SelectOrientation _
+instance Show SelectOrientation where show = genericShow
+derive instance Eq SelectOrientation
+derive instance Ord SelectOrientation
 
 data Gyro a = RootGyro (Tree a) | CursorGyro (Cursor a) | SelectGyro (Select a)
 derive instance Generic (Gyro a) _
@@ -124,11 +149,14 @@ prettyPath (Path ts) = go ts
 instance PrettyTreeNode a => Pretty (Path a) where
   pretty path = prettyPath path Pretty.cursor
 
+instance PrettyTreeNode a => Pretty (NonEmptyPath a) where
+  pretty nonEmptyPath = prettyPath (toPath nonEmptyPath) Pretty.cursor
+
 instance PrettyTreeNode a => Pretty (Cursor a) where
   pretty (Cursor {outside, inside}) = prettyPath outside $ Pretty.braces2 $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Select a) where
-  pretty (Select {outside, middle, inside}) = prettyPath outside $ Pretty.braces2 $ prettyPath middle $ Pretty.braces2 $ pretty inside
+  pretty (Select {outside, middle, inside}) = prettyPath outside $ Pretty.braces2 $ prettyPath (toPath middle) $ Pretty.braces2 $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (RootGyro tree) = pretty tree

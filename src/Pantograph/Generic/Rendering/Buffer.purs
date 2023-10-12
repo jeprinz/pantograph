@@ -107,8 +107,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       case f hydratedExprGyro of
         Nothing -> pure unit
         Just hydratedExprGyro' -> do
-          hydratedExprGyro <- rehydrateExprGyro (Renderer renderer) hydratedExprGyro'
-          liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
+          hydratedExprGyro'' <- rehydrateExprGyro (Renderer renderer) hydratedExprGyro'
+          liftEffect $ Ref.write (Just hydratedExprGyro'') hydratedExprGyroRef
 
   renderCtx /\ renderCtxStateId <- HK.useState $
     renderer.topCtx # R.union
@@ -225,7 +225,17 @@ hydrateExprGyro (Renderer renderer) (CursorGyro (Cursor {outside, inside})) = do
       local (\ctx -> ctx {gyroPosition = AtCursor})
         (hydrateExpr (Renderer renderer) inside)
   pure $ CursorGyro $ Cursor {outside: outside', inside: inside'}
-hydrateExprGyro (Renderer renderer) (SelectGyro (Select {outside, middle, inside})) = hole "TODO: hydrateExprGyro"
+hydrateExprGyro (Renderer renderer) (SelectGyro (Select {outside, middle, inside, orientation})) = do
+  (outside' /\ middle' /\ inside') /\ _ <-
+    ( let ctx = {gyroPosition: OutsideSelect, beginsLine: true} in
+      let env = {} in
+      runM ctx env ) $
+    hydratePath (Renderer renderer) outside \outside' -> (outside' /\ _) <$>
+      local (\ctx -> ctx {gyroPosition = AtOutsideSelect})
+        (hydratePath (Renderer renderer) (toPath middle) \middle' -> (middle' /\ _) <$>
+          local (\ctx -> ctx {gyroPosition = AtInsideSelect})
+            (hydrateExpr (Renderer renderer) inside))
+  pure $ SelectGyro $ Select {outside: outside', middle: fromPath "hydrateExprGyro" middle', inside: inside', orientation}
 
 -- | hydrate and flush
 hydrateExprNode :: forall sn el er. SyncExprNode sn el er -> HydrateM sn el (HydrateExprNode sn el er)
@@ -286,14 +296,18 @@ rehydrateExprGyro (Renderer renderer) = unsafeCoerce >>> hydrateExprGyro (Render
 -- render
 
 renderSyncExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprGyro renderer (RootGyro expr) =
-  renderSyncExpr renderer (Path Nil) expr
-renderSyncExprGyro renderer (CursorGyro cursor) =
-  renderSyncExprCursor renderer cursor
-renderSyncExprGyro renderer (SelectGyro (Select {outside, middle, inside})) =
-  renderSyncExpr renderer (Path Nil) $
-    unPath outside $
-      unPath middle inside
+renderSyncExprGyro renderer (RootGyro expr) = renderSyncExpr renderer (Path Nil) expr
+renderSyncExprGyro renderer (CursorGyro cursor) = renderSyncExprCursor renderer cursor
+renderSyncExprGyro renderer (SelectGyro select) = renderSyncExprSelect renderer select
+
+renderSyncExprSelect :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprSelect (Renderer renderer) (Select {outside, middle, inside, orientation}) = do
+  ctx <- ask
+  env <- get
+  let outside_middle = outside <> (toPath middle)
+  renderSyncExprPath (Renderer renderer) mempty outside (unPath outside_middle inside) $
+    renderSyncExprPath (Renderer renderer) outside (toPath middle) inside $
+      renderSyncExpr (Renderer renderer) outside_middle inside
 
 renderSyncExprCursor :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
@@ -304,11 +318,7 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
         PreviewToolboxItem item -> do 
           HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition (ModifyItemPreview (const (Just item)))
           HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition (ModifyItemPreview (const (Just item)))
-  Debug.traceM $ "[renderSyncExprCursor] outside = " <> pretty outside
-  Debug.traceM $ "[renderSyncExprCursor] inside = " <> pretty inside
-  renderSyncExprPath (Renderer renderer) mempty outside inside $
-    map
-      (\htmls -> do
+  let wrapCursor htmls = do
         let toolboxInput = ToolboxInput
               { renderer: Renderer renderer
               , ctx
@@ -331,5 +341,6 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
           , htmls
           , [HH.slot_ (Proxy :: Proxy "preview") RightPreviewPosition previewComponent (previewInput RightPreviewPosition)] 
           ]
-      )
-      (renderSyncExpr (Renderer renderer) outside inside)
+  renderSyncExprPath (Renderer renderer) mempty outside inside $
+    wrapCursor <$>
+      renderSyncExpr (Renderer renderer) outside inside
