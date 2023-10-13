@@ -165,6 +165,7 @@ body {
 
 .BufferPanel>.PanelContent>.PanelContentInterior>.program {
   padding: var(--it);
+  line-height: 1.1em;
 }
 
 /* TerminalPanel */
@@ -253,6 +254,10 @@ body {
   box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
 }
 
+.Expr>.HtmlArrangeKid {
+  display: inline-block;
+}
+
 .newline-header {
   color: rgba(0, 0, 0, 0);
 }
@@ -277,8 +282,6 @@ body {
   background-color: var(--cursor-background-color);
   box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
 }
-
-.Expr.InsideCursor {}
 
 /* SelectGyro */
 

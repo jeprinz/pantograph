@@ -27,7 +27,7 @@ renderer = PGR.Renderer
   , topCtx: {indentLevel: 0}
   , topEnv: {}
   , arrangeExpr:
-      let punc str = PGR.PunctuationArrangeKid [HH.span_ [HH.text str]] in
+      let punc str = PGR.HtmlArrangeKid [HH.span_ [HH.text str]] in
       let indent i = PGR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
       let newline i = PGR.IndentationArrangeKid (Array.replicate i (HH.text "  ")) in
       \node@(PGL.AnnExprNode {label}) ->
@@ -36,7 +36,7 @@ renderer = PGR.Renderer
         case label of
           StringRule -> ass \[] -> do
             let Tree {node: PGL.SortNode StringSort, kids: [Tree {node: PGL.SortNode (StringValue str)}]} = PGL.getExprNodeSort language node
-            pure [PGR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
+            pure [PGR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
           VarRule -> ass \[mx] -> do
             x_ /\ _x <- mx
             pure [punc "#", PGR.ExprKidArrangeKid x_]
@@ -57,7 +57,7 @@ renderer = PGR.Renderer
           HoleRule -> ass \[] -> do
             holeIndex <- State.gets _.holeCount
             State.modify_ _ {holeCount = holeIndex + 1}
-            pure [PGR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text ("?" <> show holeIndex)]]]
+            pure [PGR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text ("?" <> show holeIndex)]]]
           FormatRule IndentedNewline -> ass \[ma] -> do
             ctx <- ask
             a_ /\ _a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma

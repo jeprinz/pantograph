@@ -146,7 +146,7 @@ newtype Renderer sn el ctx env = Renderer
 
 data ArrangeKid sn el a
   = ExprKidArrangeKid a
-  | PunctuationArrangeKid (Array (BufferHtml sn el))
+  | HtmlArrangeKid (Array (BufferHtml sn el))
   | IndentationArrangeKid (Array (BufferHtml sn el))
 
 rendererFullName :: forall sn el ctx env. Renderer sn el ctx env -> String

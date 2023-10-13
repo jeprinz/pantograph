@@ -5,7 +5,8 @@
 .holeIndex {
   display: inline-block;
   margin: 0 0.2em;
-  box-shadow: 0 0 0 1px red inset;
+  padding: 0 0.2em;
+  box-shadow: 0 0 0 1px white inset, 0 0 0 2px red inset;
   color: red;
 }
 

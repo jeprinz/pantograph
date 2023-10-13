@@ -55,7 +55,9 @@ renderAnnExprHelper renderer outside expr makeAnnExprProps arrangedKids = do
   props <- makeAnnExprProps renderer outside expr
   let htmls = arrangedKids # foldMap case _ of
         ExprKidArrangeKid html -> html
-        PunctuationArrangeKid htmls' -> htmls'
+        HtmlArrangeKid htmls' ->
+          [ HH.div [HP.classes [HH.ClassName "HtmlArrangeKid"]]
+              htmls' ]
         IndentationArrangeKid htmls' -> 
           [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"]
           , HH.br_ ] <>

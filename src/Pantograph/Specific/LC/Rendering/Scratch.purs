@@ -23,8 +23,8 @@ renderer = PGR.Renderer
   , topCtx: {}
   , topEnv: {}
   , arrangeExpr:
-      let puncSpan str = PGR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "puncSpan"]] [HH.text str]] in
-      let puncDiv str = PGR.PunctuationArrangeKid [HH.div [HP.classes [HH.ClassName "puncDiv"]] [HH.text str]] in
+      let puncSpan str = PGR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "puncSpan"]] [HH.text str]] in
+      let puncDiv str = PGR.HtmlArrangeKid [HH.div [HP.classes [HH.ClassName "puncDiv"]] [HH.text str]] in
       \node@(PGL.AnnExprNode {label}) ->
         let msg = "arrangeExpr " <> "{" <> "label: " <> show label <> "}" in
         let ass = assertValidTreeKids msg node in
@@ -32,8 +32,8 @@ renderer = PGR.Renderer
           StringRule -> ass \[] -> do
             let Tree {node: PGL.SortNode StringSort, kids: [Tree {node: PGL.SortNode (StringValue str)}]} = PGL.getExprNodeSort language node
             -- Debug.traceM $ "sort = " <> show (PGL.getExprNodeSort language node)
-            -- pure [PGR.PunctuationArrangeKid [HH.text str]]
-            pure [PGR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
+            -- pure [PGR.HtmlArrangeKid [HH.text str]]
+            pure [PGR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
           VarRule -> ass \[mx] -> do
             x_ /\ _x <- mx
             pure [puncDiv "#", PGR.ExprKidArrangeKid x_]
@@ -53,7 +53,7 @@ renderer = PGR.Renderer
           HoleRule -> ass \[] -> do
             holeIndex <- State.gets _.holeCount
             State.modify_ _ {holeCount = holeIndex + 1}
-            pure [puncDiv "?", PGR.PunctuationArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text (show holeIndex)]]]
+            pure [puncDiv "?", PGR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text (show holeIndex)]]]
           FormatRule _ -> ass \[ma] -> do
             a_ /\ a <- ma
             pure [PGR.IndentationArrangeKid [], PGR.ExprKidArrangeKid a_]
