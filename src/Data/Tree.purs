@@ -31,6 +31,9 @@ derive instance Functor Tree
 derive instance Foldable Tree
 derive instance Traversable Tree
 
+treeNode :: forall a. Tree a -> a
+treeNode (Tree {node}) = node
+
 newtype Tooth a = Tooth {node :: a, i :: Int, kids :: Array (Tree a)}
 derive instance Generic (Tooth a) _
 instance Show a => Show (Tooth a) where show x = genericShow x
@@ -38,6 +41,9 @@ derive instance Eq a => Eq (Tooth a)
 derive instance Functor Tooth
 derive instance Foldable Tooth
 derive instance Traversable Tooth
+
+toothNode :: forall a. Tooth a -> a
+toothNode (Tooth {node}) = node
 
 tooths :: forall a. Tree a -> Array {tooth :: Tooth a, kid :: Tree a}
 tooths (Tree {node, kids}) = kids # Array.mapWithIndex \i kid -> {tooth: Tooth {node, i, kids: fromJust' "tooths" $ Array.deleteAt i kids}, kid}
@@ -103,6 +109,12 @@ snocNonEmptyPath t (NonEmptyPath ts) = NonEmptyPath (NonEmptyList.snoc ts t)
 
 singletonNonEmptyPath :: forall a. Tooth a -> NonEmptyPath a
 singletonNonEmptyPath tooth = NonEmptyPath (NonEmptyList (tooth NonEmpty.:| Nil))
+
+nonEmptyPathOuterNode :: forall a. NonEmptyPath a -> a
+nonEmptyPathOuterNode p = toothNode (unsnocNonEmptyPath p).outer
+
+nonEmptyPathInnerNode :: forall a. NonEmptyPath a -> a
+nonEmptyPathInnerNode p = toothNode (unconsNonEmptyPath p).inner
 
 newtype Cursor a = Cursor {outside :: Path a, inside :: Tree a}
 derive instance Generic (Cursor a) _

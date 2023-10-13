@@ -25,6 +25,8 @@
   --cursor-background-color: rgb(240, 240, 255);
   --cursor-border-color: rgb(0, 0, 255);
 
+  --select-background-color: rgb(202, 202, 255);
+
   --hover-background-color: rgb(250, 238, 255);
   --hover-border-color: rgb(179, 0, 255);
 
@@ -288,11 +290,11 @@ body {
 .Expr.OutsideSelect {}
 
 .Expr.AtOutsideSelect {
-  background-color: var(--cursor-background-color);
+  background-color: var(--select-background-color);
   box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
 }
 
-.Expr.BetweenSelect {}
+.Expr.MiddleSelect {}
 
 .Expr.AtInsideSelect {
   background-color: white;
