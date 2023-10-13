@@ -80,13 +80,16 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
         ]
     , content:
         [ HH.div [HP.classes $ [HH.ClassName "TerminalContent"] <> if not isOpen then [HH.ClassName "closed"] else []]
-            [ HH.div [HP.classes [HH.ClassName "TerminalInput"]]
-                [ HH.input 
-                    [ HP.ref terminalInputRefLabel
-                    , HE.onFocusIn \_ -> liftEffect $ Ref.write true terminalInputIsFocusedRef
-                    , HE.onFocusOut \_ -> liftEffect $ Ref.write false terminalInputIsFocusedRef ]
-                ]
-            , HH.fromPlainHTML $
+            [ 
+              -- TODO: should there be a text terminal?
+              --   HH.div [HP.classes [HH.ClassName "TerminalInput"]]
+              --     [ HH.input 
+              --         [ HP.ref terminalInputRefLabel
+              --         , HE.onFocusIn \_ -> liftEffect $ Ref.write true terminalInputIsFocusedRef
+              --         , HE.onFocusOut \_ -> liftEffect $ Ref.write false terminalInputIsFocusedRef ]
+              --     ]
+              -- , 
+              HH.fromPlainHTML $
               HH.div [HP.classes [HH.ClassName "TerminalItems"]]
                 (List.toUnfoldable items <#> \(TerminalItem item) -> do
                   HH.div

@@ -217,7 +217,6 @@ body {
 .TerminalItem {
   display: flex;
   flex-direction: row;
-  gap: var(--it);
   width: 100%;
 }
 
@@ -225,7 +224,6 @@ body {
   padding: 0 var(--it);
   height: fit-content;
   background-color: black;
-  box-shadow: 0 0 0 1px black;
   color: white;
   font-weight: bold;
 }
@@ -236,8 +234,9 @@ body {
 }
 
 .TerminalItemContent {
+  flex-grow: 1;
   padding: 0 var(--it);
-  box-shadow: 0 0 0 1px black;
+  box-shadow: -1px 0 0 0 black;
   width: 100%;
 }
 
