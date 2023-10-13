@@ -4,6 +4,7 @@ import Prelude
 
 import Bug (bug)
 import Data.Array as Array
+import Data.Bifunctor (class Bifunctor)
 import Data.Either (Either)
 import Data.Eq (class Eq1)
 import Data.Foldable (class Foldable)
@@ -167,13 +168,13 @@ instance Pretty ShiftSign where
 
 -- Edit
 
-data Edit a
-  = InsertEdit {outerChange :: Change a, middle :: NonEmptyPath a, innerChange :: Change a}
-  | ReplaceEdit {outerChange :: Change a, inside :: Tree a}
-derive instance Generic (Edit a) _
-instance Show a => Show (Edit a) where show = genericShow
-derive instance Eq a => Eq (Edit a)
-derive instance Functor Edit
+data Edit a b
+  = InsertEdit {outerChange :: Change a, middle :: NonEmptyPath b, innerChange :: Change a}
+  | ReplaceEdit {outerChange :: Change a, inside :: Tree b}
+derive instance Generic (Edit a b) _
+instance (Show a, Show b) => Show (Edit a b) where show = genericShow
+derive instance (Eq a, Eq b) => Eq (Edit a b)
+derive instance Bifunctor Edit
 
 -- TreeNode
 

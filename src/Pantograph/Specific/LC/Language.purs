@@ -9,6 +9,7 @@ import Bug (bug)
 import Control.Monad.Reader (ask, local)
 import Control.Monad.State as State
 import Data.Array as Array
+import Data.Array.NonEmpty as NonEmptyArray
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
@@ -28,6 +29,7 @@ import Record as R
 import Text.Pretty (class Pretty, pretty, (<+>))
 import Text.Pretty as Pretty
 import Type.Proxy (Proxy(..))
+import Util (fromJust')
 
 data EL
   = StringRule
@@ -166,15 +168,34 @@ language = PL.Language
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         -- Just $ term.example 10
-        -- Just $ term.example 4
+        Just $ term.example 6
         -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
         -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
         -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
         -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
-        Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
+        -- Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
         -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
   , topSort: sort.term
-  , getEdits: mempty
+  , getEdits: \sort _ -> case sort of
+      Tree {node: PL.SortNode (StringValue _), kids: []} -> mempty
+      Tree {node: PL.SortNode StringSort, kids: [_]} -> mempty
+      Tree {node: PL.SortNode TermSort, kids: []} ->
+        [ 
+          fromJust' "getEdits" $ NonEmptyArray.fromArray
+            [ -- AppRule
+              InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: [term.hole]}), innerChange: Reflect (PL.SortNode TermSort) []}
+            , InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 1, kids: [term.hole]}), innerChange: Reflect (PL.SortNode TermSort) []}
+            ]
+        ,
+          NonEmptyArray.singleton $
+            -- FormatRule IndentedNewline
+            InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule IndentedNewline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: Reflect (PL.SortNode TermSort) []}
+        ,
+          NonEmptyArray.singleton $
+            -- FormatRule Newline
+            InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule Newline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: Reflect (PL.SortNode TermSort) []}
+        ]
+      _ -> bug $ "invalid sort"
   }
 
 -- shallow

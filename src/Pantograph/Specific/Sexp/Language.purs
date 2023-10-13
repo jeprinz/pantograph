@@ -9,6 +9,8 @@ import Bug (bug)
 import Control.Monad.Reader (ask, local)
 import Control.Monad.State as State
 import Data.Array as Array
+import Data.Array.NonEmpty as NonEmptyArray
+import Data.Array.NonEmpty.Internal (NonEmptyArray(..))
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
@@ -21,12 +23,14 @@ import Debug as Debug
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Hole (hole)
+import Pantograph.Generic.Language (AnnExprNode(..), RuleSortVarSubst(..))
 import Pantograph.Generic.Language as PGL
 import Partial.Unsafe (unsafePartial)
 import Record as R
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as Pretty
 import Type.Proxy (Proxy(..))
+import Util (fromJust')
 
 data EL
   = StringRule String
@@ -100,7 +104,23 @@ language = PGL.Language
         -- Just $ sexp.example 4
         Just $ sexp.app "x1" $ sexp.app "x2" $ sexp.var "x3"
       _ -> bug "[getDefaultExpr] invalid sort"
-  , getEdits: mempty
+  , getEdits: \sort _ori -> case sort of
+      Tree {node: PGL.SortNode SexpSort, kids: []} -> 
+        [ 
+          -- apply "f"
+          NonEmptyArray.singleton (InsertEdit 
+            { outerChange: Reflect (PGL.SortNode SexpSort) []
+            , middle: singletonNonEmptyPath $ Tooth {node: AnnExprNode {label: AppRule, sigma: RuleSortVarSubst Map.empty}, i: 1, kids: [sexp.var "f"]}
+            , innerChange: Reflect (PGL.SortNode SexpSort) []
+            })
+        , 
+          -- replace with "x"
+          NonEmptyArray.singleton (ReplaceEdit 
+            { outerChange: Reflect (PGL.SortNode SexpSort) []
+            , inside: sexp.var "x"
+            })
+        ]
+      _ -> []
   }
 
 sexp = {string, app, var, ruleSort, sort, example}

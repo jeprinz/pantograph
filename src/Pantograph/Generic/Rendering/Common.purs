@@ -152,6 +152,13 @@ data ArrangeKid sn el a
   | HtmlArrangeKid (Array (BufferHtml sn el))
   | IndentationArrangeKid (Array (BufferHtml sn el))
 
+derive instance Functor (ArrangeKid sn el)
+
+isExprKidArrangeKidSuchThat :: forall sn el a. (a -> Boolean) -> ArrangeKid sn el a -> Boolean
+isExprKidArrangeKidSuchThat cond = case _ of
+  ExprKidArrangeKid a -> cond a
+  _ -> false
+
 rendererFullName :: forall sn el ctx env. Renderer sn el ctx env -> String
 rendererFullName (Renderer renderer@{language: Language language}) =
   "{" <> 
@@ -209,21 +216,18 @@ newtype ToolboxInput sn el ctx env = ToolboxInput
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
   , isEnabled :: Boolean
-  , itemRows :: Array (NonEmptyArray (ToolboxItem sn el)) }
+  , edits :: Array (NonEmptyArray (ExprEdit sn el)) }
 data ToolboxQuery sn el a
   = ModifyIsEnabledToolbox (Boolean -> Boolean) a
   | ModifySelectToolbox (ToolboxSelect -> ToolboxSelect) a
   | GetIsEnabledToolbox (Boolean -> a)
+  | SubmitExprEditToolboxQuery a
 data ToolboxOutput sn el
-  = SubmitToolboxItem (ToolboxItem sn el)
-  | PreviewToolboxItem (ToolboxItem sn el)
+  = SubmitExprEdit (ExprEdit sn el)
+  | PreviewExprEdit (Maybe (ExprEdit sn el))
 type ToolboxSlotId = Unit
 
 data ToolboxSelect = ToolboxSelect Int Int
-
-data ToolboxItem sn el
-  = ReplaceToolboxItem (Expr sn el)
-  | InsertToolboxItem (ExprPath sn el)
 
 -- | # Preview
 -- |
@@ -237,9 +241,9 @@ newtype PreviewInput sn el ctx env = PreviewInput
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
   , position :: PreviewPosition
-  , maybeItem :: Maybe (ToolboxItem sn el) }
+  , maybeItem :: Maybe (ExprEdit sn el) }
 data PreviewQuery sn el a
-  = ModifyItemPreview (Maybe (ToolboxItem sn el) -> Maybe (ToolboxItem sn el)) a
+  = ModifyItemPreview (Maybe (ExprEdit sn el) -> Maybe (ExprEdit sn el)) a
 type PreviewOutput = Void
 type PreviewSlotId = PreviewPosition
 

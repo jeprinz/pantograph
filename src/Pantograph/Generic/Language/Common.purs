@@ -5,6 +5,7 @@ import Prelude
 import Util
 
 import Bug (bug)
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -93,7 +94,7 @@ type AnnExprNonEmptyPath sn el er = NonEmptyPath (AnnExprNode sn el er)
 type AnnExprCursor sn el er = Cursor (AnnExprNode sn el er)
 type AnnExprSelect sn el er = Select (AnnExprNode sn el er)
 type AnnExprGyro sn el er = Gyro (AnnExprNode sn el er)
-type AnnExprEdit sn el er = Edit (AnnExprNode sn el er)
+type AnnExprEdit sn el er = Edit (SortNode sn) (AnnExprNode sn el er)
 
 -- Expr (no annotation)
 
@@ -135,7 +136,7 @@ newtype Language sn el = Language
   , getChangingRule :: el -> ChangingRule sn 
   , topSort :: Sort sn 
   , getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
-  , getEdits :: Sort sn -> Orientation -> Array (ExprEdit sn el) }
+  , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el)) }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.

@@ -7,68 +7,98 @@ import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Data.Tree (class PrettyTreeNode)
+import Data.Tree (class PrettyTreeNode, Edit(..), toPath)
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
 import Effect.Aff (Aff)
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Hole (hole)
 import Pantograph.Generic.Language (shrinkAnnExpr, shrinkAnnExprPath)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
 import Util (fromJust')
+import Web.Event.Event as Event
+import Web.UIEvent.MouseEvent as MouseEvent
 
 toolboxComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
-toolboxComponent = HK.component \{queryToken} (ToolboxInput input) -> HK.do
+toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
 
   isEnabled /\ isEnabledStateId <- HK.useState input.isEnabled
 
   ToolboxSelect selectRowIndex selectColIndex /\ selectStateId <- HK.useState $ ToolboxSelect 0 0
 
-  let normalizeToolboxSelect (ToolboxSelect rowIx colIx) =
-        if Array.length input.itemRows == 0 then ToolboxSelect 0 0 else
-        let rowIx' = rowIx `mod` Array.length input.itemRows in
-        let row = fromJust' "normalizeToolboxSelect" $ Array.index input.itemRows rowIx' in
-        let colIx' = colIx `mod` NonEmptyArray.length row in
-        ToolboxSelect rowIx' colIx'
+  let
+    normalizeToolboxSelect (ToolboxSelect rowIx colIx) =
+      if Array.length input.edits == 0 then ToolboxSelect 0 0 else
+      let rowIx' = rowIx `mod` Array.length input.edits in
+      let row = fromJust' "normalizeToolboxSelect" $ Array.index input.edits rowIx' in
+      let colIx' = colIx `mod` NonEmptyArray.length row in
+      ToolboxSelect rowIx' colIx'
+
+    getSelectedEdit = do
+      HK.get isEnabledStateId >>= case _ of
+        false -> pure Nothing
+        true -> do
+          ToolboxSelect selectRowIndex' selectColIndex' <- HK.get selectStateId
+          pure $
+            input.edits #
+              (_ Array.!! selectRowIndex') >>>
+              map ((_ NonEmptyArray.!! selectColIndex') >>> fromJust' "getSelectedEdit")
+
+    freshenPreview = do
+      getSelectedEdit >>= case _ of
+        Nothing -> HK.raise outputToken $ PreviewExprEdit Nothing
+        Just edit -> HK.raise outputToken $ PreviewExprEdit (Just edit)
+
+    modifyIsEnabledToolbox f = do
+      HK.modify_ isEnabledStateId f
+      freshenPreview
+
+    modifyToolboxSelect f = do
+      HK.modify_ selectStateId (f >>> normalizeToolboxSelect)
+      freshenPreview
 
   HK.useQuery queryToken case _ of
     ModifyIsEnabledToolbox f a -> do
-      HK.modify_ isEnabledStateId f
+      modifyIsEnabledToolbox f
       pure (Just a)
     ModifySelectToolbox f a -> do
-      HK.modify_ selectStateId (f >>> normalizeToolboxSelect)
+      modifyToolboxSelect f
       pure (Just a)
     GetIsEnabledToolbox k -> do
       pure (Just (k isEnabled))
+    SubmitExprEditToolboxQuery a -> do
+      getSelectedEdit >>= case _ of
+        Nothing -> pure (Just a)
+        Just edit -> do
+          HK.raise outputToken $ SubmitExprEdit edit
+          pure (Just a)
 
   HK.pure $
     HH.div [HP.classes [HH.ClassName "Toolbox"]]
       if not isEnabled then [] else
       [HH.div [HP.classes [HH.ClassName "ToolboxInterior"]]
         [ HH.input [HP.classes [HH.ClassName "ToolboxInput"], HP.autofocus true]
-        , HH.div [HP.classes [HH.ClassName "ToolboxItemRows"]] $
-            [HH.div [HP.classes [HH.ClassName "ToolboxItemRow"]]
-              [HH.div [HP.classes [HH.ClassName "ToolboxItem"]]
-                [HH.text "<toolbox item>"]]]
-            <>
-            [HH.div [HP.classes [HH.ClassName "ToolboxItemRow", HH.ClassName "SelectedToolboxItemRow"]]
-              [HH.div [HP.classes [HH.ClassName "ToolboxItem"]]
-                [HH.text "<toolbox item>"]]]
-            <>
-            (input.itemRows # Array.mapWithIndex \rowIndex itemRow ->
+        , HH.div [HP.classes [HH.ClassName "ExprEditRows"]] $
+            input.edits # Array.mapWithIndex \rowIndex itemRow ->
             HH.div 
-              [HP.classes $ [HH.ClassName "ToolboxItemRow"] <> if rowIndex == selectRowIndex then [HH.ClassName "SelectedToolboxItemRow"] else []]
-              let item = 
-                    if rowIndex == selectRowIndex
-                      then fromJust' "toolboxComponent.render" $ NonEmptyArray.index itemRow selectColIndex
-                      else fromJust' "toolboxComponent.render" $ NonEmptyArray.index itemRow 0
+              [HP.classes $ [HH.ClassName "ExprEditRow"] <> if rowIndex == selectRowIndex then [HH.ClassName "SelectedExprEditRow"] else []]
+              let 
+                colIndex = if rowIndex == selectRowIndex then selectColIndex else 0
+                item = fromJust' "toolboxComponent.render" $ NonEmptyArray.index itemRow colIndex
               in
-              [HH.div [HP.classes [HH.ClassName "ToolboxItem"]]
+              [HH.div
+                [ HP.classes [HH.ClassName "ExprEdit"]
+                , HE.onMouseOver \mouseEvent -> do
+                    liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
+                    modifyToolboxSelect $ const $ ToolboxSelect rowIndex colIndex
+                ]
                 (fst $ unwrap $ runM input.ctx input.env $
-                  renderToolboxItem input.renderer (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) item)])
+                  renderExprEdit input.renderer (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) item)]
         ]]
 
 makeToolboxExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
@@ -76,9 +106,9 @@ makeToolboxExprProps (Renderer renderer) outside inside = do
   pure 
     [ HP.classes [HH.ClassName "Expr", HH.ClassName "ToolboxExpr"] ]
 
-renderToolboxItem renderer outside inside = case _ of
-  ReplaceToolboxItem expr -> renderAnnExpr renderer outside expr makeToolboxExprProps
-  InsertToolboxItem path -> renderAnnExprPath renderer outside path inside makeToolboxExprProps (pure toolboxHole)
+renderExprEdit renderer outside inside = case _ of
+  ReplaceEdit {inside} -> renderAnnExpr renderer outside inside makeToolboxExprProps
+  InsertEdit {middle} -> renderAnnExprPath renderer outside (toPath middle) inside makeToolboxExprProps (pure editHole)
 
-toolboxHole :: forall sn el. Array (BufferHtml sn el)
-toolboxHole = [HH.div [HP.classes [HH.ClassName "ToolboxHole"]] [HH.text "*"]]
+editHole :: forall sn el. Array (BufferHtml sn el)
+editHole = [HH.div [HP.classes [HH.ClassName "EditHole"]] [HH.text " "]]

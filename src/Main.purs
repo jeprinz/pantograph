@@ -7,9 +7,9 @@ import Effect.Class.Console as Console
 import Halogen.Aff as HA
 import Halogen.VDom.Driver as VDomDriver
 import Pantograph.Generic.Rendering (EditorInput(..), editorComponent)
--- import Pantograph.Specific.LC.Rendering.Basic as LcRenderingBasic
+import Pantograph.Specific.LC.Rendering.Basic as LcRenderingBasic
 -- import Pantograph.Specific.LC.Rendering.Scratch as LcRenderingScratch
-import Pantograph.Specific.Sexp.Rendering as SexpRendering
+-- import Pantograph.Specific.Sexp.Rendering as SexpRendering
 
 main :: Effect Unit
 main = HA.runHalogenAff do
@@ -19,7 +19,7 @@ main = HA.runHalogenAff do
       editorComponent
       (EditorInput
         { renderer:
-            -- LcRenderingBasic.renderer 
+            LcRenderingBasic.renderer 
             -- LcRenderingScratch.renderer 
-            SexpRendering.renderer
+            -- SexpRendering.renderer
         })

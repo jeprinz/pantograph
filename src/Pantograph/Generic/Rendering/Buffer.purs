@@ -39,6 +39,7 @@ import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Hole (hole)
+import Pantograph.Generic.Language.Edit (applyEdit)
 import Pantograph.Generic.Rendering.Html as HH
 import Pantograph.Generic.Rendering.Preview (previewComponent)
 import Pantograph.Generic.Rendering.Toolbox (toolboxComponent)
@@ -75,6 +76,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         Just hydratedExprGyro -> pure hydratedExprGyro
 
     modifyExprGyro f = do
+      exprGyro <- getHydratedExprGyro <#> shrinkAnnExprGyro
       case f exprGyro of
         Nothing -> pure unit
         Just exprGyro' -> do
@@ -95,7 +97,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         Just hydratedExprGyro' -> modifyExprGyro (const (Just (shrinkAnnExprGyro hydratedExprGyro')))
 
     modifySyncedExprGyro f = do
-      syncedExprGyro <- liftEffect $ Ref.read syncedExprGyroRef
+      syncedExprGyro <- getHydratedExprGyro <#> shrinkAnnExprGyro
       case f syncedExprGyro of
         Nothing -> pure unit
         Just syncedExprGyro' -> do
@@ -152,6 +154,9 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         else if ki.key == "Escape" then do
           liftEffect $ Event.preventDefault event
           HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const false)
+        else if ki.key == "Enter" || ki.key == " " then do
+          liftEffect $ Event.preventDefault event
+          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ SubmitExprEditToolboxQuery
         else if ki.key == "ArrowLeft" then do
           liftEffect $ Event.preventDefault event
           HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx - 1))
@@ -198,6 +203,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
 
         else if ki.key == " " then do
+          liftEffect $ Event.preventDefault event
           ensureExprGyroIsCursor
           HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const true)
         else pure unit
@@ -345,14 +351,17 @@ renderSyncExprSelect (Renderer renderer) (Select {outside, middle, inside, orien
       renderSyncExpr (Renderer renderer) outside_middle inside
 
 renderSyncExprCursor :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
+renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation}) = do
+  let Language language = renderer.language
   ctx <- ask
   env <- get
   let toolboxHandler = case _ of
-        SubmitToolboxItem item -> hole "TODO"
-        PreviewToolboxItem item -> do 
-          HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition (ModifyItemPreview (const (Just item)))
-          HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition (ModifyItemPreview (const (Just item)))
+        SubmitExprEdit edit -> do
+          HK.tell ctx.slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const false)
+          ctx.modifyExprGyro $ applyEdit (Language language) edit
+        PreviewExprEdit maybeEdit -> do 
+          HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition $ ModifyItemPreview $ const maybeEdit
+          HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition $ ModifyItemPreview $ const maybeEdit
   let wrapCursor htmls = do
         let toolboxInput = ToolboxInput
               { renderer: Renderer renderer
@@ -361,7 +370,7 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside}) = do
               , outside: shrinkAnnExprPath outside
               , inside: shrinkAnnExpr inside
               , isEnabled: false
-              , itemRows: [] }
+              , edits: language.getEdits (getExprSort (Language language) inside) orientation }
         let previewInput position = PreviewInput 
               { renderer: Renderer renderer
               , ctx

@@ -325,20 +325,29 @@ body {
   box-shadow: 0 0 0 1px black;
 }
 
-.ToolboxItems {}
+.ExprEdits {}
 
-.ToolboxItemsRow {}
+.ExprEditsRow {}
 
-.ToolboxItemRow.SelectedToolboxItemRow {
-  background-color: rgb(209, 209, 255);
+.ExprEditRow.SelectedExprEditRow {
+  background-color: rgb(211, 255, 209);
 }
 
-.ToolboxItem {}
+.ExprEdit {}
+
+.EditHole {
+  display: inline-block;
+  padding: 0 var(--it);
+  /* background-color: purple; */
+  box-shadow: 0 0 0 1px var(--color2) inset;
+  background-color: rgb(225, 225, 225);
+}
 
 /* Preview */
 
 .Preview {
   display: inline-block;
+  background-color: rgb(211, 255, 209);
 }
 
 .PreviewLeft {}
