@@ -153,7 +153,7 @@ language = PL.Language
         PL.ChangingRule
           { parameters: Set.fromFoldable []
           , kids: [Reflect (PL.makeConstRuleSortNode TermSort) []] }
-  , defaultExpr: case _ of
+  , getDefaultExpr: case _ of
       Tree {node: PL.SortNode (StringValue _)} -> Nothing
       Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
       Tree {node: PL.SortNode TermSort} ->
@@ -174,6 +174,7 @@ language = PL.Language
         Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
         -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
   , topSort: sort.term
+  , getEdits: mempty
   }
 
 -- shallow

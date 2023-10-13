@@ -9,7 +9,7 @@ import Data.List (List(..))
 import Hole (hole)
 
 defaultTopExpr (Language language) =
-  language.defaultExpr $ language.topSort
+  language.getDefaultExpr $ language.topSort
 
 getExprNodeSort (Language language) (AnnExprNode {label, sigma}) =
   let SortingRule sortingRule = language.getSortingRule label in

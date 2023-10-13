@@ -93,6 +93,7 @@ type AnnExprNonEmptyPath sn el er = NonEmptyPath (AnnExprNode sn el er)
 type AnnExprCursor sn el er = Cursor (AnnExprNode sn el er)
 type AnnExprSelect sn el er = Select (AnnExprNode sn el er)
 type AnnExprGyro sn el er = Gyro (AnnExprNode sn el er)
+type AnnExprEdit sn el er = Edit (AnnExprNode sn el er)
 
 -- Expr (no annotation)
 
@@ -104,6 +105,7 @@ type ExprNonEmptyPath sn el = AnnExprNonEmptyPath sn el ()
 type ExprCursor sn el = AnnExprCursor sn el ()
 type ExprSelect sn el = AnnExprSelect sn el ()
 type ExprGyro sn el = AnnExprGyro sn el ()
+type ExprEdit sn el = AnnExprEdit sn el ()
 
 -- erase annotations without mapping
 shrinkAnnExprNode :: forall sn el er er_ er'. Union er' er_ er => AnnExprNode sn el er -> AnnExprNode sn el er'
@@ -132,7 +134,8 @@ newtype Language sn el = Language
   , getSortingRule :: el -> SortingRule sn
   , getChangingRule :: el -> ChangingRule sn 
   , topSort :: Sort sn 
-  , defaultExpr :: Sort sn -> Maybe (Expr sn el) }
+  , getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
+  , getEdits :: Sort sn -> Orientation -> Array (ExprEdit sn el) }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.

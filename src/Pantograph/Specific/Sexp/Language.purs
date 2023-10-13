@@ -93,13 +93,14 @@ language = PGL.Language
         { parameters: Set.empty
         , kids: [] }
   , topSort: sexp.sort
-  , defaultExpr: case _ of
+  , getDefaultExpr: case _ of
       Tree {node: PGL.SortNode StringSort, kids: []} -> Nothing
       Tree {node: PGL.SortNode SexpSort, kids: []} ->
         -- Just $ sexp.var (string.string "x")
         -- Just $ sexp.example 4
         Just $ sexp.app "x1" $ sexp.app "x2" $ sexp.var "x3"
-      _ -> bug "[defaultExpr] invalid sort"
+      _ -> bug "[getDefaultExpr] invalid sort"
+  , getEdits: mempty
   }
 
 sexp = {string, app, var, ruleSort, sort, example}

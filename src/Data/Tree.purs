@@ -165,6 +165,18 @@ instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
 
+-- Edit
+
+data Edit a
+  = InsertEdit {outerChange :: Change a, middle :: NonEmptyPath a, innerChange :: Change a}
+  | ReplaceEdit {outerChange :: Change a, inside :: Tree a}
+derive instance Generic (Edit a) _
+instance Show a => Show (Edit a) where show = genericShow
+derive instance Eq a => Eq (Edit a)
+derive instance Functor Edit
+
+-- TreeNode
+
 class TreeNode a where
   kidsCount :: a -> Int
 
@@ -173,6 +185,8 @@ assertValidTreeKids msg a k bs = unsafePartial
   if kidsCount a == Array.length bs
     then k bs
     else bug $ "invalid tree kids: " <> msg
+
+-- Pretty
 
 class TreeNode a <= PrettyTreeNode a where
   prettyTreeNode :: a -> Array String -> String
