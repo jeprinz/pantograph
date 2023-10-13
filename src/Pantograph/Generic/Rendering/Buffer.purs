@@ -314,18 +314,6 @@ hydratePath (Renderer renderer) (Path ts0) innerKidNode k = go mempty (List.reve
     hydrateBelow (Renderer renderer) {parent: hydratedNode, i, kid: kidNode} $
       go (consPath hydratedPath hydratedTooth) ts
 
--- hydratePath :: forall sn el er ctx env a. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el a) -> HydrateM sn el a
--- hydratePath _ (Path Nil) k = k $ Path Nil
--- hydratePath (Renderer renderer) (Path (Cons (Tooth {node, i, kids}) ts)) k =
---   hydratePath (Renderer renderer) (Path ts) \(Path ts') -> do
---     ctx <- ask
---     Debug.traceM $ "[hydratePath] outside = " <> pretty (Path ts')
---     Debug.traceM $ "[hydratePath] ctx = " <> show ctx
---     hydratedNode <- hydrateExprNode node
---     hydratedKids <- kids # traverseWithIndex \i' kid@(Tree {node: kidNode}) -> hydrateBelow (Renderer renderer) {parent: hydratedNode, i: i', kid: kidNode} (hydrateExpr (Renderer renderer) kid)
---     let tooth = Tooth {node: hydratedNode, i, kids: hydratedKids}
---     k $ Path (Cons tooth ts')
-
 -- TODO: should this do anything special?
 rehydrateExprGyro :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => Renderer sn el ctx env -> HydrateExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
 rehydrateExprGyro (Renderer renderer) = shrinkAnnExprGyro' (Proxy :: Proxy (HydrateExprRow' sn el ())) >>> hydrateExprGyro (Renderer renderer)
