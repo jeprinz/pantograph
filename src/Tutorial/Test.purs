@@ -10,35 +10,46 @@ import Language.Pantograph.Generic.Grammar (defaultDerivTerm, (%|-*))
 import Language.Pantograph.Generic.Rendering.Editor (editorComponent) as Rendering
 import Partial.Unsafe as Partial
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.HTML.Events as HE
 import Halogen as H
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Type.Proxy (Proxy(..))
 import Data.Tuple.Nested
 import Data.List (List(..), (:))
 import Bug as Bug
+import Tutorial.Parser (parser, Parser)
+import Debug (traceM)
 
-type Input = { label :: String }
+foreign import setupTextEditor :: Parser -> Unit
 
-type State = { label :: String }
+runTest :: Effect Unit
+runTest = HA.runHalogenAff do
+  Console.log "[runTutorial]"
+  body <- HA.awaitBody
+  VDomDriver.runUI testComponent unit body
 
-type Slots = ( button :: forall query. H.Slot query Void Int )
+data TestAction = Initialize
 
-_button = Proxy :: Proxy "button"
-
-button :: forall query output m. H.Component query Input output m
-button =
-  H.mkComponent
-    { initialState
-    , render
-    , eval: H.mkEval H.defaultEval
+testComponent :: forall query input output. H.Component query input output Aff
+testComponent =
+    H.mkComponent
+        { initialState
+        , render
+        , eval: H.mkEval $ H.defaultEval
+            {initialize = Just Initialize
+            , handleAction = handleAction
+            }
+        }
+    where
+    initialState _ = {
     }
-  where
-  initialState :: Input -> State
-  initialState input = input
 
-  render :: forall state action. state -> H.ComponentHTML action Slots m
-  render _ =
-      HH.div_ [ HH.slot_ _button 0 button { label: "Click Me" } ]
+    render :: _ -> H.ComponentHTML TestAction () Aff
+    render state = HH.div [HP.id "codemirror"] []
 
+    handleAction = case _ of
+        Initialize -> do
+            _ <- pure $ setupTextEditor parser
+            pure unit

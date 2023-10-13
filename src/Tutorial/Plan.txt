@@ -1,0 +1,18 @@
+I have the codemirror editor installed with npm.
+
+I can use it's built-in Lezer parser to both parse an AST and get syntax highlighting:
+    https://lezer.codemirror.net/docs/guide/#building-a-grammar
+
+    For parser: https://lezer.codemirror.net/examples/setup/
+    For example of using parser in codemirror: https://codemirror.net/examples/lang-package/
+
+https://codemirror.net/examples/lang-package/
+
+
+
+Note: in javascript that is imported by purescript, you can import javascript libraries BUT
+you CANT import other javascript files. See: https://github.com/purescript/purescript/issues/2343
+
+
+It looks like to get an AST from the parser, you do
+parser.parse(..).topNode, which gives you a https://lezer.codemirror.net/docs/ref/#common.SyntaxNode
