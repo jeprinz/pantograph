@@ -75,15 +75,8 @@ derive instance Eq SN
 derive instance Ord SN
 instance Show SN where show = genericShow
 
-type RenderCtx :: Row Type
-type RenderCtx = (indentLevel :: Int)
-
-type RenderEnv :: Row Type
-type RenderEnv = ()
-
 type Expr = PL.Expr SN EL
 type Language = PL.Language SN EL
-type Renderer = PR.Renderer SN EL RenderCtx RenderEnv
 
 language :: Language
 language = PL.Language
@@ -173,11 +166,13 @@ language = PL.Language
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         -- Just $ term.example 10
-        Just $ term.example 4
+        -- Just $ term.example 4
         -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
         -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
         -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
         -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
+        Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
+        -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
   , topSort: sort.term
   }
 

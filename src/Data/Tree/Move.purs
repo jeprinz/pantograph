@@ -11,6 +11,7 @@ import Data.List as List
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Debug as Debug
 import Hole (hole)
+import Text.Pretty (pretty, (<+>))
 import Util (fromJust')
 
 repeatApplyUntil :: forall a. (Gyro a -> Maybe (Gyro a)) -> (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
@@ -21,12 +22,16 @@ repeatApplyUntil f cond gyro_ = go =<< f gyro_
     if cond node then Just gyro else
     f gyro
 
+tracePrettyInputOutput str f a = let fa = f a in Debug.trace (str <+> pretty a <+> "=" <+> pretty (f a)) \_ -> fa
+
 -- Gyro
 
-escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
-escapeGyro (RootGyro _) = Nothing
-escapeGyro (CursorGyro (Cursor {outside, inside})) = Just $ RootGyro (unPath outside inside)
-escapeGyro (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
+escapeGyro = tracePrettyInputOutput "escapeGyro" escapeGyro'
+  where
+  escapeGyro' :: forall a. Gyro a -> Maybe (Gyro a)
+  escapeGyro' (RootGyro _) = Nothing
+  escapeGyro' (CursorGyro (Cursor {outside, inside})) = Just $ RootGyro (unPath outside inside)
+  escapeGyro' (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
 moveGyroLeft :: forall a. Gyro a -> Maybe (Gyro a)
 moveGyroLeft (CursorGyro cursor) = CursorGyro <$> moveCursorLeft cursor
@@ -40,15 +45,19 @@ moveGyroRight gyro = ensureGyroIsCursor gyro
 
 moveGyroRightUntil = repeatApplyUntil moveGyroRight
 
-grabGyroLeft :: forall a. Gyro a -> Maybe (Gyro a)
-grabGyroLeft (SelectGyro select) = grapSelectLeft select
-grabGyroLeft gyro = ensureGyroIsSelect OutsideOrientation gyro
+grabGyroLeft = tracePrettyInputOutput "grabGyroLeft" grabGyroLeft'
+  where
+  grabGyroLeft' :: forall a. Gyro a -> Maybe (Gyro a)
+  grabGyroLeft' (SelectGyro select) = grapSelectLeft select
+  grabGyroLeft' gyro = ensureGyroIsSelect OutsideOrientation gyro
 
 grabGyroLeftUntil = repeatApplyUntil grabGyroLeft
 
-grabGyroRight :: forall a. Gyro a -> Maybe (Gyro a)
-grabGyroRight (SelectGyro select) = grapSelectRight select
-grabGyroRight gyro = ensureGyroIsSelect InsideOrientation gyro
+grabGyroRight = tracePrettyInputOutput "grabGyroRight" grabGyroRight'
+  where
+  grabGyroRight' :: forall a. Gyro a -> Maybe (Gyro a)
+  grabGyroRight' (SelectGyro select) = grapSelectRight select
+  grabGyroRight' gyro = ensureGyroIsSelect InsideOrientation gyro
 
 grabGyroRightUntil = repeatApplyUntil grabGyroRight
 
@@ -66,10 +75,12 @@ ensureGyroIsSelect orientation (RootGyro expr) = do
   Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation}
 ensureGyroIsSelect orientation (CursorGyro (Cursor {outside, inside})) =
   case orientation of
-    OutsideOrientation -> case outside of
-      Path Nil -> Nothing
-      Path (Cons t ts) -> Just $ SelectGyro $ Select {outside: Path ts, middle: singletonNonEmptyPath t, inside, orientation}
+    OutsideOrientation -> do
+      Debug.traceM "[ensureGyroIsSelect/OutsideOrientation]"
+      {outer: outside', inner: tooth} <- unconsPath outside
+      Just $ SelectGyro $ Select {outside: outside', middle: singletonNonEmptyPath tooth, inside, orientation}
     InsideOrientation -> do
+      Debug.traceM "[ensureGyroIsSelect/InsideOrientation]"
       Cursor {outside: middle, inside: inside'} <- moveCursorRight $ Cursor {outside: mempty, inside}
       Just $ SelectGyro $ Select {outside, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation}
 
@@ -166,12 +177,15 @@ escapeSelect (Select {outside, middle, inside, orientation}) =
 grapSelectUp :: forall a. Select a -> Maybe (Gyro a)
 grapSelectUp (Select {outside, middle, inside, orientation}) =
   case orientation of
-    OutsideOrientation -> case outside of
-      Path Nil -> Nothing
-      Path (Cons tooth outside') -> Just $ SelectGyro $ Select {outside: Path outside', middle: consNonEmptyPath middle tooth, inside, orientation}
-    InsideOrientation -> case unconsNonEmptyPath middle of
-      {head: tooth, tail: Nothing} -> Just $ CursorGyro $ Cursor {outside, inside: unTooth tooth inside}
-      {head: tooth, tail: Just middle'} -> Just $ SelectGyro $ Select {outside, middle: middle', inside: unTooth tooth inside, orientation}
+    OutsideOrientation -> do
+      Debug.traceM "[grapSelectUp/OutsideOrientation]"
+      {outer: outside', inner: tooth} <- unconsPath outside
+      Just $ SelectGyro $ Select {outside: outside', middle: snocNonEmptyPath tooth middle, inside, orientation}
+    InsideOrientation -> do
+      Debug.traceM "[grapSelectUp/InsideOrientation]"
+      case unconsNonEmptyPath middle of
+        {outer: Nothing, inner: tooth} -> Just $ CursorGyro $ Cursor {outside, inside: unTooth tooth inside}
+        {outer: Just middle', inner: tooth} -> Just $ SelectGyro $ Select {outside, middle: middle', inside: unTooth tooth inside, orientation}
 
 grapSelectLeft :: forall a. Select a -> Maybe (Gyro a)
 grapSelectLeft = grapSelectUp
@@ -179,9 +193,9 @@ grapSelectLeft = grapSelectUp
 grapSelectRight :: forall a. Select a -> Maybe (Gyro a)
 grapSelectRight (Select {outside, middle, inside, orientation}) =
   case orientation of
-    OutsideOrientation -> case unconsNonEmptyPath middle of
-      {head: tooth, tail: Nothing} -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside}
-      {head: tooth, tail: Just middle'} -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
+    OutsideOrientation -> case unsnocNonEmptyPath middle of
+      {outer: tooth, inner: Nothing} -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside}
+      {outer: tooth, inner: Just middle'} -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
     InsideOrientation -> do
       Cursor {outside: middle', inside: inside'} <- moveCursorRight (Cursor {outside: toPath middle, inside})
       Just $ SelectGyro $ Select {outside, middle: fromPath "grabSelectRight" middle', inside: inside', orientation}

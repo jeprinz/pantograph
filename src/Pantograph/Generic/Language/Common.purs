@@ -3,7 +3,7 @@ module Pantograph.Generic.Language.Common where
 import Data.Tree
 import Prelude
 import Util
-import Data.Tuple.Nested ((/\))
+
 import Bug (bug)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
@@ -11,8 +11,10 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Data.Tuple.Nested ((/\))
 import Prim.Row (class Union)
 import Text.Pretty (ticks)
+import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
 makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
@@ -120,6 +122,8 @@ shrinkAnnExprSelect :: forall sn el er er_ er'. Union er' er_ er => AnnExprSelec
 shrinkAnnExprSelect = unsafeCoerce
 shrinkAnnExprGyro :: forall sn el er er_ er'. Union er' er_ er => AnnExprGyro sn el er -> AnnExprGyro sn el er'
 shrinkAnnExprGyro = unsafeCoerce
+shrinkAnnExprGyro' :: forall sn el er er_ er'. Union er_ er' er => Proxy er_ -> AnnExprGyro sn el er -> AnnExprGyro sn el er'
+shrinkAnnExprGyro' _ = unsafeCoerce
 
 -- Language
 

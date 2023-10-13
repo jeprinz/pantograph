@@ -16,6 +16,7 @@ import Record as R
 import Type.Proxy (Proxy(..))
 
 type RenderCtx = (indentLevel :: Int)
+
 type RenderEnv = ()
 
 type Renderer = PGR.Renderer SN EL RenderCtx RenderEnv

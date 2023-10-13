@@ -12,9 +12,10 @@ import Pantograph.Generic.Language as PGL
 import Pantograph.Generic.Rendering as PGR
 
 type RenderCtx = ()
+
 type RenderEnv = ()
 
-type Renderer = PGR.Renderer SN EL () ()
+type Renderer = PGR.Renderer SN EL RenderCtx RenderEnv
 
 renderer :: Renderer
 renderer = PGR.Renderer

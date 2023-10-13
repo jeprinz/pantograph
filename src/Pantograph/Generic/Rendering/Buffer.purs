@@ -2,6 +2,7 @@ module Pantograph.Generic.Rendering.Buffer where
 
 import Data.Either.Nested
 import Data.Tree
+import Data.Tree.Move
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Language
@@ -23,7 +24,6 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
 import Data.TraversableWithIndex (traverseWithIndex)
-import Data.Tree.Move
 import Data.Tuple (fst, snd)
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -302,7 +302,7 @@ hydratePath (Renderer renderer) (Path (Cons (Tooth {node, i, kids}) ts)) k =
 
 -- TODO: should this do anything special?
 rehydrateExprGyro :: forall sn el er ctx env. Renderer sn el ctx env -> HydrateExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-rehydrateExprGyro (Renderer renderer) = unsafeCoerce >>> hydrateExprGyro (Renderer renderer) 
+rehydrateExprGyro (Renderer renderer) = shrinkAnnExprGyro' (Proxy :: Proxy (HydrateExprRow' sn el ())) >>> hydrateExprGyro (Renderer renderer)
 
 -- -- | hydrate and flush (if updated)
 -- rehydrateExprNode :: forall sn el er. HydrateExprNode sn el er -> HydrateM sn el (HydrateExprNode sn el er)

@@ -83,10 +83,13 @@ type HydrateEnv sn el =
 
 -- | `ExprNode` annotation data that is generated during initial hydrating and
 -- | mapped when re-hydrating.
-type HydrateExprRow sn el er =
+
+type HydrateExprRow' sn el er =
   ( gyroPosition :: GyroPosition
   , beginsLine :: Boolean
-  | SyncExprRow sn el er )
+  | er )
+
+type HydrateExprRow sn el er = HydrateExprRow' sn el (SyncExprRow sn el er)
 type HydrateExpr sn el er = AnnExpr sn el (HydrateExprRow sn el er)
 type HydrateExprNode sn el er = AnnExprNode sn el (HydrateExprRow sn el er)
 type HydrateExprTooth sn el er = AnnExprTooth sn el (HydrateExprRow sn el er)

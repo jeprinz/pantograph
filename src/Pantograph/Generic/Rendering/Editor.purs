@@ -39,7 +39,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   useKeyboardEffect \keyboardEvent -> do
       let ki = getKeyInfo keyboardEvent
-      Console.log $ "[editorComponent.handleKeyboardEvent] " <>  showKeyInfo ki
+      -- Console.log $ "[editorComponent.handleKeyboardEvent] " <>  showKeyInfo ki
 
       terminalIsFocused <- HK.request slotToken (Proxy :: Proxy "terminal") unit GetFocusedTerminal <#>
         fromJust' "editorComponent.useKeyboardEffect"

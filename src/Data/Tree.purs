@@ -10,6 +10,7 @@ import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
 import Data.List as List
+import Data.List.NonEmpty as NonEmptyList
 import Data.List.Types (NonEmptyList(..))
 import Data.List.Types as NonEmptyList
 import Data.Maybe (Maybe(..))
@@ -64,6 +65,10 @@ unPath :: forall a. Path a -> Tree a -> Tree a
 unPath (Path Nil) tree = tree
 unPath (Path (Cons t ts)) tree = unPath (Path ts) (unTooth t tree)
 
+unconsPath :: forall a. Path a -> Maybe {outer :: Path a, inner :: Tooth a}
+unconsPath (Path Nil) = Nothing
+unconsPath (Path (Cons t ts)) = Just {outer: Path ts, inner: t}
+
 newtype NonEmptyPath a = NonEmptyPath (NonEmptyList (Tooth a))
 derive instance Generic (NonEmptyPath a) _
 instance Show a => Show (NonEmptyPath a) where show x = genericShow x
@@ -80,13 +85,21 @@ fromPath :: forall a. String -> Path a -> NonEmptyPath a
 fromPath msg (Path Nil) = bug $ "[fromPath] null path: " <> msg
 fromPath _ (Path (Cons t ts)) = NonEmptyPath (NonEmptyList (t NonEmpty.:| ts))
 
-unconsNonEmptyPath :: forall a. NonEmptyPath a -> {head :: Tooth a, tail :: Maybe (NonEmptyPath a)}
+unconsNonEmptyPath :: forall a. NonEmptyPath a -> {outer :: Maybe (NonEmptyPath a), inner :: Tooth a}
 unconsNonEmptyPath (NonEmptyPath (NonEmptyList ts)) = case ts of
-  NonEmpty t Nil -> {head: t, tail: Nothing}
-  NonEmpty t (Cons t' ts') -> {head: t, tail: Just $ NonEmptyPath $ NonEmptyList (NonEmpty t' ts')}
+  NonEmpty t Nil -> {outer: Nothing, inner: t}
+  NonEmpty t (Cons t' ts') -> {outer: Just $ NonEmptyPath $ NonEmptyList (NonEmpty t' ts'), inner: t}
+
+unsnocNonEmptyPath :: forall a. NonEmptyPath a -> {outer :: Tooth a, inner :: Maybe (NonEmptyPath a)}
+unsnocNonEmptyPath (NonEmptyPath ts) =
+  let {init, last} = NonEmptyList.unsnoc ts in
+  {outer: last, inner: NonEmptyPath <$> NonEmptyList.fromFoldable init}
 
 consNonEmptyPath :: forall a. NonEmptyPath a -> Tooth a -> NonEmptyPath a
 consNonEmptyPath (NonEmptyPath ts) t = NonEmptyPath (NonEmptyList.nelCons t ts)
+
+snocNonEmptyPath :: forall a. Tooth a -> NonEmptyPath a -> NonEmptyPath a
+snocNonEmptyPath t (NonEmptyPath ts) = NonEmptyPath (NonEmptyList.snoc ts t)
 
 singletonNonEmptyPath :: forall a. Tooth a -> NonEmptyPath a
 singletonNonEmptyPath tooth = NonEmptyPath (NonEmptyList (tooth NonEmpty.:| Nil))
@@ -118,7 +131,7 @@ derive instance Functor Gyro
 gyroNode :: forall a. Gyro a -> a
 gyroNode (RootGyro (Tree {node})) = node
 gyroNode (CursorGyro (Cursor {inside: Tree {node}})) = node
-gyroNode (SelectGyro (Select {middle, orientation: OutsideOrientation})) | {head: Tooth {node}} <- unconsNonEmptyPath middle = node
+gyroNode (SelectGyro (Select {middle, orientation: OutsideOrientation})) | {inner: Tooth {node}} <- unconsNonEmptyPath middle = node
 gyroNode (SelectGyro (Select {inside: Tree {node}, orientation: InsideOrientation})) = node
 
 data Change a
@@ -177,7 +190,10 @@ instance PrettyTreeNode a => Pretty (Cursor a) where
   pretty (Cursor {outside, inside}) = prettyPath outside $ Pretty.braces2 $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Select a) where
-  pretty (Select {outside, middle, inside}) = prettyPath outside $ Pretty.braces2 $ prettyPath (toPath middle) $ Pretty.braces2 $ pretty inside
+  pretty (Select {outside, middle, inside, orientation: OutsideOrientation}) =
+    prettyPath outside $ ("*" <> _) $ Pretty.outer $ prettyPath (toPath middle) $ Pretty.inner $ pretty inside
+  pretty (Select {outside, middle, inside, orientation: InsideOrientation}) =
+    prettyPath outside $ Pretty.outer $ prettyPath (toPath middle) $ ("*" <> _) $ Pretty.inner $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (RootGyro tree) = pretty tree
