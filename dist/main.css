@@ -284,11 +284,17 @@ body {
 
 .Expr.OutsideSelect {}
 
-.Expr.AtOutsideSelect {}
+.Expr.AtOutsideSelect {
+  background-color: var(--cursor-background-color);
+  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+}
 
 .Expr.BetweenSelect {}
 
-.Expr.AtInsideSelect {}
+.Expr.AtInsideSelect {
+  background-color: white;
+  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+}
 
 .Expr.InsideSelect {}
 

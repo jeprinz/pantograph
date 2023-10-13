@@ -4,12 +4,16 @@ import Prelude
 
 import Bug (bug)
 import Data.Array as Array
+import Data.Either (Either)
 import Data.Eq (class Eq1)
 import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
 import Data.List as List
 import Data.List.Types (NonEmptyList(..))
+import Data.List.Types as NonEmptyList
+import Data.Maybe (Maybe(..))
+import Data.NonEmpty (NonEmpty(..))
 import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
@@ -76,29 +80,46 @@ fromPath :: forall a. String -> Path a -> NonEmptyPath a
 fromPath msg (Path Nil) = bug $ "[fromPath] null path: " <> msg
 fromPath _ (Path (Cons t ts)) = NonEmptyPath (NonEmptyList (t NonEmpty.:| ts))
 
+unconsNonEmptyPath :: forall a. NonEmptyPath a -> {head :: Tooth a, tail :: Maybe (NonEmptyPath a)}
+unconsNonEmptyPath (NonEmptyPath (NonEmptyList ts)) = case ts of
+  NonEmpty t Nil -> {head: t, tail: Nothing}
+  NonEmpty t (Cons t' ts') -> {head: t, tail: Just $ NonEmptyPath $ NonEmptyList (NonEmpty t' ts')}
+
+consNonEmptyPath :: forall a. NonEmptyPath a -> Tooth a -> NonEmptyPath a
+consNonEmptyPath (NonEmptyPath ts) t = NonEmptyPath (NonEmptyList.nelCons t ts)
+
+singletonNonEmptyPath :: forall a. Tooth a -> NonEmptyPath a
+singletonNonEmptyPath tooth = NonEmptyPath (NonEmptyList (tooth NonEmpty.:| Nil))
+
 newtype Cursor a = Cursor {outside :: Path a, inside :: Tree a}
 derive instance Generic (Cursor a) _
 instance Show a => Show (Cursor a) where show x = genericShow x
 derive instance Eq a => Eq (Cursor a)
 derive instance Functor Cursor
 
-newtype Select a = Select {outside :: Path a, middle :: NonEmptyPath a, inside :: Tree a, orientation :: SelectOrientation}
+newtype Select a = Select {outside :: Path a, middle :: NonEmptyPath a, inside :: Tree a, orientation :: Orientation}
 derive instance Generic (Select a) _
 instance Show a => Show (Select a) where show x = genericShow x
 derive instance Eq a => Eq (Select a)
 derive instance Functor Select
 
-data SelectOrientation = OutsideSelectOrientation | InsideSelectOrientation
-derive instance Generic SelectOrientation _
-instance Show SelectOrientation where show = genericShow
-derive instance Eq SelectOrientation
-derive instance Ord SelectOrientation
+data Orientation = OutsideOrientation | InsideOrientation
+derive instance Generic Orientation _
+instance Show Orientation where show = genericShow
+derive instance Eq Orientation
+derive instance Ord Orientation
 
 data Gyro a = RootGyro (Tree a) | CursorGyro (Cursor a) | SelectGyro (Select a)
 derive instance Generic (Gyro a) _
 instance Show a => Show (Gyro a) where show x = genericShow x
 derive instance Eq a => Eq (Gyro a)
 derive instance Functor Gyro
+
+gyroNode :: forall a. Gyro a -> a
+gyroNode (RootGyro (Tree {node})) = node
+gyroNode (CursorGyro (Cursor {inside: Tree {node}})) = node
+gyroNode (SelectGyro (Select {middle, orientation: OutsideOrientation})) | {head: Tooth {node}} <- unconsNonEmptyPath middle = node
+gyroNode (SelectGyro (Select {inside: Tree {node}, orientation: InsideOrientation})) = node
 
 data Change a
   = Shift ShiftSign (Tooth a) (Change a)

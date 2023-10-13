@@ -16,14 +16,14 @@ import Control.Monad.Reader (ReaderT, ask, local)
 import Control.Monad.State (StateT, get)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Foldable (foldM, foldMap)
+import Data.Foldable (elem, foldM, foldMap)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
 import Data.TraversableWithIndex (traverseWithIndex)
-import Data.Tree.Move (ensureGyroIsCursor, escapeGyro, moveGyroLeft, moveGyroLeftUntil, moveGyroRight, moveGyroRightUntil)
+import Data.Tree.Move
 import Data.Tuple (fst, snd)
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -170,6 +170,19 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         else if ki.key == "Escape" then do
           liftEffect $ Event.preventDefault event
           modifyHydratedExprGyro escapeGyro
+        else if ki.key == "ArrowLeft" && ki.shift then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro grabGyroLeft
+        else if ki.key == "ArrowRight" && ki.shift then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro grabGyroRight
+        else if ki.key == "ArrowUp" && ki.shift then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
+        else if ki.key == "ArrowDown" && ki.shift then do
+          liftEffect $ Event.preventDefault event
+          modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
+
         else if ki.key == "ArrowLeft" then do
           liftEffect $ Event.preventDefault event
           modifyHydratedExprGyro moveGyroLeft
@@ -182,6 +195,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         else if ki.key == "ArrowDown" then do
           liftEffect $ Event.preventDefault event
           modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
+
         else if ki.key == " " then do
           ensureExprGyroIsCursor
           HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const true)
@@ -253,12 +267,14 @@ hydrateExprNode (AnnExprNode node) = do
 kidGyroPosition :: GyroPosition -> GyroPosition
 kidGyroPosition = case _ of
   InsideRoot -> InsideRoot
+
   OutsideCursor -> OutsideCursor
   AtCursor -> InsideCursor
   InsideCursor -> InsideCursor
-  OutsideSelect -> OutsideCursor
-  AtOutsideSelect -> BetweenSelect
-  BetweenSelect -> BetweenSelect
+
+  OutsideSelect -> OutsideSelect
+  AtOutsideSelect -> MiddleSelect
+  MiddleSelect -> MiddleSelect
   AtInsideSelect -> InsideSelect
   InsideSelect -> InsideSelect
 
@@ -280,8 +296,7 @@ hydratePath _ (Path Nil) k = k $ Path Nil
 hydratePath (Renderer renderer) (Path (Cons (Tooth {node, i, kids}) ts)) k =
   hydratePath (Renderer renderer) (Path ts) \(Path ts') -> do
     hydratedNode <- hydrateExprNode node
-    -- hydratedKids <- hydrateBelow hydratedNode $ kids # traverse hydrateExpr
-    hydratedKids <- kids # traverseWithIndex \i kid@(Tree {node: kidNode}) -> hydrateBelow (Renderer renderer) {parent: hydratedNode, i, kid: kidNode} (hydrateExpr (Renderer renderer) kid)
+    hydratedKids <- kids # traverseWithIndex \i' kid@(Tree {node: kidNode}) -> hydrateBelow (Renderer renderer) {parent: hydratedNode, i: i', kid: kidNode} (hydrateExpr (Renderer renderer) kid)
     let tooth = Tooth {node: hydratedNode, i, kids: hydratedKids}
     k $ Path (Cons tooth ts')
 

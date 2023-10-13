@@ -13,170 +13,175 @@ import Debug as Debug
 import Hole (hole)
 import Util (fromJust')
 
-ensureGyroIsCursor = hole "TODO"
-escapeGyro = hole "TODO"
-moveGyroLeft = hole "TODO"
-moveGyroLeftUntil = hole "TODO"
-moveGyroRight = hole "TODO"
-moveGyroRightUntil = hole "TODO"
+repeatApplyUntil :: forall a. (Gyro a -> Maybe (Gyro a)) -> (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+repeatApplyUntil f cond gyro_ = go =<< f gyro_
+  where
+  go gyro =
+    let node = gyroNode gyro in 
+    if cond node then Just gyro else
+    f gyro
 
--- -- Gyro
+-- Gyro
 
--- escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
--- escapeGyro (RootGyro _) = Nothing
--- escapeGyro (CursorGyro (Cursor {outside, inside})) = Just $ RootGyro (unPath outside inside)
--- escapeGyro (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
+escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
+escapeGyro (RootGyro _) = Nothing
+escapeGyro (CursorGyro (Cursor {outside, inside})) = Just $ RootGyro (unPath outside inside)
+escapeGyro (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
--- moveGyroLeft :: forall a. Gyro a -> Maybe (Gyro a)
--- moveGyroLeft (RootGyro tree) = pure $ normalizeGyro $ CursorGyro (Cursor {outside: Path Nil, inside: tree})
--- moveGyroLeft (CursorGyro cursor) = normalizeGyro <<< CursorGyro <$> moveCursorLeft cursor
--- moveGyroLeft (SelectGyro select) = normalizeGyro <$> moveSelectLeft select
+moveGyroLeft :: forall a. Gyro a -> Maybe (Gyro a)
+moveGyroLeft (CursorGyro cursor) = CursorGyro <$> moveCursorLeft cursor
+moveGyroLeft gyro = ensureGyroIsCursor gyro
 
--- moveGyroRight :: forall a. Gyro a -> Maybe (Gyro a)
--- moveGyroRight (RootGyro tree) = pure $ normalizeGyro $ CursorGyro (Cursor {outside: Path Nil, inside: tree})
--- moveGyroRight (CursorGyro cursor) = normalizeGyro <<< CursorGyro <$> moveCursorRight cursor
--- moveGyroRight (SelectGyro select) = normalizeGyro <$> moveSelectRight select
+moveGyroLeftUntil = repeatApplyUntil moveGyroLeft
 
--- normalizeGyro :: forall a. Gyro a -> Gyro a
--- normalizeGyro gyro@(RootGyro _) = gyro
--- normalizeGyro (CursorGyro (Cursor {outside, inside})) = CursorGyro (Cursor {outside, inside})
--- normalizeGyro (SelectGyro (Select {outside, middle, inside, orientation})) = case middle of
---   Path Nil -> normalizeGyro $ CursorGyro (Cursor {outside, inside})
---   _ -> (SelectGyro (Select {outside, middle, inside, orientation}))
+moveGyroRight :: forall a. Gyro a -> Maybe (Gyro a)
+moveGyroRight (CursorGyro cursor) = CursorGyro <$> moveCursorRight cursor
+moveGyroRight gyro = ensureGyroIsCursor gyro
 
--- -- If `ensureGyroIsCursor gyro == Nothing` then then `gyro` is already a
--- -- `Cursor`.
--- ensureGyroIsCursor :: forall a. Gyro a -> Maybe (Gyro a)
--- ensureGyroIsCursor (RootGyro expr) = Just $ CursorGyro (Cursor {outside: mempty, inside: expr})
--- ensureGyroIsCursor (CursorGyro _) = Nothing
--- ensureGyroIsCursor (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
+moveGyroRightUntil = repeatApplyUntil moveGyroRight
 
--- escapeSelect :: forall a. Select a -> Cursor a
--- escapeSelect (Select {outside, middle, inside, orientation}) =
---   case orientation of
---     OutsideSelectOrientation -> Cursor {outside, inside: unPath middle inside}
---     InsideSelectOrientation -> Cursor {outside: outside <> middle, inside}
+grabGyroLeft :: forall a. Gyro a -> Maybe (Gyro a)
+grabGyroLeft (SelectGyro select) = grapSelectLeft select
+grabGyroLeft gyro = ensureGyroIsSelect OutsideOrientation gyro
 
--- moveGyroLeftUntil :: forall a. (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
--- moveGyroLeftUntil _cond gyro@(RootGyro _) = moveGyroLeft gyro
--- moveGyroLeftUntil cond (CursorGyro cursor) = CursorGyro <$> moveCursorLeftUntil cond cursor
--- moveGyroLeftUntil cond (SelectGyro _) = hole "TODO: moveGyroLeftUntil cond (SelectGyro _)"
+grabGyroLeftUntil = repeatApplyUntil grabGyroLeft
 
--- moveGyroRightUntil :: forall a. (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
--- moveGyroRightUntil _cond gyro@(RootGyro _) = moveGyroRight gyro
--- moveGyroRightUntil cond (CursorGyro cursor) = CursorGyro <$> moveCursorRightUntil cond cursor
--- moveGyroRightUntil cond (SelectGyro _) = hole "TODO"
+grabGyroRight :: forall a. Gyro a -> Maybe (Gyro a)
+grabGyroRight (SelectGyro select) = grapSelectRight select
+grabGyroRight gyro = ensureGyroIsSelect InsideOrientation gyro
 
--- -- Cursor
+grabGyroRightUntil = repeatApplyUntil grabGyroRight
 
--- -- moveCursorUp
+-- If `ensureGyroIsCursor gyro == Nothing` then then `gyro` is already a
+-- `Cursor`.
+ensureGyroIsCursor :: forall a. Gyro a -> Maybe (Gyro a)
+ensureGyroIsCursor (CursorGyro _) = Nothing
+ensureGyroIsCursor (RootGyro expr) = Just $ CursorGyro (Cursor {outside: mempty, inside: expr})
+ensureGyroIsCursor (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
--- moveCursorUp :: forall a. Cursor a -> Maybe {upCursor :: Cursor a, i :: Int, kidsCount :: Int}
--- moveCursorUp (Cursor {outside, inside}) = case outside of
---   Path Nil -> Nothing
---   Path (Cons tooth@(Tooth {i, kids}) tooths) -> Just {upCursor: Cursor {outside: Path tooths, inside: unTooth tooth inside}, i, kidsCount: Array.length kids + 1}
+ensureGyroIsSelect :: forall a. Orientation -> Gyro a -> Maybe (Gyro a)
+ensureGyroIsSelect _ (SelectGyro _) = Nothing
+ensureGyroIsSelect orientation (RootGyro expr) = do
+  Cursor {outside: middle, inside: inside'} <- moveCursorRight $ Cursor {outside: mempty, inside: expr}
+  Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation}
+ensureGyroIsSelect orientation (CursorGyro (Cursor {outside, inside})) =
+  case orientation of
+    OutsideOrientation -> case outside of
+      Path Nil -> Nothing
+      Path (Cons t ts) -> Just $ SelectGyro $ Select {outside: Path ts, middle: singletonNonEmptyPath t, inside, orientation}
+    InsideOrientation -> do
+      Cursor {outside: middle, inside: inside'} <- moveCursorRight $ Cursor {outside: mempty, inside}
+      Just $ SelectGyro $ Select {outside, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation}
 
--- -- moveCursorLeft
+-- Cursor
 
--- moveCursorLeft :: forall a. Cursor a -> Maybe (Cursor a)
--- moveCursorLeft cursor = do
---   {upCursor, i} <- moveCursorUp cursor
---   pure if i == 0
---     then upCursor
---     else moveCursorDownRightMost $ moveCursorDown (i - 1) upCursor
+-- moveCursorUp
 
--- moveCursorDown :: forall a. Int -> Cursor a -> Cursor a
--- moveCursorDown i (Cursor {outside, inside}) = do
---   let {kid, tooth} = fromJust' "moveCursorDown" $ Array.index (tooths inside) i
---   Cursor {outside: consPath outside tooth, inside: kid}
+moveCursorUp :: forall a. Cursor a -> Maybe {upCursor :: Cursor a, i :: Int, kidsCount :: Int}
+moveCursorUp (Cursor {outside, inside}) = case outside of
+  Path Nil -> Nothing
+  Path (Cons tooth@(Tooth {i, kids}) tooths) -> Just {upCursor: Cursor {outside: Path tooths, inside: unTooth tooth inside}, i, kidsCount: Array.length kids + 1}
 
--- moveCursorDownRightMost :: forall a. Cursor a -> Cursor a
--- moveCursorDownRightMost cursor@(Cursor {outside, inside}) =
---   case Array.last (tooths inside) of
+-- moveCursorLeft
+
+moveCursorLeft :: forall a. Cursor a -> Maybe (Cursor a)
+moveCursorLeft cursor = do
+  {upCursor, i} <- moveCursorUp cursor
+  pure if i == 0
+    then upCursor
+    else moveCursorDownRightMost $ moveCursorDown (i - 1) upCursor
+
+moveCursorDown :: forall a. Int -> Cursor a -> Cursor a
+moveCursorDown i (Cursor {outside, inside}) = do
+  let {kid, tooth} = fromJust' "moveCursorDown" $ Array.index (tooths inside) i
+  Cursor {outside: consPath outside tooth, inside: kid}
+
+moveCursorDownRightMost :: forall a. Cursor a -> Cursor a
+moveCursorDownRightMost cursor@(Cursor {outside, inside}) =
+  case Array.last (tooths inside) of
+    Nothing -> cursor
+    Just {kid, tooth} -> moveCursorDownRightMost (Cursor {outside: consPath outside tooth, inside: kid})
+
+-- moveCursorRight
+
+moveCursorRight :: forall a. Cursor a -> Maybe (Cursor a)
+moveCursorRight cursor@(Cursor {inside: Tree {kids}}) =
+  if Array.length kids == 0
+    then do
+      {upCursor, i, kidsCount} <- moveCursorUp cursor
+      if i + 1 == kidsCount
+        then moveCursorUpRightNext upCursor
+        else pure $ moveCursorDown (i + 1) upCursor
+    else pure $ moveCursorDown 0 cursor
+
+moveCursorUpRightNext :: forall a. Cursor a -> Maybe (Cursor a)
+moveCursorUpRightNext cursor@(Cursor {inside: Tree {kids}}) = do
+  {upCursor, i, kidsCount} <- moveCursorUp cursor
+  if i + 1 == kidsCount
+    then moveCursorUpRightNext upCursor
+    else pure $ moveCursorDown (i + 1) upCursor
+
+-- moveCursorDownLeftMost :: forall a. Cursor a -> Cursor a
+-- moveCursorDownLeftMost cursor@(Cursor {outside, inside}) =
+--   case Array.index (tooths inside) 0 of
 --     Nothing -> cursor
---     Just {kid, tooth} -> moveCursorDownRightMost (Cursor {outside: consPath outside tooth, inside: kid})
+--     Just {kid, tooth} -> moveCursorDownLeftMost (Cursor {outside: consPath outside tooth, inside: kid})
 
--- -- moveCursorRight
+-- moveCursorLeftUntil
 
--- moveCursorRight :: forall a. Cursor a -> Maybe (Cursor a)
--- moveCursorRight cursor@(Cursor {inside: Tree {kids}}) =
---   if Array.length kids == 0
---     then do
---       {upCursor, i, kidsCount} <- moveCursorUp cursor
---       if i + 1 == kidsCount
---         then moveCursorUpRightNext upCursor
---         else pure $ moveCursorDown (i + 1) upCursor
---     else pure $ moveCursorDown 0 cursor
+moveCursorLeftUntil :: forall a. (a -> Boolean) -> Cursor a -> Maybe (Cursor a)
+moveCursorLeftUntil cond cursor = do
+  cursorLeft <- moveCursorLeft cursor
+  pure $ fromMaybe cursorLeft $ go cursorLeft
+  where
+  go :: Cursor a -> Maybe (Cursor a)
+  go cursor' = do
+    cursorLeft@(Cursor {inside: Tree {node}}) <- moveCursorLeft cursor'
+    if cond node
+      then pure cursorLeft
+      else go cursorLeft
 
--- moveCursorUpRightNext :: forall a. Cursor a -> Maybe (Cursor a)
--- moveCursorUpRightNext cursor@(Cursor {inside: Tree {kids}}) = do
---   {upCursor, i, kidsCount} <- moveCursorUp cursor
---   if i + 1 == kidsCount
---     then moveCursorUpRightNext upCursor
---     else pure $ moveCursorDown (i + 1) upCursor
+-- moveCursorRightUntil
 
--- -- moveCursorDownLeftMost :: forall a. Cursor a -> Cursor a
--- -- moveCursorDownLeftMost cursor@(Cursor {outside, inside}) =
--- --   case Array.index (tooths inside) 0 of
--- --     Nothing -> cursor
--- --     Just {kid, tooth} -> moveCursorDownLeftMost (Cursor {outside: consPath outside tooth, inside: kid})
+moveCursorRightUntil :: forall a. (a -> Boolean) -> Cursor a -> Maybe (Cursor a)
+moveCursorRightUntil cond cursor = do
+  cursorRight <- moveCursorRight cursor
+  pure $ fromMaybe cursorRight $ go cursorRight
+  where
+  go :: Cursor a -> Maybe (Cursor a)
+  go cursor' = do
+    cursorRight@(Cursor {inside: Tree {node}}) <- moveCursorRight cursor'
+    if cond node
+      then pure cursorRight
+      else go cursorRight
 
--- -- moveCursorLeftUntil
+-- Select
 
--- moveCursorLeftUntil :: forall a. (a -> Boolean) -> Cursor a -> Maybe (Cursor a)
--- moveCursorLeftUntil cond cursor = do
---   cursorLeft <- moveCursorLeft cursor
---   pure $ fromMaybe cursorLeft $ go cursorLeft
---   where
---   go :: Cursor a -> Maybe (Cursor a)
---   go cursor' = do
---     cursorLeft@(Cursor {inside: Tree {node}}) <- moveCursorLeft cursor'
---     if cond node
---       then pure cursorLeft
---       else go cursorLeft
+escapeSelect :: forall a. Select a -> Cursor a
+escapeSelect (Select {outside, middle, inside, orientation}) =
+  case orientation of
+    OutsideOrientation -> Cursor {outside, inside: unPath (toPath middle) inside}
+    InsideOrientation -> Cursor {outside: outside <> toPath middle, inside}
 
--- -- moveCursorRightUntil
+grapSelectUp :: forall a. Select a -> Maybe (Gyro a)
+grapSelectUp (Select {outside, middle, inside, orientation}) =
+  case orientation of
+    OutsideOrientation -> case outside of
+      Path Nil -> Nothing
+      Path (Cons tooth outside') -> Just $ SelectGyro $ Select {outside: Path outside', middle: consNonEmptyPath middle tooth, inside, orientation}
+    InsideOrientation -> case unconsNonEmptyPath middle of
+      {head: tooth, tail: Nothing} -> Just $ CursorGyro $ Cursor {outside, inside: unTooth tooth inside}
+      {head: tooth, tail: Just middle'} -> Just $ SelectGyro $ Select {outside, middle: middle', inside: unTooth tooth inside, orientation}
 
--- moveCursorRightUntil :: forall a. (a -> Boolean) -> Cursor a -> Maybe (Cursor a)
--- moveCursorRightUntil cond cursor = do
---   cursorRight <- moveCursorRight cursor
---   pure $ fromMaybe cursorRight $ go cursorRight
---   where
---   go :: Cursor a -> Maybe (Cursor a)
---   go cursor' = do
---     cursorRight@(Cursor {inside: Tree {node}}) <- moveCursorRight cursor'
---     if cond node
---       then pure cursorRight
---       else go cursorRight
+grapSelectLeft :: forall a. Select a -> Maybe (Gyro a)
+grapSelectLeft = grapSelectUp
 
--- -- Select
-
--- moveSelectUp :: forall a. Select a -> Maybe (Gyro a)
--- moveSelectUp (Select {outside, middle, inside, orientation}) =
---   case orientation of
---     OutsideSelectOrientation -> case outside of
---       Path Nil -> Nothing
---       Path (Cons tooth outside') -> Just $ SelectGyro $ Select {outside: Path outside', middle: consPath middle tooth, inside, orientation}
---     InsideSelectOrientation -> case middle of
---       Path Nil -> bug "[moveSelectUp] null middle"
---       Path (Cons tooth middle') -> Just $ normalizeGyro $ SelectGyro $ Select {outside, middle: Path middle', inside: unTooth tooth inside, orientation}
-
--- moveSelectLeft :: forall a. Select a -> Maybe (Gyro a)
--- moveSelectLeft = moveSelectUp
-
--- moveSelectLeftUntil :: forall a. (a -> Boolean) -> Select a -> Maybe (Select a)
--- moveSelectLeftUntil cond select = do
---   gyro <- moveSelectLeft select
---   case gyro of
---     RootGyro _ -> bug "[moveSelectLeftUntil] moveSelectLeft should never result in `RootGyro _`"
---     CursorGyro 
-
--- moveSelectRight :: forall a. Select a -> Maybe (Gyro a)
--- moveSelectRight (Select {outside, middle, inside, orientation}) =
---   case orientation of
---     OutsideSelectOrientation -> case middle of
---       Path Nil -> bug $ "[moveSelectRight] null middle"
---       Path (Cons tooth middle') -> Just $ normalizeGyro $ SelectGyro $ Select {outside: consPath outside tooth, middle: Path middle', inside, orientation}
---     InsideSelectOrientation -> do
---       Cursor {outside: middle', inside: inside'} <- moveCursorRight (Cursor {outside: middle, inside})
---       Just $ SelectGyro $ Select {outside, middle: middle', inside: inside', orientation}
+grapSelectRight :: forall a. Select a -> Maybe (Gyro a)
+grapSelectRight (Select {outside, middle, inside, orientation}) =
+  case orientation of
+    OutsideOrientation -> case unconsNonEmptyPath middle of
+      {head: tooth, tail: Nothing} -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside}
+      {head: tooth, tail: Just middle'} -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
+    InsideOrientation -> do
+      Cursor {outside: middle', inside: inside'} <- moveCursorRight (Cursor {outside: toPath middle, inside})
+      Just $ SelectGyro $ Select {outside, middle: fromPath "grabSelectRight" middle', inside: inside', orientation}
