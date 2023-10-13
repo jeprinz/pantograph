@@ -53,12 +53,15 @@ quotes2  = surround "\"" "\""
 parens   = surround "(" ")"
 brackets = surround "[" "]"
 braces   = surround "{" "}"
-braces2   = surround "{{" "}}"
+braces2   = surround " {{ " " }} "
 angles   = surround "<" ">"
 ticks    = surround "`" "`"
 
-outer = surround "<{" "}>"
-inner = surround "{>" "<}"
+outer = surround " <{ " " }> "
+inner = surround " {> " " <} "
+
+outerActive = surround " <*{ " " }*> "
+innerActive = surround " {*> " " <*} "
 
 spaces = intercalate " "
 commas = intercalate ", "

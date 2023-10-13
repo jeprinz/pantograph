@@ -101,7 +101,7 @@ type HydrateExprGyro sn el er = AnnExprGyro sn el (HydrateExprRow sn el er)
 
 data GyroPosition
   = InsideRoot
-  | AtCursor | OutsideCursor | InsideCursor
+  | OutsideCursor | AtOutsideCursor | AtInsideCursor | InsideCursor
   | OutsideSelect | AtOutsideSelect | MiddleSelect | AtInsideSelect | InsideSelect
 
 derive instance Generic GyroPosition _

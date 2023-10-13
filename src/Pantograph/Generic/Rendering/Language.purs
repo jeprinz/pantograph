@@ -123,10 +123,10 @@ makeSyncExprProps (Renderer renderer) outside inside@(Tree {node: AnnExprNode {e
         let isModifyExprGyro = true
         if isModifyExprGyro then do
           -- NOTE: `modifyExprGyro` modifies the state, which causes a re-render
-          ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside}
+          ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside, orientation: Outside}
         else do
           -- NOTE: `modifySyncedExprGyro` only modifies a ref, which doesn not cause a re-render
-          ctx.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside}
+          ctx.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside, orientation: Outside}
 
     , HE.onMouseOver \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent

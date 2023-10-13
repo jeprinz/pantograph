@@ -116,7 +116,7 @@ nonEmptyPathOuterNode p = toothNode (unsnocNonEmptyPath p).outer
 nonEmptyPathInnerNode :: forall a. NonEmptyPath a -> a
 nonEmptyPathInnerNode p = toothNode (unconsNonEmptyPath p).inner
 
-newtype Cursor a = Cursor {outside :: Path a, inside :: Tree a}
+newtype Cursor a = Cursor {outside :: Path a, inside :: Tree a, orientation :: Orientation}
 derive instance Generic (Cursor a) _
 instance Show a => Show (Cursor a) where show x = genericShow x
 derive instance Eq a => Eq (Cursor a)
@@ -128,7 +128,7 @@ instance Show a => Show (Select a) where show x = genericShow x
 derive instance Eq a => Eq (Select a)
 derive instance Functor Select
 
-data Orientation = OutsideOrientation | InsideOrientation
+data Orientation = Outside | Inside
 derive instance Generic Orientation _
 instance Show Orientation where show = genericShow
 derive instance Eq Orientation
@@ -143,8 +143,8 @@ derive instance Functor Gyro
 gyroNode :: forall a. Gyro a -> a
 gyroNode (RootGyro (Tree {node})) = node
 gyroNode (CursorGyro (Cursor {inside: Tree {node}})) = node
-gyroNode (SelectGyro (Select {middle, orientation: OutsideOrientation})) | {inner: Tooth {node}} <- unconsNonEmptyPath middle = node
-gyroNode (SelectGyro (Select {inside: Tree {node}, orientation: InsideOrientation})) = node
+gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth {node}} <- unconsNonEmptyPath middle = node
+gyroNode (SelectGyro (Select {inside: Tree {node}, orientation: Inside})) = node
 
 data Change a
   = Shift ShiftSign (Tooth a) (Change a)
@@ -213,13 +213,15 @@ instance PrettyTreeNode a => Pretty (NonEmptyPath a) where
   pretty nonEmptyPath = prettyPath (toPath nonEmptyPath) Pretty.cursor
 
 instance PrettyTreeNode a => Pretty (Cursor a) where
-  pretty (Cursor {outside, inside}) = prettyPath outside $ Pretty.braces2 $ pretty inside
+  pretty (Cursor {outside, inside, orientation}) = case orientation of
+    Outside -> prettyPath outside $ Pretty.outer $ pretty inside
+    Inside -> prettyPath outside $ Pretty.inner $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Select a) where
-  pretty (Select {outside, middle, inside, orientation: OutsideOrientation}) =
-    prettyPath outside $ ("*" <> _) $ Pretty.outer $ prettyPath (toPath middle) $ Pretty.inner $ pretty inside
-  pretty (Select {outside, middle, inside, orientation: InsideOrientation}) =
-    prettyPath outside $ Pretty.outer $ prettyPath (toPath middle) $ ("*" <> _) $ Pretty.inner $ pretty inside
+  pretty (Select {outside, middle, inside, orientation: Outside}) =
+    prettyPath outside $ Pretty.outerActive $ prettyPath (toPath middle) $ Pretty.inner $ pretty inside
+  pretty (Select {outside, middle, inside, orientation: Inside}) =
+    prettyPath outside $ Pretty.outer $ prettyPath (toPath middle) $ Pretty.innerActive $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (RootGyro tree) = pretty tree

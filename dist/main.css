@@ -268,7 +268,8 @@ body {
   color: gray;
 }
 
-.Expr.AtCursor>.newline-header {
+.Expr.AtOutsideCursor>.newline-header,
+.Expr.AtInsideCursor>.newline-header {
   color: gray;
 }
 
@@ -279,10 +280,18 @@ body {
 
 .Expr.OutsideCursor {}
 
-.Expr.AtCursor,
-.Expr.AtCursor.hover {
+
+.Expr.AtOutsideCursor,
+.Expr.AtOutsideCursor.hover {
   background-color: var(--cursor-background-color);
   box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+}
+
+.Expr.AtInsideCursor,
+.Expr.AtInsideCursor.hover {
+  border-radius: calc(0.5 * var(--it));
+  background-color: var(--cursor-background-color);
+  box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
 
 /* SelectGyro */

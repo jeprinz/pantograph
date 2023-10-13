@@ -231,15 +231,20 @@ hydrateExprGyro (Renderer renderer) (RootGyro expr) = do
       runM ctx env ) $
     hydrateExpr (Renderer renderer) expr
   pure $ RootGyro expr'
-hydrateExprGyro (Renderer renderer) (CursorGyro (Cursor {outside, inside})) = do
+hydrateExprGyro (Renderer renderer) (CursorGyro (Cursor {outside, inside, orientation})) = do
   (outside' /\ inside') /\ _ <-
     ( let ctx = {gyroPosition: OutsideCursor, beginsLine: true} in 
       let env = {} in 
       runM ctx env ) $
     hydratePath (Renderer renderer) outside (treeNode inside) \outside' -> (outside' /\ _) <$>
-      local (\ctx -> ctx {gyroPosition = AtCursor})
+      local
+        (\ctx -> ctx 
+          { gyroPosition = case orientation of
+              Outside -> AtOutsideCursor
+              Inside -> AtInsideCursor
+          })
         (hydrateExpr (Renderer renderer) inside)
-  pure $ CursorGyro $ Cursor {outside: outside', inside: inside'}
+  pure $ CursorGyro $ Cursor {outside: outside', inside: inside', orientation}
 hydrateExprGyro (Renderer renderer) (SelectGyro (Select {outside, middle, inside, orientation})) = do
   (outside' /\ middle' /\ inside') /\ _ <-
     ( let ctx = {gyroPosition: OutsideSelect, beginsLine: true} in
@@ -270,7 +275,8 @@ kidGyroPosition = case _ of
   InsideRoot -> InsideRoot
 
   OutsideCursor -> OutsideCursor
-  AtCursor -> InsideCursor
+  AtOutsideCursor -> InsideCursor
+  AtInsideCursor -> InsideCursor
   InsideCursor -> InsideCursor
 
   OutsideSelect -> OutsideSelect
