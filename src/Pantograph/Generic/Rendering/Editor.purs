@@ -49,7 +49,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
         HK.request slotToken (Proxy :: Proxy "terminal") unit $ TerminalQuery <<< inj (Proxy :: Proxy "get inputIsFocused")
       
       if false then pure unit
-      else if ki.ctrl && ki.key == "`" then HK.tell slotToken (Proxy :: Proxy "terminal") unit $ TerminalQuery <<< inj (Proxy :: Proxy "toggle isOpen") <<< (Nothing /\ _)
+      else if ki.ctrl && ki.key == "`" then tell slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "toggle isOpen") Nothing
       else if terminalIsFocused then pure unit else do
         when (shouldPreventDefault ki) $
           liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent keyboardEvent

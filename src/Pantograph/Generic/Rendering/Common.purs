@@ -19,7 +19,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Tuple (Tuple(..))
-import Data.Variant (Variant)
+import Data.Variant (Variant, inj)
 import Effect.Aff (Aff)
 import Effect.Ref as Ref
 import Halogen as H
@@ -218,11 +218,6 @@ newtype ToolboxInput sn el ctx env = ToolboxInput
   , inside :: SyncExpr sn el ()
   , isEnabled :: Boolean
   , edits :: Array (NonEmptyArray (ExprEdit sn el)) }
--- data ToolboxQuery sn el a
---   = ModifyIsEnabledToolbox (Boolean -> Boolean) a
---   | ModifySelectToolbox (ToolboxSelect -> ToolboxSelect) a
---   | GetIsEnabledToolbox (Boolean -> a)
---   | SubmitExprEditToolboxQuery a
 newtype ToolboxQuery sn el a = ToolboxQuery (Variant
   ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
   , "get isEnabled" :: (Boolean -> a)
@@ -288,3 +283,10 @@ terminalItem = {debug, debugString}
   where
   debug html = TerminalItem {tag: DebugTerminalItemTag, html}
   debugString = debug <<< HH.text
+
+-- | # Utilities
+
+tell slotToken slotProxy slotId constr variantProxy a =
+  HK.tell slotToken slotProxy slotId $ constr <<< inj variantProxy <<< (a /\ _)
+
+-- TODO: same for `request`
