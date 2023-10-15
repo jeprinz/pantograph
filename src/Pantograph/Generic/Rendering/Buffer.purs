@@ -25,7 +25,8 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Newtype (unwrap)
 import Data.Traversable (traverse, traverse_)
 import Data.TraversableWithIndex (traverseWithIndex)
-import Data.Tuple (fst, snd)
+import Data.Tuple (Tuple(..), fst, snd)
+import Data.Variant (case_, inj, on)
 import Debug as Debug
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
@@ -137,78 +138,80 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
     pure Nothing
 
-  HK.useQuery queryToken case _ of
-    SetExprGyro exprGyro' a -> do
-      HK.modify_ exprGyroStateId (const exprGyro')
-      pure $ Just a
-    KeyboardEventBufferQuery keyboardEvent a -> do
-      let event = KeyboardEvent.toEvent keyboardEvent
-      let ki = getKeyInfo keyboardEvent
+  HK.useQuery queryToken \(BufferQuery query) -> (query # _) $ case_
+    # on (Proxy :: Proxy "set exprGyro") (\(exprGyro' /\ a) -> do
+        HK.modify_ exprGyroStateId (const exprGyro')
+        pure $ Just a
+      )
+    # on (Proxy :: Proxy "keyboard") (\(keyboardEvent /\ a) -> do
+        let event = KeyboardEvent.toEvent keyboardEvent
+        let ki = getKeyInfo keyboardEvent
 
-      maybeIsEnabledToolbox <- HK.request slotToken (Proxy :: Proxy "toolbox") unit GetIsEnabledToolbox
-      let isEnabledToolbox = maybeIsEnabledToolbox == Just true
-      let isExistingToolbox = isJust maybeIsEnabledToolbox 
+        maybeIsEnabledToolbox <- HK.request slotToken (Proxy :: Proxy "toolbox") unit \k -> ToolboxQuery $ inj (Proxy :: Proxy "get isEnabled") k
+        let isEnabledToolbox = maybeIsEnabledToolbox == Just true
+        let isExistingToolbox = isJust maybeIsEnabledToolbox 
 
-      if isEnabledToolbox then do
-        if false then pure unit
-        else if ki.key == "Escape" then do
-          liftEffect $ Event.preventDefault event
-          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const false)
-        else if ki.key == "Enter" || ki.key == " " then do
-          liftEffect $ Event.preventDefault event
-          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ SubmitExprEditToolboxQuery
-        else if ki.key == "ArrowLeft" then do
-          liftEffect $ Event.preventDefault event
-          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx - 1))
-        else if ki.key == "ArrowRight" then do
-          liftEffect $ Event.preventDefault event
-          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx + 1))
-        else if ki.key == "ArrowDown" then do
-          liftEffect $ Event.preventDefault event
-          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx + 1) colIx)
-        else if ki.key == "ArrowUp" then do
-          liftEffect $ Event.preventDefault event
-          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifySelectToolbox \(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx - 1) colIx)
-        else pure unit
+        if isEnabledToolbox then do
+          if false then pure unit
+          else if ki.key == "Escape" then do
+            liftEffect $ Event.preventDefault event
+            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify isEnabled") $ (const false) /\ a
+          else if ki.key == "Enter" || ki.key == " " then do
+            liftEffect $ Event.preventDefault event
+            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "submit edit") a
+          else if ki.key == "ArrowLeft" then do
+            liftEffect $ Event.preventDefault event
+            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx - 1))) /\ a
+          else if ki.key == "ArrowRight" then do
+            liftEffect $ Event.preventDefault event
+            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx + 1))) /\ a
+          else if ki.key == "ArrowDown" then do
+            liftEffect $ Event.preventDefault event
+            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx + 1) colIx)) /\ a
+          else if ki.key == "ArrowUp" then do
+            liftEffect $ Event.preventDefault event
+            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx - 1) colIx)) /\ a
+          else pure unit
 
-      else do
-        if false then pure unit
-        else if ki.key == "Escape" then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro escapeGyro
-        else if ki.key == "ArrowLeft" && ki.shift then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro grabGyroLeft
-        else if ki.key == "ArrowRight" && ki.shift then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro grabGyroRight
-        else if ki.key == "ArrowUp" && ki.shift then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
-        else if ki.key == "ArrowDown" && ki.shift then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
+        else do
+          if false then pure unit
+          else if ki.key == "Escape" then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro escapeGyro
+          else if ki.key == "ArrowLeft" && ki.shift then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro grabGyroLeft
+          else if ki.key == "ArrowRight" && ki.shift then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro grabGyroRight
+          else if ki.key == "ArrowUp" && ki.shift then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
+          else if ki.key == "ArrowDown" && ki.shift then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
 
-        else if ki.key == "ArrowLeft" then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro moveGyroLeft
-        else if ki.key == "ArrowRight" then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro moveGyroRight
-        else if ki.key == "ArrowUp" then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
-        else if ki.key == "ArrowDown" then do
-          liftEffect $ Event.preventDefault event
-          modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
+          else if ki.key == "ArrowLeft" then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro moveGyroLeft
+          else if ki.key == "ArrowRight" then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro moveGyroRight
+          else if ki.key == "ArrowUp" then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
+          else if ki.key == "ArrowDown" then do
+            liftEffect $ Event.preventDefault event
+            modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
 
-        else if ki.key == " " then do
-          liftEffect $ Event.preventDefault event
-          ensureExprGyroIsCursor
-          HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const true)
-        else pure unit
+          else if ki.key == " " then do
+            liftEffect $ Event.preventDefault event
+            ensureExprGyroIsCursor
+            HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ToolboxQuery <<< inj (Proxy :: Proxy "modify isEnabled") <<< (const true /\ _)
+          else pure unit
 
-      pure $ Just a
+        pure $ Just a
+      )
 
   -- render
   HK.pure $ HH.panel
@@ -355,13 +358,15 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation})
   let Language language = renderer.language
   ctx <- ask
   env <- get
-  let toolboxHandler = case _ of
-        SubmitExprEdit edit -> do
-          HK.tell ctx.slotToken (Proxy :: Proxy "toolbox") unit $ ModifyIsEnabledToolbox (const false)
-          ctx.modifyExprGyro $ applyEdit (Language language) edit
-        PreviewExprEdit maybeEdit -> do 
-          HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition $ ModifyItemPreview $ const maybeEdit
-          HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition $ ModifyItemPreview $ const maybeEdit
+  let toolboxHandler (ToolboxOutput output) = (output # _) $ case_
+        # on (Proxy :: Proxy "submit edit") (\edit -> do
+            HK.tell ctx.slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify isEnabled") $ (const false) /\ a
+            ctx.modifyExprGyro $ applyEdit (Language language) edit
+          )
+        # on (Proxy :: Proxy "preview edit") (\maybeEdit -> do 
+            HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition $ PreviewQuery <<< inj (Proxy :: Proxy "modify maybeEdit") <<< (const maybeEdit /\ _)
+            HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition $ PreviewQuery <<< inj (Proxy :: Proxy "modify maybeEdit") <<< (const maybeEdit /\ _)
+          )
   let wrapCursor htmls = do
         let toolboxInput = ToolboxInput
               { renderer: Renderer renderer
@@ -378,7 +383,7 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation})
               , position
               , outside: shrinkAnnExprPath outside
               , inside: shrinkAnnExpr inside
-              , maybeItem: Nothing }
+              , maybeEdit: Nothing }
         Array.concat
           [ [HH.slot (Proxy :: Proxy "toolbox") unit toolboxComponent toolboxInput toolboxHandler]
           , [HH.slot_ (Proxy :: Proxy "preview") LeftPreviewPosition previewComponent (previewInput LeftPreviewPosition)]

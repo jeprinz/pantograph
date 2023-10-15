@@ -122,14 +122,14 @@ body {
 }
 
 .PanelContent {
-  width: 100%;
-  height: 100%;
+  /* width: 100%;
+  height: 100%; */
   flex-grow: 1;
 }
 
 .PanelContentInterior {
-  width: 100%;
-  height: 100%;
+  /* width: 100%;
+  height: 100%; */
 
   display: flex;
   flex-direction: column;
@@ -143,13 +143,16 @@ body {
 /* EditorPanel */
 
 .EditorPanel {
-  width: 100vw;
-  height: 100vh;
+  min-width: 100vw;
+  min-height: 100vh;
 
   font-family: 'Courier New', Courier, monospace;
 }
 
-.EditorPanel>.PanelContent {}
+.EditorPanel>.PanelContent {
+  min-width: 100vw;
+  min-height: 80vh;
+}
 
 .EditorPanel>.PanelContent>.PanelContentInterior {}
 
@@ -157,6 +160,7 @@ body {
 
 .BufferPanel {
   flex-grow: 1;
+  /* min-height: 80vh; */
 }
 
 .BufferPanel>.PanelContent {
@@ -173,8 +177,8 @@ body {
 /* TerminalPanel */
 
 .TerminalPanel {
-  flex-grow: 0;
-  height: auto;
+  flex-grow: 1;
+  min-height: 20px;
 }
 
 .TerminalPanel>.PanelContent {
@@ -346,7 +350,7 @@ body {
 /* Preview */
 
 .Preview {
-  display: inline-block;
+  display: inline;
   background-color: rgb(211, 255, 209);
 }
 

@@ -133,10 +133,11 @@ shrinkAnnExprGyro' _ = unsafeCoerce
 newtype Language sn el = Language
   { name :: String
   , getSortingRule :: el -> SortingRule sn
-  , getChangingRule :: el -> ChangingRule sn 
-  , topSort :: Sort sn 
+  , getChangingRule :: el -> ChangingRule sn
+  , topSort :: Sort sn
   , getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
-  , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el)) }
+  , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
+  }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.

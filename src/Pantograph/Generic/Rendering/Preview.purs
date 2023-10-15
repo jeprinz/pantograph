@@ -1,5 +1,6 @@
 module Pantograph.Generic.Rendering.Preview where
 
+import Data.Tree
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
@@ -10,31 +11,32 @@ import Control.Monad.Reader (ask)
 import Control.Monad.State (get)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
-import Data.Tree
 import Data.Tuple (fst)
+import Data.Variant (case_, on)
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Hole (hole)
+import Type.Proxy (Proxy(..))
 
 previewComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
 previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
 
-  maybeItem /\ maybeItemStateId <- HK.useState input.maybeItem
+  maybeEdit /\ maybeEditStateId <- HK.useState input.maybeEdit
 
-  HK.useQuery queryToken case _ of
-    ModifyItemPreview f a -> do
-      HK.modify_ maybeItemStateId f
-      pure (Just a)
+  HK.useQuery queryToken \(PreviewQuery query) -> (query # _) $ case_
+    # on (Proxy :: Proxy "modify maybeEdit") \(f /\ a) -> do
+        HK.modify_ maybeEditStateId f
+        pure (Just a)
 
   HK.pure $
     case input.position of
       LeftPreviewPosition ->
         HH.div
           [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewLeft"]]
-          case maybeItem of
+          case maybeEdit of
             Nothing -> []
             Just (ReplaceEdit {inside}) -> 
               fst $ unwrap $ runM input.ctx input.env $ 
@@ -55,7 +57,7 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
       RightPreviewPosition ->
         HH.div
           [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewRight"]]
-          case maybeItem of
+          case maybeEdit of
             Nothing -> []
             Just (ReplaceEdit _) -> []
             Just (InsertEdit {middle}) ->

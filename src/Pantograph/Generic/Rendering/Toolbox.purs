@@ -10,6 +10,7 @@ import Data.Newtype (unwrap)
 import Data.Tree (class PrettyTreeNode, Edit(..), toPath)
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
+import Data.Variant (case_, inj, on)
 import Effect.Aff (Aff)
 import Halogen (liftEffect)
 import Halogen as H
@@ -20,6 +21,7 @@ import Halogen.Hooks as HK
 import Hole (hole)
 import Pantograph.Generic.Language (shrinkAnnExpr, shrinkAnnExprPath)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
+import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
@@ -51,8 +53,8 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
     freshenPreview = do
       getSelectedEdit >>= case _ of
-        Nothing -> HK.raise outputToken $ PreviewExprEdit Nothing
-        Just edit -> HK.raise outputToken $ PreviewExprEdit (Just edit)
+        Nothing -> HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "preview edit") Nothing
+        Just edit -> HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "preview edit") $ Just edit
 
     modifyIsEnabledToolbox f = do
       HK.modify_ isEnabledStateId f
@@ -62,21 +64,25 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
       HK.modify_ selectStateId (f >>> normalizeToolboxSelect)
       freshenPreview
 
-  HK.useQuery queryToken case _ of
-    ModifyIsEnabledToolbox f a -> do
-      modifyIsEnabledToolbox f
-      pure (Just a)
-    ModifySelectToolbox f a -> do
-      modifyToolboxSelect f
-      pure (Just a)
-    GetIsEnabledToolbox k -> do
-      pure (Just (k isEnabled))
-    SubmitExprEditToolboxQuery a -> do
-      getSelectedEdit >>= case _ of
-        Nothing -> pure (Just a)
-        Just edit -> do
-          HK.raise outputToken $ SubmitExprEdit edit
-          pure (Just a)
+  HK.useQuery queryToken \(ToolboxQuery query) -> (query # _) $ case_
+    # on (Proxy :: Proxy "modify isEnabled") (\(f /\ a) -> do
+        modifyIsEnabledToolbox f
+        pure (Just a)
+      )
+    # on (Proxy :: Proxy "get isEnabled") (\k -> do
+        pure (Just (k isEnabled))
+      )
+    # on (Proxy :: Proxy "modify select") (\(f /\ a) -> do
+        modifyToolboxSelect f
+        pure (Just a)
+      )
+    # on (Proxy :: Proxy "submit edit") (\a -> do
+        getSelectedEdit >>= case _ of
+          Nothing -> pure (Just a)
+          Just edit -> do
+            HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "submit edit") edit
+            pure (Just a)
+      )
 
   HK.pure $
     HH.div [HP.classes [HH.ClassName "Toolbox"]]

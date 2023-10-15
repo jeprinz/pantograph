@@ -17,6 +17,7 @@ import Data.List (List(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\))
+import Data.Variant (inj)
 import Effect.Aff (Aff)
 import Halogen (liftEffect)
 import Halogen.HTML as HH
@@ -189,7 +190,7 @@ makeSyncExprProps (Renderer renderer) outside inside@(Tree {node: AnnExprNode {e
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
 
-        HK.raise ctx.outputToken $ WriteTerminalFromBuffer $ terminalItem.debug $ HH.div_
+        HK.raise ctx.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ terminalItem.debug $ HH.div_
           [ HH.text "SyncExpr/onClick"
           , HH.ul_
               [ HH.li_ [HH.text $ "outside: " <> pretty (shrinkAnnExprPath outside :: ExprPath sn el)]

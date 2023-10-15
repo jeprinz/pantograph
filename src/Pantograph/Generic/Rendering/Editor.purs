@@ -1,5 +1,6 @@
 module Pantograph.Generic.Rendering.Editor where
 
+import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
@@ -8,6 +9,7 @@ import Util
 import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tree (class PrettyTreeNode)
+import Data.Variant (case_, inj, on)
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Halogen (liftEffect)
@@ -41,17 +43,19 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
       let ki = getKeyInfo keyboardEvent
       -- Console.log $ "[editorComponent.handleKeyboardEvent] " <>  showKeyInfo ki
 
-      terminalIsFocused <- HK.request slotToken (Proxy :: Proxy "terminal") unit GetFocusedTerminal <#>
-        fromJust' "editorComponent.useKeyboardEffect"
+      -- terminalIsFocused <- HK.request slotToken (Proxy :: Proxy "terminal") unit GetFocusedTerminal <#>
+      --   fromJust' "editorComponent.useKeyboardEffect"
+      terminalIsFocused <- map (fromJust' "editorComponent.useKeyboardEffect") $
+        HK.request slotToken (Proxy :: Proxy "terminal") unit $ TerminalQuery <<< inj (Proxy :: Proxy "get inputIsFocused")
       
       if false then pure unit
-      else if ki.ctrl && ki.key == "`" then HK.tell slotToken (Proxy :: Proxy "terminal") unit $ ToggleOpenTerminal Nothing
+      else if ki.ctrl && ki.key == "`" then HK.tell slotToken (Proxy :: Proxy "terminal") unit $ TerminalQuery <<< inj (Proxy :: Proxy "toggle isOpen") <<< (Nothing /\ _)
       else if terminalIsFocused then pure unit else do
         when (shouldPreventDefault ki) $
           liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent keyboardEvent
 
         if false then pure unit
-        else HK.tell slotToken (Proxy :: Proxy "buffer") unit $ KeyboardEventBufferQuery keyboardEvent
+        else HK.tell slotToken (Proxy :: Proxy "buffer") unit $ BufferQuery <<< inj (Proxy :: Proxy "keyboard") <<< (keyboardEvent /\ _)
 
   -- buffer
 
@@ -60,9 +64,8 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
               { name: "Main"
               , renderer: Renderer renderer
               , expr: fromJust' "defaultTopExpr" $ defaultTopExpr (Language language) }
-        let bufferHandler = case _ of
-              WriteTerminalFromBuffer item -> do
-                HK.tell slotToken (Proxy :: Proxy "terminal") unit (WriteTerminal item)
+        let bufferHandler (BufferOutput output) = (output # _) $ case_
+              # on (Proxy :: Proxy "write terminal") \item -> HK.tell slotToken (Proxy :: Proxy "terminal") unit $ TerminalQuery <<< inj (Proxy :: Proxy "write") <<< (item /\ _)
         HH.slot (Proxy :: Proxy "buffer") unit bufferComponent bufferInput bufferHandler
 
   -- terminal

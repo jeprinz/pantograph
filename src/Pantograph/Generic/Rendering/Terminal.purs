@@ -9,6 +9,7 @@ import Data.Foldable (length, null)
 import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..))
+import Data.Variant (case_, on)
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
@@ -21,6 +22,7 @@ import Halogen.Hooks as HK
 import Halogen.Utilities (freshElementId)
 import Halogen.Utilities as HU
 import Pantograph.Generic.Rendering.Html as HH
+import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
 import Web.HTML.HTMLInputElement as HTMLInputElement
@@ -43,17 +45,20 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
   _ /\ terminalInputIsFocusedRef <- HK.useRef false
 
-  -- query
-  HK.useQuery queryToken case _ of
-    WriteTerminal item a -> do
-      HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
-      pure (Just a)
-    ToggleOpenTerminal mb_isOpen a -> do
-      toggleOpenTerminal mb_isOpen
-      pure (Just a)
-    GetFocusedTerminal k -> do
-      b <- liftEffect $ Ref.read terminalInputIsFocusedRef
-      pure (Just (k b))
+  HK.useQuery queryToken \(TerminalQuery query) -> (query # _) $ case_
+    # on (Proxy :: Proxy "write") (\(item /\ a) -> do
+        HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
+        pure (Just a)
+      )
+    # on (Proxy :: Proxy "toggle isOpen") (\(mb_isOpen /\ a) -> do
+        toggleOpenTerminal mb_isOpen
+        pure (Just a)
+      )
+    # on (Proxy :: Proxy "get inputIsFocused") (\k -> do
+        b <- liftEffect $ Ref.read terminalInputIsFocusedRef
+        pure (Just (k b))        
+      )
+      
 
   -- render
   HK.pure $ HH.panel

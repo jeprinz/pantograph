@@ -19,6 +19,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Tuple (Tuple(..))
+import Data.Variant (Variant)
 import Effect.Aff (Aff)
 import Effect.Ref as Ref
 import Halogen as H
@@ -188,11 +189,11 @@ newtype BufferInput sn el ctx env = BufferInput
   { name :: String
   , renderer :: Renderer sn el ctx env
   , expr :: Expr sn el }
-data BufferQuery sn el a
-  = SetExprGyro (ExprGyro sn el) a
-  | KeyboardEventBufferQuery KeyboardEvent.KeyboardEvent a
-data BufferOutput sn el
-  = WriteTerminalFromBuffer TerminalItem
+newtype BufferQuery sn el a = BufferQuery (Variant
+  ( "set exprGyro" :: ExprGyro sn el /\ a
+  , "keyboard" :: KeyboardEvent.KeyboardEvent /\ a ))
+newtype BufferOutput sn el = BufferOutput (Variant
+  ( "write terminal" :: TerminalItem ))
 data BufferSlotId
 
 -- data BufferMode sn el
@@ -217,14 +218,20 @@ newtype ToolboxInput sn el ctx env = ToolboxInput
   , inside :: SyncExpr sn el ()
   , isEnabled :: Boolean
   , edits :: Array (NonEmptyArray (ExprEdit sn el)) }
-data ToolboxQuery sn el a
-  = ModifyIsEnabledToolbox (Boolean -> Boolean) a
-  | ModifySelectToolbox (ToolboxSelect -> ToolboxSelect) a
-  | GetIsEnabledToolbox (Boolean -> a)
-  | SubmitExprEditToolboxQuery a
-data ToolboxOutput sn el
-  = SubmitExprEdit (ExprEdit sn el)
-  | PreviewExprEdit (Maybe (ExprEdit sn el))
+-- data ToolboxQuery sn el a
+--   = ModifyIsEnabledToolbox (Boolean -> Boolean) a
+--   | ModifySelectToolbox (ToolboxSelect -> ToolboxSelect) a
+--   | GetIsEnabledToolbox (Boolean -> a)
+--   | SubmitExprEditToolboxQuery a
+newtype ToolboxQuery sn el a = ToolboxQuery (Variant
+  ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
+  , "get isEnabled" :: (Boolean -> a)
+  , "modify select" :: (ToolboxSelect -> ToolboxSelect) /\ a
+  , "submit edit" :: a
+  ))
+data ToolboxOutput sn el = ToolboxOutput (Variant
+  ( "submit edit" :: ExprEdit sn el
+  , "preview edit" :: Maybe (ExprEdit sn el) ))
 type ToolboxSlotId = Unit
 
 data ToolboxSelect = ToolboxSelect Int Int
@@ -241,9 +248,9 @@ newtype PreviewInput sn el ctx env = PreviewInput
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
   , position :: PreviewPosition
-  , maybeItem :: Maybe (ExprEdit sn el) }
-data PreviewQuery sn el a
-  = ModifyItemPreview (Maybe (ExprEdit sn el) -> Maybe (ExprEdit sn el)) a
+  , maybeEdit :: Maybe (ExprEdit sn el) }
+newtype PreviewQuery sn el a = PreviewQuery (Variant
+  ( "modify maybeEdit" :: (Maybe (ExprEdit sn el) -> Maybe (ExprEdit sn el)) /\ a ))
 type PreviewOutput = Void
 type PreviewSlotId = PreviewPosition
 
@@ -267,13 +274,10 @@ data ClipboardSlotId sn el
 
 type TerminalSlot = H.Slot TerminalQuery TerminalOutput TerminalSlotId
 newtype TerminalInput = TerminalInput {}
-data TerminalQuery a
-  -- Write a new item to the terminal
-  = WriteTerminal TerminalItem a
-  -- Toggles the terminal open/close, or set it to a given value for isOpen if
-  -- provided.
-  | ToggleOpenTerminal (Maybe Boolean) a
-  | GetFocusedTerminal (Boolean -> a)
+newtype TerminalQuery a = TerminalQuery (Variant
+  ( "write" :: TerminalItem /\ a
+  , "toggle isOpen" :: Maybe Boolean /\ a
+  , "get inputIsFocused" :: Boolean -> a ))
 type TerminalOutput = Void
 type TerminalSlotId = Unit
 
