@@ -44,9 +44,7 @@ body {
 /* Panel */
 
 .Panel {
-  flex-grow: 1;
-  width: 100%;
-  height: 100%;
+  flex: 1 1 auto;
 
   display: flex;
   flex-direction: column;
@@ -62,6 +60,7 @@ body {
 .PanelHeader {
   padding: var(--it);
   width: calc(100% - 2*var(--it));
+  height: calc(2 * var(--it));
 
   display: flex;
   flex-direction: row;
@@ -122,15 +121,9 @@ body {
 }
 
 .PanelContent {
-  /* width: 100%;
-  height: 100%; */
-  flex-grow: 1;
 }
 
 .PanelContentInterior {
-  /* width: 100%;
-  height: 100%; */
-
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
@@ -139,19 +132,19 @@ body {
   align-content: flex-start;
 }
 
-
 /* EditorPanel */
 
 .EditorPanel {
-  min-width: 100vw;
-  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
 
   font-family: 'Courier New', Courier, monospace;
 }
 
 .EditorPanel>.PanelContent {
-  min-width: 100vw;
-  min-height: 80vh;
+  width: 100vw;
+  height: calc(100vh - 2*var(--it));
+  overflow: scroll;
 }
 
 .EditorPanel>.PanelContent>.PanelContentInterior {}
@@ -159,11 +152,12 @@ body {
 /* Buffer */
 
 .BufferPanel {
-  flex-grow: 1;
-  /* min-height: 80vh; */
+
 }
 
 .BufferPanel>.PanelContent {
+  height: calc(100vh - 40*var(--it));
+  width: 100vw;
   overflow: scroll;
 }
 
@@ -177,17 +171,16 @@ body {
 /* TerminalPanel */
 
 .TerminalPanel {
-  flex-grow: 1;
-  min-height: 20px;
 }
 
 .TerminalPanel>.PanelContent {
-  height: auto;
-  max-height: 40vw;
+  height: calc(25*var(--it));
+  width: 100vw;
   overflow: scroll;
 }
 
-.TerminalContent {}
+.TerminalContent {
+}
 
 .TerminalContent.closed {
   display: none;

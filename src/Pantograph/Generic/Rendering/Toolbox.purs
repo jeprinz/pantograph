@@ -35,10 +35,10 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
   ToolboxSelect selectRowIndex selectColIndex /\ selectStateId <- HK.useState $ ToolboxSelect 0 0
 
   let
-    normalizeToolboxSelect (ToolboxSelect rowIx colIx) =
+    normalizeSelect (ToolboxSelect rowIx colIx) =
       if Array.length input.edits == 0 then ToolboxSelect 0 0 else
       let rowIx' = rowIx `mod` Array.length input.edits in
-      let row = fromJust' "normalizeToolboxSelect" $ Array.index input.edits rowIx' in
+      let row = fromJust' "normalizeSelect" $ Array.index input.edits rowIx' in
       let colIx' = colIx `mod` NonEmptyArray.length row in
       ToolboxSelect rowIx' colIx'
 
@@ -62,8 +62,10 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
       freshenPreview
 
     modifyToolboxSelect f = do
-      HK.modify_ selectStateId (f >>> normalizeToolboxSelect)
+      HK.modify_ selectStateId (f >>> normalizeSelect)
       freshenPreview
+
+    resetSelect = modifyToolboxSelect $ const $ ToolboxSelect 0 0
 
   HK.useQuery queryToken \(ToolboxQuery query) -> (query # _) $ case_
     # on (Proxy :: Proxy "modify isEnabled") (\(f /\ a) -> do
@@ -81,6 +83,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         getSelectedEdit >>= case _ of
           Nothing -> pure (Just a)
           Just edit -> do
+            resetSelect
             HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "submit edit") edit
             pure (Just a)
       )

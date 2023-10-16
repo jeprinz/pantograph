@@ -36,7 +36,7 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
   -- state
   items /\ itemsStateId <- HK.useState (mempty :: List TerminalItem)
-  isOpen /\ isOpenStateId <- HK.useState false
+  isOpen /\ isOpenStateId <- HK.useState true
 
   let toggleOpenTerminal mb_isOpen = do
         case mb_isOpen of
