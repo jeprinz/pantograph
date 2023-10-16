@@ -21,12 +21,13 @@ import Halogen.Hooks as HK
 import Hole (hole)
 import Pantograph.Generic.Language (shrinkAnnExpr, shrinkAnnExprPath)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
+import Pantograph.Generic.Rendering.Style (className)
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
-toolboxComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
+toolboxComponent :: forall sn el ctx env. PrettyTreeNode el => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
 toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
 
   isEnabled /\ isEnabledStateId <- HK.useState input.isEnabled
@@ -76,7 +77,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         modifyToolboxSelect f
         pure (Just a)
       )
-    # on (Proxy :: Proxy "submit edit") (\a -> do
+    # on (Proxy :: Proxy "submit edit") (\(_ /\ a) -> do
         getSelectedEdit >>= case _ of
           Nothing -> pure (Just a)
           Just edit -> do
@@ -110,7 +111,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 makeToolboxExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
 makeToolboxExprProps (Renderer renderer) outside inside = do
   pure 
-    [ HP.classes [HH.ClassName "Expr", HH.ClassName "ToolboxExpr"] ]
+    [ HP.classes [className.expr, className.toolboxExpr] ]
 
 renderExprEdit renderer outside inside = case _ of
   ReplaceEdit {inside} -> renderAnnExpr renderer outside inside makeToolboxExprProps

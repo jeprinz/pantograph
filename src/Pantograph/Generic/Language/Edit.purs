@@ -9,7 +9,7 @@ import Prelude
 import Data.Maybe (Maybe(..))
 import Hole (hole)
 
-applyEdit :: forall sn el. Show sn => Show el => PrettyTreeNode el => Language sn el -> ExprEdit sn el -> ExprGyro sn el -> Maybe (ExprGyro sn el)
+applyEdit :: forall sn el. PrettyTreeNode el => Language sn el -> ExprEdit sn el -> ExprGyro sn el -> Maybe (ExprGyro sn el)
 applyEdit language edit gyro@(RootGyro _) = applyEdit language edit =<< ensureGyroIsCursor gyro
 
 applyEdit (Language _language) (InsertEdit edit) (CursorGyro (Cursor {outside, inside, orientation})) =

@@ -160,7 +160,7 @@ language = PL.Language
       Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
       Tree {node: PL.SortNode TermSort} ->
         -- Just $ term.hole
-        -- Just $ term.app term.hole term.hole
+        Just $ term.app term.hole term.hole
         -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
         -- Just $ term.app (makeIndentedNewline (term.app term.hole term.hole)) (term.app (makeIndentedNewline (term.app term.hole (makeIndentedNewline term.hole))) term.hole)
         -- Just $ 
@@ -168,7 +168,7 @@ language = PL.Language
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
         -- Just $ term.example 10
-        Just $ term.example 6
+        -- Just $ term.example 6
         -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
         -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
         -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
@@ -196,6 +196,15 @@ language = PL.Language
             InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule Newline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: Reflect (PL.SortNode TermSort) []}
         ]
       _ -> bug $ "invalid sort"
+  , validGyro: case _ of
+      RootGyro _ -> true
+      
+      CursorGyro (Cursor {orientation: Outside}) -> true
+      CursorGyro (Cursor {inside: Tree {node: PL.AnnExprNode {label: HoleRule}}, orientation: Inside}) -> true
+
+      SelectGyro (Select {outside, middle, inside, orientation}) -> true
+      
+      _ -> false
   }
 
 -- shallow

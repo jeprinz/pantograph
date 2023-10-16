@@ -14,8 +14,7 @@ import DOM.HTML.Indexed as HPI
 import Data.Array as Array
 import Data.Foldable (foldMap)
 import Data.List (List(..))
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Tuple (fst, snd)
+import Data.Maybe (Maybe(..))
 import Data.Tuple.Nested ((/\))
 import Data.Variant (inj)
 import Effect.Aff (Aff)
@@ -25,7 +24,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Hole (hole)
+import Pantograph.Generic.Rendering.Style (className)
 import Record as R
 import Text.Pretty (pretty)
 import Type.Proxy (Proxy(..))
@@ -48,7 +47,7 @@ type MakeAnnExprProps sn el er ctx env =
 type MakeSyncExprProps sn el er ctx env = MakeAnnExprProps sn el (SyncExprRow sn el er) ctx env
 
 renderAnnExprHelper :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
+  PrettyTreeNode el =>
   Renderer sn el ctx env ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
@@ -69,7 +68,7 @@ renderAnnExprHelper renderer outside expr makeAnnExprProps arrangedKids = do
   pure $ [HH.div props htmls]
 
 renderAnnExpr :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
+  PrettyTreeNode el =>
   Renderer sn el ctx env ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
@@ -77,14 +76,14 @@ renderAnnExpr :: forall sn el er ctx env.
   RenderM sn el ctx env (Array (BufferHtml sn el))
 renderAnnExpr (Renderer renderer) outside expr@(Tree {node}) makeAnnExprProps = do
   arrangedKids <- renderer.arrangeExpr node $
-    tooths expr <#> \{tooth, kid: kid@(Tree {node: kidNode})} -> do
+    tooths expr <#> \{tooth, inside: kid@(Tree {node: kidNode})} -> do
       local
         ( R.modify (Proxy :: Proxy "depth") (1 + _) )
         $ renderAnnExpr (Renderer renderer) (consPath outside tooth) kid makeAnnExprProps <#> (_ /\ kidNode)
   renderAnnExprHelper (Renderer renderer) outside expr makeAnnExprProps arrangedKids
 
 renderAnnExprPath :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
+  PrettyTreeNode el =>
   Renderer sn el ctx env ->
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
@@ -98,7 +97,7 @@ renderAnnExprPath (Renderer renderer) outside (Path (Cons tooth@(Tooth {node, i}
   let interiorOutside = outside <> path'
   renderAnnExprPath (Renderer renderer) outside path' expr' makeAnnExprProps do
     arrangedKids <- renderer.arrangeExpr node $
-      tooths expr' <#> \{tooth: tooth'@(Tooth {i: i'}), kid: kid@(Tree {node: kidNode})} -> do
+      tooths expr' <#> \{tooth: tooth'@(Tooth {i: i'}), inside: kid@(Tree {node: kidNode})} -> do
         if i == i' then 
           renderInside <#> (_ /\ kidNode)
         else
@@ -120,7 +119,7 @@ dropWhile1 cond arr =
   Array.takeEnd 1 init <> rest
 
 renderAnnExprPathLeft :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
+  PrettyTreeNode el =>
   Renderer sn el ctx env ->
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
@@ -139,7 +138,7 @@ renderAnnExprPathLeft (Renderer renderer) outside (Path (Cons tooth@(Tooth {node
         ExprKidArrangeKid {keep} -> keep
         _ -> true) $
       renderer.arrangeExpr node $
-      tooths expr' <#> \{tooth: tooth'@(Tooth {i: i'}), kid: kid@(Tree {node: kidNode})} -> do
+      tooths expr' <#> \{tooth: tooth'@(Tooth {i: i'}), inside: kid@(Tree {node: kidNode})} -> do
         let keep = i' < i -- strictly to the left
         if i == i' then 
           renderInside <#> (\item -> {item, keep} /\ kidNode)
@@ -150,7 +149,7 @@ renderAnnExprPathLeft (Renderer renderer) outside (Path (Cons tooth@(Tooth {node
     renderAnnExprHelper (Renderer renderer) interiorOutside expr' makeAnnExprProps arrangedKids
 
 renderAnnExprPathRight :: forall sn el er ctx env.
-  Show sn => Show el => PrettyTreeNode el =>
+  PrettyTreeNode el =>
   Renderer sn el ctx env ->
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
@@ -169,7 +168,7 @@ renderAnnExprPathRight (Renderer renderer) outside (Path (Cons tooth@(Tooth {nod
         ExprKidArrangeKid {drop} -> drop
         _ -> true) $ 
       renderer.arrangeExpr node $
-      tooths expr' <#> \{tooth: tooth'@(Tooth {i: i'}), kid: kid@(Tree {node: kidNode})} -> do
+      tooths expr' <#> \{tooth: tooth'@(Tooth {i: i'}), inside: kid@(Tree {node: kidNode})} -> do
         let drop = i' < i -- middle or to the left
         if i == i' then 
           renderInside <#> (\item -> {item, drop} /\ kidNode)
@@ -181,12 +180,13 @@ renderAnnExprPathRight (Renderer renderer) outside (Path (Cons tooth@(Tooth {nod
 
 -- makeSyncExprProps
 
-makeSyncExprProps :: forall sn el er ctx env. Show sn => Show el => PrettyTreeNode el => MakeSyncExprProps sn el er ctx env
+makeSyncExprProps :: forall sn el er ctx env. PrettyTreeNode el => MakeSyncExprProps sn el er ctx env
 makeSyncExprProps (Renderer renderer) outside inside@(Tree {node: AnnExprNode {elemId}}) = do
   ctx <- ask
   env <- get
   pure 
     [ HU.id $ elemId
+    , HP.classes [className.expr]
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
 

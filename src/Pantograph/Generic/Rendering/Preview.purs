@@ -19,9 +19,10 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Hole (hole)
+import Pantograph.Generic.Rendering.Style (className)
 import Type.Proxy (Proxy(..))
 
-previewComponent :: forall sn el ctx env. Show sn => Show el => PrettyTreeNode el => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
+previewComponent :: forall sn el ctx env. PrettyTreeNode el => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
 previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
 
   maybeEdit /\ maybeEditStateId <- HK.useState input.maybeEdit
@@ -75,5 +76,5 @@ makePreviewExprProps (Renderer renderer) outside expr = do
   ctx <- ask
   env <- get
   pure 
-    [ HP.classes [HH.ClassName "Expr PreviewExpr"] ]
+    [ HP.classes [className.expr, className.previewExpr] ]
 

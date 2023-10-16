@@ -46,8 +46,8 @@ derive instance Traversable Tooth
 toothNode :: forall a. Tooth a -> a
 toothNode (Tooth {node}) = node
 
-tooths :: forall a. Tree a -> Array {tooth :: Tooth a, kid :: Tree a}
-tooths (Tree {node, kids}) = kids # Array.mapWithIndex \i kid -> {tooth: Tooth {node, i, kids: fromJust' "tooths" $ Array.deleteAt i kids}, kid}
+tooths :: forall a. Tree a -> Array {tooth :: Tooth a, inside :: Tree a}
+tooths (Tree {node, kids}) = kids # Array.mapWithIndex \i inside -> {tooth: Tooth {node, i, kids: fromJust' "tooths" $ Array.deleteAt i kids}, inside}
 
 -- toothAt :: forall a. Int -> Tree a -> Tooth a
 -- toothAt
@@ -76,6 +76,11 @@ unconsPath :: forall a. Path a -> Maybe {outer :: Path a, inner :: Tooth a}
 unconsPath (Path Nil) = Nothing
 unconsPath (Path (Cons t ts)) = Just {outer: Path ts, inner: t}
 
+unsnocPath :: forall a. Path a -> Maybe {outer :: Tooth a, inner :: Path a}
+unsnocPath (Path ts) = do
+  {init, last} <- List.unsnoc ts
+  pure {outer: last, inner: Path init}
+
 newtype NonEmptyPath a = NonEmptyPath (NonEmptyList (Tooth a))
 derive instance Generic (NonEmptyPath a) _
 instance Show a => Show (NonEmptyPath a) where show x = genericShow x
@@ -91,6 +96,9 @@ toPath (NonEmptyPath ts) = Path (List.fromFoldable ts)
 fromPath :: forall a. String -> Path a -> NonEmptyPath a
 fromPath msg (Path Nil) = bug $ "[fromPath] null path: " <> msg
 fromPath _ (Path (Cons t ts)) = NonEmptyPath (NonEmptyList (t NonEmpty.:| ts))
+
+fromPathMaybe :: forall a. Path a -> Maybe (NonEmptyPath a)
+fromPathMaybe (Path ts) = NonEmptyPath <$> NonEmptyList.fromFoldable ts
 
 unconsNonEmptyPath :: forall a. NonEmptyPath a -> {outer :: Maybe (NonEmptyPath a), inner :: Tooth a}
 unconsNonEmptyPath (NonEmptyPath (NonEmptyList ts)) = case ts of

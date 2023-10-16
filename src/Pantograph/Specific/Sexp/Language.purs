@@ -121,6 +121,7 @@ language = PGL.Language
             })
         ]
       _ -> []
+  , validGyro: const true
   }
 
 sexp = {string, app, var, ruleSort, sort, example}

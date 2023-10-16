@@ -259,11 +259,16 @@ body {
   box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
 }
 
-.Expr>.HtmlArrangeKid {
-  display: inline-block;
+.Expr.beginsLine {
+  /* box-shadow: -1em 0 0 0 blue; */
+  border-left: 1px solid red;
 }
 
-.newline-header {
+.Expr>.HtmlArrangeKid {
+  display: inline;
+}
+
+.Expr>.newline-header {
   color: rgba(0, 0, 0, 0);
 }
 
@@ -271,33 +276,44 @@ body {
   color: gray;
 }
 
-.Expr.AtOutsideCursor>.newline-header,
-.Expr.AtInsideCursor>.newline-header {
+.Expr.OutsideCursor>.newline-header,
+.Expr.InsideCursor>.newline-header {
   color: gray;
 }
 
-/* RootGyro */
-.Expr.InsideRoot {}
-
-/* CursorGyro */
-
-.Expr.OutsideCursor {}
-
-
-.Expr.AtOutsideCursor,
-.Expr.AtOutsideCursor.hover {
+.Expr.OutsideCursor,
+.Expr.OutsideCursor.hover {
   background-color: var(--cursor-background-color);
   box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
 }
 
-.Expr.AtInsideCursor,
-.Expr.AtInsideCursor.hover {
+.Expr.InsideCursor,
+.Expr.InsideCursor.hover {
   border-radius: calc(0.5 * var(--it));
   background-color: var(--cursor-background-color);
   box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
 
-/* SelectGyro */
+
+.Expr.OutsideSelect {
+  background-color: var(--select-background-color);
+  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+}
+
+.Expr.InsideSelect {
+  background-color: white;
+  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+}
+
+/* 
+
+.Expr.InsideRoot {}
+
+
+.Expr.OutsideCursor {}
+
+
+
 
 .Expr.OutsideSelect {}
 
@@ -313,7 +329,7 @@ body {
   box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
 }
 
-.Expr.InsideSelect {}
+.Expr.InsideSelect {} */
 
 /* Toolbox */
 

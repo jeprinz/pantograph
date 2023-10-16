@@ -8,6 +8,7 @@ import Prelude
 import Control.Monad.Reader (ask, local)
 import Control.Monad.State as State
 import Data.Array as Array
+import Data.List (List(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language as PGL
@@ -67,9 +68,9 @@ renderer = PGR.Renderer
             ctx <- ask
             a_ /\ _a <- ma
             pure [newline ctx.indentLevel, PGR.ExprKidArrangeKid a_]
-  , beginsLine: \{parent: PGL.AnnExprNode parent, kid: _, i: _} -> case parent.label of
-      FormatRule IndentedNewline -> true
-      FormatRule Newline -> true
+  , beginsLine: case _ of
+      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule IndentedNewline}}) _)} -> true
+      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule Newline}}) _)} -> true
       _ -> false
   }
 

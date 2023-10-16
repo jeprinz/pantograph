@@ -1,36 +1,24 @@
 module Pantograph.Generic.Rendering.Common where
 
-import Data.Either.Nested
-import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Prelude
 
 import Control.Monad.Reader (ReaderT, runReaderT)
-import Control.Monad.State (StateT, evalStateT, runStateT)
-import Data.Array as Array
+import Control.Monad.State (StateT, runStateT)
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Const (Const)
-import Data.Either (either)
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
-import Data.Lazy (Lazy)
-import Data.Map as Map
 import Data.Maybe (Maybe)
-import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
-import Data.Tuple (Tuple(..))
+import Data.Tree (Orientation)
+import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant, inj)
 import Effect.Aff (Aff)
-import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Hole (hole)
-import Prim.Row (class Lacks, class Union)
-import Record as R
-import Type.Proxy (Proxy(..))
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
 class ToClassNames a where
@@ -69,25 +57,12 @@ type SyncExprGyro sn el er = AnnExprGyro sn el (SyncExprRow sn el er)
 -- | Hydrate data can be used in re-hydrating and generic (not specific)
 -- | rendering.
 
-type HydrateM sn el =
-  M
-    (HydrateCtx sn el)
-    (HydrateEnv sn el)
-    (HK.HookM Aff)
-
-type HydrateCtx sn el =
-  ( gyroPosition :: GyroPosition
-  , beginsLine :: Boolean )
-
-type HydrateEnv sn el =
-  ()
-
 -- | `ExprNode` annotation data that is generated during initial hydrating and
 -- | mapped when re-hydrating.
-
 type HydrateExprRow' sn el er =
-  ( gyroPosition :: GyroPosition
-  , beginsLine :: Boolean
+  ( beginsLine :: Boolean
+  , validCursor :: Boolean
+  , validSelect :: Boolean
   | er )
 
 type HydrateExprRow sn el er = HydrateExprRow' sn el (SyncExprRow sn el er)
@@ -100,25 +75,11 @@ type HydrateExprCursor sn el er = AnnExprCursor sn el (HydrateExprRow sn el er)
 type HydrateExprSelect sn el er = AnnExprSelect sn el (HydrateExprRow sn el er)
 type HydrateExprGyro sn el er = AnnExprGyro sn el (HydrateExprRow sn el er)
 
-data GyroPosition
-  = InsideRoot
-  | OutsideCursor | AtOutsideCursor | AtInsideCursor | InsideCursor
-  | OutsideSelect | AtOutsideSelect | MiddleSelect | AtInsideSelect | InsideSelect
-
-derive instance Generic GyroPosition _
-instance Show GyroPosition where show = genericShow
-instance ToClassNames GyroPosition where
-  toClassNames gp = [HH.ClassName "Expr", HH.ClassName (show gp)]
-
 -- | ## Render
 -- |
 -- | Rendering happens once per state change.
 
-type RenderM sn el ctx env =
-  M
-    (RenderCtx sn el ctx)
-    (RenderEnv sn el env)
-    Identity
+type RenderM sn el ctx env = M (RenderCtx sn el ctx) (RenderEnv sn el env) Identity
 
 type RenderCtx sn el ctx =
   ( depth :: Int
@@ -145,7 +106,8 @@ newtype Renderer sn el ctx env = Renderer
       AnnExprNode sn el er ->
       Array (RenderM sn el ctx env (a /\ AnnExprNode sn el er)) ->
       RenderM sn el ctx env (Array (ArrangeKid sn el a))
-  , beginsLine :: forall er1 er2. {parent :: AnnExprNode sn el er1, i :: Int, kid :: AnnExprNode sn el er2} -> Boolean
+  -- , beginsLine :: forall er1 er2. {outside :: AnnExprPath sn el er1, middle :: AnnExprTooth sn el er2, inside :: AnnExpr sn el er2} -> Boolean
+  , beginsLine :: forall er. AnnExprCursor sn el er -> Boolean
   }
 
 data ArrangeKid sn el a
@@ -222,9 +184,8 @@ newtype ToolboxQuery sn el a = ToolboxQuery (Variant
   ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
   , "get isEnabled" :: (Boolean -> a)
   , "modify select" :: (ToolboxSelect -> ToolboxSelect) /\ a
-  , "submit edit" :: Unit /\ a
-  ))
-data ToolboxOutput sn el = ToolboxOutput (Variant
+  , "submit edit" :: Unit /\ a))
+newtype ToolboxOutput sn el = ToolboxOutput (Variant
   ( "submit edit" :: ExprEdit sn el
   , "preview edit" :: Maybe (ExprEdit sn el) ))
 type ToolboxSlotId = Unit
