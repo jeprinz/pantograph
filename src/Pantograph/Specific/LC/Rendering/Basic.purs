@@ -69,8 +69,8 @@ renderer = PGR.Renderer
             a_ /\ _a <- ma
             pure [newline ctx.indentLevel, PGR.ExprKidArrangeKid a_]
   , beginsLine: case _ of
-      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule IndentedNewline}}) _)} -> true
-      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule Newline}}) _)} -> true
+      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule IndentedNewline}}) _), orientation: Outside} -> true
+      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule Newline}}) _), orientation: Outside} -> true
       _ -> false
   }
 

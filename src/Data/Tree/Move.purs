@@ -12,13 +12,17 @@ import Debug as Debug
 import Text.Pretty (class Pretty, pretty, (<+>))
 import Util (fromJust')
 
-repeatApplyUntil :: forall a. PrettyTreeNode a => (Gyro a -> Maybe (Gyro a)) -> (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+repeatApplyUntil :: forall a. PrettyTreeNode a => (Gyro a -> Maybe (Gyro a)) -> (a -> Orientation -> Boolean) -> Gyro a -> Maybe (Gyro a)
 repeatApplyUntil f cond gyro_ = go =<< f gyro_
   where
-  go gyro =
-    let node = gyroNode gyro in 
-    if cond node then Just gyro else
-    go =<< f gyro
+  go gyro = do
+    let node = gyroNode gyro
+    let orientation = case gyro of
+          RootGyro _ -> Outside
+          CursorGyro (Cursor {orientation}) -> orientation
+          SelectGyro (Select {orientation}) -> orientation
+    if cond node orientation then Just gyro else
+      go =<< f gyro
 
 tracePrettyInputOutput :: forall b a. Pretty a => Pretty b => String -> (a -> b) -> a -> b
 tracePrettyInputOutput str f a = let fa = f a in Debug.trace (str <+> pretty a <+> "=" <+> pretty (f a)) \_ -> fa
@@ -34,14 +38,14 @@ moveGyroLeft :: forall a. PrettyTreeNode a => Gyro a -> Maybe (Gyro a)
 moveGyroLeft (CursorGyro cursor) = CursorGyro <$> moveCursorLeft cursor
 moveGyroLeft gyro = ensureGyroIsCursor gyro
 
-moveGyroLeftUntil :: forall a. PrettyTreeNode a => (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+moveGyroLeftUntil :: forall a. PrettyTreeNode a => (a -> Orientation -> Boolean) -> Gyro a -> Maybe (Gyro a)
 moveGyroLeftUntil = repeatApplyUntil moveGyroLeft
 
 moveGyroRight :: forall a. PrettyTreeNode a => Gyro a -> Maybe (Gyro a)
 moveGyroRight (CursorGyro cursor) = CursorGyro <$> moveCursorRight cursor
 moveGyroRight gyro = ensureGyroIsCursor gyro
 
-moveGyroRightUntil :: forall a. PrettyTreeNode a => (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+moveGyroRightUntil :: forall a. PrettyTreeNode a => (a -> Orientation -> Boolean) -> Gyro a -> Maybe (Gyro a)
 moveGyroRightUntil = repeatApplyUntil moveGyroRight
 
 grabGyroDown :: forall a. PrettyTreeNode a => Int -> Gyro a -> Maybe (Gyro a)
@@ -53,16 +57,15 @@ grabGyroLeft = tracePrettyInputOutput "grabGyroLeft" grabGyroLeft'
   grabGyroLeft' :: forall a. PrettyTreeNode a => Gyro a -> Maybe (Gyro a)
   grabGyroLeft' gyro = ensureGyroIsSelectThenGrabLeft gyro
 
-grabGyroLeftUntil :: forall a. PrettyTreeNode a => (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+grabGyroLeftUntil :: forall a. PrettyTreeNode a => (a -> Orientation -> Boolean) -> Gyro a -> Maybe (Gyro a)
 grabGyroLeftUntil = repeatApplyUntil grabGyroLeft
 
 grabGyroRight = tracePrettyInputOutput "grabGyroRight" grabGyroRight'
   where
   grabGyroRight' :: forall a. PrettyTreeNode a => Gyro a -> Maybe (Gyro a)
-  grabGyroRight' (SelectGyro select) = grabSelectRight select
   grabGyroRight' gyro = ensureGyroIsSelectThenGrabRight gyro
 
-grabGyroRightUntil :: forall a. PrettyTreeNode a => (a -> Boolean) -> Gyro a -> Maybe (Gyro a)
+grabGyroRightUntil :: forall a. PrettyTreeNode a => (a -> Orientation -> Boolean) -> Gyro a -> Maybe (Gyro a)
 grabGyroRightUntil = repeatApplyUntil grabGyroRight
 
 -- If `ensureGyroIsCursor gyro == Nothing` then then `gyro` is already a
@@ -83,19 +86,19 @@ ensureGyroIsSelectThenGrabRight :: forall a. PrettyTreeNode a => Gyro a -> Maybe
 ensureGyroIsSelectThenGrabRight (SelectGyro select) = grabSelectRight select
 ensureGyroIsSelectThenGrabRight (RootGyro expr) = do
   Cursor {outside: middle, inside: inside'} <- moveCursorRight $ Cursor {outside: mempty, inside: expr, orientation: Inside}
-  Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Outside}
+  Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Inside}
 ensureGyroIsSelectThenGrabRight (CursorGyro (Cursor {outside, inside})) = do
   Cursor {outside: middle, inside: inside'} <- moveCursorRight $ Cursor {outside: mempty, inside, orientation: Inside}
-  Just $ SelectGyro $ Select {outside, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Outside}
+  Just $ SelectGyro $ Select {outside, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Inside}
 
 ensureGyroIsSelectThenGrabDown :: forall a. PrettyTreeNode a => Int -> Gyro a -> Maybe (Gyro a)
 ensureGyroIsSelectThenGrabDown i (SelectGyro select) = grabSelectDown i select
 ensureGyroIsSelectThenGrabDown i (RootGyro expr) = do
   let Cursor {outside: middle, inside: inside'} = moveCursorDown i $ Cursor {outside: mempty, inside: expr, orientation: Inside}
-  Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Outside}
+  Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Inside}
 ensureGyroIsSelectThenGrabDown i (CursorGyro (Cursor {outside, inside})) = do
   let Cursor {outside: middle, inside: inside'} = moveCursorDown i $ Cursor {outside: mempty, inside, orientation: Inside}
-  Just $ SelectGyro $ Select {outside, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Outside}
+  Just $ SelectGyro $ Select {outside, middle: fromPath "ensureGyroIsSelect" middle, inside: inside', orientation: Inside}
 
 -- Cursor
 
@@ -229,14 +232,21 @@ grabSelectUp (Select {outside, middle, inside, orientation}) =
         {outer: Just middle', inner: tooth} -> Just $ SelectGyro $ Select {outside, middle: middle', inside: unTooth tooth inside, orientation}
 
 grabSelectLeft :: forall a. PrettyTreeNode a => Select a -> Maybe (Gyro a)
-grabSelectLeft = grabSelectUp
+grabSelectLeft (Select {outside, middle, inside, orientation}) =
+  case orientation of
+    Outside -> do
+      {outer: outside', inner: tooth} <- unconsPath outside
+      Just $ SelectGyro $ Select {outside: outside', middle: snocNonEmptyPath tooth middle, inside, orientation}
+    Inside -> do
+      Cursor {outside: middle', inside: inside'} <- moveCursorLeft (Cursor {outside: toPath middle, inside, orientation: Outside})
+      Just $ SelectGyro $ Select {outside, middle: fromPath "grabSelectLeft" middle', inside: inside', orientation}
 
 grabSelectRight :: forall a. PrettyTreeNode a => Select a -> Maybe (Gyro a)
 grabSelectRight (Select {outside, middle, inside, orientation}) =
   case orientation of
     Outside -> case unsnocNonEmptyPath middle of
-      {outer: tooth, inner: Nothing} -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside, orientation: Outside}
-      {outer: tooth, inner: Just middle'} -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
+      {outer: tooth, inner: Nothing} -> Debug.trace "here1" \_ -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside, orientation: Outside}
+      {outer: tooth, inner: Just middle'} -> Debug.trace "here2" \_ -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
     Inside -> do
       Cursor {outside: middle', inside: inside'} <- moveCursorRight (Cursor {outside: toPath middle, inside, orientation: Inside})
       Just $ SelectGyro $ Select {outside, middle: fromPath "grabSelectRight" middle', inside: inside', orientation}

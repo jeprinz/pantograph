@@ -17,7 +17,7 @@ import Control.Monad.Reader (Reader, ReaderT, ask, asks, local, runReaderT)
 import Control.Monad.State (StateT, get)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Foldable (elem, foldM, foldMap)
+import Data.Foldable (elem, foldM, foldMap, null)
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List(..))
 import Data.List as List
@@ -78,13 +78,15 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         Just hydratedExprGyro -> pure hydratedExprGyro
 
     modifyExprGyro f = do
-      exprGyro <- getHydratedExprGyro <#> shrinkAnnExprGyro
-      case f exprGyro of
+      hydratedExprGyro <- getHydratedExprGyro
+      rehydrateExprGyro (Renderer renderer) (Just hydratedExprGyro) Nothing
+      let exprGyro' = shrinkAnnExprGyro hydratedExprGyro
+      case f exprGyro' of
         Nothing -> pure unit
-        Just exprGyro' -> do
-          let syncedExprGyro' = syncExprGyro exprGyro'
+        Just exprGyro'' -> do
+          let syncedExprGyro' = syncExprGyro exprGyro''
           liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
-          HK.modify_ exprGyroStateId (const exprGyro') -- causes a re-render
+          HK.modify_ exprGyroStateId (const exprGyro'') -- causes a re-render
 
     -- If the exprGyro is not fresh, updates the exprGyro to correspond to the
     -- syncedExprGyro.
@@ -112,7 +114,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       case f hydratedExprGyro of
         Nothing -> pure unit
         Just hydratedExprGyro' -> do
-          rehydrateExprGyro (Renderer renderer) (Just hydratedExprGyro) hydratedExprGyro'
+          rehydrateExprGyro (Renderer renderer) (Just hydratedExprGyro) (Just hydratedExprGyro')
           liftEffect $ Ref.write (Just hydratedExprGyro') hydratedExprGyroRef
 
   renderCtx /\ renderCtxStateId <- HK.useState $
@@ -181,29 +183,29 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             modifyHydratedExprGyro escapeGyro
           else if ki.key == "ArrowLeft" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro grabGyroLeft
+            modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {validSelect}) _ -> validSelect
           else if ki.key == "ArrowRight" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro grabGyroRight
+            modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {validSelect}) _ -> validSelect
           else if ki.key == "ArrowUp" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
+            modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
           else if ki.key == "ArrowDown" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
+            modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
 
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro moveGyroLeft
+            modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {validCursor}) -> validCursor
           else if ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro moveGyroRight
+            modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {validCursor}) -> validCursor
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {beginsLine}) -> beginsLine
+            modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine}) -> beginsLine
+            modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
 
           else if ki.key == " " then do
             liftEffect $ Event.preventDefault event
@@ -235,6 +237,25 @@ type HydrateCtx sn el er =
   { cursor :: SyncExprCursor sn el er
   , maybeSelect :: Maybe (SyncExprGyro sn el er) }
 
+hydrateExprNode :: forall sn el er ctx env. Renderer sn el ctx env -> HydrateM sn el er (HydrateExprNode sn el er)
+hydrateExprNode (Renderer renderer) = do
+  let Language language = renderer.language
+  Cursor cursor <- asks _.cursor 
+  maybeSelect <- asks _.maybeSelect
+
+  let
+    AnnExprNode node = cursor.inside # treeNode
+    beginsLine orientation = renderer.beginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
+    validCursor orientation = language.validGyro (CursorGyro (Cursor cursor {orientation = orientation}))
+    validSelect = maybeSelect # maybe false language.validGyro
+
+    exprNode = AnnExprNode $ node # R.union
+      { beginsLine
+      , validCursor
+      , validSelect }
+
+  pure exprNode
+
 hydrateExprGyro :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
 hydrateExprGyro (Renderer renderer) gyro = do
   hydratedExprGyro <- case gyro of
@@ -263,28 +284,8 @@ hydrateExprGyro (Renderer renderer) gyro = do
         hydrateExprPath (Renderer renderer) (toPath middle) \middle' -> (fromPath "hydrateExprGyro" middle' /\ _) <$>
         hydrateExpr (Renderer renderer)
       pure $ SelectGyro $ Select {outside: outside', middle: middle', inside: inside', orientation}
-  rehydrateExprGyro (Renderer renderer) Nothing hydratedExprGyro
+  rehydrateExprGyro (Renderer renderer) Nothing (Just hydratedExprGyro)
   pure hydratedExprGyro
-
-hydrateExprNode :: forall sn el er ctx env. Renderer sn el ctx env -> HydrateM sn el er (HydrateExprNode sn el er)
-hydrateExprNode (Renderer renderer) = do
-  let Language language = renderer.language
-  Cursor cursor <- asks _.cursor 
-  maybeSelect <- asks _.maybeSelect
-
-  let
-    AnnExprNode node = cursor.inside # treeNode
-    beginsLine = renderer.beginsLine (Cursor cursor)
-
-    exprNode = AnnExprNode $ node # R.union
-      { beginsLine
-      , validCursor: language.validGyro (CursorGyro (Cursor cursor))
-      , validSelect: maybeSelect # maybe false language.validGyro }
-
-  when beginsLine do
-    liftEffect $ HU.updateClassName node.elemId (HH.ClassName "beginsLine") (Just true)
-
-  pure exprNode
 
 hydrateStep :: forall sn el er a. PrettyTreeNode el => Int -> HydrateM sn el er a -> HydrateM sn el er a
 hydrateStep i = local $
@@ -299,26 +300,30 @@ hydrateExprPath (Renderer renderer) (Path ts0) k = go mempty (List.reverse ts0)
     Cursor cursor0 <- asks _.cursor
     maybeSelect0 <- asks _.maybeSelect
 
-    Debug.traceM $ "[hydrateExprPath]" <>
-      "\n  • i = " <> show i <>
-      "\n  • cursor0 = " <> pretty (Cursor cursor0) <>
-      "\n  • select0 = " <> pretty maybeSelect0
+    -- Debug.traceM $ "[hydrateExprPath]" <>
+    --   "\n  • i = " <> show i <>
+    --   "\n  • cursor0 = " <> pretty (Cursor cursor0) <>
+    --   "\n  • select0 = " <> pretty maybeSelect0
 
-    hydrateStep i do
+    do
       Cursor cursor <- asks _.cursor
       maybeSelect <- asks _.maybeSelect
 
+      -- Debug.traceM $ "[hydrateExprPath]" <>
+      --   "\n  • cursor = " <> pretty (Cursor cursor) <>
+      --   "\n  • select = " <> pretty maybeSelect
+
       hydratedNode <- hydrateExprNode (Renderer renderer)
       hydratedKids <- tooths cursor.inside # deleteAt "hydrateExprPath" i # traverse \{tooth: Tooth {i: i'}} -> do
-        Debug.traceM $ "[hydrateExprPath]" <>
-          "\n  • i = " <> show i' <>
-          "\n  • cursor = " <> pretty (Cursor cursor) <>
-          "\n  • select = " <> pretty maybeSelect
+        -- Debug.traceM $ "[hydrateExprPath]" <>
+        --   "\n  • i = " <> show i' <>
+        --   "\n  • cursor = " <> pretty (Cursor cursor) <>
+        --   "\n  • select = " <> pretty maybeSelect
 
         hydrateStep i' $ hydrateExpr (Renderer renderer)
 
       let tooth' = Tooth {node: hydratedNode, i, kids: hydratedKids}
-      go (consPath path tooth') ts
+      hydrateStep i $ go (consPath path tooth') ts
 
 hydrateExpr :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> HydrateM sn el er (HydrateExpr sn el er)
 hydrateExpr (Renderer renderer) = do
@@ -327,10 +332,10 @@ hydrateExpr (Renderer renderer) = do
 
   hydratedNode <- hydrateExprNode (Renderer renderer)
   hydratedKids <- tooths cursor.inside # traverse \{tooth: Tooth {i}} -> do
-    Debug.traceM $ "[hydrateExpr]" <>
-      "\n  • i = " <> show i <>
-      "\n  • cursor = " <> pretty (Cursor cursor) <>
-      "\n  • select = " <> pretty maybeSelect
+    -- Debug.traceM $ "[hydrateExpr]" <>
+    --   "\n  • i = " <> show i <>
+    --   "\n  • cursor = " <> pretty (Cursor cursor) <>
+    --   "\n  • select = " <> pretty maybeSelect
 
     hydrateStep i $ hydrateExpr (Renderer renderer)
   pure $ Tree {node: hydratedNode, kids: hydratedKids}
@@ -338,8 +343,8 @@ hydrateExpr (Renderer renderer) = do
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
-rehydrateExprGyro :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> Maybe (HydrateExprGyro sn el er) -> HydrateExprGyro sn el er -> HK.HookM Aff Unit
-rehydrateExprGyro (Renderer renderer) m_hydratedExprGyro hydratedExprGyro' = do
+rehydrateExprGyro :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
+rehydrateExprGyro (Renderer renderer) m_hydratedExprGyro m_hydratedExprGyro' = do
   unhydrateExprGyro
   rehydrateExprGyro'
   where
@@ -353,12 +358,13 @@ rehydrateExprGyro (Renderer renderer) m_hydratedExprGyro hydratedExprGyro' = do
       liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # unwrap # _.elemId) (className.orientationSelect Outside) (Just false)
       liftEffect $ HU.updateClassName (select.inside # treeNode # unwrap # _.elemId) (className.orientationSelect Inside) (Just false)
 
-  rehydrateExprGyro' = case hydratedExprGyro' of
-    RootGyro _expr ->
+  rehydrateExprGyro' = case m_hydratedExprGyro' of
+    Nothing -> pure unit
+    Just (RootGyro _expr) ->
       pure unit
-    CursorGyro (Cursor cursor) -> do
+    Just (CursorGyro (Cursor cursor)) -> do
       liftEffect $ HU.updateClassName (cursor.inside # treeNode # unwrap # _.elemId) (className.orientationCursor cursor.orientation) (Just true)
-    SelectGyro (Select select) -> do
+    Just (SelectGyro (Select select)) -> do
       liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # unwrap # _.elemId) (className.orientationSelect Outside) (Just true)
       liftEffect $ HU.updateClassName (select.inside # treeNode # unwrap # _.elemId) (className.orientationSelect Inside) (Just true)
 

@@ -60,8 +60,8 @@ type SyncExprGyro sn el er = AnnExprGyro sn el (SyncExprRow sn el er)
 -- | `ExprNode` annotation data that is generated during initial hydrating and
 -- | mapped when re-hydrating.
 type HydrateExprRow' sn el er =
-  ( beginsLine :: Boolean
-  , validCursor :: Boolean
+  ( beginsLine :: Orientation -> Boolean
+  , validCursor :: Orientation -> Boolean
   , validSelect :: Boolean
   | er )
 

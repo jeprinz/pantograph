@@ -259,10 +259,14 @@ body {
   box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
 }
 
-.Expr.beginsLine {
-  /* box-shadow: -1em 0 0 0 blue; */
-  border-left: 1px solid red;
+.Expr.beginsLine::before {
+  /* content: '$' */
 }
+
+.Expr.validCursor::before {
+  content: "*";
+}
+
 
 .Expr>.HtmlArrangeKid {
   display: inline;
