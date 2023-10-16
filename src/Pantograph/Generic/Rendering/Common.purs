@@ -222,7 +222,7 @@ newtype ToolboxQuery sn el a = ToolboxQuery (Variant
   ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
   , "get isEnabled" :: (Boolean -> a)
   , "modify select" :: (ToolboxSelect -> ToolboxSelect) /\ a
-  , "submit edit" :: a
+  , "submit edit" :: Unit /\ a
   ))
 data ToolboxOutput sn el = ToolboxOutput (Variant
   ( "submit edit" :: ExprEdit sn el
@@ -289,4 +289,5 @@ terminalItem = {debug, debugString}
 tell slotToken slotProxy slotId constr variantProxy a =
   HK.tell slotToken slotProxy slotId $ constr <<< inj variantProxy <<< (a /\ _)
 
--- TODO: same for `request`
+request slotToken slotProxy slotId constr variantProxy =
+  HK.request slotToken slotProxy slotId $ constr <<< inj variantProxy

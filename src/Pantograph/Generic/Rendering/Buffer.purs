@@ -147,7 +147,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         let event = KeyboardEvent.toEvent keyboardEvent
         let ki = getKeyInfo keyboardEvent
 
-        maybeIsEnabledToolbox <- HK.request slotToken (Proxy :: Proxy "toolbox") unit \k -> ToolboxQuery $ inj (Proxy :: Proxy "get isEnabled") k
+        maybeIsEnabledToolbox <- request slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "get isEnabled")
         let isEnabledToolbox = maybeIsEnabledToolbox == Just true
         let isExistingToolbox = isJust maybeIsEnabledToolbox 
 
@@ -155,22 +155,22 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           if false then pure unit
           else if ki.key == "Escape" then do
             liftEffect $ Event.preventDefault event
-            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify isEnabled") $ (const false) /\ a
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const false
           else if ki.key == "Enter" || ki.key == " " then do
             liftEffect $ Event.preventDefault event
-            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "submit edit") a
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "submit edit") $ unit
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
-            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx - 1))) /\ a
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect rowIx (colIx - 1)
           else if ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
-            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect rowIx (colIx + 1))) /\ a
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect rowIx (colIx + 1)
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
-            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx + 1) colIx)) /\ a
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect (rowIx + 1) colIx
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
-            HK.tell slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify select") $ (\(ToolboxSelect rowIx colIx) -> (ToolboxSelect (rowIx - 1) colIx)) /\ a
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect (rowIx - 1) colIx
           else pure unit
 
         else do
@@ -207,7 +207,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           else if ki.key == " " then do
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
-            HK.tell slotToken (Proxy :: Proxy "toolbox") unit $ ToolboxQuery <<< inj (Proxy :: Proxy "modify isEnabled") <<< (const true /\ _)
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const true
           else pure unit
 
         pure $ Just a
@@ -360,12 +360,12 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation})
   env <- get
   let toolboxHandler (ToolboxOutput output) = (output # _) $ case_
         # on (Proxy :: Proxy "submit edit") (\edit -> do
-            HK.tell ctx.slotToken (Proxy :: Proxy "toolbox") unit \a -> ToolboxQuery $ inj (Proxy :: Proxy "modify isEnabled") $ (const false) /\ a
+            tell ctx.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const false
             ctx.modifyExprGyro $ applyEdit (Language language) edit
           )
         # on (Proxy :: Proxy "preview edit") (\maybeEdit -> do 
-            HK.tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition $ PreviewQuery <<< inj (Proxy :: Proxy "modify maybeEdit") <<< (const maybeEdit /\ _)
-            HK.tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition $ PreviewQuery <<< inj (Proxy :: Proxy "modify maybeEdit") <<< (const maybeEdit /\ _)
+            tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
+            tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
           )
   let wrapCursor htmls = do
         let toolboxInput = ToolboxInput

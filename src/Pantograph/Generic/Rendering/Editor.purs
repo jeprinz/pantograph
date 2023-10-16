@@ -43,10 +43,8 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
       let ki = getKeyInfo keyboardEvent
       -- Console.log $ "[editorComponent.handleKeyboardEvent] " <>  showKeyInfo ki
 
-      -- terminalIsFocused <- HK.request slotToken (Proxy :: Proxy "terminal") unit GetFocusedTerminal <#>
-      --   fromJust' "editorComponent.useKeyboardEffect"
       terminalIsFocused <- map (fromJust' "editorComponent.useKeyboardEffect") $
-        HK.request slotToken (Proxy :: Proxy "terminal") unit $ TerminalQuery <<< inj (Proxy :: Proxy "get inputIsFocused")
+        request slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "get inputIsFocused")
       
       if false then pure unit
       else if ki.ctrl && ki.key == "`" then tell slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "toggle isOpen") Nothing
@@ -55,7 +53,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
           liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent keyboardEvent
 
         if false then pure unit
-        else HK.tell slotToken (Proxy :: Proxy "buffer") unit $ BufferQuery <<< inj (Proxy :: Proxy "keyboard") <<< (keyboardEvent /\ _)
+        else tell slotToken (Proxy :: Proxy "buffer") unit BufferQuery (Proxy :: Proxy "keyboard") keyboardEvent
 
   -- buffer
 
@@ -65,7 +63,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
               , renderer: Renderer renderer
               , expr: fromJust' "defaultTopExpr" $ defaultTopExpr (Language language) }
         let bufferHandler (BufferOutput output) = (output # _) $ case_
-              # on (Proxy :: Proxy "write terminal") \item -> HK.tell slotToken (Proxy :: Proxy "terminal") unit $ TerminalQuery <<< inj (Proxy :: Proxy "write") <<< (item /\ _)
+              # on (Proxy :: Proxy "write terminal") \item -> tell slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "write") item
         HH.slot (Proxy :: Proxy "buffer") unit bufferComponent bufferInput bufferHandler
 
   -- terminal
