@@ -132,21 +132,21 @@ language = PL.Language
         let x = PL.MakeRuleSortVar "x"
         PL.ChangingRule
           { parameters: Set.fromFoldable [x]
-          , kids: [Replace (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort [])] }
+          , kids: [replaceChange (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort [])] }
       LamRule -> do
         let x = PL.MakeRuleSortVar "x"
         PL.ChangingRule
           { parameters: Set.fromFoldable [x]
-          , kids: [Replace (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort []), Replace (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])]  }
+          , kids: [replaceChange (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])]  }
       AppRule -> do
         PL.ChangingRule
           { parameters: Set.fromFoldable []
-          , kids: [Replace (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort []), Replace (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])] }
+          , kids: [replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])] }
       LetRule -> do
         let x = PL.MakeRuleSortVar "x"
         PL.ChangingRule
           { parameters: Set.fromFoldable [x]
-          , kids: [Replace (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort []), Replace (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort []), Replace (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])]  }
+          , kids: [replaceChange (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])]  }
       HoleRule -> do
         PL.ChangingRule
           { parameters: Set.fromFoldable []
@@ -154,7 +154,7 @@ language = PL.Language
       FormatRule _format -> do
         PL.ChangingRule
           { parameters: Set.fromFoldable []
-          , kids: [Reflect (PL.makeConstRuleSortNode TermSort) []] }
+          , kids: [injectChange (PL.makeConstRuleSortNode TermSort) []] }
   , getDefaultExpr: case _ of
       Tree {node: PL.SortNode (StringValue _)} -> Nothing
       Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
@@ -183,17 +183,17 @@ language = PL.Language
         [ 
           fromJust' "getEdits" $ NonEmptyArray.fromArray
             [ -- AppRule
-              InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: [term.hole]}), innerChange: Reflect (PL.SortNode TermSort) []}
-            , InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 1, kids: [term.hole]}), innerChange: Reflect (PL.SortNode TermSort) []}
+              InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: [term.hole]}), innerChange: injectChange (PL.SortNode TermSort) []}
+            , InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 1, kids: [term.hole]}), innerChange: injectChange (PL.SortNode TermSort) []}
             ]
         ,
           NonEmptyArray.singleton $
             -- FormatRule IndentedNewline
-            InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule IndentedNewline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: Reflect (PL.SortNode TermSort) []}
+            InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule IndentedNewline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: injectChange (PL.SortNode TermSort) []}
         ,
           NonEmptyArray.singleton $
             -- FormatRule Newline
-            InsertEdit {outerChange: Reflect (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule Newline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: Reflect (PL.SortNode TermSort) []}
+            InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule Newline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: injectChange (PL.SortNode TermSort) []}
         ]
       _ -> bug $ "invalid sort"
   , validGyro: case _ of
@@ -205,6 +205,7 @@ language = PL.Language
       SelectGyro (Select {outside, middle, inside, orientation}) -> true
       
       _ -> false
+  , steppingRules: mempty
   }
 
 -- shallow

@@ -92,7 +92,7 @@ language = PGL.Language
         , kids: [] }
       AppRule -> PGL.ChangingRule
         { parameters: Set.empty
-        , kids: [Reflect (PGL.ConstRuleSortNode (PGL.SortNode SexpSort)) []] }
+        , kids: [injectChange (PGL.ConstRuleSortNode (PGL.SortNode SexpSort)) []] }
       VarRule -> PGL.ChangingRule
         { parameters: Set.empty
         , kids: [] }
@@ -109,19 +109,20 @@ language = PGL.Language
         [ 
           -- apply "f"
           NonEmptyArray.singleton (InsertEdit 
-            { outerChange: Reflect (PGL.SortNode SexpSort) []
+            { outerChange: injectChange (PGL.SortNode SexpSort) []
             , middle: singletonNonEmptyPath $ Tooth {node: AnnExprNode {label: AppRule, sigma: RuleSortVarSubst Map.empty}, i: 1, kids: [sexp.var "f"]}
-            , innerChange: Reflect (PGL.SortNode SexpSort) []
+            , innerChange: injectChange (PGL.SortNode SexpSort) []
             })
         , 
           -- replace with "x"
           NonEmptyArray.singleton (ReplaceEdit 
-            { outerChange: Reflect (PGL.SortNode SexpSort) []
+            { outerChange: injectChange (PGL.SortNode SexpSort) []
             , inside: sexp.var "x"
             })
         ]
       _ -> []
   , validGyro: const true
+  , steppingRules: mempty
   }
 
 sexp = {string, app, var, ruleSort, sort, example}

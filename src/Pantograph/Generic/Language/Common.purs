@@ -6,15 +6,17 @@ import Util
 
 import Bug (bug)
 import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested ((/\))
 import Prim.Row (class Union)
-import Text.Pretty (ticks)
+import Text.Pretty (class Pretty, ticks)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -69,9 +71,9 @@ type SortChange sn = Change (SortNode sn)
 type RuleSortChange sn = Change (RuleSortNode sn)
 
 instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
-  applyRuleSortVarSubst sigma (Shift sign st c) = Shift sign (fromConstRuleSortNode "invalid Reflect" <$> st) (applyRuleSortVarSubst sigma c)
-  applyRuleSortVarSubst sigma (Replace s1 s2) = Replace (applyRuleSortVarSubst sigma s1) (applyRuleSortVarSubst sigma s2)
-  applyRuleSortVarSubst sigma (Reflect sn cs) = Reflect (fromConstRuleSortNode "invalid Reflect" sn) (applyRuleSortVarSubst sigma <$> cs)
+  applyRuleSortVarSubst sigma (Shift {sign, tooth, kid}) = Shift {sign, tooth: fromConstRuleSortNode "invalid Inject" <$> tooth, kid: applyRuleSortVarSubst sigma kid}
+  applyRuleSortVarSubst sigma (Replace {old, new}) = Replace {old: applyRuleSortVarSubst sigma old, new: applyRuleSortVarSubst sigma new}
+  applyRuleSortVarSubst sigma (InjectChange {node, kids}) = InjectChange {node: fromConstRuleSortNode "invalid InjectChange" node, kids: applyRuleSortVarSubst sigma <$> kids}
 
 -- AnnExpr
 
@@ -128,6 +130,32 @@ shrinkAnnExprGyro = unsafeCoerce
 shrinkAnnExprGyro' :: forall sn el er er_ er'. Union er_ er' er => Proxy er_ -> AnnExprGyro sn el er -> AnnExprGyro sn el er'
 shrinkAnnExprGyro' _ = unsafeCoerce
 
+-- StepExpr
+
+data StepExpr sn el
+  = Boundary {direction :: Direction, change :: SortChange sn, kid :: StepExpr sn el}
+  | InjectStepExpr {expr :: ExprNode sn el, maybeMarker :: Maybe Marker, kids :: Array (StepExpr sn el)}
+
+-- Direction
+
+data Direction = Up | Down
+
+derive instance Generic Direction _
+instance Show Direction where show x = genericShow x
+instance Eq Direction where eq x y = genericEq x y
+instance Ord Direction where compare x y = genericCompare x y
+instance Pretty Direction where
+  pretty Up = "↑"
+  pretty Down = "↓"
+
+-- Marker
+
+data Marker = CursorMarker
+
+derive instance Generic Marker _
+instance Show Marker where show x = genericShow x
+instance Eq Marker where eq x = genericEq x
+
 -- Language
 
 newtype Language sn el = Language
@@ -137,7 +165,8 @@ newtype Language sn el = Language
   , topSort :: Sort sn
   , getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
   , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
-  , validGyro :: forall er. AnnExprGyro sn el er -> Boolean }
+  , validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
+  , steppingRules :: Array (SteppingRule sn el) }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
@@ -151,6 +180,9 @@ newtype SortingRule sn = SortingRule
 newtype ChangingRule sn = ChangingRule 
   { parameters :: Set.Set RuleSortVar
   , kids :: Array (RuleSortChange sn) }
+
+newtype SteppingRule sn el = SteppingRule
+  (StepExpr sn el -> Maybe (StepExpr sn el))
 
 -- RuleSortVar
 

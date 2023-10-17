@@ -156,9 +156,9 @@ gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth {n
 gyroNode (SelectGyro (Select {inside: Tree {node}, orientation: Inside})) = node
 
 data Change a
-  = Shift ShiftSign (Tooth a) (Change a)
-  | Replace (Tree a) (Tree a)
-  | Reflect a (Array (Change a))
+  = Shift {sign :: ShiftSign, tooth :: Tooth a, kid :: Change a}
+  | Replace {old :: Tree a, new :: Tree a}
+  | InjectChange {node :: a, kids :: Array (Change a)}
 derive instance Generic (Change a) _
 instance Show a => Show (Change a) where show x = genericShow x
 derive instance Eq a => Eq (Change a)
@@ -173,6 +173,9 @@ derive instance Ord ShiftSign
 instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
+
+injectChange node kids = InjectChange {node, kids}
+replaceChange old new = Replace {old, new}
 
 -- Edit
 
@@ -238,6 +241,6 @@ instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (SelectGyro select) = pretty select
 
 instance PrettyTreeNode a => Pretty (Change a) where
-  pretty (Shift sign tooth change) = pretty sign <> (Pretty.outer (prettyTooth tooth (Pretty.inner (pretty change))))
-  pretty (Replace tree1 tree2) = parens (pretty tree1 <+> "~~>" <+> pretty tree2)
-  pretty (Reflect node kids) = prettyTreeNode node (pretty <$> kids)
+  pretty (Shift {sign, tooth, kid}) = pretty sign <> (Pretty.outer (prettyTooth tooth (Pretty.inner (pretty kid))))
+  pretty (Replace {old, new}) = parens (pretty old <+> "~~>" <+> pretty new)
+  pretty (InjectChange {node, kids}) = prettyTreeNode node (pretty <$> kids)
