@@ -253,6 +253,11 @@ data HoleyDerivZipper l r
 --      (Sort l) -- the sort of the Hole
       (DerivLabel l r) -- the rule of the Hole
 
+isValidCursor :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Boolean
+isValidCursor spec (HoleInteriorHoleyDerivZipper _ _) = true
+isValidCursor spec (InjectHoleyDerivZipper dz) = spec.isValidCursorSort (derivZipperSort dz)
+
+
 derive instance Generic (HoleyDerivZipper l r) _
 derive instance (Eq l, Eq r) => Eq (HoleyDerivZipper l r)
 derive instance (Ord l, Ord r) => Ord (HoleyDerivZipper l r)
@@ -295,6 +300,17 @@ moveHoleyDerivZipper = case_
   # on _right (\_ -> Zippable.zipRight)
   # on _prev (\_ -> Zippable.zipPrev)
   # on _next (\_ -> Zippable.zipNext 0)
+
+-- Given a function that says if cursor positions are valid, move until something is valid (or move nowhere if nothing is valid)
+moveHDZUntil :: forall l r. IsRuleLabel l r => MoveDir
+    -> (HoleyDerivZipper l r -> Boolean)
+    -> HoleyDerivZipper l r
+    -> Maybe (HoleyDerivZipper l r)
+moveHDZUntil dir valid hdz =
+    case moveHoleyDerivZipper dir hdz of
+        Just hdz' ->
+            if valid hdz' then Just hdz' else moveHDZUntil dir valid hdz'
+        Nothing -> Nothing
 
 hdzipperDerivPath :: forall l r. HoleyDerivZipper l r -> DerivPath Up l r
 hdzipperDerivPath (InjectHoleyDerivZipper dzipper) = Expr.zipperPath dzipper

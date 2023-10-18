@@ -911,6 +911,10 @@ clipboardSort s
     = sor TermSort % [startCtx, Expr.fromMetaVar (Expr.freshMetaVar "anyType")]
 clipboardSort _other = Expr.fromMetaVar (Expr.freshMetaVar "anySort")
 
+isValidCursorSort :: Sort -> Boolean
+isValidCursorSort (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % _) = false
+isValidCursorSort _ = true
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -924,7 +928,7 @@ editorSpec =
   , editsAtHoleInterior
   , arrangeDerivTermSubs
   , stepRules
-  , isValidCursorSort: const true
+  , isValidCursorSort
   , isValidSelectionSorts: const true
   , languageChanges
   , onDelete

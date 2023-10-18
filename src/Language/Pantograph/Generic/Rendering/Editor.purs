@@ -248,7 +248,7 @@ editorComponent = HK.component \tokens spec -> HK.do
       getFacade >>= case _ of
         CursorState {mode: BufferCursorMode} -> pure unit
         CursorState cursor -> do
-          case moveHoleyDerivZipper dir cursor.hdzipper of
+          case moveHDZUntil dir (isValidCursor spec) cursor.hdzipper of
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         SelectState select -> do
