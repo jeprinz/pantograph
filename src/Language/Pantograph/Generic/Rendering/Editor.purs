@@ -197,27 +197,24 @@ editorComponent = HK.component \tokens spec -> HK.do
       st <- getState
       assert (cursorState source st) pure
 
+    doSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
+    doSmallstep ssterm = do
+        -- NOTE: uncomment this line and comment the following two lines to make it step one-by-one through smallstep
+--        setState $ SmallStepState {ssterm}
+        let final = SmallStep.stepRepeatedly ssterm spec.stepRules
+        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper final)))
+
     handleAction = case _ of
       WrapAction {topChange, dpath, botChange} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
-
-        -- TODO: this is old, doesn't even do smallstep
-        -- setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper (dpath <> up) dterm)))
-
-        let ssterm = setupSSTermFromWrapAction 
+        let ssterm = setupSSTermFromWrapAction
               up
               topChange 
               dpath 
               botChange 
               dterm
-
-        -- !TODO
-        -- use `step` to get the new term
-        -- repeatedly apply `step`
-        -- yields `Nothing` when done
-        -- to finally turn it back into a DerivTerm, use `termToZipper`
-        setState $ SmallStepState {ssterm}
+        doSmallstep ssterm
 
       FillAction {sub, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
@@ -241,7 +238,7 @@ editorComponent = HK.component \tokens spec -> HK.do
               topChange
               dterm
 
-        setState $ SmallStepState {ssterm}
+        doSmallstep ssterm
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
@@ -347,7 +344,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                   restOfProg
                   upChange
                   dterm'
-            setState $ SmallStepState {ssterm}
+            doSmallstep ssterm
 
     ------------------------------------------------------------------------------
     -- handle keyboard event
@@ -434,7 +431,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                               unifiedClipDPath
                               (ChangeAlgebra.invert unifiedDownChange)
                               unifiedProgDTerm
-                        setState $ SmallStepState {ssterm}
+                        doSmallstep ssterm
                     Nothing -> do -- Didn't unify; can't paste
                         pure unit
               Just (Right clipDTerm) -> do
@@ -506,7 +503,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                       (Expr.Path mempty)
                       downChange
                       dterm
-                setState $ SmallStepState {ssterm}
+                doSmallstep ssterm
 
           let Expr.Zipperp path selection dterm = select.dzipperp
           -- copy

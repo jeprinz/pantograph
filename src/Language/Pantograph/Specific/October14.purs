@@ -384,7 +384,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
         , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
-        , Left (renCtx' /\ 3)]
+        , Left (renCtx /\ 3)]
   App /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
