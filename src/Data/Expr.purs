@@ -463,7 +463,7 @@ instance Zippable (Zipperp l) where
   -- focus is at the top
   zipDowns (Zipperp path (Left sel) expr) = case unstepPath sel of
     Nothing -> Zippable.zipDowns (Zipperp path (Right mempty) expr)
-    Just (th /\ sel') -> [Zipperp (stepPath th path) (Left sel') (unTooth th expr)]
+    Just (th /\ sel') -> [Zipperp (stepPath th path) (Left sel') expr]
   -- focus is at the bottom
   zipDowns (Zipperp path (Right sel) expr) = do
     let zs = Zippable.zipDowns (Zipper sel expr)
