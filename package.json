@@ -7,12 +7,10 @@
     "test": "test"
   },
   "dependencies": {
-    "codemirror": "^6.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.17.18",
-    "@lezer/generator": "^1.5.1",
     "purescript": "^0.15.8",
     "purs-backend-es": "^1.3.2",
     "spago": "^0.20.9"
@@ -26,8 +24,7 @@
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/index.js",
     "serve": "npm run build && esbuild index.js --sourcemap --bundle --outdir=dist --servedir=dist",
     "servek": "npm run serve",
-    "test": "npx spago test",
-    "generate-parser": "lezer-generator src/Tutorial/syntax.grammar -o src/Tutorial/Parser.js"
+    "test": "npx spago test"
   },
   "repository": {
     "type": "git",

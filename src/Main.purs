@@ -3,7 +3,6 @@ module Main where
 --import Language.Pantograph.Specific.STLC (editorSpec)
 import Language.Pantograph.Specific.October14 as October14
 import Tutorial.Tutorial as Tutorial
-import Test.Test as Test
 import Language.Pantograph.Tutorial.TutorialExample as HenryTutorial
 import Prelude
 
@@ -27,10 +26,6 @@ main = runEditorForLang October14.editorSpec
 -- Tutorial test
 --main :: Effect Unit
 --main = Tutorial.runTutorial
-
--- Test.purs
---main :: Effect Unit
---main = Test.runTest
 
 runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r -> Effect Unit
 runEditorForLang l = HA.runHalogenAff do
