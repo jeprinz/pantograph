@@ -488,7 +488,7 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- SelectState
         ------------------------------------------------------------------------
         SelectState select -> do
-          let deleteSelection = do
+          let deleteSelection unit = do
                 let Expr.Zipperp path selection dterm = select.dzipperp
                 let sort = derivTermSort dterm
                 let selection'' = case selection of
@@ -515,11 +515,11 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- update clipboard
             genAndCopyClipPath (either Expr.reversePath identity selection)
             -- then delete the selection
-            deleteSelection
+            deleteSelection unit
           else if key == "Escape" then do
             -- SelectState --> CursorState
             setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
-          else if key == "Backspace" then deleteSelection
+          else if key == "Backspace" then deleteSelection unit
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
