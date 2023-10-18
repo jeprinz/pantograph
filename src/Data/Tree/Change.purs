@@ -1,6 +1,6 @@
 module Data.Tree.Change where
 
-import Data.Tree
+import Data.Tree.Common
 import Prelude
 
 import Data.Tuple.Nested ((/\))

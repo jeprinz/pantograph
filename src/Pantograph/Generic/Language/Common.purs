@@ -10,7 +10,7 @@ import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
@@ -24,8 +24,8 @@ makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
 makeConstRuleSort n kids = Tree {node: makeConstRuleSortNode n, kids}
 makeVarRuleSort x = Tree {node: VarRuleSortNode x, kids: []}
 makeSort sn kids = Tree {node: SortNode sn, kids}
--- makeExpr label sigma kids = Tree {node: AnnExprNode {label, sigma}, kids}
 makeExpr label sigma kids = Tree {node: AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}, kids}
+makeStepExpr label sigma kids = InjectStepExpr {node: AnnExprNode {label, sigma}, kids, maybeMarker: Nothing}
 
 -- Sort
 
@@ -134,7 +134,11 @@ shrinkAnnExprGyro' _ = unsafeCoerce
 
 data StepExpr sn el
   = Boundary {direction :: Direction, change :: SortChange sn, kid :: StepExpr sn el}
-  | InjectStepExpr {expr :: ExprNode sn el, maybeMarker :: Maybe Marker, kids :: Array (StepExpr sn el)}
+  | InjectStepExpr {node :: ExprNode sn el, maybeMarker :: Maybe Marker, kids :: Array (StepExpr sn el)}
+
+derive instance Generic (StepExpr sn el) _
+instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
+instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 
 -- Direction
 
@@ -150,7 +154,7 @@ instance Pretty Direction where
 
 -- Marker
 
-data Marker = CursorMarker
+data Marker = CursorMarker Orientation
 
 derive instance Generic Marker _
 instance Show Marker where show x = genericShow x
@@ -175,14 +179,23 @@ newtype SortingRule sn = SortingRule
   , kids :: Array (RuleSort sn) 
   , parent :: RuleSort sn }
 
+derive instance Newtype (SortingRule sn) _
+
 -- | A `ChangeRule` specifies the changes from the prent to eahc kid of a
 -- | corresponding `SortingRule`.
 newtype ChangingRule sn = ChangingRule 
   { parameters :: Set.Set RuleSortVar
   , kids :: Array (RuleSortChange sn) }
 
+derive instance Newtype (ChangingRule sn) _
+
 newtype SteppingRule sn el = SteppingRule
   (StepExpr sn el -> Maybe (StepExpr sn el))
+
+derive instance Newtype (SteppingRule sn el) _
+
+applySteppingRule :: forall sn el. SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
+applySteppingRule = unwrap
 
 -- RuleSortVar
 

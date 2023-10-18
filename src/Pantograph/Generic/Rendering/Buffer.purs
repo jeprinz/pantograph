@@ -314,7 +314,7 @@ hydrateExprPath (Renderer renderer) (Path ts0) k = go mempty (List.reverse ts0)
       --   "\n  • select = " <> pretty maybeSelect
 
       hydratedNode <- hydrateExprNode (Renderer renderer)
-      hydratedKids <- tooths cursor.inside # deleteAt "hydrateExprPath" i # traverse \{tooth: Tooth {i: i'}} -> do
+      hydratedKids <- tooths cursor.inside # Array.deleteAt i # fromJust' "hydrateExprPath" # traverse \{tooth: Tooth {i: i'}} -> do
         -- Debug.traceM $ "[hydrateExprPath]" <>
         --   "\n  • i = " <> show i' <>
         --   "\n  • cursor = " <> pretty (Cursor cursor) <>

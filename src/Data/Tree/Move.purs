@@ -1,7 +1,7 @@
 module Data.Tree.Move where
 
 import Data.Either.Nested (type (\/))
-import Data.Tree
+import Data.Tree.Common
 import Prelude
 
 import Data.Array as Array
