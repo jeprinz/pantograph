@@ -163,7 +163,10 @@ newtype Language sn el = Language
   , getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
   , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
   , validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
-  , steppingRules :: Array (SteppingRule sn el) }
+  , steppingRules :: Array (SteppingRule sn el)
+  , parseSortNode :: String -> sn
+  , parseExprLabel :: String -> el
+  }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.

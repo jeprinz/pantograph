@@ -6,6 +6,7 @@ import Prelude
 
 import Bug (bug)
 import Bug as Bug
+import Control.Monad.State (StateT(..))
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.List (List)
@@ -156,3 +157,5 @@ stripSuffix (List.Pattern suf) xs0 = go List.Nil xs0
     | suf == xs = Just (List.reverse (x List.: ys))
     | otherwise = go (x List.: ys) xs
 
+asStateT :: forall m s1 s2 a. Monad m => (s2 -> s1 -> s2) -> (s2 -> s1) -> StateT s1 m a -> StateT s2 m a
+asStateT f1 f2 (StateT k) = StateT \s2 -> map (map (f1 s2)) $ k (f2 s2)
