@@ -23,6 +23,8 @@ import Record as R
 import Type.Proxy (Proxy(..))
 import Util (fromJust', fromRight')
 
+-- utilities
+
 getStepExprSort :: forall sn el. Language sn el -> StepExpr sn el -> Sort sn
 getStepExprSort _ (Boundary boundary) = 
   let {left, right} = endpoints boundary.change in
@@ -139,3 +141,6 @@ combineUpRule = hole "TODO"
 
 combineDownRule :: forall sn el. SteppingRule sn el
 combineDownRule = hole "TODO"
+
+-- SteppingRule builder
+

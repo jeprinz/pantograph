@@ -84,77 +84,21 @@ language :: Language
 language = PL.Language
   { name: "lambda calculus"
   , getSortingRule: case _ of
-      StringRule -> do
-        let str = PL.MakeRuleSortVar "str"
-        PL.SortingRule
-          { parameters: Set.fromFoldable [str]
-          , kids: []
-          , parent: PL.makeConstRuleSort StringSort [PL.makeVarRuleSort str] }
-      VarRule -> do
-        let x = PL.MakeRuleSortVar "x"
-        PL.SortingRule
-          { parameters: Set.fromFoldable [x]
-          , kids: [PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]]
-          , parent: PL.makeConstRuleSort TermSort [] }
-      LamRule -> do
-        let x = PL.MakeRuleSortVar "x"
-        PL.SortingRule
-          { parameters: Set.fromFoldable [x]
-          , kids: [PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x], PL.makeConstRuleSort TermSort []]
-          , parent: PL.makeConstRuleSort TermSort [] }
-      AppRule -> do
-        PL.SortingRule
-          { parameters: Set.fromFoldable []
-          , kids: [PL.makeConstRuleSort TermSort [], PL.makeConstRuleSort TermSort []]
-          , parent: PL.makeConstRuleSort TermSort [] }
-      LetRule -> do
-        let x = PL.MakeRuleSortVar "x"
-        PL.SortingRule
-          { parameters: Set.fromFoldable [x]
-          , kids: [PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x], PL.makeConstRuleSort TermSort [], PL.makeConstRuleSort TermSort []]
-          , parent: PL.makeConstRuleSort TermSort [] }
-      HoleRule -> do
-        PL.SortingRule
-          { parameters: Set.fromFoldable []
-          , kids: []
-          , parent: PL.makeConstRuleSort TermSort [] }
-      FormatRule _format -> do
-        PL.SortingRule
-          { parameters: Set.fromFoldable []
-          , kids: [PL.makeConstRuleSort TermSort []]
-          , parent: PL.makeConstRuleSort TermSort [] }
+      StringRule -> PL.buildSortingRule ["str"] \[str] -> {kids: [], parent: ruleSort.string str}
+      VarRule -> PL.buildSortingRule ["x"] \[x] -> {kids: [ruleSort.string x], parent: ruleSort.term}
+      LamRule -> PL.buildSortingRule ["x"] \[x] -> {kids: [ruleSort.string x, ruleSort.term], parent: ruleSort.term}
+      AppRule -> PL.buildSortingRule [] \[] -> {kids: [ruleSort.term, ruleSort.term], parent: ruleSort.term}
+      LetRule -> PL.buildSortingRule ["x"] \[x] -> {kids: [ruleSort.string x, ruleSort.term, ruleSort.term], parent: ruleSort.term}
+      HoleRule -> PL.buildSortingRule [] \[] -> {kids: [], parent: ruleSort.term}
+      FormatRule _format -> PL.buildSortingRule [] \[] -> {kids: [ruleSort.term], parent: ruleSort.term}
   , getChangingRule: case _ of
-      StringRule -> do
-        PL.ChangingRule
-          { parameters: Set.fromFoldable []
-          , kids: []  }
-      VarRule -> do
-        let x = PL.MakeRuleSortVar "x"
-        PL.ChangingRule
-          { parameters: Set.fromFoldable [x]
-          , kids: [replaceChange (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort [])] }
-      LamRule -> do
-        let x = PL.MakeRuleSortVar "x"
-        PL.ChangingRule
-          { parameters: Set.fromFoldable [x]
-          , kids: [replaceChange (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])]  }
-      AppRule -> do
-        PL.ChangingRule
-          { parameters: Set.fromFoldable []
-          , kids: [replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])] }
-      LetRule -> do
-        let x = PL.MakeRuleSortVar "x"
-        PL.ChangingRule
-          { parameters: Set.fromFoldable [x]
-          , kids: [replaceChange (PL.makeConstRuleSort StringSort [PL.makeVarRuleSort x]) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort []), replaceChange (PL.makeConstRuleSort TermSort []) (PL.makeConstRuleSort TermSort [])]  }
-      HoleRule -> do
-        PL.ChangingRule
-          { parameters: Set.fromFoldable []
-          , kids: []  }
-      FormatRule _format -> do
-        PL.ChangingRule
-          { parameters: Set.fromFoldable []
-          , kids: [injectChange (PL.makeConstRuleSortNode TermSort) []] }
+      StringRule -> PL.buildChangingRule [] \[] -> []
+      VarRule -> PL.buildChangingRule ["x"] \[x] -> [replaceChange (ruleSort.string x) (ruleSort.term)]
+      LamRule -> PL.buildChangingRule ["x"] \[x] -> [replaceChange (ruleSort.string x) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
+      AppRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
+      LetRule -> PL.buildChangingRule ["x"] \[x] -> [replaceChange (ruleSort.string x) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
+      HoleRule -> PL.buildChangingRule [] \[] -> []
+      FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeConstRuleSortNode TermSort) []]
   , getDefaultExpr: case _ of
       Tree {node: PL.SortNode (StringValue _)} -> Nothing
       Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
@@ -180,30 +124,27 @@ language = PL.Language
       Tree {node: PL.SortNode (StringValue _), kids: []} -> mempty
       Tree {node: PL.SortNode StringSort, kids: [_]} -> mempty
       Tree {node: PL.SortNode TermSort, kids: []} ->
-        [ 
+        [
+          -- AppRule
           fromJust' "getEdits" $ NonEmptyArray.fromArray
-            [ -- AppRule
-              InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: [term.hole]}), innerChange: injectChange (PL.SortNode TermSort) []}
-            , InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: AppRule, sigma: PL.RuleSortVarSubst Map.empty}, i: 1, kids: [term.hole]}), innerChange: injectChange (PL.SortNode TermSort) []}
+            [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.apl term.hole], innerChange: change.term}
+            , InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.arg term.hole], innerChange: change.term}
             ]
         ,
+          -- FormatRule Newline
           NonEmptyArray.singleton $
-            -- FormatRule IndentedNewline
-            InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule IndentedNewline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: injectChange (PL.SortNode TermSort) []}
+            InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.newline term.hole], innerChange: change.term}
         ,
+          -- FormatRule IndentedNewline
           NonEmptyArray.singleton $
-            -- FormatRule Newline
-            InsertEdit {outerChange: injectChange (PL.SortNode TermSort) [], middle: singletonNonEmptyPath (Tooth {node: PL.AnnExprNode {label: FormatRule Newline, sigma: PL.RuleSortVarSubst Map.empty}, i: 0, kids: []}), innerChange: injectChange (PL.SortNode TermSort) []}
+            InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.indentedNewline term.hole], innerChange: change.term}
         ]
-      _ -> bug $ "invalid sort"
+      _ -> bug $ "invalid sort: " <> show sort
   , validGyro: case _ of
       RootGyro _ -> true
-      
       CursorGyro (Cursor {orientation: Outside}) -> true
       CursorGyro (Cursor {inside: Tree {node: PL.AnnExprNode {label: HoleRule}}, orientation: Inside}) -> true
-
-      SelectGyro (Select {outside, middle, inside, orientation}) -> true
-      
+      SelectGyro (Select {outside, middle, inside, orientation}) -> true -- TODO: impl
       _ -> false
   , steppingRules: mempty
   }
@@ -215,6 +156,12 @@ sort = {stringValue, string, term}
   stringValue str = PL.makeSort (StringValue str) []
   string str = PL.makeSort StringSort [stringValue str]
   term = PL.makeSort TermSort []
+
+ruleSort = {stringValue, string, term}
+  where
+  stringValue str = PL.makeConstRuleSort (StringValue str) []
+  string str = PL.makeConstRuleSort StringSort [str]
+  term = PL.makeConstRuleSort TermSort []
 
 term = {var, string, lam, app, let_, hole, indent, example}
   where
@@ -232,3 +179,19 @@ term = {var, string, lam, app, let_, hole, indent, example}
     let_ "x" (lam "y" (indent (example n'))) (app (var "x") (indent (example n')))
     -- let_ "x" app (lam "y" (example n')) (indent (example n'))
     where n' = n - 1
+
+change = {term}
+  where
+  term = injectChange (PL.SortNode TermSort) []
+
+tooth = {app, format}
+  where
+  app = 
+    { apl: \arg -> PL.makeExprTooth AppRule [] 0 [arg]
+    , arg: \apl -> PL.makeExprTooth AppRule [] 1 [apl]
+    }
+  
+  format = 
+    { newline: \kid -> PL.makeExprTooth (FormatRule Newline) [] 0 [kid] 
+    , indentedNewline: \kid -> PL.makeExprTooth (FormatRule IndentedNewline) [] 0 [kid] 
+    }

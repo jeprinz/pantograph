@@ -20,13 +20,6 @@ import Text.Pretty (class Pretty, ticks)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
-makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
-makeConstRuleSort n kids = Tree {node: makeConstRuleSortNode n, kids}
-makeVarRuleSort x = Tree {node: VarRuleSortNode x, kids: []}
-makeSort sn kids = Tree {node: SortNode sn, kids}
-makeExpr label sigma kids = Tree {node: AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}, kids}
-makeStepExpr label sigma kids = InjectStepExpr {node: AnnExprNode {label, sigma}, kids, maybeMarker: Nothing}
-
 -- Sort
 
 data SortNode (sn :: Type)
