@@ -383,7 +383,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   Let /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
-        , pure (if renCtx.isInlined then [] else [Rendering.newlineElem])
+        , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
         , Left (renCtx' /\ 3)]
   App /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
@@ -403,7 +403,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   Newline /\ _ ->
     Array.concat
       [ if renCtx.isInlined then [] else
-        [pure $ [Rendering.spaceElem] <> [Rendering.newlineElem] <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
+        [pure $ [Rendering.spaceElem] <> (newlineIndentElem (renCtx.indentationLevel)) <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
       , [Left (renCtx /\ 0)] ]
   -- hole
   TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
@@ -412,7 +412,8 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
   If /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
-    [pure [ifElem], Left (renCtx /\ 0), pure [Rendering.newlineElem, thenElem], Left (renCtx' /\ 1), pure [Rendering.newlineElem, elseElem], Left (renCtx' /\ 2)]
+    [pure [ifElem], Left (renCtx /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem]), Left (renCtx' /\ 1),
+        pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem]), Left (renCtx' /\ 2)]
   ErrorCall /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   _ -> bug $
@@ -441,6 +442,11 @@ typeElem = Rendering.makePuncElem "Type" "Type"
 
 nameElem str = HH.span [classNames ["name"]] [HH.text str]
 dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
+
+tabElem = Rendering.makePuncElem "indent" "    "
+
+newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
+newlineIndentElem n = [Rendering.newlineElem] <> Array.replicate n tabElem
 
 --------------------------------------------------------------------------------
 -- Edit

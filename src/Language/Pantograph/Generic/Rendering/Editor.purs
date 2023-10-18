@@ -223,9 +223,10 @@ editorComponent = HK.component \tokens spec -> HK.do
         let up = hdzipperDerivPath cursor.hdzipper
         let dzipper0 = Expr.Zipper up dterm
         let dzipper1 = subDerivZipper sub dzipper0
-        traceM "resetting cursor to top because the rendering code is buggy" -- TODO: delete this and the next line after rendering is fixed
-        let dzipper1' = Expr.zipAllTheWayUp dzipper1
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1'))
+--        traceM "resetting cursor to top because the rendering code is buggy" -- TODO: delete this and the next line after rendering is fixed
+--        let dzipper1' = Expr.zipAllTheWayUp dzipper1
+--        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1'))
+        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1))
 
       -- !TODO use topChange
       ReplaceAction {topChange, dterm} -> getCursorState "handleAction" >>= \cursor -> do

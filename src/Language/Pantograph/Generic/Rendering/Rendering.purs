@@ -200,7 +200,7 @@ renderPath locs dzipper interior =
             (Array.concat
               [ [classNames ["node"]]
               , if not renCtx.isInteractive then [] else do
-                let elemId = fromPathToElementId (Expr.zipperPath dzipper)
+                let elemId = fromPathToElementId (Expr.zipperPath dzipper2)
                 [ HP.id elemId
                 , HE.onMouseDown (locs.onMouseDown (InjectHoleyDerivZipper dzipper2))
                 , HE.onMouseOver (locs.onMouseOver (InjectHoleyDerivZipper dzipper2)) 
