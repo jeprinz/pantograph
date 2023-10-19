@@ -39,6 +39,7 @@ import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as MouseEvent
+import Debug (trace)
 
 type EditorHTML l r = 
   HH.ComponentHTML 
@@ -260,9 +261,10 @@ isValidSelect :: forall l r. IsRuleLabel l r => EditorSpec l r -> DerivZipperp l
 isValidSelect spec (Expr.Zipperp dpath selection dterm) =
     let bottom = derivTermSort dterm in
     let upSelection = case selection of
-            Left p -> Expr.toUpPath p
+            Left p -> Expr.reversePath p
             Right p -> p
     in
+    trace ("in isValidSelect, bottom is " <> pretty bottom <> " and top is " <> pretty (derivPathSort upSelection bottom)) \_ ->
     spec.isValidSelectionSorts {bottom, top: derivPathSort upSelection bottom}
 
 derive instance Generic (HoleyDerivZipper l r) _

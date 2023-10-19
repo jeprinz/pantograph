@@ -313,12 +313,12 @@ derivToothInteriorSort = assertInterface_ (Expr.wellformedTooth "derivToothSort"
     assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
 
 -- | Get the top sort of a path (given its bottom sort)
-derivPathSort :: forall dir l r. IsRuleLabel l r => ReflectPathDir dir => DerivPath dir l r -> Sort l -> Sort l
+derivPathSort :: forall l r. IsRuleLabel l r => DerivPath Dir.Up l r -> Sort l -> Sort l
 derivPathSort dpath botSort = do
   let dpath' = Expr.toDownPath dpath
   case dpath' of
     Expr.Path Nil -> botSort
-    Expr.Path (th : _) -> derivToothSort th
+    Expr.Path (th : ths) -> derivPathSort (Expr.Path ths) (derivToothSort th)
 
 -- NOTE: once toDownPath is fixed, this can be deleted and you can use derivPathSort combined with nonemptyPathSort
 nonemptyUpPathTopSort :: forall l r. IsRuleLabel l r => DerivPath Dir.Up l r -> Sort l
