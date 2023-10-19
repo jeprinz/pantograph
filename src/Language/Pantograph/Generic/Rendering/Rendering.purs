@@ -150,7 +150,7 @@ renderHoleExterior locs dpath label holeInteriorElem renCtx =
         let elemId = fromPathToElementId (Expr.zipperPath dzipper)
         [ HP.id elemId
         , HE.onMouseDown (locs.onMouseDown (InjectHoleyDerivZipper dzipper))
-        , HE.onMouseOver (locs.onMouseOver (InjectHoleyDerivZipper dzipper)) 
+        , HE.onMouseOver (locs.onMouseOver (InjectHoleyDerivZipper dzipper))
         ]
       ])
     (arrangeHoleExterior locs label holeInteriorElem renCtx)
@@ -171,8 +171,8 @@ renderHoleInterior locs isCursor dpath label renCtx = do
         let dzipper = hdzipperDerivZipper hdzipper
         let elemId = fromHoleyDerivPathToElementId (HoleInteriorHoleyDerivPath dpath)
         [ HP.id elemId
-        , HE.onMouseDown (locs.onMouseDown (InjectHoleyDerivZipper dzipper))
-        , HE.onMouseOver (locs.onMouseOver (InjectHoleyDerivZipper dzipper)) 
+        , HE.onMouseDown (locs.onMouseDown (HoleInteriorHoleyDerivZipper (Expr.zipperPath dzipper) label))
+        , HE.onMouseOver (locs.onMouseOver (HoleInteriorHoleyDerivZipper (Expr.zipperPath dzipper) label))
         ]
       ])
     (arrangeNodeSubs locs isCursor hdzipper
