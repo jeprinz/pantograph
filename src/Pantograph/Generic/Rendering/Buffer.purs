@@ -296,7 +296,7 @@ hydrateExprPath :: forall sn el er ctx env a. PrettyTreeNode el => Renderer sn e
 hydrateExprPath (Renderer renderer) (Path ts0) k = go mempty (List.reverse ts0)
   where
   go path Nil = k path
-  go path (Cons (Tooth {i}) ts) = do
+  go path (Cons (Tooth _ i _) ts) = do
     Cursor cursor0 <- asks _.cursor
     maybeSelect0 <- asks _.maybeSelect
 
@@ -314,7 +314,7 @@ hydrateExprPath (Renderer renderer) (Path ts0) k = go mempty (List.reverse ts0)
       --   "\n  • select = " <> pretty maybeSelect
 
       hydratedNode <- hydrateExprNode (Renderer renderer)
-      hydratedKids <- tooths cursor.inside # Array.deleteAt i # fromJust' "hydrateExprPath" # traverse \{tooth: Tooth {i: i'}} -> do
+      hydratedKids <- tooths cursor.inside # Array.deleteAt i # fromJust' "hydrateExprPath" # traverse \(Tooth _ i' _ /\ _) -> do
         -- Debug.traceM $ "[hydrateExprPath]" <>
         --   "\n  • i = " <> show i' <>
         --   "\n  • cursor = " <> pretty (Cursor cursor) <>
@@ -322,7 +322,7 @@ hydrateExprPath (Renderer renderer) (Path ts0) k = go mempty (List.reverse ts0)
 
         hydrateStep i' $ hydrateExpr (Renderer renderer)
 
-      let tooth' = Tooth {node: hydratedNode, i, kids: hydratedKids}
+      let tooth' = Tooth hydratedNode i hydratedKids
       hydrateStep i $ go (consPath path tooth') ts
 
 hydrateExpr :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> HydrateM sn el er (HydrateExpr sn el er)
@@ -331,14 +331,14 @@ hydrateExpr (Renderer renderer) = do
   maybeSelect <- asks _.maybeSelect
 
   hydratedNode <- hydrateExprNode (Renderer renderer)
-  hydratedKids <- tooths cursor.inside # traverse \{tooth: Tooth {i}} -> do
+  hydratedKids <- tooths cursor.inside # traverse \(Tooth _ i _ /\ _) -> do
     -- Debug.traceM $ "[hydrateExpr]" <>
     --   "\n  • i = " <> show i <>
     --   "\n  • cursor = " <> pretty (Cursor cursor) <>
     --   "\n  • select = " <> pretty maybeSelect
 
     hydrateStep i $ hydrateExpr (Renderer renderer)
-  pure $ Tree {node: hydratedNode, kids: hydratedKids}
+  pure $ Tree hydratedNode hydratedKids
 
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second

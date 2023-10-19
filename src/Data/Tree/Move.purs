@@ -4,6 +4,7 @@ import Data.Either.Nested (type (\/))
 import Data.Tree.Common
 import Prelude
 
+import Data.Tuple.Nested
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.List (List(..))
@@ -111,7 +112,7 @@ moveCursorUp :: forall a. PrettyTreeNode a => Cursor a -> Maybe (Cursor a \/ {up
 moveCursorUp (Cursor {outside, inside, orientation}) = case orientation of
   Outside -> case outside of
     Path Nil -> Nothing
-    Path (Cons tooth@(Tooth {i, kids}) tooths) -> Just $ Right $ {upCursor: Cursor {outside: Path tooths, inside: unTooth tooth inside, orientation: Inside}, i, kidsCount: Array.length kids + 1}
+    Path (Cons tooth@(Tooth a i kids) tooths) -> Just $ Right $ {upCursor: Cursor {outside: Path tooths, inside: unTooth tooth inside, orientation: Inside}, i, kidsCount: Array.length kids + 1}
   Inside -> Just $ Left $ Cursor {outside, inside, orientation: Outside}
 
 -- moveCursorLeft
@@ -130,13 +131,13 @@ moveCursorDown i (Cursor {outside, inside, orientation}) = case orientation of
   Outside ->
     Cursor {outside, inside, orientation: Inside}
   Inside -> do
-    let {tooth, inside: inside'} = fromJust' "moveCursorDown" $ Array.index (tooths inside) i
+    let tooth /\ inside' = fromJust' "moveCursorDown" $ Array.index (tooths inside) i
     Cursor {outside: consPath outside tooth, inside: inside', orientation: Outside}
 
 -- | Ignores `Inside` orientation `Cursor`s.
 moveCursorDownOuter :: forall a. PrettyTreeNode a => Int -> Cursor a -> Cursor a
 moveCursorDownOuter i (Cursor {outside, inside}) = do
-  let {tooth, inside: inside'} = fromJust' "moveCursorDown" $ Array.index (tooths inside) i
+  let tooth /\ inside' = fromJust' "moveCursorDown" $ Array.index (tooths inside) i
   Cursor {outside: consPath outside tooth, inside: inside', orientation: Outside}
 
 moveCursorDownRightMost :: forall a. PrettyTreeNode a => Cursor a -> Cursor a
@@ -147,12 +148,12 @@ moveCursorDownRightMost cursor@(Cursor {outside, inside, orientation}) =
     Inside -> 
       case Array.last (tooths inside) of
         Nothing -> cursor
-        Just {tooth, inside: inside'} -> moveCursorDownRightMost (Cursor {outside: consPath outside tooth, inside: inside', orientation: Outside})
+        Just (tooth /\ inside') -> moveCursorDownRightMost (Cursor {outside: consPath outside tooth, inside: inside', orientation: Outside})
 
 -- moveCursorRight
 
 moveCursorRight :: forall a. PrettyTreeNode a => Cursor a -> Maybe (Cursor a)
-moveCursorRight cursor@(Cursor {outside, inside: inside@(Tree {kids}), orientation}) = case orientation of
+moveCursorRight cursor@(Cursor {outside, inside: inside@(Tree _ kids), orientation}) = case orientation of
   Outside ->
     Just $ Cursor {outside, inside, orientation: Inside}
   Inside ->
@@ -190,8 +191,8 @@ moveCursorLeftUntil cond cursor = do
   where
   go :: Cursor a -> Maybe (Cursor a)
   go cursor' = do
-    cursorLeft@(Cursor {inside: Tree {node}}) <- moveCursorLeft cursor'
-    if cond node
+    cursorLeft@(Cursor {inside: Tree a _}) <- moveCursorLeft cursor'
+    if cond a
       then pure cursorLeft
       else go cursorLeft
 
@@ -204,8 +205,8 @@ moveCursorRightUntil cond cursor = do
   where
   go :: Cursor a -> Maybe (Cursor a)
   go cursor' = do
-    cursorRight@(Cursor {inside: Tree {node}}) <- moveCursorRight cursor'
-    if cond node
+    cursorRight@(Cursor {inside: Tree a _}) <- moveCursorRight cursor'
+    if cond a
       then pure cursorRight
       else go cursorRight
 
@@ -255,8 +256,8 @@ grabSelectDown :: forall a. PrettyTreeNode a => Int -> Select a -> Maybe (Gyro a
 grabSelectDown i (Select {outside, middle, inside, orientation}) =
   case orientation of
     Outside -> case unsnocNonEmptyPath middle of
-      {outer: tooth@(Tooth {i: i'}), inner: Nothing} | i == i' -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside, orientation: Outside}
-      {outer: tooth@(Tooth {i: i'}), inner: Just middle'} | i == i' -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
+      {outer: tooth@(Tooth _ i' _), inner: Nothing} | i == i' -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside, orientation: Outside}
+      {outer: tooth@(Tooth _ i' _), inner: Just middle'} | i == i' -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
       _ -> Nothing
     Inside -> do
       let Cursor {outside: middle', inside: inside'} = moveCursorDownOuter i (Cursor {outside: toPath middle, inside, orientation: Inside})

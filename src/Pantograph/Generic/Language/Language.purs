@@ -26,12 +26,12 @@ import Util (asStateT, delete', fromJust')
 -- utilities
 
 makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
-makeConstRuleSort n kids = Tree {node: makeConstRuleSortNode n, kids}
-makeVarRuleSort x = Tree {node: VarRuleSortNode x, kids: []}
-makeSort sn kids = Tree {node: SortNode sn, kids}
-makeExpr label sigma kids = Tree {node: AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}, kids}
-makeExprTooth label sigma i kids = Tooth {node: AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}, i, kids}
-makeStepExpr label sigma kids = InjectStepExpr {node: AnnExprNode {label, sigma}, kids, maybeMarker: Nothing}
+makeConstRuleSort n kids = Tree (makeConstRuleSortNode n) kids
+makeVarRuleSort x = Tree (VarRuleSortNode x) []
+makeSort sn kids = Tree (SortNode sn) kids
+makeExpr label sigma kids = Tree (AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) kids
+makeExprTooth label sigma i kids = Tooth (AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) i kids
+makeStepExpr label sigma kids = StepExpr Nothing (AnnExprNode {label, sigma}) kids
 makeNonEmptyExprPath ths = NonEmptyPath $ fromJust' "makeNonEmptyExprPath" $ NonEmptyList.fromFoldable ths
 
 defaultTopExpr (Language language) =
@@ -41,10 +41,10 @@ getExprNodeSort (Language language) (AnnExprNode {label, sigma}) =
   let SortingRule sortingRule = language.getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
-getExprSort language (Tree expr) =
-  getExprNodeSort language expr.node
+getExprSort language (Tree el _) =
+  getExprNodeSort language el
 
-getToothInteriorSort (Language language) (Tooth {node: AnnExprNode {label, sigma}}) =
+getToothInteriorSort (Language language) (Tooth (AnnExprNode {label, sigma}) _ _) =
   let SortingRule sortingRule = language.getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 

@@ -119,9 +119,9 @@ language = PL.Language
   --     _ | Just [] <- matchSort "(Term)" sort -> Nothing
   --     _ -> bug $ "invalid sort: " <> show sort
   , getDefaultExpr: case _ of
-      Tree {node: PL.SortNode (StringValue _)} -> Nothing
-      Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
-      Tree {node: PL.SortNode TermSort} ->
+      Tree (PL.SortNode (StringValue _)) [] -> Nothing
+      Tree (PL.SortNode StringSort) [Tree (PL.SortNode (StringValue str)) _] -> Just $ term.string str
+      Tree (PL.SortNode TermSort) [] ->
         -- Just $ term.hole
         Just $ term.app term.hole term.hole
         -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
@@ -138,11 +138,12 @@ language = PL.Language
         -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
         -- Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
         -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
+      _ -> bug $ "invalid sort"
   , topSort: sort.term
   , getEdits: \sort _ -> case sort of
-      Tree {node: PL.SortNode (StringValue _), kids: []} -> mempty
-      Tree {node: PL.SortNode StringSort, kids: [_]} -> mempty
-      Tree {node: PL.SortNode TermSort, kids: []} ->
+      Tree (PL.SortNode (StringValue _)) [] -> mempty
+      Tree (PL.SortNode StringSort) [_] -> mempty
+      Tree (PL.SortNode TermSort) [] ->
         [
           -- AppRule
           fromJust' "getEdits" $ NonEmptyArray.fromArray
@@ -162,7 +163,7 @@ language = PL.Language
   , validGyro: case _ of
       RootGyro _ -> true
       CursorGyro (Cursor {orientation: Outside}) -> true
-      CursorGyro (Cursor {inside: Tree {node: PL.AnnExprNode {label: HoleRule}}, orientation: Inside}) -> true
+      CursorGyro (Cursor {inside: Tree (PL.AnnExprNode {label: HoleRule}) _, orientation: Inside}) -> true
       SelectGyro (Select {outside, middle, inside, orientation}) -> true -- TODO: impl
       _ -> false
   , steppingRules: mempty

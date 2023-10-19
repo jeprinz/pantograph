@@ -37,7 +37,7 @@ renderer = PGR.Renderer
         let ass = assertValidTreeKids msg node in
         case label of
           StringRule -> ass \[] -> do
-            let Tree {node: PGL.SortNode StringSort, kids: [Tree {node: PGL.SortNode (StringValue str)}]} = PGL.getExprNodeSort language node
+            let Tree (PGL.SortNode StringSort) [Tree (PGL.SortNode (StringValue str)) []] = PGL.getExprNodeSort language node
             pure [PGR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
           VarRule -> ass \[mx] -> do
             x_ /\ _x <- mx
@@ -69,8 +69,8 @@ renderer = PGR.Renderer
             a_ /\ _a <- ma
             pure [newline ctx.indentLevel, PGR.ExprKidArrangeKid a_]
   , beginsLine: case _ of
-      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule IndentedNewline}}) _), orientation: Outside} -> true
-      Cursor {outside: Path (Cons (Tooth {node: PGL.AnnExprNode {label: FormatRule Newline}}) _), orientation: Outside} -> true
+      Cursor {outside: Path (Cons (Tooth (PGL.AnnExprNode {label: FormatRule IndentedNewline}) _ _) _), orientation: Outside} -> true
+      Cursor {outside: Path (Cons (Tooth (PGL.AnnExprNode {label: FormatRule Newline}) _ _) _), orientation: Outside} -> true
       _ -> false
   }
 

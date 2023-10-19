@@ -26,12 +26,12 @@ import Util (fromJust', fromRight')
 -- utilities
 
 getStepExprSort :: forall sn el. Language sn el -> StepExpr sn el -> Sort sn
-getStepExprSort _ (Boundary boundary) = 
-  let {left, right} = endpoints boundary.change in
-  case boundary.direction of
+getStepExprSort _ (Boundary dir ch kid) = 
+  let {left, right} = endpoints ch in
+  case dir of
     Up -> left
     Down -> right
-getStepExprSort language (InjectStepExpr {node}) =
+getStepExprSort language (StepExpr _ node _) =
   getExprNodeSort language node
 
 -- toStepExpr
@@ -40,7 +40,7 @@ class ToStepExpr a sn el | a -> sn el where
   toStepExpr :: a -> StepExpr sn el
 
 instance ToStepExpr (AnnExpr sn el r) sn el where
-  toStepExpr (Tree tree) = InjectStepExpr {node: shrinkAnnExprNode tree.node, maybeMarker: Nothing, kids: toStepExpr <$> tree.kids}
+  toStepExpr (Tree node kids) = StepExpr Nothing (shrinkAnnExprNode node) (toStepExpr <$> kids)
 
 instance ToStepExpr (AnnExprCursor sn el r) sn el where
   toStepExpr (Cursor cursor) =
@@ -51,8 +51,8 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 -- fromStepExpr
 
 fromStepExpr :: forall sn el. StepExpr sn el -> ExprCursor sn el \/ Expr sn el
-fromStepExpr (Boundary _boundary) = bug $ "encountered a `Boundary` during `fromStepExpr`"
-fromStepExpr (InjectStepExpr {node, kids}) =
+fromStepExpr (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`"
+fromStepExpr (StepExpr maybeMarker node kids) =
   let
     f = case _ of
       Nothing /\ kids' -> case _ of
@@ -64,8 +64,8 @@ fromStepExpr (InjectStepExpr {node, kids}) =
     maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ fromStepExpr <$> kids
   in
   case maybe_i_cursor of
-    Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth {node, i, kids}), inside: cursor.inside, orientation: cursor.orientation}
-    Nothing -> Right $ Tree {node, kids}
+    Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth node i kids), inside: cursor.inside, orientation: cursor.orientation}
+    Nothing -> Right $ Tree node kids
 
 -- manipulate StepExpr
 
@@ -75,14 +75,14 @@ wrapExprPath p = case unconsPath p of
   Just {outer, inner} -> wrapExprPath outer <<< wrapExprTooth inner
 
 wrapExprTooth :: forall sn el. ExprTooth sn el -> StepExpr sn el -> StepExpr sn el
-wrapExprTooth (Tooth {node, i, kids}) e = InjectStepExpr {maybeMarker: Nothing, node, kids: fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids}
+wrapExprTooth (Tooth node i kids) e = StepExpr Nothing node (fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids)
 
 modifyMarker :: forall sn el. (Maybe Marker -> Maybe Marker) -> StepExpr sn el -> StepExpr sn el
 modifyMarker f = case _ of
-  (Boundary boundary) -> Boundary $ R.modify (Proxy :: Proxy "kid") (modifyMarker f) boundary
-  (InjectStepExpr expr) -> InjectStepExpr $ R.modify (Proxy :: Proxy "maybeMarker") f expr
+  (Boundary dir ch kid) -> Boundary dir ch $ modifyMarker f kid
+  (StepExpr maybeMarker node kids) -> StepExpr (f maybeMarker) node kids
 
-wrapBoundary direction change kid = Boundary {direction, change, kid}
+wrapBoundary direction change kid = Boundary direction change kid
 
 -- setup SteExpr
 

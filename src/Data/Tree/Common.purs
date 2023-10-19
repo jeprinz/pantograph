@@ -172,7 +172,7 @@ instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
 
-injectChange a kids = InjectChange {a, kids}
+injectChange a kids = InjectChange a kids
 replaceChange old new = Replace old new
 
 -- Edit

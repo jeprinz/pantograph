@@ -58,8 +58,8 @@ type RuleSortTooth sn = Tooth (RuleSortNode sn)
 type RuleSortPath sn = Path (RuleSortNode sn)
 
 instance ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
-  applyRuleSortVarSubst sigma (Tree {node: ConstRuleSortNode sn, kids}) = Tree {node: sn, kids: applyRuleSortVarSubst sigma <$> kids}
-  applyRuleSortVarSubst sigma (Tree {node: VarRuleSortNode x}) = applyRuleSortVarSubst sigma x
+  applyRuleSortVarSubst sigma (Tree (ConstRuleSortNode sn) kids) = Tree sn (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (Tree (VarRuleSortNode x) _) = applyRuleSortVarSubst sigma x
 
 -- SortChange
 
@@ -70,9 +70,9 @@ type SortChange sn = Change (SortNode sn)
 type RuleSortChange sn = Change (RuleSortNode sn)
 
 instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
-  applyRuleSortVarSubst sigma (Shift {sign, tooth, kid}) = Shift {sign, tooth: fromConstRuleSortNode "invalid Inject" <$> tooth, kid: applyRuleSortVarSubst sigma kid}
-  applyRuleSortVarSubst sigma (Replace {old, new}) = Replace {old: applyRuleSortVarSubst sigma old, new: applyRuleSortVarSubst sigma new}
-  applyRuleSortVarSubst sigma (InjectChange {node, kids}) = InjectChange {node: fromConstRuleSortNode "invalid InjectChange" node, kids: applyRuleSortVarSubst sigma <$> kids}
+  applyRuleSortVarSubst sigma (Shift sign tooth kid) = Shift sign (fromConstRuleSortNode "invalid Inject" <$> tooth) (applyRuleSortVarSubst sigma kid)
+  applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
+  applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromConstRuleSortNode "invalid InjectChange" node) (applyRuleSortVarSubst sigma <$> kids)
 
 -- AnnExpr
 
@@ -132,8 +132,8 @@ shrinkAnnExprGyro' _ = unsafeCoerce
 -- StepExpr
 
 data StepExpr sn el
-  = Boundary {direction :: Direction, change :: SortChange sn, kid :: StepExpr sn el}
-  | InjectStepExpr {node :: ExprNode sn el, maybeMarker :: Maybe Marker, kids :: Array (StepExpr sn el)}
+  = Boundary Direction (SortChange sn) (StepExpr sn el)
+  | StepExpr (Maybe Marker) (ExprNode sn el) (Array (StepExpr sn el))
 
 derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
