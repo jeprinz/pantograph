@@ -16,6 +16,8 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Data.String (Pattern(..))
+import Data.String as String
 import Data.Traversable (sequence)
 import Data.Tuple (curry)
 import Debug as Debug
@@ -26,10 +28,28 @@ import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
 import Partial.Unsafe (unsafePartial)
 import Record as R
-import Text.Pretty (class Pretty, pretty, (<+>))
+import Text.Pretty (class Pretty, pretty, quotes2, (<+>))
 import Text.Pretty as Pretty
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
+
+data SN = StringValue String | StringSort | TermSort
+derive instance Generic SN _
+derive instance Eq SN
+derive instance Ord SN
+instance Show SN where show = genericShow
+
+instance TreeNode SN where
+  kidsCount = case _ of
+    StringValue _ -> 0
+    StringSort -> 1
+    TermSort -> 0
+
+instance PrettyTreeNode SN where
+  prettyTreeNode sn = case sn of
+    (StringValue string) -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[] -> string
+    StringSort -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[str] -> quotes2 str
+    TermSort -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[] -> "Term"
 
 data EL
   = StringRule
@@ -56,26 +76,20 @@ instance TreeNode EL where
 
 instance PrettyTreeNode EL where
   prettyTreeNode el = case el of
-    StringRule -> assertValidTreeKids "prettyTreeNode" el \[] -> "<string>"
-    VarRule -> assertValidTreeKids "prettyTreeNode" el \[x] -> "#" <> x
-    LamRule -> assertValidTreeKids "prettyTreeNode" el \[x, b] -> Pretty.parens $ "λ" <> x <> "." <> b
-    AppRule -> assertValidTreeKids "prettyTreeNode" el \[f, a] -> Pretty.parens $ f <+> a
-    LetRule -> assertValidTreeKids "prettyTreeNode" el \[x, a, b] -> Pretty.parens $ "let" <+> x <+> "=" <+> a <+> "in" <+> b
-    HoleRule -> assertValidTreeKids "prettyTreeNode" el \[] -> "?"
-    FormatRule IndentedNewline -> assertValidTreeKids "prettyTreeNode" el \[a] -> "<indent>" <+> a
-    FormatRule Newline -> assertValidTreeKids "prettyTreeNode" el \[a] -> "<newline>" <+> a
+    StringRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[] -> "<string>"
+    VarRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[x] -> "#" <> x
+    LamRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[x, b] -> Pretty.parens $ "λ" <> x <> "." <> b
+    AppRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[f, a] -> Pretty.parens $ f <+> a
+    LetRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[x, a, b] -> Pretty.parens $ "let" <+> x <+> "=" <+> a <+> "in" <+> b
+    HoleRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[] -> "?"
+    FormatRule IndentedNewline -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[a] -> "<indent>" <+> a
+    FormatRule Newline -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[a] -> "<newline>" <+> a
 
 data Format = IndentedNewline | Newline
 derive instance Generic Format _
 derive instance Eq Format
 derive instance Ord Format
 instance Show Format where show = genericShow
-
-data SN = StringValue String | StringSort | TermSort
-derive instance Generic SN _
-derive instance Eq SN
-derive instance Ord SN
-instance Show SN where show = genericShow
 
 type Expr = PL.Expr SN EL
 type Language = PL.Language SN EL
@@ -99,26 +113,31 @@ language = PL.Language
       LetRule -> PL.buildChangingRule ["x"] \[x] -> [replaceChange (ruleSort.string x) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
       HoleRule -> PL.buildChangingRule [] \[] -> []
       FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeConstRuleSortNode TermSort) []]
-  , getDefaultExpr: case _ of
+  , getDefaultExpr: \sort -> case sort of
       Tree {node: PL.SortNode (StringValue _)} -> Nothing
-      Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
-      Tree {node: PL.SortNode TermSort} ->
-        -- Just $ term.hole
-        Just $ term.app term.hole term.hole
-        -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
-        -- Just $ term.app (makeIndentedNewline (term.app term.hole term.hole)) (term.app (makeIndentedNewline (term.app term.hole (makeIndentedNewline term.hole))) term.hole)
-        -- Just $ 
-        --   term.app
-        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
-        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
-        -- Just $ term.example 10
-        -- Just $ term.example 6
-        -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
-        -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
-        -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
-        -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
-        -- Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
-        -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
+      _ | Just ["str" /\ Tree {node: PL.SortNode (StringValue str)}] <- matchSort "(String $str)" sort -> Just $ term.string str
+      _ | Just [] <- matchSort "(Term)" sort -> Nothing
+      _ -> bug $ "invalid sort: " <> show sort
+  -- , getDefaultExpr: case _ of
+  --     Tree {node: PL.SortNode (StringValue _)} -> Nothing
+  --     Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
+  --     Tree {node: PL.SortNode TermSort} ->
+  --       -- Just $ term.hole
+  --       Just $ term.app term.hole term.hole
+  --       -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
+  --       -- Just $ term.app (makeIndentedNewline (term.app term.hole term.hole)) (term.app (makeIndentedNewline (term.app term.hole (makeIndentedNewline term.hole))) term.hole)
+  --       -- Just $ 
+  --       --   term.app
+  --       --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
+  --       --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
+  --       -- Just $ term.example 10
+  --       -- Just $ term.example 6
+  --       -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
+  --       -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
+  --       -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
+  --       -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
+  --       -- Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
+  --       -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
   , topSort: sort.term
   , getEdits: \sort _ -> case sort of
       Tree {node: PL.SortNode (StringValue _), kids: []} -> mempty
@@ -147,7 +166,28 @@ language = PL.Language
       SelectGyro (Select {outside, middle, inside, orientation}) -> true -- TODO: impl
       _ -> false
   , steppingRules: mempty
+  , matchingSyntax
   }
+  where
+  matchSort = PL.matchSort matchingSyntax
+  matchExpr = PL.matchExpr matchingSyntax
+  matchingSyntax = PL.MatchingSyntax
+    { parseExprLabel: case _ of
+        "String" -> Just $ StringRule
+        "Var" -> Just $ VarRule
+        "Lam" -> Just $ LamRule
+        "App" -> Just $ AppRule
+        "Let" -> Just $ LetRule
+        "Hole" -> Just $ HoleRule
+        "Indent" -> Just $ FormatRule IndentedNewline
+        "Newline" -> Just $ FormatRule Newline
+        _ -> Nothing
+    , parseSortNode: \input -> case input of
+        "StringValue" | Just str <- String.stripPrefix (Pattern "StringValue:") input -> Just (StringValue str)
+        "String" -> Just $ StringSort
+        "Term" -> Just $ TermSort
+        _ -> Nothing
+    }
 
 -- shallow
 

@@ -20,15 +20,19 @@ import Data.String.CodeUnits as CodeUnits
 import Hole (hole)
 import Text.Pretty (class Pretty, pretty)
 
-data MatchTree = Construction {constr :: String, args :: Array MatchTree} | Var String
+data MatchTree
+  = Constr {constr :: String, args :: Array MatchTree} 
+  | Var String
+  | Wild
 
 derive instance Generic MatchTree _
 instance Show MatchTree where show x = genericShow x
 
 instance Pretty MatchTree where
   pretty = case _ of
-    Construction {constr, args} -> "(" <> constr <> " " <> Array.intercalate " " (pretty <$> args) <> ")"
+    Constr {constr, args} -> "(" <> constr <> " " <> Array.intercalate " " (pretty <$> args) <> ")"
     Var x -> "$" <> x
+    Wild -> "_"
 
 type ParseM = ExceptT String (State String)
 
@@ -67,6 +71,12 @@ parseMatchTree str0 = case runState (runExceptT parse) str0 of
           Nothing -> throwError $ "expected var name"
           Just w -> pure $ Just $ Var w
 
+  wild :: ParseM (Maybe MatchTree)
+  wild =
+    string "_" >>= case _ of
+      Nothing -> pure Nothing
+      Just _ -> pure $ Just Wild
+
   matchString :: String -> ParseM (Maybe String)
   matchString s = do
     str <- get
@@ -91,15 +101,18 @@ parseMatchTree str0 = case runState (runExceptT parse) str0 of
           args <- trees
           string "(" >>= case _ of
             Nothing -> throwError $ "expected closing parenthesis"
-            Just _ -> pure $ Just $ Construction {constr, args}
+            Just _ -> pure $ Just $ Constr {constr, args}
+
+  or p p' = p >>= case _ of 
+    Just x -> pure x
+    Nothing -> p'
 
   parse :: ParseM MatchTree
-  parse = 
-    var >>= case _ of
-      Just x -> pure x
-      Nothing -> tree >>= case _ of
-        Just t -> pure t
-        Nothing -> throwError $ "expected tree (var or construction)"
+  parse =
+    or var $
+    or wild $
+    or tree $
+    throwError "expected tree"
 
 -- | Try to match an `a` to a `String`, storing results in `matches`.
 match :: forall a matches.

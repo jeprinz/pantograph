@@ -30,6 +30,12 @@ derive instance Eq sn => Eq (SortNode sn)
 instance Show sn => Show (SortNode sn) where show = genericShow
 derive instance Functor SortNode
 
+instance TreeNode sn => TreeNode (SortNode sn) where
+  kidsCount (SortNode node) = kidsCount node
+
+instance PrettyTreeNode sn => PrettyTreeNode (SortNode sn) where
+  prettyTreeNode (SortNode node) kids = prettyTreeNode node kids
+
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)
 type SortPath sn = Path (SortNode sn)
@@ -164,8 +170,7 @@ newtype Language sn el = Language
   , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
   , validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
   , steppingRules :: Array (SteppingRule sn el)
-  , parseSortNode :: String -> sn
-  , parseExprLabel :: String -> el
+  , matchingSyntax :: MatchingSyntax sn el
   }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
@@ -192,6 +197,10 @@ derive instance Newtype (SteppingRule sn el) _
 
 applySteppingRule :: forall sn el. SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
 applySteppingRule = unwrap
+
+newtype MatchingSyntax sn el = MatchingSyntax
+  { parseSortNode :: String -> Maybe sn
+  , parseExprLabel :: String -> Maybe el }
 
 -- RuleSortVar
 
