@@ -10,7 +10,7 @@ import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Const (Const)
-import Data.Either (Either)
+import Data.Either (Either(..))
 import Data.Either.Nested (type (\/))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
@@ -126,10 +126,9 @@ type EditorSpec l r =
   -- smallstep figured out the final result.
   , editsAtCursor :: Sort l -> Array (Edit l r)
 
-  -- TODO: actually use this
   , isValidCursorSort :: Sort l -> Boolean
 
-  -- TODO: actually use this
+  -- TODO: I don't think that this is general enough for all languages, but its fine for now
   , isValidSelectionSorts :: {bottom :: Sort l, top :: Sort l} -> Boolean
   
   , arrangeDerivTermSubs :: Unit -> ArrangeDerivTermSubs l r
@@ -257,6 +256,14 @@ isValidCursor :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipp
 isValidCursor spec (HoleInteriorHoleyDerivZipper _ _) = true
 isValidCursor spec (InjectHoleyDerivZipper dz) = spec.isValidCursorSort (derivZipperSort dz)
 
+isValidSelect :: forall l r. IsRuleLabel l r => EditorSpec l r -> DerivZipperp l r -> Boolean
+isValidSelect spec (Expr.Zipperp dpath selection dterm) =
+    let bottom = derivTermSort dterm in
+    let upSelection = case selection of
+            Left p -> Expr.toUpPath p
+            Right p -> p
+    in
+    spec.isValidSelectionSorts {bottom, top: derivPathSort upSelection bottom}
 
 derive instance Generic (HoleyDerivZipper l r) _
 derive instance (Eq l, Eq r) => Eq (HoleyDerivZipper l r)

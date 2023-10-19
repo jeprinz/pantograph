@@ -34,7 +34,7 @@ import Language.Pantograph.Generic.Rendering.Console (_consoleSlot, consoleCompo
 import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleExterior, renderHoleInterior, renderPath, renderSSTerm)
 import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
 import Language.Pantograph.Generic.Smallstep as SmallStep
-import Language.Pantograph.Generic.ZipperMovement (moveZipperp)
+import Language.Pantograph.Generic.ZipperMovement (moveZipperpUntil)
 import Log (log, logM)
 import Text.Pretty (bullets, pretty)
 import Text.Pretty as P
@@ -248,6 +248,8 @@ editorComponent = HK.component \tokens spec -> HK.do
           case moveHDZUntil dir (isValidCursor spec) cursor.hdzipper of
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
+        -- TODO: if cursor is moved in select state, it should set the cursor to the right or left of the selection rather than what it does now.
+        -- as it is now, it ignores isValidCursor, and therefore could even cause a crash.
         SelectState select -> do
           let dzipper = Expr.unzipperp select.dzipperp
           case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
@@ -265,14 +267,14 @@ editorComponent = HK.component \tokens spec -> HK.do
         let path = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
         let select = {dzipperp: Expr.Zipperp path (Left mempty) dterm}
-        case moveZipperp dir select.dzipperp of
+        case moveZipperpUntil dir (isValidSelect spec) select.dzipperp of
           Nothing -> do
             logM "moveSelect" "failed to enter SelectState"
             pure unit
           Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
           Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       SelectState select -> do
-        case moveZipperp dir select.dzipperp of
+        case moveZipperpUntil dir (isValidSelect spec) select.dzipperp of
           Nothing -> do
             logM "moveSelect" "failed to move selection"
           Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
@@ -283,7 +285,7 @@ editorComponent = HK.component \tokens spec -> HK.do
               # on _next (\_ -> Just (hole "moveSelect next when TopState"))
         case mb_select of
           Nothing -> pure unit
-          Just select -> case moveZipperp dir select.dzipperp of
+          Just select -> case moveZipperpUntil dir (isValidSelect spec) select.dzipperp of
             Nothing -> pure unit
             Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
             Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}

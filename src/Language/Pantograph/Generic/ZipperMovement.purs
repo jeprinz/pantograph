@@ -39,6 +39,18 @@ moveZipperp dir = map normalizeZipperp <<< (case_
   # on _next (\_ -> Zippable.zipNext 0)
   $ dir)
 
+moveZipperpUntil :: forall l. MoveDir -> (Zipperp l -> Boolean)
+    -> Zipperp l -> Maybe (Zipper l \/ Zipperp l)
+moveZipperpUntil dir valid zipperp =
+    case moveZipperp dir zipperp of
+    Nothing -> Nothing
+    Just (Left zipper) -> Just (Left zipper)
+    res@(Just (Right zipperp)) ->
+        if valid zipperp then res
+        else moveZipperpUntil dir valid zipperp
+
+
+
 -- {-
 -- I think this can be written in terms of ZipList.zipLeft and zipRight instead
 -- -}

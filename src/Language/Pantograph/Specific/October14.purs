@@ -915,6 +915,17 @@ isValidCursorSort :: Sort -> Boolean
 isValidCursorSort (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % _) = false
 isValidCursorSort _ = true
 
+isValidSelectionSorts :: {bottom :: Sort, top :: Sort} -> Boolean
+isValidSelectionSorts {
+        bottom: (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % _)
+        , top: (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % _)
+    } = true
+isValidSelectionSorts {
+        bottom: (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % _)
+        , top: (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % _)
+    } = true
+isValidSelectionSorts _ = false
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -929,7 +940,7 @@ editorSpec =
   , arrangeDerivTermSubs
   , stepRules
   , isValidCursorSort
-  , isValidSelectionSorts: const true
+  , isValidSelectionSorts
   , languageChanges
   , onDelete
   , generalizeDerivation
