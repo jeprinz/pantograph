@@ -17,7 +17,7 @@ import Data.Maybe (Maybe(..), isJust)
 import Data.String as String
 import Data.Tuple.Nested ((/\))
 import Data.Tuple as Tuple
-import Data.Variant (default, on)
+import Data.Variant (case_, on, default)
 import Debug as Debug
 import Debug as Debug
 import Effect.Aff (Aff)
@@ -52,6 +52,8 @@ import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Util as Util
 import Language.Pantograph.Generic.Unification as Unification
 import Debug (trace, traceM)
+import Data.Variant (case_)
+import Type.Direction (_prev)
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -252,9 +254,16 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- as it is now, it ignores isValidCursor, and therefore could even cause a crash.
         SelectState select -> do
           let dzipper = Expr.unzipperp select.dzipperp
-          case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
-            Nothing -> pure unit
-            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
+--          case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
+--            Nothing -> pure unit
+--            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
+--            (case_
+--              # on _up ?h
+--              # on default (\_ -> Zippable.zipRight)) dir
+          let atTop = (default false #on _prev (\_ -> true)) dir
+          setFacade $ CursorState (cursorFromHoleyDerivZipper
+            (InjectHoleyDerivZipper (Expr.zipperpToZipper atTop select.dzipperp)))
+--            (InjectHoleyDerivZipper dzipper))
         TopState top -> do
           let dzipper = Expr.Zipper mempty top.dterm
           case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
@@ -331,7 +340,7 @@ editorComponent = HK.component \tokens spec -> HK.do
         let unifyingSub = Unification.composeSub unifyingSub'
                 (Tuple.snd $ Util.fromJust' "gacct shouldn't fail" $ (Unification.unify expectedClipSort forgottenTopSort))
         let unifiedDPath = subDerivPath unifyingSub forgottenDPath
-        traceM ("going into clipboard is path: " <> pretty unifiedDPath <> " with top sort " <> pretty (nonemptyUpPathTopSort unifiedDPath) <> " and bottom sort " <> pretty (nonemptyPathInnerSort unifiedDPath))
+--        traceM ("going into clipboard is path: " <> pretty unifiedDPath <> " with top sort " <> pretty (nonemptyUpPathTopSort unifiedDPath) <> " and bottom sort " <> pretty (nonemptyPathInnerSort unifiedDPath))
         liftEffect $ Ref.write (Just (Left unifiedDPath)) clipboard_ref
 
     -- Deletes the term at the cursor and enters smallstep with a change going up

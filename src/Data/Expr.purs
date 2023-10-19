@@ -248,7 +248,7 @@ instance ReflectPathDir Dir.Up where
 
 -- | This works on both up and down paths -- Jacob: no it doesn't, it only works on Down paths. It would display Up paths backwards.
 prettyPath ∷ ∀ (dir190319372017 ∷ Symbol) (t2019 ∷ Type). ReflectPathDir dir190319372017 ⇒ IsExprLabel t2019 ⇒ Path dir190319372017 t2019 → String → String
-prettyPath path str = foldMapPath str prettyTooth path
+prettyPath path str = foldMapPath str prettyTooth (toDownPath path)
 
 instance (ReflectPathDir dir, IsExprLabel l) => Pretty (Path dir l) where
     pretty path =
@@ -282,9 +282,11 @@ toDownPath path@(Path ths) =
   # on _down (\_ -> Path ths)
 --    if inSaneEnglishIsItDown path then Path ths else Path (List.reverse ths)
 
-unPath :: forall dir l. ReflectPathDir dir => Path dir l -> Expr l -> Expr l
-unPath path expr0 = do
-  let Path ths = toUpPath path
+unPath :: forall l. IsExprLabel l => Path Up l -> Expr l -> Expr l
+unPath (Path ths) expr0 = do
+--  let Path ths = toUpPath path
+--  let res = go ths expr0
+--  Debug.trace ("in unPath: input path = " <> show (reflectPathDir path) <> " || " <> pretty path <> "and ths is " <> pretty ths <> " and expr0 = " <> pretty expr0 <> " and res = " <> pretty res) \_ -> res
   go ths expr0
   where
   go Nil expr = expr
@@ -401,7 +403,7 @@ zipRight (Zipper path expr) = case path of
     expr' /\ kidsPath' <- ZipList.zipRight (expr /\ kidsPath)
     Just $ Zipper (Path (l %< kidsPath' : ths)) expr'
 
-unzipper :: forall l. Zipper l -> Expr l
+unzipper :: forall l. IsExprLabel l => Zipper l -> Expr l
 unzipper (Zipper path expr) = unPath path expr
 
 zipperpFromTo :: forall l. IsExprLabel l => Zipper l -> Zipper l -> Maybe (Zipperp l)
@@ -484,10 +486,20 @@ zipperpTopPath (Zipperp path _ _) = path
 zipperpBottomPath :: forall l. Zipperp l -> Path Up l
 zipperpBottomPath (Zipperp path selection _) = either reversePath identity selection <> path
 
-unzipperp :: forall l. Zipperp l -> Zipper l
+unzipperp :: forall l. IsExprLabel l => Zipperp l -> Zipper l
 unzipperp (Zipperp path selection expr) = case selection of
   Left downPath -> Zipper (reversePath downPath <> path) expr
   Right upPath -> Zipper path (unPath upPath expr)
+
+zipperpToZipper :: forall l. IsExprLabel l => Boolean -> Zipperp l -> Zipper l
+zipperpToZipper atTop (Zipperp path selection expr) =
+  let upSelection = case selection of
+        Left downPath -> reversePath downPath
+        Right upPath -> upPath
+  in if atTop
+    then
+        Zipper path (unPath upSelection expr)
+    else Zipper (upSelection <> path) expr
 
 --------------------------------------------------------------------------------
 -- Change
