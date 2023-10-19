@@ -610,8 +610,11 @@ editorComponent = HK.component \tokens spec -> HK.do
     -}
 
     onMouseDown hdzipper event = do
-      H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
-      setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper)
+      if isValidCursor spec hdzipper
+          then do
+            H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+            setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper)
+          else pure unit
     
     -- !TODO when making a selection, should i check that sorts match? Or should
     -- I delay that check to when you try to do an action e.g. delete/cut

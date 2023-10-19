@@ -376,7 +376,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
     [pure [nameElem (str <> postfix)]]
   -- term
   Ref /\ _ ->
-    [pure [refElem], Left (renCtx /\ 0)]
+    [Left (renCtx /\ 0)]
   Lam /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
@@ -387,12 +387,12 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
         , Left (renCtx /\ 3)]
   App /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
-    [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
+    [Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1)]
   GreyedApp /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
   FunctionCall /\ _ ->
-    [Left (renCtx /\ 0)]
+    [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.rparenElem]]
   -- types
   DataTypeRule dataType /\ _ ->
     [pure [dataTypeElem (pretty dataType)]]
@@ -408,8 +408,10 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   -- hole
   TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
     ->  -- TODO TODO TODO: it shouldn't just display the type as text using pretty. Ideally it should produce HTML.
+        -- One idea is that term holes could literally contain their type as a derivation.
         [Left (renCtx /\ 0), pure [colonElem, HH.text (pretty ty)]]
-  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
+--  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
+  TypeHole /\ _ -> [Left (renCtx /\ 0)] -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
   If /\ _ ->
     let renCtx' = Rendering.incremementIndentationLevel renCtx in
     [pure [ifElem], Left (renCtx /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem]), Left (renCtx' /\ 1),
@@ -923,6 +925,10 @@ isValidSelectionSorts {
 isValidSelectionSorts {
         bottom: (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % _)
         , top: (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % _)
+    } = true
+isValidSelectionSorts {
+        bottom: (Expr.Meta (Right (Grammar.InjectSortLabel NeutralSort)) % _)
+        , top: (Expr.Meta (Right (Grammar.InjectSortLabel NeutralSort)) % _)
     } = true
 isValidSelectionSorts _ = false
 

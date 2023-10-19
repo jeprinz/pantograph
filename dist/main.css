@@ -93,7 +93,7 @@ body {
 .node {
   display: inline;
   cursor: pointer;
-  border-radius: 1em 1em / 2em;
+  border-radius: 0.5em 0.5em / 0.2em;
 }
 
 .node.zero {}
@@ -107,21 +107,21 @@ body {
 .node.ref {}
 
 .node.highlight {
-  box-shadow: 0 0 0 2px rgb(190, 190, 255);
+  box-shadow: -2px 0 gray,2px 0 gray;
 }
 
 .node.select-top {
-  box-shadow: 0 0 0 2px blue;
   background-color: rgba(157, 157, 255, 0.5);
+  box-shadow: -3px 0 blue,3px 0 blue;
 }
 
 .node.select-bottom {
-  box-shadow: 0 0 0 2px blue;
   background-color: white;
+  box-shadow: -3px 0 blue,3px 0 blue;
 }
 
 .node.cursor {
-  box-shadow: 0 0 0 2px blue;
+  box-shadow: -3px 0 blue,3px 0 blue;
 }
 
 .subnode.holeExterior-inner {
