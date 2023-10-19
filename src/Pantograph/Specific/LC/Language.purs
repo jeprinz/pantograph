@@ -113,31 +113,31 @@ language = PL.Language
       LetRule -> PL.buildChangingRule ["x"] \[x] -> [replaceChange (ruleSort.string x) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
       HoleRule -> PL.buildChangingRule [] \[] -> []
       FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeConstRuleSortNode TermSort) []]
-  , getDefaultExpr: \sort -> case sort of
-      Tree {node: PL.SortNode (StringValue _)} -> Nothing
-      _ | Just ["str" /\ Tree {node: PL.SortNode (StringValue str)}] <- matchSort "(String $str)" sort -> Just $ term.string str
-      _ | Just [] <- matchSort "(Term)" sort -> Nothing
-      _ -> bug $ "invalid sort: " <> show sort
-  -- , getDefaultExpr: case _ of
+  -- , getDefaultExpr: \sort -> case sort of
   --     Tree {node: PL.SortNode (StringValue _)} -> Nothing
-  --     Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
-  --     Tree {node: PL.SortNode TermSort} ->
-  --       -- Just $ term.hole
-  --       Just $ term.app term.hole term.hole
-  --       -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
-  --       -- Just $ term.app (makeIndentedNewline (term.app term.hole term.hole)) (term.app (makeIndentedNewline (term.app term.hole (makeIndentedNewline term.hole))) term.hole)
-  --       -- Just $ 
-  --       --   term.app
-  --       --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
-  --       --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
-  --       -- Just $ term.example 10
-  --       -- Just $ term.example 6
-  --       -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
-  --       -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
-  --       -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
-  --       -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
-  --       -- Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
-  --       -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
+  --     _ | Just ["str" /\ Tree {node: PL.SortNode (StringValue str)}] <- matchSort "(String $str)" sort -> Just $ term.string str
+  --     _ | Just [] <- matchSort "(Term)" sort -> Nothing
+  --     _ -> bug $ "invalid sort: " <> show sort
+  , getDefaultExpr: case _ of
+      Tree {node: PL.SortNode (StringValue _)} -> Nothing
+      Tree {node: PL.SortNode StringSort} -> Just $ term.string ""
+      Tree {node: PL.SortNode TermSort} ->
+        -- Just $ term.hole
+        Just $ term.app term.hole term.hole
+        -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
+        -- Just $ term.app (makeIndentedNewline (term.app term.hole term.hole)) (term.app (makeIndentedNewline (term.app term.hole (makeIndentedNewline term.hole))) term.hole)
+        -- Just $ 
+        --   term.app
+        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
+        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
+        -- Just $ term.example 10
+        -- Just $ term.example 6
+        -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
+        -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
+        -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
+        -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
+        -- Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
+        -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
   , topSort: sort.term
   , getEdits: \sort _ -> case sort of
       Tree {node: PL.SortNode (StringValue _), kids: []} -> mempty
@@ -169,8 +169,8 @@ language = PL.Language
   , matchingSyntax
   }
   where
-  matchSort = PL.matchSort matchingSyntax
-  matchExpr = PL.matchExpr matchingSyntax
+  -- matchSort = PL.matchSort matchingSyntax
+  -- matchExpr = PL.matchExpr matchingSyntax
   matchingSyntax = PL.MatchingSyntax
     { parseExprLabel: case _ of
         "String" -> Just $ StringRule

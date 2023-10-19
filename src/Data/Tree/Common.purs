@@ -3,6 +3,7 @@ module Data.Tree.Common where
 import Prelude
 
 import Bug (bug)
+import Data.Tuple.Nested
 import Data.Array as Array
 import Data.Bifunctor (class Bifunctor)
 import Data.Either (Either)
@@ -24,7 +25,7 @@ import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as Pretty
 import Util (fromJust')
 
-data Tree a = Tree {node :: a, kids :: Array (Tree a)}
+data Tree a = Tree a (Array (Tree a))
 derive instance Generic (Tree a) _
 instance Show a => Show (Tree a) where show x = genericShow x
 derive instance Eq a => Eq (Tree a)
@@ -33,9 +34,9 @@ derive instance Foldable Tree
 derive instance Traversable Tree
 
 treeNode :: forall a. Tree a -> a
-treeNode (Tree {node}) = node
+treeNode (Tree a _) = a
 
-newtype Tooth a = Tooth {node :: a, i :: Int, kids :: Array (Tree a)}
+data Tooth a = Tooth a Int (Array (Tree a))
 derive instance Generic (Tooth a) _
 instance Show a => Show (Tooth a) where show x = genericShow x
 derive instance Eq a => Eq (Tooth a)
@@ -44,16 +45,13 @@ derive instance Foldable Tooth
 derive instance Traversable Tooth
 
 toothNode :: forall a. Tooth a -> a
-toothNode (Tooth {node}) = node
+toothNode (Tooth a _ _) = a
 
-tooths :: forall a. Tree a -> Array {tooth :: Tooth a, inside :: Tree a}
-tooths (Tree {node, kids}) = kids # Array.mapWithIndex \i inside -> {tooth: Tooth {node, i, kids: fromJust' "tooths" $ Array.deleteAt i kids}, inside}
-
--- toothAt :: forall a. Int -> Tree a -> Tooth a
--- toothAt
+tooths :: forall a. Tree a -> Array (Tooth a /\ Tree a)
+tooths (Tree a kids) = kids # Array.mapWithIndex \i inside -> (Tooth a i (fromJust' "tooths" $ Array.deleteAt i kids) /\ inside)
 
 unTooth :: forall a. Tooth a -> Tree a -> Tree a
-unTooth (Tooth {node, i, kids}) kid = Tree {node, kids: fromJust' "unTooth" $ Array.insertAt i kid kids}
+unTooth (Tooth a i kids) kid = Tree a (fromJust' "unTooth" $ Array.insertAt i kid kids)
 
 newtype Path a = Path (List (Tooth a))
 derive instance Generic (Path a) _
@@ -150,15 +148,15 @@ derive instance Eq a => Eq (Gyro a)
 derive instance Functor Gyro
 
 gyroNode :: forall a. Gyro a -> a
-gyroNode (RootGyro (Tree {node})) = node
-gyroNode (CursorGyro (Cursor {inside: Tree {node}})) = node
-gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth {node}} <- unconsNonEmptyPath middle = node
-gyroNode (SelectGyro (Select {inside: Tree {node}, orientation: Inside})) = node
+gyroNode (RootGyro (Tree a _)) = a
+gyroNode (CursorGyro (Cursor {inside: Tree a _})) = a
+gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _ _} <- unconsNonEmptyPath middle = a
+gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 
 data Change a
-  = Shift {sign :: ShiftSign, tooth :: Tooth a, kid :: Change a}
-  | Replace {old :: Tree a, new :: Tree a}
-  | InjectChange {node :: a, kids :: Array (Change a)}
+  = Shift ShiftSign (Tooth a) (Change a)
+  | Replace (Tree a) (Tree a)
+  | InjectChange a (Array (Change a))
 derive instance Generic (Change a) _
 instance Show a => Show (Change a) where show x = genericShow x
 derive instance Eq a => Eq (Change a)
@@ -174,8 +172,8 @@ instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
 
-injectChange node kids = InjectChange {node, kids}
-replaceChange old new = Replace {old, new}
+injectChange a kids = InjectChange {a, kids}
+replaceChange old new = Replace old new
 
 -- Edit
 
@@ -204,10 +202,10 @@ class TreeNode a <= PrettyTreeNode a where
   prettyTreeNode :: a -> Array String -> String
 
 instance PrettyTreeNode a => Pretty (Tree a) where
-  pretty (Tree {node, kids}) = prettyTreeNode node (pretty <$> kids)
+  pretty (Tree a kids) = prettyTreeNode a (pretty <$> kids)
 
 prettyTooth :: forall a. PrettyTreeNode a => Tooth a -> String -> String
-prettyTooth (Tooth {node, kids, i}) str = prettyTreeNode node (fromJust' "prettyTooth" $ Array.insertAt i str (pretty <$> kids))
+prettyTooth (Tooth a i kids) str = prettyTreeNode a (fromJust' "prettyTooth" $ Array.insertAt i str (pretty <$> kids))
 
 instance PrettyTreeNode a => Pretty (Tooth a) where
   pretty tooth = prettyTooth tooth Pretty.cursor
@@ -241,6 +239,6 @@ instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (SelectGyro select) = pretty select
 
 instance PrettyTreeNode a => Pretty (Change a) where
-  pretty (Shift {sign, tooth, kid}) = pretty sign <> (Pretty.outer (prettyTooth tooth (Pretty.inner (pretty kid))))
-  pretty (Replace {old, new}) = parens (pretty old <+> "~~>" <+> pretty new)
-  pretty (InjectChange {node, kids}) = prettyTreeNode node (pretty <$> kids)
+  pretty (Shift sign tooth kid) = pretty sign <> (Pretty.outer (prettyTooth tooth (Pretty.inner (pretty kid))))
+  pretty (Replace old new) = parens (pretty old <+> "~~>" <+> pretty new)
+  pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)
