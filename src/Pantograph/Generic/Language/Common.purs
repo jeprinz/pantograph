@@ -1,12 +1,18 @@
 module Pantograph.Generic.Language.Common where
 
+import Data.Either.Nested
 import Data.Tree
+import Data.Tuple.Nested
 import Prelude
 import Util
+import Data.Match
 
 import Bug (bug)
+import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
+import Data.Foldable (foldM, traverse_)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -14,9 +20,9 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple (uncurry)
 import Prim.Row (class Union)
-import Text.Pretty (class Pretty, ticks)
+import Text.Pretty (class Pretty, pretty, ticks)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -30,6 +36,8 @@ derive instance Eq sn => Eq (SortNode sn)
 instance Show sn => Show (SortNode sn) where show = genericShow
 derive instance Functor SortNode
 
+type SortNodePattern sn = EqPattern (SortNode sn)
+
 instance TreeNode sn => TreeNode (SortNode sn) where
   kidsCount (SortNode node) = kidsCount node
 
@@ -39,6 +47,9 @@ instance PrettyTreeNode sn => PrettyTreeNode (SortNode sn) where
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)
 type SortPath sn = Path (SortNode sn)
+
+type SortPattern sn = TreePattern (SortNodePattern sn)
+type SortMatch sn m = Sort sn \/ m
 
 -- RuleSort
 
@@ -65,6 +76,9 @@ instance ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
 
 type SortChange sn = Change (SortNode sn)
 
+type SortChangePattern sn = ChangePattern (SortNodePattern sn)
+type SortChangeMatch sn m = Sort sn \/ m
+
 -- RuleSortChange
 
 type RuleSortChange sn = Change (RuleSortNode sn)
@@ -72,7 +86,7 @@ type RuleSortChange sn = Change (RuleSortNode sn)
 instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
   applyRuleSortVarSubst sigma (Shift sign tooth kid) = Shift sign (fromConstRuleSortNode "invalid Inject" <$> tooth) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
-  applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromConstRuleSortNode "invalid InjectChange" node) (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (Change node kids) = Change (fromConstRuleSortNode "invalid Change" node) (applyRuleSortVarSubst sigma <$> kids)
 
 -- AnnExpr
 
@@ -129,6 +143,19 @@ shrinkAnnExprGyro = unsafeCoerce
 shrinkAnnExprGyro' :: forall sn el er er_ er'. Union er_ er' er => Proxy er_ -> AnnExprGyro sn el er -> AnnExprGyro sn el er'
 shrinkAnnExprGyro' _ = unsafeCoerce
 
+-- matchExprNode
+
+data ExprNodePattern sn el = ExprNodePattern {label :: EqPattern el, sigma :: RuleSortVarSubstPattern sn}
+type ExprNodeMatch sn m = RuleSortVarSubstMatch sn m
+
+derive instance Generic (ExprNodePattern sn el) _
+instance (Show sn, Show el) => Show (ExprNodePattern sn el) where show x = genericShow x
+
+instance (Eq sn, Eq el, Show sn) => Matchable (AnnExprNode sn el r) (ExprNodePattern sn el) (ExprNodeMatch sn m) where
+  match (ExprNodePattern node) (AnnExprNode node') = do
+    mapMatches Right $ match node.label node'.label
+    match node.sigma node'.sigma
+
 -- StepExpr
 
 data StepExpr sn el
@@ -139,12 +166,33 @@ derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
 instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 
+-- matchStepExpr
+
+data StepExprPattern sn el
+  = BoundaryPattern (WildPattern (EqPattern Direction)) (SortChangePattern sn) (StepExprPattern sn el)
+  | StepExprPattern (WildPattern (EqPattern (Maybe Marker))) (ExprNodePattern sn el) (Array (StepExprPattern sn el))
+type StepExprMatch sn el m = StepExpr sn el \/ SortChangeMatch sn m
+
+derive instance Generic (StepExprPattern sn el) _
+instance (Show sn, Show el) => Show (StepExprPattern sn el) where show x = genericShow x
+
+instance (Eq sn, Eq el, Show sn) => Matchable (StepExpr sn el) (StepExprPattern sn el) (StepExprMatch sn el m) where
+  match (BoundaryPattern dir ch kid) (Boundary dir' ch' kid') = do
+    match dir dir'
+    mapMatches Right $ match ch ch'
+    match kid kid'
+  match (StepExprPattern mrk node kids) (StepExpr mrk' node' kids') = do
+    match mrk mrk'
+    mapMatches Right $ match node node'
+    uncurry match `traverse_` Array.zip kids kids'
+  match _ _ = noMatch
+
 -- Direction
 
 data Direction = Up | Down
 
 derive instance Generic Direction _
-instance Show Direction where show x = genericShow x
+instance Show Direction where show = genericShow
 instance Eq Direction where eq x y = genericEq x y
 instance Ord Direction where compare x y = genericCompare x y
 instance Pretty Direction where
@@ -170,8 +218,7 @@ newtype Language sn el = Language
   , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
   , validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
   , steppingRules :: Array (SteppingRule sn el)
-  , matchingSyntax :: MatchingSyntax sn el
-  }
+  , matchingSyntax :: MatchingSyntax sn el }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
@@ -210,6 +257,8 @@ derive newtype instance Show RuleSortVar
 derive instance Eq RuleSortVar
 derive instance Ord RuleSortVar
 
+instance Pretty RuleSortVar where pretty (MakeRuleSortVar str) = "$" <> str
+
 newtype RuleSortVarSubst sn = RuleSortVarSubst (Map.Map RuleSortVar (Sort sn))
 derive newtype instance Eq sn => Eq (RuleSortVarSubst sn)
 derive newtype instance Show sn => Show (RuleSortVarSubst sn)
@@ -221,3 +270,23 @@ instance ApplyRuleSortVarSubst sn RuleSortVar (Sort sn) where
   applyRuleSortVarSubst (RuleSortVarSubst m) x = case Map.lookup x m of
     Nothing -> bug $ "Could not substitute RuleVar: " <> show x
     Just s -> s
+
+-- matchRuleSortVarSubst
+
+data RuleSortVarSubstPattern sn = RuleSortVarSubstPattern (Array (RuleSortVar /\ SortPattern sn))
+type RuleSortVarSubstMatch sn m = Sort sn \/ m
+
+derive instance Generic (RuleSortVarSubstPattern sn) _
+instance Show sn => Show (RuleSortVarSubstPattern sn) where show x = genericShow x
+
+-- Matches without regard to the order of entries in the matched RuleSortVarSubst
+instance (Show sn, Eq sn) => Matchable (RuleSortVarSubst sn) (RuleSortVarSubstPattern sn) (RuleSortVarSubstMatch sn m) where
+  match (RuleSortVarSubstPattern sigmaPat) (RuleSortVarSubst sigma) = do
+    sigma' <- foldM
+      (\sigma' (x /\ sortPat) -> case Map.lookup x sigma' of
+          Nothing -> bug $ "matchRuleSortVarSubst: pattern " <> ticks (show sigmaPat) <> " expected " <> ticks (pretty x) <> " to be substituted"
+          Just sort -> do
+            match sortPat sort
+            pure $ Map.delete x sigma') 
+      sigma sigmaPat
+    when (not $ Map.isEmpty sigma') $ bug $ "matchRuleSortVarSubst: pattern " <> ticks (show sigmaPat) <> " should also match substitutions " <> ticks (show (pretty <$> (Set.toUnfoldable (Map.keys sigma') :: Array _)))

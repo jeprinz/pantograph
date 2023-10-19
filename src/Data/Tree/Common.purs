@@ -3,27 +3,27 @@ module Data.Tree.Common where
 import Prelude
 
 import Bug (bug)
-import Data.Tuple.Nested
 import Data.Array as Array
 import Data.Bifunctor (class Bifunctor)
-import Data.Either (Either)
-import Data.Eq (class Eq1)
 import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
 import Data.List as List
-import Data.List.NonEmpty as NonEmptyList
+import Data.List.NonEmpty (fromFoldable, snoc, unsnoc) as NonEmptyList
 import Data.List.Types (NonEmptyList(..))
-import Data.List.Types as NonEmptyList
+import Data.List.Types (nelCons) as NonEmptyList
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty(..))
 import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
+import Data.Tuple.Nested (type (/\), (/\))
 import Partial.Unsafe (unsafePartial)
-import Text.Pretty (class Pretty, parens, pretty, (<+>))
+import Text.Pretty (class Pretty, class PrettyS, parens, pretty, prettyS, (<+>))
 import Text.Pretty as Pretty
 import Util (fromJust')
+
+-- Tree
 
 data Tree a = Tree a (Array (Tree a))
 derive instance Generic (Tree a) _
@@ -35,6 +35,8 @@ derive instance Traversable Tree
 
 treeNode :: forall a. Tree a -> a
 treeNode (Tree a _) = a
+
+-- Tooth
 
 data Tooth a = Tooth a Int (Array (Tree a))
 derive instance Generic (Tooth a) _
@@ -52,6 +54,8 @@ tooths (Tree a kids) = kids # Array.mapWithIndex \i inside -> (Tooth a i (fromJu
 
 unTooth :: forall a. Tooth a -> Tree a -> Tree a
 unTooth (Tooth a i kids) kid = Tree a (fromJust' "unTooth" $ Array.insertAt i kid kids)
+
+-- Path
 
 newtype Path a = Path (List (Tooth a))
 derive instance Generic (Path a) _
@@ -78,6 +82,8 @@ unsnocPath :: forall a. Path a -> Maybe {outer :: Tooth a, inner :: Path a}
 unsnocPath (Path ts) = do
   {init, last} <- List.unsnoc ts
   pure {outer: last, inner: Path init}
+
+-- NonEmptyPath
 
 newtype NonEmptyPath a = NonEmptyPath (NonEmptyList (Tooth a))
 derive instance Generic (NonEmptyPath a) _
@@ -123,11 +129,15 @@ nonEmptyPathOuterNode p = toothNode (unsnocNonEmptyPath p).outer
 nonEmptyPathInnerNode :: forall a. NonEmptyPath a -> a
 nonEmptyPathInnerNode p = toothNode (unconsNonEmptyPath p).inner
 
+-- Cursor
+
 newtype Cursor a = Cursor {outside :: Path a, inside :: Tree a, orientation :: Orientation}
 derive instance Generic (Cursor a) _
 instance Show a => Show (Cursor a) where show x = genericShow x
 derive instance Eq a => Eq (Cursor a)
 derive instance Functor Cursor
+
+-- Select
 
 newtype Select a = Select {outside :: Path a, middle :: NonEmptyPath a, inside :: Tree a, orientation :: Orientation}
 derive instance Generic (Select a) _
@@ -135,11 +145,15 @@ instance Show a => Show (Select a) where show x = genericShow x
 derive instance Eq a => Eq (Select a)
 derive instance Functor Select
 
+-- Orientation
+
 data Orientation = Outside | Inside
 derive instance Generic Orientation _
 instance Show Orientation where show = genericShow
 derive instance Eq Orientation
 derive instance Ord Orientation
+
+-- Gyro
 
 data Gyro a = RootGyro (Tree a) | CursorGyro (Cursor a) | SelectGyro (Select a)
 derive instance Generic (Gyro a) _
@@ -153,10 +167,12 @@ gyroNode (CursorGyro (Cursor {inside: Tree a _})) = a
 gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _ _} <- unconsNonEmptyPath middle = a
 gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 
+-- Change
+
 data Change a
   = Shift ShiftSign (Tooth a) (Change a)
   | Replace (Tree a) (Tree a)
-  | InjectChange a (Array (Change a))
+  | Change a (Array (Change a))
 derive instance Generic (Change a) _
 instance Show a => Show (Change a) where show x = genericShow x
 derive instance Eq a => Eq (Change a)
@@ -172,7 +188,9 @@ instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
 
-injectChange a kids = InjectChange a kids
+plusChange th ch = Shift Plus th ch
+minusChange th ch = Shift Minus th ch
+injectChange a kids = Change a kids
 replaceChange old new = Replace old new
 
 -- Edit
@@ -204,34 +222,34 @@ class TreeNode a <= PrettyTreeNode a where
 instance PrettyTreeNode a => Pretty (Tree a) where
   pretty (Tree a kids) = prettyTreeNode a (pretty <$> kids)
 
-prettyTooth :: forall a. PrettyTreeNode a => Tooth a -> String -> String
-prettyTooth (Tooth a i kids) str = prettyTreeNode a (fromJust' "prettyTooth" $ Array.insertAt i str (pretty <$> kids))
+instance PrettyTreeNode a => PrettyS (Tooth a) where
+  prettyS (Tooth a i kids) str = prettyTreeNode a (fromJust' "(PrettyS (Tooth a)).prettyS" $ Array.insertAt i str (pretty <$> kids))
 
 instance PrettyTreeNode a => Pretty (Tooth a) where
-  pretty tooth = prettyTooth tooth Pretty.cursor
+  pretty tooth = prettyS tooth Pretty.cursor
 
-prettyPath :: forall a. PrettyTreeNode a => Path a -> String -> String
-prettyPath (Path ts) = go ts
-  where
-  go Nil str = str
-  go (Cons t ts') str = go ts' (prettyTooth t str)
+instance PrettyTreeNode a => PrettyS (Path a) where
+  prettyS (Path ts) = go ts
+    where
+    go Nil str = str
+    go (Cons t ts') str = go ts' (prettyS t str)
 
 instance PrettyTreeNode a => Pretty (Path a) where
-  pretty path = prettyPath path Pretty.cursor
+  pretty path = prettyS path Pretty.cursor
 
 instance PrettyTreeNode a => Pretty (NonEmptyPath a) where
-  pretty nonEmptyPath = prettyPath (toPath nonEmptyPath) Pretty.cursor
+  pretty nonEmptyPath = prettyS (toPath nonEmptyPath) Pretty.cursor
 
 instance PrettyTreeNode a => Pretty (Cursor a) where
   pretty (Cursor {outside, inside, orientation}) = case orientation of
-    Outside -> prettyPath outside $ Pretty.outer $ pretty inside
-    Inside -> prettyPath outside $ Pretty.inner $ pretty inside
+    Outside -> prettyS outside $ Pretty.outer $ pretty inside
+    Inside -> prettyS outside $ Pretty.inner $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Select a) where
   pretty (Select {outside, middle, inside, orientation: Outside}) =
-    prettyPath outside $ Pretty.outerActive $ prettyPath (toPath middle) $ Pretty.inner $ pretty inside
+    prettyS outside $ Pretty.outerActive $ prettyS (toPath middle) $ Pretty.inner $ pretty inside
   pretty (Select {outside, middle, inside, orientation: Inside}) =
-    prettyPath outside $ Pretty.outer $ prettyPath (toPath middle) $ Pretty.innerActive $ pretty inside
+    prettyS outside $ Pretty.outer $ prettyS (toPath middle) $ Pretty.innerActive $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (RootGyro tree) = pretty tree
@@ -239,6 +257,6 @@ instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (SelectGyro select) = pretty select
 
 instance PrettyTreeNode a => Pretty (Change a) where
-  pretty (Shift sign tooth kid) = pretty sign <> (Pretty.outer (prettyTooth tooth (Pretty.inner (pretty kid))))
+  pretty (Shift sign tooth kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
   pretty (Replace old new) = parens (pretty old <+> "~~>" <+> pretty new)
-  pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)
+  pretty (Change a kids) = prettyTreeNode a (pretty <$> kids)

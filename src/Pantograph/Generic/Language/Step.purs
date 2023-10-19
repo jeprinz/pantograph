@@ -1,6 +1,7 @@
 module Pantograph.Generic.Language.Step where
 
 import Data.Either.Nested
+import Data.Match
 import Data.Tree
 import Data.Tuple
 import Data.Tuple.Nested
@@ -13,13 +14,16 @@ import Control.Monad.Reader (ReaderT, runReaderT)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Foldable (foldr)
+import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
 import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.Show.Generic (genericShow)
 import Hole (hole)
 import Record as R
+import Text.Pretty (ticks)
 import Type.Proxy (Proxy(..))
 import Util (fromJust', fromRight')
 

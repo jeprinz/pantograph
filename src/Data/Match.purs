@@ -1,47 +1,32 @@
 module Data.Match where
 
 import Data.Either.Nested
+import Data.Tree
 import Data.Tuple.Nested
 import Prelude
 
 import Bug (bug)
-import Control.Monad.Writer (WriterT, execWriterT, mapWriterT, runWriterT, tell)
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Writer (WriterT, execWriterT, mapWriterT, tell)
 import Data.Array as Array
-import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
-import Data.Tree (Tree(..))
+import Data.Show.Generic (genericShow)
+import Data.Traversable (traverse)
 import Data.Tuple (uncurry)
-import Data.Variant (Variant)
-import Text.Pretty (class Pretty, parens)
+import Text.Pretty (class Pretty, class PrettyS, pretty)
+import Util (fromJust, fromJust')
 
-data Pattern ctr
-  = Constr ctr (Array (Pattern ctr))
-  | Var
-  | Wild
+-- Match
 
-infix 7 Constr as %
-
-derive instance Generic (Pattern ctr) _
-
--- | The `Show` instance for `Pattern` uses the infixed version of `Constr`.
-instance Show ctr => Show (Pattern ctr) where
-  show = case _ of
-    Constr ctr kids -> parens $ show ctr <> " % " <> show kids
-    Var -> "var"
-    Wild -> "wild"
-
-instance Show ctr => Pretty (Pattern ctr) where
-  pretty = show
-
--- | The type of matching functions such that "`a` is matched by `Pattern`s with
--- | contructor `ctr`, with resulting matches of type `m`".
-type Match a ctr m = Pattern ctr -> a -> MatchM m
+-- | The type of matching functions such that "`a` is matched by `TreePattern`s with
+-- | contructor `a`, with resulting matches of type `m`".
+type Match a pat m = pat -> a -> MatchM m
 type MatchM m = WriterT (Array m) Maybe Unit
 
-matches :: forall a ctr m b. Match a ctr m -> Array (Pattern ctr /\ (Array m -> Maybe b)) -> a -> b
+matches :: forall a pat m b. Match a pat m -> Array (pat /\ (Array m -> Maybe b)) -> a -> b
 matches match cases a = case Array.uncons cases of
   Nothing -> bug $ "matches: no patterns matched"
   Just {head: pat /\ k, tail: cases'} -> case execWriterT $ match pat a of
@@ -50,110 +35,94 @@ matches match cases a = case Array.uncons cases of
       Nothing -> matches match cases' a
       Just b -> b
 
+noMatch :: forall m. MatchM m
+noMatch = throwError unit
+
 mapMatches :: forall m m'. (m -> m') -> MatchM m -> MatchM m'
 mapMatches f = mapWriterT (map (map (map f)))
 
-matchTree :: forall a b mNode. Match a b mNode -> Match (Tree a) (Pattern b) (mNode \/ Tree a)
-matchTree matchNode (a % kids) (Tree a' kids') = do
-  mapMatches Left $ matchNode a a'
-  uncurry (matchTree matchNode) `traverse_` Array.zip kids kids'
-matchTree _ Var t = mapMatches Right $ tell [t]
-matchTree _ Wild _ = pure unit
+-- Matchable
 
--- instance Matchable (Tree a) a (Array (String /\ Tree a)) where
---   match (a % kids) (Tree a' kids') = ?a
---   match (Var x) tree = x ≔ tree
---   match Wild tree = pure unit
+class Matchable a pat m | pat -> a m where
+  match :: Match a pat m
 
--- instance Pretty Pattern where
---   pretty = case _ of
---     Constr {name, args} -> "(" <> name <> " " <> Array.intercalate " " (pretty <$> args) <> ")"
---     Var x -> "$" <> x
---     Wild -> "_"
+-- EqPattern
 
--- type ParseM = ExceptT String (State String)
+newtype EqPattern a = EqPattern a
 
--- parsePattern :: String -> Pattern
--- parsePattern str0 = case runState (runExceptT parse) str0 of
---   Left err /\ str1 -> bug $ "parsePattern: " <> err <> "\n" <> "at: ... " <> show str1
---   Right t /\ _str1 -> t
---   where
+derive instance Generic (EqPattern a) _
+derive newtype instance Show a => Show (EqPattern a)
 
---   -- parse word and erase trailing whitespace
---   word :: ParseM (Maybe String)
---   word = do
---     word <- gets $ String.takeWhile Char.isAlphaNum
---     if String.length word == 0 then
---       pure Nothing
---     else do
---       modify_ $ String.dropWhile Char.isSpace <<< String.drop (String.length word)
---       pure (Just word)
+instance Eq a => Matchable a (EqPattern a) m where
+  match (EqPattern a) a' = unless (a == a') $ noMatch
 
---   -- parse exact string
---   string :: String -> ParseM (Maybe String)
---   string s = do
---     str <- get
---     case String.stripPrefix (Pattern s) str of
---       Nothing -> pure Nothing -- bug $ "parsePattern: expected string " <> show s <> " at " <> show str
---       Just str' -> do
---         put $ String.dropWhile Char.isSpace str'
---         pure (Just s)
+-- WildPattern
 
---   var :: ParseM (Maybe Pattern)
---   var = 
---     string "$" >>= case _ of
---       Nothing -> pure Nothing
---       Just _ -> 
---         word >>= case _ of
---           Nothing -> throwError $ "expected var name"
---           Just w -> pure $ Just $ Var w
+newtype WildPattern a = WildPattern (Maybe a)
 
---   wild :: ParseM (Maybe Pattern)
---   wild =
---     string "_" >>= case _ of
---       Nothing -> pure Nothing
---       Just _ -> pure $ Just Wild
+derive instance Generic (WildPattern a) _
+derive newtype instance Show a => Show (WildPattern a)
 
---   matchString :: String -> ParseM (Maybe String)
---   matchString s = do
---     str <- get
---     case String.stripPrefix (Pattern s) str of
---       Nothing -> pure Nothing
---       Just _ -> pure (Just s)
+instance Matchable a a' m => Matchable a (WildPattern a') m where
+  match (WildPattern Nothing) _ = pure unit
+  match (WildPattern (Just a)) a' = match a a'
 
---   trees :: ParseM (Array Pattern)
---   trees = matchString ")" >>= case _ of
---     Nothing -> pure mempty
---     Just _ -> tree >>= case _ of
---       Nothing -> throwError $ "expected argument"
---       Just t -> Array.cons t <$> trees
+-- Matchable Tree
 
---   tree :: ParseM (Maybe Pattern)
---   tree =
---     string "(" >>= case _ of
---       Nothing -> pure Nothing
---       Just _ -> word >>= case _ of
---         Nothing -> throwError $ "expected constructor name"
---         Just name -> do
---           args <- trees
---           string "(" >>= case _ of
---             Nothing -> throwError $ "expected closing parenthesis"
---             Just _ -> pure $ Just $ Constr {name, args}
+data TreePattern a
+  = TreePattern a (Array (TreePattern a))
+  | VarTreePattern
 
---   or p p' = p >>= case _ of 
---     Just x -> pure x
---     Nothing -> p'
+derive instance Generic (TreePattern a) _
+instance Show a => Show (TreePattern a) where show x = genericShow x
 
---   parse :: ParseM Pattern
---   parse =
---     or var $
---     or wild $
---     or tree $
---     throwError "expected tree"
+instance PrettyTreeNode a => Pretty (TreePattern a) where
+  pretty = case _ of
+    TreePattern a kids -> prettyTreeNode a (pretty <$> kids)
+    VarTreePattern -> "var"
 
--- -- | Try to match an `a` to a `String`, storing results in `matches`.
--- match :: forall a matches.
---   {matchConstr :: a -> Pattern -> StateT matches Maybe Unit, emptyMatches :: matches} ->
---   String -> a -> Maybe matches
--- match {matchConstr, emptyMatches} str a = execStateT (matchConstr a (parsePattern str)) emptyMatches
+instance Matchable a a' m => Matchable (Tree a) (TreePattern a') (Tree a \/ m) where
+  match (TreePattern a kids) (Tree a' kids') = do
+    mapMatches Right $ match a a'
+    uncurry match `traverse_` Array.zip kids kids'
+  match VarTreePattern t = tell [Left t]
 
+-- Matchable Tooth
+
+data ToothPattern a
+  = ToothPattern a (EqPattern Int) (Array (TreePattern a))
+
+derive instance Generic (ToothPattern a) _
+instance Show a => Show (ToothPattern a) where show x = genericShow x
+
+instance PrettyTreeNode a => PrettyS (ToothPattern a) where
+  prettyS (ToothPattern a (EqPattern i) kids) str = prettyTreeNode a (fromJust $ Array.insertAt i str $ pretty <$> kids)
+
+instance Matchable a a' m => Matchable (Tooth a) (ToothPattern a') (Tree a \/ m) where
+  match (ToothPattern a i kids) (Tooth a' i' kids') = do
+    mapMatches Right $ match a a'
+    match i i'
+    uncurry match `traverse_` Array.zip kids kids'
+
+-- matchChange
+
+data ChangePattern a
+  = ShiftPattern (EqPattern ShiftSign) (ToothPattern a) (ChangePattern a)
+  | ReplacePattern (TreePattern a) (TreePattern a)
+  | ChangePattern a (Array (ChangePattern a))
+
+derive instance Generic (ChangePattern a) _
+instance Show a => Show (ChangePattern a) where show x = genericShow x
+
+instance Matchable a a' m => Matchable (Change a) (ChangePattern a') (Tree a \/ m) where
+  match (ShiftPattern s th c) (Shift s' th' c') = do
+    match s s'
+    match th th'
+    match c c'
+  match (ReplacePattern c1 c2) (Replace c1' c2') = do
+    match c1 c1'
+    match c2 c2'
+  match (ChangePattern a cs) (Change a' cs') = do
+    mapMatches Right $ match a a'
+    uncurry match `traverse_` Array.zip cs cs'
+  match _ _ = noMatch
