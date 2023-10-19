@@ -8,6 +8,7 @@ import Control.Plus (empty)
 import Data.Array as Array
 import Data.Bifunctor (lmap)
 import Data.Either as Either
+import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Expr (class IsExprLabel, class ReflectPathDir, MetaVar(..), expectedKidsCount, freshMetaVar, prettyExprF'_unsafe, reflectPathDir, (%), (%*))
 import Data.Expr as Expr
@@ -337,6 +338,15 @@ nonemptyPathInnerSort (Expr.Path teeth) = case teeth of
 
 derivZipperSort :: forall l r. IsRuleLabel l r => DerivZipper l r -> Sort l
 derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
+
+derivZipperpSorts :: forall l r. IsRuleLabel l r => DerivZipperp l r -> Sort l /\ Sort l
+derivZipperpSorts (Expr.Zipperp _ selection dterm) =
+    let selection' = case selection of
+            Left downPath -> Expr.reversePath downPath
+            Right upPath -> upPath
+    in
+    let botSort = (derivTermSort dterm) in
+    derivPathSort selection' botSort /\ botSort
 
 --------------------------------------------------------------------------------
 -- Rule

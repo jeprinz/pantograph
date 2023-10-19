@@ -54,6 +54,7 @@ import Language.Pantograph.Generic.Unification as Unification
 import Debug (trace, traceM)
 import Data.Variant (case_)
 import Type.Direction (_prev)
+import Language.Pantograph.Generic.ZipperMovement (normalizeZipperp)
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -253,7 +254,6 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- TODO: if cursor is moved in select state, it should set the cursor to the right or left of the selection rather than what it does now.
         -- as it is now, it ignores isValidCursor, and therefore could even cause a crash.
         SelectState select -> do
-          let dzipper = Expr.unzipperp select.dzipperp
 --          case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
 --            Nothing -> pure unit
 --            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
@@ -270,6 +270,10 @@ editorComponent = HK.component \tokens spec -> HK.do
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         SmallStepState _ -> pure unit
+
+    normalizeZipperpToState zipperp = case zipperp of
+          (Left dzipper) -> CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
+          (Right dzipperp) -> SelectState {dzipperp}
 
     moveSelect dir = getFacade >>= case _ of
       CursorState cursor -> do
@@ -612,22 +616,42 @@ editorComponent = HK.component \tokens spec -> HK.do
     -- !TODO when making a selection, should i check that sorts match? Or should
     -- I delay that check to when you try to do an action e.g. delete/cut
     onMouseOver hdzipper event = do
-      H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+      let stopprop = H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
+      let checkValidity dzipperp =
+            let topSort /\ botSort = derivZipperpSorts dzipperp in
+            if isValidSelect spec dzipperp then do
+                stopprop
+                setFacade (SelectState {dzipperp})
+                else pure unit
+--             was here, need to use and only set state and propagate if valid
       let dzipper = (hdzipperDerivZipper hdzipper)
       if MouseEvent.buttons event Bits..&. 1 /= 0 then do
         getFacade >>= case _ of
           CursorState cursor -> do
             case Expr.zipperpFromTo (hdzipperDerivZipper cursor.hdzipper) dzipper of
               Nothing -> pure unit
-              Just dzipperp -> setFacade (SelectState {dzipperp})
+              Just dzipperp -> checkValidity dzipperp -- setFacade (SelectState {dzipperp})
           SelectState select -> do
-            case Expr.zipperpFromTo (Expr.unzipperp select.dzipperp) dzipper of
+            let from = (Expr.unzipperp select.dzipperp)
+--            traceM ("in mouse selection stuff. from is: " <> pretty from <> "i and to is: " <> pretty dzipper)
+--            traceM ("and the output from zipperpFormTo is: " <> pretty (Expr.zipperpFromTo from dzipper))
+            case Expr.zipperpFromTo from dzipper of
+                -- selected back to original node
+--              Nothing -> trace ("select Nothing out") \_ -> do
+--                    stopprop
+--                    setFacade (CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper)))
               Nothing -> pure unit
-              Just dzipperp -> setFacade (SelectState {dzipperp})
+              Just dzipperp ->
+                case (normalizeZipperp dzipperp) of
+                    Right dzipperp' -> checkValidity dzipperp'
+                    Left zipperp -> do
+                        stopprop
+                        setFacade (CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper zipperp)))
           TopState _top -> pure unit
           SmallStepState _ -> pure unit
         setHighlightElement Nothing
       else do
+        stopprop
         setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
 
   ------------------------------------------------------------------------------

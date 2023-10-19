@@ -264,7 +264,7 @@ isValidSelect spec (Expr.Zipperp dpath selection dterm) =
             Left p -> Expr.reversePath p
             Right p -> p
     in
-    trace ("in isValidSelect, bottom is " <> pretty bottom <> " and top is " <> pretty (derivPathSort upSelection bottom)) \_ ->
+--    trace ("in isValidSelect, bottom is " <> pretty bottom <> " and top is " <> pretty (derivPathSort upSelection bottom)) \_ ->
     spec.isValidSelectionSorts {bottom, top: derivPathSort upSelection bottom}
 
 derive instance Generic (HoleyDerivZipper l r) _

@@ -414,7 +414,7 @@ zipperpFromTo begin end = do
   case compare beginPathLength endPathLength of
     -- The path lengths are either the same (empty selection) or incomparable,
     -- so either way there's no zipperp between them
-    EQ -> Nothing
+    EQ -> if (zipperPath begin == zipperPath end) then Just (zipperToZipperp begin) else Nothing
     LT -> zipperFromDownTo begin end
     GT -> zipperFromUpTo begin end
 
@@ -427,7 +427,7 @@ zipperFromDownTo begin end = do
     (List.length beginTooths) (List.length endTooths)
   -- Upward oriented, since selection is going from a top begin to a bottom end
   selectionTooths <- stripSuffix (Pattern beginTooths) endTooths
-  pure $ Zipperp (zipperPath begin) (Left (Path selectionTooths)) (zipperExpr end)
+  pure $ Zipperp (zipperPath begin) (Right (Path (selectionTooths))) (zipperExpr end)
 
 zipperFromUpTo :: forall l. IsExprLabel l => Zipper l -> Zipper l -> Maybe (Zipperp l)
 zipperFromUpTo begin end = do
@@ -440,7 +440,7 @@ zipperFromUpTo begin end = do
   -- Downward oriented, since selection is going from a bottom begin to a top
   -- end
   selectionTooths <- List.stripPrefix (Pattern endTooths) beginTooths
-  pure $ Zipperp (zipperPath end) (Right (Path selectionTooths)) (zipperExpr begin)
+  pure $ Zipperp (zipperPath end) (Left (Path (selectionTooths))) (zipperExpr begin)
 
 --------------------------------------------------------------------------------
 -- Zipperp
@@ -486,10 +486,21 @@ zipperpTopPath (Zipperp path _ _) = path
 zipperpBottomPath :: forall l. Zipperp l -> Path Up l
 zipperpBottomPath (Zipperp path selection _) = either reversePath identity selection <> path
 
+flipZipperp :: forall l. IsExprLabel l => Zipperp l -> Zipperp l
+flipZipperp (Zipperp path selection expr) =
+    let selection' = case selection of
+            Left upPath -> Right (reversePath upPath)
+            Right downPath -> Left (reversePath downPath)
+    in
+    Zipperp path selection' expr
+
 unzipperp :: forall l. IsExprLabel l => Zipperp l -> Zipper l
 unzipperp (Zipperp path selection expr) = case selection of
   Left downPath -> Zipper (reversePath downPath <> path) expr
   Right upPath -> Zipper path (unPath upPath expr)
+
+zipperToZipperp :: forall l. Zipper l -> Zipperp l
+zipperToZipperp (Zipper path expr) = Zipperp path (Left (Path Nil)) expr
 
 zipperpToZipper :: forall l. IsExprLabel l => Boolean -> Zipperp l -> Zipper l
 zipperpToZipper atTop (Zipperp path selection expr) =
