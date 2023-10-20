@@ -16,16 +16,16 @@ import Data.Either (Either(..))
 import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
-import Data.List (List)
-import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
+import Data.Tree.Change (lub')
 import Hole (hole)
+import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
 import Text.Pretty (ticks)
 import Type.Proxy (Proxy(..))
-import Util (fromJust', fromRight')
+import Util (fromJust, fromJust', fromRight', uP)
 
 -- utilities
 
@@ -86,7 +86,7 @@ modifyMarker f = case _ of
   (Boundary dir ch kid) -> Boundary dir ch $ modifyMarker f kid
   (StepExpr maybeMarker node kids) -> StepExpr (f maybeMarker) node kids
 
-wrapBoundary direction change kid = Boundary direction change kid
+boundary direction change kid = Boundary direction change kid
 
 -- setup SteExpr
 
@@ -100,9 +100,9 @@ setupInsert :: forall sn el.
   StepExpr sn el
 setupInsert args =
   wrapExprPath args.outside $
-  wrapBoundary Up args.outerChange $
+  boundary Up args.outerChange $
   wrapExprPath args.middle $
-  wrapBoundary Down args.innerChange $
+  boundary Down args.innerChange $
   toStepExpr args.inside
 
 setupReplace :: forall sn el.
@@ -112,14 +112,15 @@ setupReplace :: forall sn el.
   StepExpr sn el
 setupReplace args = 
   wrapExprPath args.outside $
-  wrapBoundary Up args.change $
+  boundary Up args.change $
   toStepExpr args.inside
 
 -- stepping engine
 
-type StepM sn el = ReaderT (List (SteppingRule sn el)) Identity
+type StepM sn el = ReaderT (Array (SteppingRule sn el)) Identity
 
-runStepM :: forall sn el a. List (SteppingRule sn el) -> StepM sn el a -> a
+runStepM :: forall sn el a. Eq sn => Eq el => Show sn => PrettyTreeNode sn => 
+  Array (SteppingRule sn el) -> StepM sn el a -> a
 runStepM rules = flip runReaderT (builtinRules <> rules) >>> unwrap
 
 -- | Attempts a single step.
@@ -132,20 +133,37 @@ stepFixpoint e = step e >>= case _ of
   Nothing -> pure e
   Just e' -> stepFixpoint e'
 
--- builtin SteppingRules
-
-builtinRules = List.fromFoldable 
-  [passThroughRule, combineUpRule, combineDownRule]
-
-passThroughRule :: forall sn el. SteppingRule sn el
-passThroughRule = hole "TODO"
-
-combineUpRule :: forall sn el. SteppingRule sn el
-combineUpRule = hole "TODO"
-
-combineDownRule :: forall sn el. SteppingRule sn el
-combineDownRule = hole "TODO"
-
 -- SteppingRule builder
 
--- buildSteppingRule :: forall sn el.
+buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
+  StepExprPattern sn el ->
+  (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
+  SteppingRule sn el
+buildSteppingRule pat k = SteppingRule $ case_ 
+  [ pat /\ Just <<< k
+  , wild /\ Just <<< const Nothing ]
+
+-- builtin SteppingRules
+
+builtinRules =
+  [ passThroughRule
+  , combineUpRule
+  , combineDownRule ]
+
+passThroughRule = buildSteppingRule
+  (P.boundary Down var (P.boundary Up var var)) $ uP 
+  \[Right (Left down), Right (Left up), Left kid] -> pure $
+  let hypotenuse = lub' down up in
+  let up' = invert down <> hypotenuse in
+  let down' = invert up <> hypotenuse in
+  (boundary Up up' $ boundary Down down' kid)
+
+combineDownRule = buildSteppingRule
+  (P.boundary Down var (P.boundary Down var var)) $ uP 
+  \[Right (Left c1), Right (Left c2), Left kid] -> pure
+  (boundary Down (c1 <> c2) kid)
+
+combineUpRule = buildSteppingRule
+  (P.boundary Up var (P.boundary Up var var)) $ uP
+  \[Right (Left c1), Right (Left c2), Left kid] -> pure
+  (boundary Up (c1 <> c2) kid)

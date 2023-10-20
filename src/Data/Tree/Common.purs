@@ -4,8 +4,8 @@ import Prelude
 
 import Bug (bug)
 import Data.Array as Array
-import Data.Bifunctor (class Bifunctor)
-import Data.Foldable (class Foldable)
+import Data.Bifunctor (class Bifunctor, lmap)
+import Data.Foldable (class Foldable, and)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
 import Data.List as List
@@ -17,11 +17,13 @@ import Data.NonEmpty (NonEmpty(..))
 import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
+import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
+import Hole (hole)
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, class PrettyS, parens, pretty, prettyS, (<+>))
 import Text.Pretty as Pretty
-import Util (fromJust')
+import Util (fromJust, fromJust', indexDeleteAt)
 
 -- Tree
 
@@ -178,6 +180,43 @@ instance Show a => Show (Change a) where show x = genericShow x
 derive instance Eq a => Eq (Change a)
 derive instance Functor Change
 
+-- `Change` forms a semigroup under composition.
+instance Eq a => Semigroup (Change a) where
+  append (Shift Plus th c) (Shift Minus th' c') | th == th' =
+    c <> c'
+  append (Shift Minus th@(Tooth a i ts) c) (Shift Plus th' c') | th == th' =
+    Change a $ fromJust $ Array.insertAt i (c <> c') $ map injectChange ts
+  append c (Shift Plus th c') = Shift Plus th (c <> c')
+  append (Shift Minus th c) c' = Shift Minus th (c <> c')
+  append (Shift Plus th@(Tooth a i ts) c) (Change a' _cs') 
+    | a == a'
+    , cs' /\ c' <- fromJust $ indexDeleteAt i _cs'
+    , and $ map (uncurry eq) $ Array.zip (injectChange <$> ts) cs'
+    = Shift Plus th (c <> c')
+  append (Change a _cs) (Shift Minus th@(Tooth a' i' ts') c')
+    | a == a'
+    , cs /\ c <- fromJust $ indexDeleteAt i' _cs
+    , and $ map (uncurry eq) $ Array.zip cs (injectChange <$> ts')
+    = Shift Plus th (c <> c')
+  append (Change a cs) (Change a' cs') | a == a' = Change a (Array.zipWith append cs cs')
+  append c1 c2 = Replace (endpoints c1).left (endpoints c2).right
+
+injectChange :: forall a. Tree a -> Change a
+injectChange (Tree a kids) = Change a (injectChange <$> kids)
+
+endpoints :: forall a. Change a -> {left :: Tree a, right :: Tree a}
+endpoints (Shift Plus tooth kid) =
+  let {left, right} = endpoints kid in
+  {left, right: unTooth tooth right}
+endpoints (Shift Minus tooth kid) =
+  let {left, right} = endpoints kid in
+  {left: unTooth tooth left, right}
+endpoints (Replace old new) = {left: old, right: new}
+endpoints (Change a kids) = 
+  let kids' = endpoints <$> kids in
+  let leftKids /\ rightKids = Array.unzip $ map (\{left, right} -> left /\ right) kids' in
+  {left: Tree a leftKids, right: Tree a rightKids}
+
 data ShiftSign = Plus | Minus
 derive instance Generic ShiftSign _
 instance Show ShiftSign where show = genericShow
@@ -190,7 +229,7 @@ instance Pretty ShiftSign where
 
 plusChange th ch = Shift Plus th ch
 minusChange th ch = Shift Minus th ch
-injectChange a kids = Change a kids
+treeChange a kids = Change a kids
 replaceChange old new = Replace old new
 
 -- Edit

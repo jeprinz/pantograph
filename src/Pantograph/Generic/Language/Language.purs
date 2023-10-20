@@ -21,7 +21,7 @@ import Partial.Unsafe (unsafePartial)
 import Record as R
 import Text.Pretty (pretty)
 import Type.Proxy (Proxy(..))
-import Util (asStateT, delete', fromJust')
+import Util (asStateT, delete', fromJust, fromJust')
 
 -- utilities
 
@@ -51,6 +51,22 @@ getToothInteriorSort (Language language) (Tooth (AnnExprNode {label, sigma}) _ _
 getPathInteriorSort language (Path (Cons tooth _)) = getToothInteriorSort language tooth
 getPathInteriorSort _ (Path Nil) = bug $ "getPathInteriorSort of empty Path"
 
+-- the input sort is the bottom sort
+-- The output change goes from the bottom to the top
+getPathChange :: forall sn el. Eq sn => Show sn =>
+  Language sn el ->
+  ExprPath sn el ->
+  Sort sn ->
+  SortChange sn
+getPathChange (Language language) path bottomSort = case unconsPath path of
+  Nothing -> injectChange bottomSort
+  Just {outer, inner: Tooth (AnnExprNode {label, sigma}) i _} ->
+    let ChangingRule rule = language.getChangingRule label in
+    let ruleChange = fromJust $ Array.index rule.kids i in
+    let change = applyRuleSortVarSubst sigma ruleChange in
+    let restOfPathChange = getPathChange (Language language) outer (endpoints change).right in
+    change <> restOfPathChange
+
 -- build
 
 buildSortingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> {kids :: Array (RuleSort sn), parent :: RuleSort sn}) -> SortingRule sn
@@ -69,68 +85,4 @@ buildChangingRule strs k = do
   let kids = unsafePartial $ k parametersVars
   ChangingRule {parameters, kids}
 
--- match
 
--- type ExprMatches sn el = 
---   { exprs :: Array (String /\ Expr sn el)
---   , sorts :: Array (String /\ Sort sn) }
-
--- matchExpr :: forall sn el. Eq sn => Show sn => PrettyTreeNode sn => Eq el => PrettyTreeNode el =>
---   MatchingSyntax sn el -> 
---   String -> Expr sn el ->
---   Maybe (ExprMatches sn el)
--- matchExpr (MatchingSyntax syntax) = Match.match {emptyMatches, matchConstr}
---   where
---   emptyMatches = {exprs: [], sorts: []}
-
---   matchConstr expr (Match.Var x) = modify_ $ R.modify (Proxy :: Proxy "exprs") $ Array.cons (x /\ expr)
---   matchConstr expr@(Tree {node: AnnExprNode {label, sigma}, kids}) matchTree@(Match.Constr {constr, args}) = do
---     let label' = fromJust' ("invalid expr label; matchTree = " <> pretty matchTree) $  syntax.parseExprLabel constr
---     when (label /= label') $ throwError unit
---     case Array.uncons args of
---       Nothing -> bug $ "matchConstr: `args` must have at least one element, for `sigma`"
---       Just {head: sigmaTree, tail: kidTrees} -> do
---         asStateT (\{exprs} sorts -> {exprs, sorts}) (\{sorts} -> sorts) $
---           matchConstrRuleSortVarSubst (MatchingSyntax syntax) sigma sigmaTree
---         when (Array.length kids /= Array.length kidTrees) $ bug $ "matchExpr.matchConstr: parsed constr " <> show constr <> " should have " <> show (Array.length kids) <> " kids, but instead it has " <> show (Array.length kidTrees) <> "; expr = " <> pretty expr <> "; matchTree = " <> pretty matchTree
---         uncurry matchConstr `traverse_` Array.zip kids kidTrees
---   matchConstr _ Match.Wild = pure unit
-
--- type SortMatches sn = Array (String /\ Sort sn)
-
--- matchSort :: forall sn el. Eq sn => PrettyTreeNode sn =>
---   MatchingSyntax sn el -> 
---   String -> Sort sn ->
---   Maybe (SortMatches sn)
--- matchSort syntax = Match.match {emptyMatches: [], matchConstr: matchConstrSort syntax}
-
--- matchConstrSort :: forall sn el. Eq sn => PrettyTreeNode sn =>
---   MatchingSyntax sn el ->
---   Sort sn -> MatchTree -> StateT (SortMatches sn) Maybe Unit
--- matchConstrSort _ sort (Match.Var x) = modify_ $ Array.cons (x /\ sort)
--- matchConstrSort (MatchingSyntax syntax) sort@(Tree {node: SortNode node, kids}) matchTree@(Match.Constr {constr, args}) = do
---   let node' = fromJust' ("invalid sort node; matchTree = " <> pretty matchTree) $ syntax.parseSortNode constr
---   when (node /= node') $ throwError unit
---   when (Array.length kids /= Array.length args) $ bug $ "matchConstrSort: parsed constr " <> show constr <> " should have " <> show (Array.length kids) <> " kids, but instead it has " <> show (Array.length args) <> "; sort = " <> pretty sort <> "; matchTree = " <> pretty matchTree
---   uncurry (matchConstrSort (MatchingSyntax syntax)) `traverse_` Array.zip kids args
--- matchConstrSort _ _ Match.Wild = pure unit
-
--- -- NOTE: when matching, order shouldn't matter, since RuleSortVarSubst uses a Map
--- matchConstrRuleSortVarSubst :: forall sn el. Eq sn => Show sn => PrettyTreeNode sn => MatchingSyntax sn el -> RuleSortVarSubst sn -> MatchTree -> StateT (Array (String /\ Sort sn)) Maybe Unit
--- matchConstrRuleSortVarSubst _ sigma matchTree@(Match.Var _) = bug $ "can't match a RuleSortVarSubst with a match variable; sigma = " <> show sigma <> "; matchTree = " <> show matchTree
--- matchConstrRuleSortVarSubst (MatchingSyntax syntax) sigma@(RuleSortVarSubst m) matchTree@(Match.Constr {constr, args}) = do
---   when (constr /= "map") $ bug $ "matchConstrRuleSortVarSubst: expected constr " <> show "map" <> "; sigmma = " <> show sigma <> "; matchTree = " <> pretty matchTree
---   -- each arg is the RuleSortVar's label as its constr and the bound Sort as its single arg
---   -- e.g. matchTree = (map (x $x) (y $y))
---   m' <- Array.foldM 
---     (\m' -> case _ of
---       Match.Constr {constr: x, args: [sortTree]} -> case Map.lookup (MakeRuleSortVar x) m of
---         Nothing -> bug $ "matchConstrRuleSortVarSubst: expected rule sort var " <> show x <> " to appear in RuleSortVarSubst " <> show sigma
---         Just sort -> do
---           matchConstrSort (MatchingSyntax syntax) sort sortTree
---           pure $ delete' (MakeRuleSortVar x) m'
---       _ -> bug "TODO"
---     ) 
---     m args
---   when (not (Map.isEmpty m')) $ bug $ "matchConstrRuleSortVarSubst: expected to match all bound RuleSortVars, but there are still some left after matching: " <> show m'
--- matchConstrRuleSortVarSubst _ _ Match.Wild = pure unit

@@ -112,7 +112,7 @@ language = PL.Language
       AppRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
       LetRule -> PL.buildChangingRule ["x"] \[x] -> [replaceChange (ruleSort.string x) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
       HoleRule -> PL.buildChangingRule [] \[] -> []
-      FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeConstRuleSortNode TermSort) []]
+      FormatRule _format -> PL.buildChangingRule [] \[] -> [treeChange (PL.makeConstRuleSortNode TermSort) []]
   -- , getDefaultExpr: \sort -> case sort of
   --     Tree {node: PL.SortNode (StringValue _)} -> Nothing
   --     _ | Just ["str" /\ Tree {node: PL.SortNode (StringValue str)}] <- matchSort "(String $str)" sort -> Just $ term.string str
@@ -223,7 +223,7 @@ term = {var, string, lam, app, let_, hole, indent, example}
 
 change = {term}
   where
-  term = injectChange (PL.SortNode TermSort) []
+  term = treeChange (PL.SortNode TermSort) []
 
 tooth = {app, format}
   where

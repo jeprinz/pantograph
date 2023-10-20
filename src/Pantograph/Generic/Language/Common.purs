@@ -77,7 +77,7 @@ instance ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
 type SortChange sn = Change (SortNode sn)
 
 type SortChangePattern sn = ChangePattern (SortNodePattern sn)
-type SortChangeMatch sn m = Sort sn \/ m
+type SortChangeMatch sn m = ChangeMatch (SortNode sn) m
 
 -- RuleSortChange
 
@@ -143,7 +143,7 @@ shrinkAnnExprGyro = unsafeCoerce
 shrinkAnnExprGyro' :: forall sn el er er_ er'. Union er_ er' er => Proxy er_ -> AnnExprGyro sn el er -> AnnExprGyro sn el er'
 shrinkAnnExprGyro' _ = unsafeCoerce
 
--- matchExprNode
+-- Matchable ExprNode
 
 data ExprNodePattern sn el = ExprNodePattern {label :: EqPattern el, sigma :: RuleSortVarSubstPattern sn}
 type ExprNodeMatch sn m = RuleSortVarSubstMatch sn m
@@ -153,7 +153,7 @@ instance (Show sn, Show el) => Show (ExprNodePattern sn el) where show x = gener
 
 instance (Eq sn, Eq el, Show sn) => Matchable (AnnExprNode sn el r) (ExprNodePattern sn el) (ExprNodeMatch sn m) where
   match (ExprNodePattern node) (AnnExprNode node') = do
-    mapMatches Right $ match node.label node'.label
+    mapMatches pure $ match node.label node'.label
     match node.sigma node'.sigma
 
 -- StepExpr
@@ -166,11 +166,13 @@ derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
 instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 
--- matchStepExpr
+-- Matchable StepExpr
 
 data StepExprPattern sn el
   = BoundaryPattern (WildPattern (EqPattern Direction)) (SortChangePattern sn) (StepExprPattern sn el)
   | StepExprPattern (WildPattern (EqPattern (Maybe Marker))) (ExprNodePattern sn el) (Array (StepExprPattern sn el))
+  | VarStepExprPattern
+  | WildStepExprPattern
 type StepExprMatch sn el m = StepExpr sn el \/ SortChangeMatch sn m
 
 derive instance Generic (StepExprPattern sn el) _
@@ -179,13 +181,18 @@ instance (Show sn, Show el) => Show (StepExprPattern sn el) where show x = gener
 instance (Eq sn, Eq el, Show sn) => Matchable (StepExpr sn el) (StepExprPattern sn el) (StepExprMatch sn el m) where
   match (BoundaryPattern dir ch kid) (Boundary dir' ch' kid') = do
     match dir dir'
-    mapMatches Right $ match ch ch'
+    mapMatches pure $ match ch ch'
     match kid kid'
   match (StepExprPattern mrk node kids) (StepExpr mrk' node' kids') = do
     match mrk mrk'
-    mapMatches Right $ match node node'
+    mapMatches (pure >>> pure) $ match node node'
     uncurry match `traverse_` Array.zip kids kids'
+  match VarStepExprPattern se = addMatch (Left se)
+  match WildStepExprPattern _ = pure unit
   match _ _ = noMatch
+
+instance HasVarPattern (StepExprPattern sn el) where var = VarStepExprPattern
+instance HasWildPattern (StepExprPattern sn el) where wild = WildStepExprPattern
 
 -- Direction
 

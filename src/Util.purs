@@ -16,9 +16,11 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe (maybe)
 import Data.Newtype (unwrap)
+import Data.Tuple (Tuple(..))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Hole as Hole
+import Partial.Unsafe (unsafePartial)
 
 unwrapApply nt f = f (unwrap nt)
 infixl 1 unwrapApply as >.
@@ -159,3 +161,8 @@ stripSuffix (List.Pattern suf) xs0 = go List.Nil xs0
 
 asStateT :: forall m s1 s2 a. Monad m => (s2 -> s1 -> s2) -> (s2 -> s1) -> StateT s1 m a -> StateT s2 m a
 asStateT f1 f2 (StateT k) = StateT \s2 -> map (map (f1 s2)) $ k (f2 s2)
+
+indexDeleteAt :: forall a. Int -> Array a -> Maybe (Tuple (Array a) a)
+indexDeleteAt i xs = Tuple <$> Array.deleteAt i xs <*> Array.index xs i
+
+uP = unsafePartial
