@@ -93,7 +93,7 @@ boundary direction change kid = Boundary direction change kid
 setupInsert :: forall sn el.
   { outside :: ExprPath sn el
   , outerChange :: SortChange sn
-  , middle :: ExprPath sn el
+  , middle :: ExprNonEmptyPath sn el
   , innerChange :: SortChange sn
   , inside :: Expr sn el
   , orientation :: Orientation } ->
@@ -101,7 +101,7 @@ setupInsert :: forall sn el.
 setupInsert args =
   wrapExprPath args.outside $
   boundary Up args.outerChange $
-  wrapExprPath args.middle $
+  wrapExprPath (toPath args.middle) $
   boundary Down args.innerChange $
   toStepExpr args.inside
 
