@@ -202,10 +202,12 @@ editorComponent = HK.component \tokens spec -> HK.do
 
     doSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
     doSmallstep ssterm = do
-        -- NOTE: uncomment this line and comment the following two lines to make it step one-by-one through smallstep
---        setState $ SmallStepState {ssterm}
-        let final = SmallStep.stepRepeatedly ssterm spec.stepRules
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper final)))
+        -- NOTE: set to true to make it step one-by-one through smallstep
+        if false then
+            setState $ SmallStepState {ssterm}
+        else do
+            let final = SmallStep.stepRepeatedly ssterm spec.stepRules
+            setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper final)))
 
     handleAction = case _ of
       WrapAction {topChange, dpath, botChange} -> getCursorState "handleAction" >>= \cursor -> do

@@ -624,11 +624,29 @@ nonlocalBecomesLocal = Smallstep.makeDownRule
             , Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
             (dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a, "type" /\ ty] []))
 
+passThroughArrow :: StepRule
+passThroughArrow dterm =
+    case dterm of
+    ((Smallstep.Boundary Smallstep.Down ch) % [
+        (Inject (Grammar.DerivLabel ArrowRule _sigma)) % [da, db]
+    ])
+    | Just ([] /\ [ca, cb]) <- Expr.matchChange ch (TypeSort %+- [Arrow %+- [{-ca-}cSlot, {-cb-}cSlot]])
+    -> pure (dTERM ArrowRule ["a" /\ rEndpoint ca, "b" /\ rEndpoint cb]
+            [Smallstep.wrapBoundary Smallstep.Down (csor TypeSort % [ca]) da
+            , Smallstep.wrapBoundary Smallstep.Down (csor TypeSort % [cb]) db])
+    _ -> Nothing
+
+-- PROBLEM WITH THIS: it deletes the cursor if its inside the type. This happens on let ?0 -> ?0 = lam x . x, insert Int into first hole.
 typeBecomeRhsOfChange :: StepRule
 typeBecomeRhsOfChange = Smallstep.makeDownRule
     (TypeSort %+- [{-c-}cSlot])
     {-t-}slot
     (\[] [c] [_t] -> pure (Smallstep.termToSSTerm (sortToType (rEndpoint c))))
+
+-- To replace, I need:
+-- wrapArrow, unwrapArrow
+-- if c goes from t1 to t2, then
+
 
 -- down{t}_(Term G (+ A -> B)) ~~> Lam ~ : A. down{t}_(Term (+ ~:A, G) B)
 wrapLambda :: StepRule
@@ -869,6 +887,7 @@ stepRules = do
     , nonlocalBecomesLocal
     , insertSucRule
     , removeSucRule
+    , passThroughArrow
     , typeBecomeRhsOfChange
     , wrapLambda
     , unWrapLambda
