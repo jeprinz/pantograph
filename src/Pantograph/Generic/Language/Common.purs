@@ -171,7 +171,7 @@ instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 data StepExprPattern sn el
   = BoundaryPattern (WildPattern (EqPattern Direction)) (SortChangePattern sn) (StepExprPattern sn el)
   | StepExprPattern (WildPattern (EqPattern (Maybe Marker))) (ExprNodePattern sn el) (Array (StepExprPattern sn el))
-  | VarStepExprPattern
+  | VarStepExprPattern String
   | WildStepExprPattern
 type StepExprMatch sn el m = StepExpr sn el \/ SortChangeMatch sn m
 
@@ -187,7 +187,7 @@ instance (Eq sn, Eq el, Show sn) => Matchable (StepExpr sn el) (StepExprPattern 
     match mrk mrk'
     mapMatches (pure >>> pure) $ match node node'
     uncurry match `traverse_` Array.zip kids kids'
-  match VarStepExprPattern se = addMatch (Left se)
+  match (VarStepExprPattern x) se = addMatch x (Left se)
   match WildStepExprPattern _ = pure unit
   match _ _ = noMatch
 

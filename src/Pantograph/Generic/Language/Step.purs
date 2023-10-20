@@ -10,13 +10,13 @@ import Pantograph.Generic.Language.Language
 import Prelude
 
 import Bug (bug)
-import Control.Monad.Reader (ReaderT, runReaderT)
+import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Tree.Change (lub')
@@ -25,7 +25,7 @@ import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
 import Text.Pretty (ticks)
 import Type.Proxy (Proxy(..))
-import Util (fromJust, fromJust', fromRight', uP)
+import Util (findMapM, fromJust, fromJust', fromRight', uP)
 
 -- utilities
 
@@ -125,13 +125,11 @@ runStepM rules = flip runReaderT (builtinRules <> rules) >>> unwrap
 
 -- | Attempts a single step.
 step :: forall sn el. StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))
-step = hole "TODO"
+step e = findMapM (pure <<< flip applySteppingRule e) =<< ask
 
 -- | Fixpoint of stepping.
 stepFixpoint :: forall sn el. StepExpr sn el -> StepM sn el (StepExpr sn el)
-stepFixpoint e = step e >>= case _ of
-  Nothing -> pure e
-  Just e' -> stepFixpoint e'
+stepFixpoint e = step e >>= maybe (pure e) stepFixpoint
 
 -- SteppingRule builder
 
@@ -151,19 +149,19 @@ builtinRules =
   , combineDownRule ]
 
 passThroughRule = buildSteppingRule
-  (P.boundary Down var (P.boundary Up var var)) $ uP 
-  \[Right (Left down), Right (Left up), Left kid] -> pure $
+  (P.boundary Down (var "down") (P.boundary Up (var "up") (var "kid"))) $
+  uP \[Right (Left down), Right (Left up), Left kid] -> Just $
   let hypotenuse = lub' down up in
   let up' = invert down <> hypotenuse in
   let down' = invert up <> hypotenuse in
   (boundary Up up' $ boundary Down down' kid)
 
 combineDownRule = buildSteppingRule
-  (P.boundary Down var (P.boundary Down var var)) $ uP 
-  \[Right (Left c1), Right (Left c2), Left kid] -> pure
+  (P.boundary Down (var "c1") (P.boundary Down (var "c2") (var "kid"))) $
+  uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
   (boundary Down (c1 <> c2) kid)
 
 combineUpRule = buildSteppingRule
-  (P.boundary Up var (P.boundary Up var var)) $ uP
-  \[Right (Left c1), Right (Left c2), Left kid] -> pure
+  (P.boundary Up (var "c1") (P.boundary Up (var "c2") (var "kid"))) $
+  uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
   (boundary Up (c1 <> c2) kid)

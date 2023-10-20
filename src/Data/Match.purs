@@ -38,8 +38,8 @@ case_ cases a = case Array.uncons cases of
 noMatch :: forall m. MatchM m
 noMatch = throwError unit
 
-addMatch :: forall m. m -> MatchM m
-addMatch x = tell [x]
+addMatch :: forall m. String -> m -> MatchM m
+addMatch _ x = tell [x]
 
 mapMatches :: forall m m'. (m -> m') -> MatchM m -> MatchM m'
 mapMatches f = mapWriterT (map (map (map f)))
@@ -81,7 +81,7 @@ instance HasWildPattern (WildPattern a)  where wild = WildPattern Nothing
 
 -- VarPattern
 
-newtype VarPattern (a :: Type) = VarPattern (Maybe a)
+newtype VarPattern (a :: Type) = VarPattern (Either String a)
 
 derive instance Generic (VarPattern a) _
 derive newtype instance Show a => Show (VarPattern a)
@@ -89,17 +89,18 @@ derive instance Functor VarPattern
 instance Apply VarPattern where apply (VarPattern f) (VarPattern a) = VarPattern (f <*> a)
 instance Applicative VarPattern where pure = VarPattern <<< pure
 
-instance Matchable a (VarPattern a') (a \/ m) where
-  match (VarPattern _) a = addMatch (Left a)
+instance Matchable a a' m => Matchable a (VarPattern a') (a \/ m) where
+  match (VarPattern (Left x)) a' = addMatch x (Left a')
+  match (VarPattern (Right a)) a' = mapMatches Right $ match a a'
 
-class HasVarPattern pat where var :: pat
-instance HasVarPattern (VarPattern a) where var = VarPattern Nothing
+class HasVarPattern pat where var :: String -> pat
+instance HasVarPattern (VarPattern a) where var x = VarPattern (Left x)
 
 -- Matchable Tree
 
 data TreePattern a
   = TreePattern a (Array (TreePattern a))
-  | VarTreePattern
+  | VarTreePattern String
 
 derive instance Generic (TreePattern a) _
 instance Show a => Show (TreePattern a) where show x = genericShow x
@@ -107,7 +108,7 @@ instance Show a => Show (TreePattern a) where show x = genericShow x
 instance PrettyTreeNode a => Pretty (TreePattern a) where
   pretty = case _ of
     TreePattern a kids -> prettyTreeNode a (pretty <$> kids)
-    VarTreePattern -> "var"
+    VarTreePattern x -> "$" <> x
 
 type TreeMatch a m = Tree a \/ m
 
@@ -115,7 +116,7 @@ instance Matchable a a' m => Matchable (Tree a) (TreePattern a') (TreeMatch a m)
   match (TreePattern a kids) (Tree a' kids') = do
     mapMatches Right $ match a a'
     uncurry match `traverse_` Array.zip kids kids'
-  match VarTreePattern t = addMatch (Left t)
+  match (VarTreePattern x) t = addMatch x (Left t)
 
 -- Matchable Tooth
 
@@ -142,7 +143,7 @@ data ChangePattern a
   = ShiftPattern (EqPattern ShiftSign) (ToothPattern a) (ChangePattern a)
   | ReplacePattern (TreePattern a) (TreePattern a)
   | ChangePattern a (Array (ChangePattern a))
-  | VarChangePattern
+  | VarChangePattern String
   | WildChangePattern
 
 derive instance Generic (ChangePattern a) _
@@ -161,7 +162,7 @@ instance Matchable a a' m => Matchable (Change a) (ChangePattern a') (ChangeMatc
   match (ChangePattern a cs) (Change a' cs') = do
     mapMatches (pure >>> pure) $ match a a'
     uncurry match `traverse_` Array.zip cs cs'
-  match VarChangePattern c = addMatch (in1 c)
+  match (VarChangePattern x) c = addMatch x (in1 c)
   match _ _ = noMatch
 
 instance HasVarPattern (ChangePattern a) where var = VarChangePattern

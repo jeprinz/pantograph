@@ -21,6 +21,7 @@ import Data.UUID (UUID)
 import Data.UUID as UUID
 import Hole as Hole
 import Partial.Unsafe (unsafePartial)
+import Type.Proxy (Proxy(..))
 
 unwrapApply nt f = f (unwrap nt)
 infixl 1 unwrapApply as >.
@@ -166,3 +167,13 @@ indexDeleteAt :: forall a. Int -> Array a -> Maybe (Tuple (Array a) a)
 indexDeleteAt i xs = Tuple <$> Array.deleteAt i xs <*> Array.index xs i
 
 uP = unsafePartial
+
+findMapM :: forall m a b. Monad m => (a -> m (Maybe b)) -> Array a -> m (Maybe b)
+findMapM f xs = case Array.uncons xs of
+  Nothing -> pure Nothing
+  Just {head: x, tail: xs'} -> f x >>= case _ of
+    Nothing -> findMapM f xs'
+    Just b -> pure (Just b)
+
+type Px = Proxy
+px = Proxy
