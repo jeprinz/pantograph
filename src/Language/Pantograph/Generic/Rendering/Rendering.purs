@@ -49,7 +49,7 @@ arrangeDerivTermSubs locs (Expr.Zipper dpath dterm) kidCtxElems renCtx = assert 
 --    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
   label@(DerivLabel rule sigma) % kids -> do
     let sort = getSortFromSub rule sigma
-    let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort}
+    let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort, sigma}
     let kidCtxElems' =
             if isHoleRule rule then
                 [renderHoleInterior locs false dpath label]
@@ -91,8 +91,8 @@ arrangeHoleExterior :: forall l r. IsRuleLabel l r =>
   (RenderingContext -> EditorHTML l r) ->
   RenderingContext ->
   Array (EditorHTML l r)
-arrangeHoleExterior locs label@(DerivLabel rule _) holeInteriorElem renCtx = do
-  let subCtxSymElems = unsafePartial $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: derivLabelSort label}
+arrangeHoleExterior locs label@(DerivLabel rule sigma) holeInteriorElem renCtx = do
+  let subCtxSymElems = unsafePartial $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: derivLabelSort label, sigma}
   -- TODO: use subCtxSymElems
   Array.concat $ subCtxSymElems <#> case _ of
     Left (renCtx' /\ kidIx) -> [holeInteriorElem renCtx]
@@ -269,7 +269,7 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
   let sort = getSortFromSub rule sigma
   let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sigma /\ kids)) \_ -> 
-        locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx: previewRenderingContext, rule, sort}
+        locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx: previewRenderingContext unit, rule, sort, sigma}
   let toothInteriorKidIx = ZipList.leftLength kidsPath
   let isToothInterior = case _ of
         Left (_renCtx' /\ i) -> i == toothInteriorKidIx
@@ -292,7 +292,7 @@ renderPreviewDerivTerm locs dzipper =
     (arrangeDerivTermSubs locs 
       dzipper 
       (Zippable.zipDowns dzipper <#> \kidDZipper _ -> renderPreviewDerivTerm locs kidDZipper) 
-      previewRenderingContext)
+      (previewRenderingContext unit))
 
 ------------------------------------------------------------------------------
 -- render small-step
@@ -324,7 +324,7 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
     HH.div
       [classNames ["node", "smallstep"]]
       let kidElems = renderSSTerm locs <$> kids in
-      (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma} <#> case _ of
+      (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma} <#> case _ of
         Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [kid renCtx']
         Right elems -> elems)
   -- TODO for Henry from Jacob: make this work with any number of kids n, instead of just 0 and 1. Or maybe it doesn't matter.

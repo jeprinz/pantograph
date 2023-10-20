@@ -40,6 +40,7 @@ import Text.Pretty as P
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as MouseEvent
 import Debug (trace)
+import Util as Util
 
 type EditorHTML l r = 
   HH.ComponentHTML 
@@ -60,7 +61,17 @@ type RenderingContext =
   , isCursor :: Boolean
   , isInteractive :: Boolean
   , isInlined :: Boolean
+  , metavarNumbers :: Util.Stateful (Map.Map Expr.MetaVar Int /\ Int)
   }
+
+getMetavarNumber :: RenderingContext -> Expr.MetaVar -> Int
+getMetavarNumber renCtx mv =
+    let map /\ max = (renCtx.metavarNumbers.get unit) in
+    case Map.lookup mv map of
+        Just n -> n
+        Nothing ->
+            let _ = renCtx.metavarNumbers.set (Map.insert mv max map /\ (max + 1)) in
+            max
 
 incremementIndentationLevel :: RenderingContext -> RenderingContext
 incremementIndentationLevel ctx = ctx {indentationLevel = ctx.indentationLevel + 1}
@@ -69,20 +80,22 @@ data Linebreak
   = IndentedLinebreak
   | UnindentedLinebreak
 
-defaultRenderingContext :: RenderingContext
-defaultRenderingContext = 
+defaultRenderingContext :: Unit -> RenderingContext
+defaultRenderingContext unit =
   { indentationLevel: 0
   , isCursor: false
   , isInteractive: true
   , isInlined: false
+  , metavarNumbers: Util.stateful (Map.empty /\ 0)
   }
 
-previewRenderingContext :: RenderingContext
-previewRenderingContext = 
+previewRenderingContext :: Unit -> RenderingContext
+previewRenderingContext unit =
   { indentationLevel: 0
   , isCursor: false
   , isInteractive: false
   , isInlined: true
+  , metavarNumbers: Util.stateful (Map.empty /\ 0)
   }
 
 type ArrangeDerivTermSubs l r =
@@ -90,6 +103,7 @@ type ArrangeDerivTermSubs l r =
   { mb_parent :: Maybe (DerivTooth l r)
   , renCtx :: RenderingContext
   , rule :: r
+  , sigma :: (Expr.MetaVarSub (Sort l)) -- The substitution on the DerivLabel
   , sort :: Sort l
 --  , renderTerm :: DerivTerm l r -> (whatever type stuff like colonElem has) -- maybe this could be used to render the type in TermHole?
   } -> 

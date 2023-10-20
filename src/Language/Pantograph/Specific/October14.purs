@@ -38,7 +38,7 @@ import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor, csor, nameSort)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
-import Language.Pantograph.Generic.Rendering.Base as Rendering
+import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Console (logConsole)
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS, (%#))
@@ -155,9 +155,9 @@ type SortChange = Grammar.SortChange PreSortLabel
 type ChangeRule = Grammar.ChangeRule PreSortLabel
 
 -- Rendering
-type Query = Rendering.Query
-type Output = Rendering.Output PreSortLabel RuleLabel
-type HoleyDerivZipper = Rendering.HoleyDerivZipper PreSortLabel RuleLabel
+type Query = Base.Query
+type Output = Base.Output PreSortLabel RuleLabel
+type HoleyDerivZipper = Base.HoleyDerivZipper PreSortLabel RuleLabel
 
 type Edit = Edit.Edit PreSortLabel RuleLabel
 
@@ -364,8 +364,8 @@ languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey 
 -- Rendering
 --------------------------------------------------------------------------------
 
-arrangeDerivTermSubs :: Unit -> Rendering.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
+arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
+arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
   _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) %
     [ _gamma
     , Expr.Meta (Right (Grammar.StringSortLabel str)) % []
@@ -378,18 +378,18 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   Ref /\ _ ->
     [Left (renCtx /\ 0)]
   Lam /\ _ ->
-    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
   Let /\ _ ->
-    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
         , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
         , Left (renCtx /\ 3)]
   App /\ _ ->
-    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    let renCtx' = Base.incremementIndentationLevel renCtx in
     [Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1)]
   GreyedApp /\ _ ->
-    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
   FunctionCall /\ _ ->
     [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.rparenElem]]
@@ -397,7 +397,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
   DataTypeRule dataType /\ _ ->
     [pure [dataTypeElem (pretty dataType)]]
   ArrowRule /\ _ ->
-    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    let renCtx' = Base.incremementIndentationLevel renCtx in
     [Left (renCtx' /\ 0), pure [arrowElem], Left (renCtx' /\ 1)]
   -- format
   Newline /\ _ ->
@@ -411,9 +411,12 @@ arrangeDerivTermSubs _ {renCtx, rule, sort} = case rule /\ sort of
         -- One idea is that term holes could literally contain their type as a derivation.
         [Left (renCtx /\ 0), pure [colonElem, HH.text (pretty ty)]]
 --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
-  TypeHole /\ _ -> [Left (renCtx /\ 0)] -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
+  -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
+  TypeHole /\ _ | Just (Expr.Meta (Left mv) % []) <- Map.lookup (Expr.RuleMetaVar "type") sigma ->
+    [Left (renCtx /\ 0), pure [HH.text (show (Base.getMetavarNumber renCtx mv))]]
+  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [HH.text ("error: " <> show (Map.lookup (Expr.RuleMetaVar "type") sigma))]]
   If /\ _ ->
-    let renCtx' = Rendering.incremementIndentationLevel renCtx in
+    let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [ifElem], Left (renCtx /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem]), Left (renCtx' /\ 1),
         pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem]), Left (renCtx' /\ 2)]
   ErrorCall /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]

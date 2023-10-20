@@ -17,6 +17,8 @@ import Data.UUID (UUID)
 import Data.UUID as UUID
 import Hole as Hole
 import Data.Array as Array
+import Effect.Unsafe (unsafePerformEffect)
+import Effect.Ref as Ref
 
 hole' :: forall a. String -> a
 -- hole' msg = unsafeThrow $ "hole: " <> msg
@@ -127,3 +129,13 @@ foldNonempty f l = case foldl (\acc el ->
 
 -- represents a hole but for types
 data Hole
+
+
+type Stateful t = {get :: Unit -> t, set :: t -> Unit}
+stateful :: forall t. t -> Stateful t
+stateful t = unsafePerformEffect do
+    tref <- Ref.new t
+    pure {
+        get: \_ -> unsafePerformEffect (Ref.read tref)
+        , set: \tNew -> unsafePerformEffect (Ref.write tNew tref)
+    }

@@ -719,13 +719,13 @@ editorComponent = HK.component \tokens spec -> HK.do
             InjectHoleyDerivZipper _ -> 
               [ renderPath locs dzipper 
                     (renderDerivTerm locs true dzipper)
-                  defaultRenderingContext
+                  (defaultRenderingContext unit)
               ]
             HoleInteriorHoleyDerivZipper dpath label ->
               [ renderPath locs dzipper 
                   (renderHoleExterior locs dpath label
                       (renderHoleInterior locs true dpath label))
-                  defaultRenderingContext
+                  (defaultRenderingContext unit)
               ]
         SelectState _select -> hole "render SelectState"
         TopState _top -> hole "render TopState"
@@ -733,7 +733,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           [HH.div
             [ classNames ["smallstep-program"] ]
             [ renderSSTerm locs ss.ssterm 
-                defaultRenderingContext
+                (defaultRenderingContext unit)
             ]]
     , HH.slot_ _consoleSlot unit consoleComponent unit
     ]
