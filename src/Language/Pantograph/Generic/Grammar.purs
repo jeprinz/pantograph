@@ -31,7 +31,7 @@ import Data.Tuple (fst)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
-import Debug (trace)
+import Debug (trace, traceM)
 import Hole (hole)
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
@@ -440,6 +440,7 @@ infer (l % kids) = do
     let allSubs = composeSub sub1 sub2
     pure $ allSubs
 
+-- NOTE: the time complexity of this implementation is at least O(n^2), but it definitely can be O(n) if I try harder.
 inferPath :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
     Sort l -> DerivPath Dir.Up l r -> Maybe (SortSub l)
 inferPath _ (Expr.Path Nil) = Just Map.empty
@@ -452,7 +453,7 @@ inferPath innerSort (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : th
     let expectedKidSorts = map (Expr.subMetaExprPartially allSubs1) (kidSorts l)
     _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
     let sub12 = composeSub allSubs1 sub2
-    sub3 <- inferPath (Expr.subMetaExprPartially sub12 (derivLabelSort l)) (Expr.Path ths)
+    sub3 <- inferPath (Expr.subMetaExprPartially sub12 (derivLabelSort l)) (subDerivPath sub12 (Expr.Path ths))
     pure $ composeSub sub12 sub3
 
 forgetDerivLabelSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
