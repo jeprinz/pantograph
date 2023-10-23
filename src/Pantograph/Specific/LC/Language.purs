@@ -30,7 +30,7 @@ import Record as R
 import Text.Pretty (class Pretty, pretty, quotes2, (<+>))
 import Text.Pretty as Pretty
 import Type.Proxy (Proxy(..))
-import Util (fromJust')
+import Util (fromJust, fromJust')
 
 data SN = StringValue String | StringSort | TermSort
 derive instance Generic SN _
@@ -74,15 +74,17 @@ instance TreeNode EL where
     FormatRule _ -> 1
 
 instance PrettyTreeNode EL where
-  prettyTreeNode el = case el of
-    StringRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[] -> "<string>"
-    VarRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[x] -> "#" <> x
-    LamRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[x, b] -> Pretty.parens $ "λ" <> x <> "." <> b
-    AppRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[f, a] -> Pretty.parens $ f <+> a
-    LetRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[x, a, b] -> Pretty.parens $ "let" <+> x <+> "=" <+> a <+> "in" <+> b
-    HoleRule -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[] -> "?"
-    FormatRule IndentedNewline -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[a] -> "<indent>" <+> a
-    FormatRule Newline -> assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" el \[a] -> "<newline>" <+> a
+  prettyTreeNode el = 
+    let ass = assertValidTreeKids "(PrettyTreeNode EL).prettyTreeNode" in
+    case el of
+      StringRule -> ass el \[] -> "<string>"
+      VarRule -> ass el \[x] -> "#" <> x
+      LamRule -> ass el \[x, b] -> Pretty.parens $ "λ" <> x <> "." <> b
+      AppRule -> ass el \[f, a] -> Pretty.parens $ f <+> a
+      LetRule -> ass el \[x, a, b] -> Pretty.parens $ "let" <+> x <+> "=" <+> a <+> "in" <+> b
+      HoleRule -> ass el \[] -> "?"
+      FormatRule IndentedNewline -> ass el \[a] -> "<indent>" <+> a
+      FormatRule Newline -> ass el \[a] -> "<newline>" <+> a
 
 data Format = IndentedNewline | Newline
 derive instance Generic Format _
@@ -112,53 +114,38 @@ language = PL.Language
       LetRule -> PL.buildChangingRule ["x"] \[x] -> [replaceChange (ruleSort.string x) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
       HoleRule -> PL.buildChangingRule [] \[] -> []
       FormatRule _format -> PL.buildChangingRule [] \[] -> [treeChange (PL.makeConstRuleSortNode TermSort) []]
-  -- , getDefaultExpr: \sort -> case sort of
-  --     Tree {node: PL.SortNode (StringValue _)} -> Nothing
-  --     _ | Just ["str" /\ Tree {node: PL.SortNode (StringValue str)}] <- matchSort "(String $str)" sort -> Just $ term.string str
-  --     _ | Just [] <- matchSort "(Term)" sort -> Nothing
-  --     _ -> bug $ "invalid sort: " <> show sort
   , getDefaultExpr: case _ of
       Tree (PL.SortNode (StringValue _)) [] -> Nothing
       Tree (PL.SortNode StringSort) [Tree (PL.SortNode (StringValue str)) _] -> Just $ term.string str
       Tree (PL.SortNode TermSort) [] ->
         -- Just $ term.hole
         Just $ term.app term.hole term.hole
-        -- Just $ term.app (term.app (term.lam "x" (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.lam "x" term.hole) term.hole)) (term.app (term.app (term.lam "x" term.hole) term.hole) (term.app (term.lam "x" term.hole) term.hole))
-        -- Just $ term.app (makeIndentedNewline (term.app term.hole term.hole)) (term.app (makeIndentedNewline (term.app term.hole (makeIndentedNewline term.hole))) term.hole)
-        -- Just $ 
-        --   term.app
-        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
-        --     (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole (makeIndentedNewline (term.app term.hole term.hole))))))
-        -- Just $ term.example 10
-        -- Just $ term.example 6
-        -- Just $ term.app (term.lam "x" (makeVar "x")) (term.lam "x" term.hole)
-        -- Just $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.let_ "x" term.hole $ term.hole
-        -- Just $ term.app (term.lam "x" (term.var "x")) (term.var "y")
-        -- Just $ term.lam "x1" $ term.lam "x2" $ term.lam "x3" $ term.lam "x4" $ term.var "y"
-        -- Just $ term.app (term.var "x1") (term.app (term.var "x2") (term.app (term.var "x3") (term.var "x4")))
-        -- Just $ term.app term.hole (term.app term.hole (term.app term.hole term.hole))
+        -- Just $ term.newline term.hole
       _ -> bug $ "invalid sort"
   , topSort: sort.term
-  , getEdits: \sort _ -> case sort of
-      Tree (PL.SortNode (StringValue _)) [] -> mempty
-      Tree (PL.SortNode StringSort) [_] -> mempty
-      Tree (PL.SortNode TermSort) [] ->
-        [
-          -- AppRule
-          fromJust' "getEdits" $ NonEmptyArray.fromArray
-            [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.apl term.hole], innerChange: change.term}
-            , InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.arg term.hole], innerChange: change.term}
-            ]
-        ,
-          -- FormatRule Newline
-          NonEmptyArray.singleton $
-            InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.newline term.hole], innerChange: change.term}
-        ,
-          -- FormatRule IndentedNewline
-          NonEmptyArray.singleton $
-            InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.indentedNewline term.hole], innerChange: change.term}
-        ]
-      _ -> bug $ "invalid sort: " <> show sort
+  , getEdits: 
+      let
+        termEdits = 
+          [
+            -- AppRule
+            fromJust $ NonEmptyArray.fromArray
+              [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.apl term.hole], innerChange: change.term}
+              , InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.arg term.hole], innerChange: change.term} ]
+          -- ,
+          --   -- FormatRule Newline
+          --   fromJust $ NonEmptyArray.fromArray
+          --     [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.newline term.hole], innerChange: change.term} ]
+          -- ,
+          --   -- FormatRule IndentedNewline
+          --   fromJust $ NonEmptyArray.fromArray
+          --     [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.indentedNewline term.hole], innerChange: change.term} ]
+          ]
+      in
+      \sort _ -> case sort of
+        Tree (PL.SortNode (StringValue _)) [] -> mempty
+        Tree (PL.SortNode StringSort) [_] -> mempty
+        Tree (PL.SortNode TermSort) [] -> termEdits
+        _ -> bug $ "invalid sort: " <> show sort
   , validGyro: case _ of
       RootGyro _ -> true
       CursorGyro (Cursor {orientation: Outside}) -> true
@@ -166,28 +153,7 @@ language = PL.Language
       SelectGyro (Select {outside, middle, inside, orientation}) -> true -- TODO: impl
       _ -> false
   , steppingRules: mempty
-  , matchingSyntax
   }
-  where
-  -- matchSort = PL.matchSort matchingSyntax
-  -- matchExpr = PL.matchExpr matchingSyntax
-  matchingSyntax = PL.MatchingSyntax
-    { parseExprLabel: case _ of
-        "String" -> Just $ StringRule
-        "Var" -> Just $ VarRule
-        "Lam" -> Just $ LamRule
-        "App" -> Just $ AppRule
-        "Let" -> Just $ LetRule
-        "Hole" -> Just $ HoleRule
-        "Indent" -> Just $ FormatRule IndentedNewline
-        "Newline" -> Just $ FormatRule Newline
-        _ -> Nothing
-    , parseSortNode: \input -> case input of
-        "StringValue" | Just str <- String.stripPrefix (Pattern "StringValue:") input -> Just (StringValue str)
-        "String" -> Just $ StringSort
-        "Term" -> Just $ TermSort
-        _ -> Nothing
-    }
 
 -- shallow
 
@@ -203,7 +169,7 @@ ruleSort = {stringValue, string, term}
   string str = PL.makeConstRuleSort StringSort [str]
   term = PL.makeConstRuleSort TermSort []
 
-term = {var, string, lam, app, let_, hole, indent, example}
+term = {var, string, lam, app, let_, hole, indent, newline, example}
   where
   string str = PL.makeExpr StringRule ["str" /\ sort.stringValue str] []
   var str = PL.makeExpr VarRule ["s" /\ sort.string str] [string str]

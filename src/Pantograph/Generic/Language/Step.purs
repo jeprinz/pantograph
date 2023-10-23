@@ -22,7 +22,7 @@ import Data.Show.Generic (genericShow)
 import Data.Tree.Change (lub')
 import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
-import Text.Pretty (ticks)
+import Text.Pretty (pretty, ticks)
 import Type.Proxy (Proxy(..))
 import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP)
 
@@ -53,25 +53,29 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 
 -- fromStepExpr
 
-fromStepExpr :: forall sn el. StepExpr sn el -> ExprCursor sn el \/ Expr sn el
-fromStepExpr (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`"
-fromStepExpr (StepExpr (Just (CursorMarker orientation)) node kids) =
-  let kids' = kids <#> fromStepExpr >>> fromRight' "encountered multiple cursor during `fromStepExpr`" in
-  Left $ Cursor {outside: mempty, inside: Tree node kids', orientation}
-fromStepExpr (StepExpr Nothing node kids) =
-  let
-    f = case _ of
-      Nothing /\ kids' -> case _ of
-        i /\ Left cursor -> Just (i /\ cursor) /\ kids'
-        _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
-      Just i_cursor /\ kids' -> case _ of
-        _ /\ Left _cursor -> bug $ "encountered multiple cursors during `fromStepExpr`"
-        _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
-    maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ fromStepExpr <$> kids
-  in
-  case maybe_i_cursor of
-    Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth node i kids), inside: cursor.inside, orientation: cursor.orientation}
-    Nothing -> Right $ Tree node kids
+fromStepExpr :: forall sn el. PrettyTreeNode el => PrettyTreeNode sn => StepExpr sn el -> ExprCursor sn el \/ Expr sn el
+fromStepExpr e0 = go e0
+  where
+  go :: StepExpr sn el -> ExprCursor sn el \/ Expr sn el
+  go (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
+  go (StepExpr (Just (CursorMarker orientation)) node kids) =
+    let kids' = kids <#> go >>> fromRight' ("encountered multiple cursors during `fromStepExpr`: " <> pretty e0) in
+    Left $ Cursor {outside: mempty, inside: Tree node kids', orientation}
+  go (StepExpr Nothing node kids) =
+    let
+      f = case _ of
+        Nothing /\ kids' -> case _ of
+          i /\ Left cursor -> Just (i /\ cursor) /\ kids'
+          _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
+        Just i_cursor /\ kids' -> case _ of
+          _ /\ Left _cursor -> bug $ "encountered multiple cursors during `fromStepExpr`: " <> pretty e0
+          _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
+      maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ go <$> kids
+    in
+    case maybe_i_cursor of
+      Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth node i kids), inside: cursor.inside, orientation: cursor.orientation}
+      Nothing -> Right $ Tree node kids
+
 
 -- manipulate StepExpr
 

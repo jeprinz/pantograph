@@ -281,7 +281,7 @@ body {
 .Expr.OutsideCursor,
 .Expr.OutsideCursor.hover {
   background-color: var(--cursor-background-color);
-  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+  box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
 
 .Expr.InsideCursor,
@@ -294,12 +294,12 @@ body {
 
 .Expr.OutsideSelect {
   background-color: var(--select-background-color);
-  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+  box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
 
 .Expr.InsideSelect {
   background-color: white;
-  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
+  box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
 
 /* 

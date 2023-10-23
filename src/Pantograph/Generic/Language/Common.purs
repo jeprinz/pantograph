@@ -1,11 +1,11 @@
 module Pantograph.Generic.Language.Common where
 
 import Data.Either.Nested
+import Data.Match
 import Data.Tree
 import Data.Tuple.Nested
 import Prelude
 import Util
-import Data.Match
 
 import Bug (bug)
 import Data.Array as Array
@@ -22,7 +22,7 @@ import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Tuple (uncurry)
 import Prim.Row (class Union)
-import Text.Pretty (class Pretty, pretty, ticks)
+import Text.Pretty (class Pretty, inner, outer, pretty, ticks)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -166,6 +166,13 @@ derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
 instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 
+instance (PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn el) where
+  pretty = case _ of
+    Boundary dir ch e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
+    StepExpr Nothing node kids -> prettyTreeNode node (pretty <$> kids)
+    StepExpr (Just (CursorMarker Outside)) node kids -> outer $ prettyTreeNode node (pretty <$> kids)
+    StepExpr (Just (CursorMarker Inside)) node kids -> inner $ prettyTreeNode node (pretty <$> kids)
+
 -- Matchable StepExpr
 
 data StepExprPattern sn el
@@ -224,8 +231,7 @@ newtype Language sn el = Language
   , getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
   , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
   , validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
-  , steppingRules :: Array (SteppingRule sn el)
-  , matchingSyntax :: MatchingSyntax sn el }
+  , steppingRules :: Array (SteppingRule sn el) }
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
@@ -251,10 +257,6 @@ derive instance Newtype (SteppingRule sn el) _
 
 applySteppingRule :: forall sn el. SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
 applySteppingRule = unwrap
-
-newtype MatchingSyntax sn el = MatchingSyntax
-  { parseSortNode :: String -> Maybe sn
-  , parseExprLabel :: String -> Maybe el }
 
 -- RuleSortVar
 
