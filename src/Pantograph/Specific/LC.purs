@@ -141,7 +141,7 @@ topSort = sort.term
 
 getEdits =
   let
-    makeInsertEdits :: Array {outerChange :: PL.SortChange SN, middle :: Array (PL.ExprTooth SN EL), innerChange :: PL.SortChange SN} -> NonEmptyArray (PL.ExprEdit SN EL)
+    makeInsertEdits :: Array {outerChange :: PL.SortChange SN, middle :: Array (PL.ExprTooth SN EL), innerChange :: PL.SortChange SN} -> NonEmptyArray (PL.Edit SN EL)
     makeInsertEdits edits = fromJust $ NonEmptyArray.fromArray $ edits <#> 
       \{outerChange, middle, innerChange} -> InsertEdit {outerChange, middle: PL.makeNonEmptyExprPath middle, innerChange}
 

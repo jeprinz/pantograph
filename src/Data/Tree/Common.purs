@@ -231,16 +231,6 @@ minusChange th ch = Shift Minus th ch
 treeChange a kids = Change a kids
 replaceChange old new = Replace old new
 
--- Edit
-
-data Edit a b
-  = InsertEdit {outerChange :: Change a, middle :: NonEmptyPath b, innerChange :: Change a}
-  | ReplaceEdit {outerChange :: Change a, inside :: Tree b}
-derive instance Generic (Edit a b) _
-instance (Show a, Show b) => Show (Edit a b) where show = genericShow
-derive instance (Eq a, Eq b) => Eq (Edit a b)
-derive instance Bifunctor Edit
-
 -- TreeNode
 
 class TreeNode a where

@@ -99,7 +99,7 @@ type RenderEnv sn el env =
 -- |
 -- | TODO: description
 
-class Language sn el <= Rendering sn el ctx env | sn -> el ctx env where
+class Language sn el <= Rendering sn el ctx env | sn -> el ctx env, el -> sn ctx env where
   topCtx :: Proxy sn /\ Record ctx
   topEnv :: Proxy sn /\ Record env
   arrangeExpr :: forall er a.
@@ -167,15 +167,15 @@ newtype ToolboxInput sn el ctx env = ToolboxInput
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
   , isEnabled :: Boolean
-  , edits :: Array (NonEmptyArray (ExprEdit sn el)) }
+  , edits :: Array (NonEmptyArray (Edit sn el)) }
 newtype ToolboxQuery sn el a = ToolboxQuery (Variant
   ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
   , "get isEnabled" :: (Boolean -> a)
   , "modify select" :: (ToolboxSelect -> ToolboxSelect) /\ a
   , "submit edit" :: Unit /\ a))
 newtype ToolboxOutput sn el = ToolboxOutput (Variant
-  ( "submit edit" :: ExprEdit sn el
-  , "preview edit" :: Maybe (ExprEdit sn el) ))
+  ( "submit edit" :: Edit sn el
+  , "preview edit" :: Maybe (Edit sn el) ))
 type ToolboxSlotId = Unit
 
 data ToolboxSelect = ToolboxSelect Int Int
@@ -191,9 +191,9 @@ newtype PreviewInput sn el ctx env = PreviewInput
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
   , position :: PreviewPosition
-  , maybeEdit :: Maybe (ExprEdit sn el) }
+  , maybeEdit :: Maybe (Edit sn el) }
 newtype PreviewQuery sn el a = PreviewQuery (Variant
-  ( "modify maybeEdit" :: (Maybe (ExprEdit sn el) -> Maybe (ExprEdit sn el)) /\ a ))
+  ( "modify maybeEdit" :: (Maybe (Edit sn el) -> Maybe (Edit sn el)) /\ a ))
 type PreviewOutput = Void
 type PreviewSlotId = PreviewPosition
 

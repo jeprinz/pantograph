@@ -210,6 +210,10 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const true
+          else if ki.key == "Backspace" then do
+            liftEffect $ Event.preventDefault event
+            
+          
           else pure unit
 
         pure $ Just a

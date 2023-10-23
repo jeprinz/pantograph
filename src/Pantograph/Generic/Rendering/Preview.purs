@@ -38,13 +38,13 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
           [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewLeft"]]
           case maybeEdit of
             Nothing -> []
-            Just (ReplaceEdit {inside}) -> 
+            Just (PasteEdit (Paste {inside})) -> 
               fst $ unwrap $ runM input.ctx input.env $ 
                 renderAnnExpr
                   (shrinkAnnExprPath input.outside)
                   inside
                   makePreviewExprProps
-            Just (InsertEdit {middle}) ->
+            Just (InsertEdit (Insert {middle})) ->
               fst $ unwrap $ runM input.ctx input.env $
                 renderAnnExprPathLeft
                   (shrinkAnnExprPath input.outside :: ExprPath sn el)
@@ -57,8 +57,8 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
           [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewRight"]]
           case maybeEdit of
             Nothing -> []
-            Just (ReplaceEdit _) -> []
-            Just (InsertEdit {middle}) ->
+            Just (PasteEdit _) -> []
+            Just (InsertEdit (Insert {middle})) ->
               fst $ unwrap $ runM input.ctx input.env $
                 renderAnnExprPathRight
                   (shrinkAnnExprPath input.outside :: ExprPath sn el)

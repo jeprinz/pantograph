@@ -9,7 +9,7 @@ import Bug (bug)
 import Data.Maybe (Maybe)
 
 applyEdit :: forall sn el. Language sn el =>
-  ExprEdit sn el -> 
+  Edit sn el -> 
   ExprGyro sn el -> 
   Maybe (ExprGyro sn el)
 
@@ -22,7 +22,7 @@ applyEdit
 -- InsertEdit
 
 applyEdit 
-  (InsertEdit {outerChange, middle, innerChange}) 
+  (InsertEdit (Insert {outerChange, middle, innerChange})) 
   (CursorGyro (Cursor {outside, inside, orientation})) = 
   runStepExpr $ setupInsert {outside, outerChange, middle, innerChange, inside, orientation}
 
@@ -31,15 +31,15 @@ applyEdit
   (SelectGyro _) = 
   bug $ "should this be allowed? or should you have to delete first, before inserting"
 
--- ReplaceEdit
+-- PasteEdit
 
 applyEdit 
-  (ReplaceEdit {outerChange, inside}) 
+  (PasteEdit (Paste {outerChange, inside})) 
   (CursorGyro (Cursor {outside, inside: _})) = 
   runStepExpr $ setupReplace {outside, outerChange, inside}
 
 applyEdit 
-  edit@(ReplaceEdit _)
+  edit@(PasteEdit _)
   gyro@(SelectGyro _) = 
   applyEdit edit =<< ensureGyroIsCursor gyro
 

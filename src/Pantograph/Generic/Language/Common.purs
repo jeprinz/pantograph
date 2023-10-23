@@ -10,6 +10,7 @@ import Util
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Bifunctor (class Bifunctor)
 import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (foldM, traverse_)
@@ -109,7 +110,6 @@ type AnnExprNonEmptyPath sn el er = NonEmptyPath (AnnExprNode sn el er)
 type AnnExprCursor sn el er = Cursor (AnnExprNode sn el er)
 type AnnExprSelect sn el er = Select (AnnExprNode sn el er)
 type AnnExprGyro sn el er = Gyro (AnnExprNode sn el er)
-type AnnExprEdit sn el er = Edit (SortNode sn) (AnnExprNode sn el er)
 
 -- Expr (no annotation)
 
@@ -121,7 +121,6 @@ type ExprNonEmptyPath sn el = AnnExprNonEmptyPath sn el ()
 type ExprCursor sn el = AnnExprCursor sn el ()
 type ExprSelect sn el = AnnExprSelect sn el ()
 type ExprGyro sn el = AnnExprGyro sn el ()
-type ExprEdit sn el = AnnExprEdit sn el ()
 
 -- erase annotations without mapping
 shrinkAnnExprNode :: forall sn el er er_ er'. Union er' er_ er => AnnExprNode sn el er -> AnnExprNode sn el er'
@@ -225,15 +224,16 @@ instance Eq Marker where eq x = genericEq x
 
 class 
     (Eq sn, Show sn, PrettyTreeNode sn, Eq el, Show el, PrettyTreeNode el) <=
-    Language sn el | sn -> el, el -> sn 
+    Language sn el | sn -> el, el -> sn
   where
   getSortingRule :: el -> SortingRule sn
   getChangingRule :: el -> ChangingRule sn
   topSort :: Sort sn
   getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
-  getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
+  getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (Edit sn el))
   validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
   steppingRules :: Array (SteppingRule sn el)
+  deleteEdit :: Sort sn -> Maybe (Expr sn el)
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
@@ -259,6 +259,23 @@ derive instance Newtype (SteppingRule sn el) _
 
 applySteppingRule :: forall sn el. SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
 applySteppingRule = unwrap
+
+-- Edit
+
+data Edit sn el
+  = InsertEdit (Insert sn el)
+  | PasteEdit (Paste sn el)
+derive instance Generic (Edit a b) _
+instance (Show a, Show b) => Show (Edit a b) where show = genericShow
+derive instance (Eq a, Eq b) => Eq (Edit a b)
+
+newtype Insert sn el = Insert {outerChange :: SortChange sn, middle :: ExprNonEmptyPath sn el, innerChange :: SortChange sn}
+derive newtype instance (Show a, Show b) => Show (Insert a b)
+derive newtype instance (Eq a, Eq b) => Eq (Insert a b)
+
+newtype Paste sn el = Paste {outerChange :: SortChange sn, inside :: Expr sn el}
+derive newtype instance (Show a, Show b) => Show (Paste a b)
+derive newtype instance (Eq a, Eq b) => Eq (Paste a b)
 
 -- RuleSortVar
 
