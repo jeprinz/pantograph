@@ -62,18 +62,14 @@ renderer = PR.Renderer
             holeIndex <- State.gets _.holeCount
             State.modify_ _ {holeCount = holeIndex + 1}
             pure [PR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text ("?" <> show holeIndex)]]]
-          FormatRule _ -> \mkids -> do
-            as /\ nodes <- Array.unzip <$> sequence mkids
-            Debug.traceM $ "renderExpr (FormatRule IndentedNewline): nodes = " <> show (PL.shrinkAnnExprNode <$> nodes :: Array (PL.ExprNode SN EL))
-            todo unit
-          -- FormatRule IndentedNewline -> ass \[ma] -> do
-          --   ctx <- ask
-          --   a_ /\ _a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
-          --   pure [indent ctx.indentLevel, PR.ExprKidArrangeKid a_]
-          -- FormatRule Newline -> ass \[ma] -> do
-          --   ctx <- ask
-          --   a_ /\ _a <- ma
-          --   pure [newline ctx.indentLevel, PR.ExprKidArrangeKid a_]
+          FormatRule IndentedNewline -> ass \[ma] -> do
+            ctx <- ask
+            a_ /\ _a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
+            pure [indent ctx.indentLevel, PR.ExprKidArrangeKid a_]
+          FormatRule Newline -> ass \[ma] -> do
+            ctx <- ask
+            a_ /\ _a <- ma
+            pure [newline ctx.indentLevel, PR.ExprKidArrangeKid a_]
   , beginsLine: case _ of
       Cursor {outside: Path (Cons (Tooth (PL.AnnExprNode {label: FormatRule IndentedNewline}) _ _) _), orientation: Outside} -> true
       Cursor {outside: Path (Cons (Tooth (PL.AnnExprNode {label: FormatRule Newline}) _ _) _), orientation: Outside} -> true

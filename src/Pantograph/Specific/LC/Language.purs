@@ -125,20 +125,21 @@ language = PL.Language
   , topSort: sort.term
   , getEdits: 
       let
+        makeInsertEdits args = fromJust $ NonEmptyArray.fromArray $ args <#> \arg -> InsertEdit {outerChange: arg.outerChange, middle: PL.makeNonEmptyExprPath arg.middle, innerChange: arg.innerChange}
         termEdits = 
-          [
-            -- AppRule
-            fromJust $ NonEmptyArray.fromArray
-              [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.apl term.hole], innerChange: change.term}
-              , InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.app.arg term.hole], innerChange: change.term} ]
-          -- ,
-          --   -- FormatRule Newline
-          --   fromJust $ NonEmptyArray.fromArray
-          --     [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.newline term.hole], innerChange: change.term} ]
-          -- ,
-          --   -- FormatRule IndentedNewline
-          --   fromJust $ NonEmptyArray.fromArray
-          --     [ InsertEdit {outerChange: change.term, middle: PL.makeNonEmptyExprPath [tooth.format.indentedNewline term.hole], innerChange: change.term} ]
+          [ -- AppRule
+            makeInsertEdits 
+              [ {outerChange: change.term, middle: [tooth.app.apl term.hole], innerChange: change.term}
+              , {outerChange: change.term, middle: [tooth.app.arg term.hole], innerChange: change.term} ]
+          , -- LamRule
+            makeInsertEdits
+              [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
+          , -- FormatRule Newline
+            makeInsertEdits
+              [ {outerChange: change.term, middle: [tooth.format.newline], innerChange: change.term} ]
+          , -- FormatRule IndentedNewline
+            makeInsertEdits
+              [ {outerChange: change.term, middle: [tooth.format.indentedNewline], innerChange: change.term} ]
           ]
       in
       \sort _ -> case sort of
@@ -190,14 +191,17 @@ change = {term}
   where
   term = treeChange (PL.SortNode TermSort) []
 
-tooth = {app, format}
+tooth = {app, lam, format}
   where
   app = 
     { apl: \arg -> PL.makeExprTooth AppRule [] 0 [arg]
     , arg: \apl -> PL.makeExprTooth AppRule [] 1 [apl]
     }
   
+  lam =
+    { bod: \var -> PL.makeExprTooth LamRule [] 1 [var] }
+  
   format = 
-    { newline: \kid -> PL.makeExprTooth (FormatRule Newline) [] 0 [kid] 
-    , indentedNewline: \kid -> PL.makeExprTooth (FormatRule IndentedNewline) [] 0 [kid] 
+    { newline: PL.makeExprTooth (FormatRule Newline) [] 0 [] 
+    , indentedNewline: PL.makeExprTooth (FormatRule IndentedNewline) [] 0 []
     }
