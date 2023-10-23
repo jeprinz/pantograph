@@ -18,7 +18,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Hole (hole)
 import Pantograph.Generic.Rendering.Style (className)
 import Type.Proxy (Proxy(..))
 

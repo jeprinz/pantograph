@@ -8,7 +8,6 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Data.Tuple.Nested ((/\))
-import Hole (hole)
 import Text.Pretty (pretty, ticks)
 import Util (fromJust)
 

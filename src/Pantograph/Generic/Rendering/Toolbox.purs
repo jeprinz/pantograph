@@ -18,7 +18,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Hole (hole)
 import Pantograph.Generic.Language (shrinkAnnExpr, shrinkAnnExprPath)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
 import Pantograph.Generic.Rendering.Style (className)

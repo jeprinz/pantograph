@@ -16,7 +16,6 @@ import Data.Set as Set
 import Data.Traversable (traverse, traverse_)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
-import Hole (hole)
 import Partial.Unsafe (unsafePartial)
 import Record as R
 import Text.Pretty (pretty)

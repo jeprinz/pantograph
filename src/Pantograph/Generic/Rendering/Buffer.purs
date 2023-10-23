@@ -39,7 +39,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Hole (hole)
 import Pantograph.Generic.Language.Edit (applyEdit)
 import Pantograph.Generic.Rendering.Html as HH
 import Pantograph.Generic.Rendering.Preview (previewComponent)
@@ -58,7 +57,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
-bufferComponent :: forall sn el ctx env. PrettyTreeNode el => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
+bufferComponent :: forall sn el ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
 bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
   let Renderer renderer = input.renderer
 
@@ -370,12 +369,12 @@ rehydrateExprGyro (Renderer renderer) m_hydratedExprGyro m_hydratedExprGyro' = d
 
 -- render
 
-renderSyncExprGyro :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprGyro :: forall sn el er ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprGyro renderer (RootGyro expr) = renderSyncExpr renderer (Path Nil) expr
 renderSyncExprGyro renderer (CursorGyro cursor) = renderSyncExprCursor renderer cursor
 renderSyncExprGyro renderer (SelectGyro select) = renderSyncExprSelect renderer select
 
-renderSyncExprSelect :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprSelect :: forall sn el er ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprSelect (Renderer renderer) (Select {outside, middle, inside, orientation}) = do
   ctx <- ask
   env <- get
@@ -384,7 +383,7 @@ renderSyncExprSelect (Renderer renderer) (Select {outside, middle, inside, orien
     renderSyncExprPath (Renderer renderer) outside (toPath middle) inside $
       renderSyncExpr (Renderer renderer) outside_middle inside
 
-renderSyncExprCursor :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprCursor :: forall sn el er ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation}) = do
   let Language language = renderer.language
   ctx <- ask

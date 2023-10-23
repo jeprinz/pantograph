@@ -23,7 +23,6 @@ import Data.Tuple (curry)
 import Debug as Debug
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Hole (hole)
 import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
 import Partial.Unsafe (unsafePartial)

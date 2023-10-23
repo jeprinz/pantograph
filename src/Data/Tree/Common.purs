@@ -19,7 +19,6 @@ import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
-import Hole (hole)
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, class PrettyS, parens, pretty, prettyS, (<+>))
 import Text.Pretty as Pretty

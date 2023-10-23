@@ -20,7 +20,6 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Tree.Change (lub')
-import Hole (hole)
 import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
 import Text.Pretty (ticks)
