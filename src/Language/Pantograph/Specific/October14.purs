@@ -250,7 +250,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x, _ty, _locality]) = empty
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % [ty]) =
     pure $ sortToType ty
---    pure (Grammar.makeLabel TypeHole ["type" /\ ty] % [])
+  -- TODO: This case should probably be in Generic.
   defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
@@ -912,6 +912,9 @@ onDelete :: Sort -> SortChange
 onDelete cursorSort
     | Maybe.Just [ty] <- Expr.matchExprImpl cursorSort (sor TypeSort %$ [slot])
     = csor TypeSort % [Expr.replaceChange ty (Expr.fromMetaVar (Expr.freshMetaVar "deleted"))]
+onDelete (Expr.Meta (Right Grammar.NameSortLabel) % [s])
+    = Expr.Inject (Expr.Meta (Right Grammar.NameSortLabel)) %
+        [Expr.replaceChange s (Expr.Meta (Right (Grammar.StringSortLabel "")) % [])]
 onDelete cursorSort = ChangeAlgebra.inject cursorSort
 
 generalizeDerivation :: Sort -> SortChange
