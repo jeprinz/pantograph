@@ -456,7 +456,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                 -- paste a dterm:
                 -- First, specialize the term
                 let specializingChange = spec.specializeDerivation (derivTermSort clipDTerm) (derivTermSort dterm)
-                let specializedDTerm = SmallStep.assertJustExpr
+                let _  /\ specializedDTerm = SmallStep.ssTermToChangedTerm
                         (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.termToSSTerm clipDTerm)) spec.stepRules)
                 -- Then, unify to make sure the types line up
