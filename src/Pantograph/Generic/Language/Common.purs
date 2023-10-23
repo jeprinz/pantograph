@@ -91,16 +91,16 @@ instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn)
 -- AnnExpr
 
 type AnnExprNodeRow (sn :: Type) (el :: Type) (er :: Row Type) = (label :: el, sigma :: RuleSortVarSubst sn | er)
-newtype AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = AnnExprNode (Record (AnnExprNodeRow sn el er))
+newtype AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = ExprNode (Record (AnnExprNodeRow sn el er))
 derive instance Newtype (AnnExprNode sn el er) _
 derive newtype instance (Eq (Record (AnnExprNodeRow sn el er))) => Eq (AnnExprNode sn el er)
 derive newtype instance (Show (Record (AnnExprNodeRow sn el er))) => Show (AnnExprNode sn el er)
 
 instance TreeNode el => TreeNode (AnnExprNode sn el er) where
-  kidsCount (AnnExprNode {label}) = kidsCount label
+  kidsCount (ExprNode {label}) = kidsCount label
 
 instance PrettyTreeNode el => PrettyTreeNode (AnnExprNode sn el er) where
-  prettyTreeNode (AnnExprNode {label}) prettiedKids = prettyTreeNode label prettiedKids
+  prettyTreeNode (ExprNode {label}) prettiedKids = prettyTreeNode label prettiedKids
 
 type AnnExpr sn el er = Tree (AnnExprNode sn el er)
 type AnnExprTooth sn el er = Tooth (AnnExprNode sn el er)
@@ -152,7 +152,7 @@ derive instance Generic (ExprNodePattern sn el) _
 instance (Show sn, Show el) => Show (ExprNodePattern sn el) where show x = genericShow x
 
 instance (Eq sn, Eq el, Show sn) => Matchable (AnnExprNode sn el r) (ExprNodePattern sn el) (ExprNodeMatch sn m) where
-  match (ExprNodePattern node) (AnnExprNode node') = do
+  match (ExprNodePattern node) (ExprNode node') = do
     mapMatches pure $ match node.label node'.label
     match node.sigma node'.sigma
 

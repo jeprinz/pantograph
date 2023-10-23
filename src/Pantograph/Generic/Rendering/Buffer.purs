@@ -182,29 +182,29 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             modifyHydratedExprGyro escapeGyro
           else if ki.key == "ArrowLeft" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {validSelect}) _ -> validSelect
+            modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode {validSelect}) _ -> validSelect
           else if ki.key == "ArrowRight" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {validSelect}) _ -> validSelect
+            modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode {validSelect}) _ -> validSelect
           else if ki.key == "ArrowUp" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroLeftUntil \(AnnExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
+            modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
           else if ki.key == "ArrowDown" && ki.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroRightUntil \(AnnExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
+            modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
 
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {validCursor}) -> validCursor
+            modifyHydratedExprGyro $ moveGyroLeftUntil \(ExprNode {validCursor}) -> validCursor
           else if ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {validCursor}) -> validCursor
+            modifyHydratedExprGyro $ moveGyroRightUntil \(ExprNode {validCursor}) -> validCursor
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroLeftUntil \(AnnExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
+            modifyHydratedExprGyro $ moveGyroLeftUntil \(ExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroRightUntil \(AnnExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
+            modifyHydratedExprGyro $ moveGyroRightUntil \(ExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
 
           else if ki.key == " " then do
             liftEffect $ Event.preventDefault event
@@ -245,9 +245,9 @@ hydrateExprNode = do
     beginsLine orientation = cursorBeginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
     validCursor orientation = validGyro (CursorGyro (Cursor cursor {orientation = orientation}))
     validSelect = maybeSelect # maybe false validGyro
-    AnnExprNode node = cursor.inside # treeNode
+    ExprNode node = cursor.inside # treeNode
 
-  pure $ AnnExprNode $ node # R.union
+  pure $ ExprNode $ node # R.union
     { beginsLine
     , validCursor
     , validSelect }

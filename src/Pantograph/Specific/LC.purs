@@ -156,7 +156,7 @@ instance PL.Language SN EL where
   validGyro = case _ of
     RootGyro _ -> true
     CursorGyro (Cursor {orientation: Outside}) -> true
-    CursorGyro (Cursor {inside: Tree (PL.AnnExprNode {label: HoleRule}) _, orientation: Inside}) -> true
+    CursorGyro (Cursor {inside: Tree (PL.ExprNode {label: HoleRule}) _, orientation: Inside}) -> true
     SelectGyro (Select {middle}) -> PL.getNonEmptyPathOuterSort middle == PL.getNonEmptyPathInnerSort middle
     _ -> false
 
@@ -177,7 +177,7 @@ instance PR.Rendering SN EL CTX ENV where
     let punc str = PR.HtmlArrangeKid [HH.span_ [HH.text str]] in
     let indent i = PR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
     let newline i = PR.IndentationArrangeKid (Array.replicate i (HH.text "  ")) in
-    \node@(PL.AnnExprNode {label}) ->
+    \node@(PL.ExprNode {label}) ->
       let ass = assertValidTreeKids "arrangeExpr" (PL.shrinkAnnExprNode node :: PL.ExprNode SN EL) in
       case label of
         StringRule -> ass \[] -> do
@@ -214,8 +214,8 @@ instance PR.Rendering SN EL CTX ENV where
           pure [newline ctx.indentLevel, PR.ExprKidArrangeKid a_]
 
   cursorBeginsLine = case _ of
-    Cursor {outside: Path (Cons (Tooth (PL.AnnExprNode {label: FormatRule IndentedNewline}) _ _) _), orientation: Outside} -> true
-    Cursor {outside: Path (Cons (Tooth (PL.AnnExprNode {label: FormatRule Newline}) _ _) _), orientation: Outside} -> true
+    Cursor {outside: Path (Cons (Tooth (PL.ExprNode {label: FormatRule IndentedNewline}) _ _) _), orientation: Outside} -> true
+    Cursor {outside: Path (Cons (Tooth (PL.ExprNode {label: FormatRule Newline}) _ _) _), orientation: Outside} -> true
     _ -> false
   
 -- shallow

@@ -28,26 +28,26 @@ makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
 makeConstRuleSort n kids = Tree (makeConstRuleSortNode n) kids
 makeVarRuleSort x = Tree (VarRuleSortNode x) []
 makeSort sn kids = Tree (SortNode sn) kids
-makeExpr label sigma kids = Tree (AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) kids
-makeExprTooth label sigma i kids = Tooth (AnnExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) i kids
-makeStepExpr label sigma kids = StepExpr Nothing (AnnExprNode {label, sigma}) kids
+makeExpr label sigma kids = Tree (ExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) kids
+makeExprTooth label sigma i kids = Tooth (ExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) i kids
+makeStepExpr label sigma kids = StepExpr Nothing (ExprNode {label, sigma}) kids
 makeNonEmptyExprPath ths = NonEmptyPath $ fromJust' "makeNonEmptyExprPath" $ NonEmptyList.fromFoldable ths
 
 defaultTopExpr =
   getDefaultExpr topSort
 
-getExprNodeSort (AnnExprNode {label, sigma}) =
+getExprNodeSort (ExprNode {label, sigma}) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
 getExprSort (Tree el _) =
   getExprNodeSort el
 
-getToothInnerSort (Tooth (AnnExprNode {label, sigma}) i _) =
+getToothInnerSort (Tooth (ExprNode {label, sigma}) i _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
 
-getToothOuterSort (Tooth (AnnExprNode {label, sigma}) _ _) =
+getToothOuterSort (Tooth (ExprNode {label, sigma}) _ _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
@@ -62,7 +62,7 @@ getPathChange :: forall sn el. Language sn el =>
   SortChange sn
 getPathChange path bottomSort = case unconsPath path of
   Nothing -> injectChange bottomSort
-  Just {outer, inner: Tooth (AnnExprNode {label, sigma}) i _} ->
+  Just {outer, inner: Tooth (ExprNode {label, sigma}) i _} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
     let change = applyRuleSortVarSubst sigma ruleChange in
