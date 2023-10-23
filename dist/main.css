@@ -222,7 +222,7 @@ body {
   height: fit-content;
   background-color: black;
   color: white;
-  font-weight: bold;
+  /* font-weight: bold; */
 }
 
 .DebugTerminalItemTag {

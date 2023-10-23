@@ -246,11 +246,15 @@ derive instance Bifunctor Edit
 class TreeNode a where
   kidsCount :: a -> Int
 
-assertValidTreeKids :: forall a b c. TreeNode a => String -> a -> (Partial => Array b -> c) -> Array b -> c
+assertValidTreeKids :: forall a b c. Show a => TreeNode a => String -> a -> (Partial => Array b -> c) -> Array b -> c
 assertValidTreeKids msg a k bs = unsafePartial
   if kidsCount a == Array.length bs
     then k bs
-    else bug $ "invalid tree kids: " <> msg
+    else bug $ 
+      "invalid tree kids: " <> msg <>
+      "; a = " <> show a <> 
+      "; kidsCount a = " <> show (kidsCount a) <>
+      "; Array.length bs = " <> show (Array.length bs)
 
 -- Pretty
 

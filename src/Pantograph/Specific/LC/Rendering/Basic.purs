@@ -12,6 +12,7 @@ import Data.List (List(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language as PGL
+import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PGR
 import Record as R
 import Type.Proxy (Proxy(..))
@@ -33,8 +34,7 @@ renderer = PGR.Renderer
       let indent i = PGR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
       let newline i = PGR.IndentationArrangeKid (Array.replicate i (HH.text "  ")) in
       \node@(PGL.AnnExprNode {label}) ->
-        let msg = "arrangeExpr " <> "{" <> "label: " <> show label <> "}" in
-        let ass = assertValidTreeKids msg node in
+        let ass = assertValidTreeKids "arrangeExpr" (PL.shrinkAnnExprNode node :: PL.ExprNode SN EL) in
         case label of
           StringRule -> ass \[] -> do
             let Tree (PGL.SortNode StringSort) [Tree (PGL.SortNode (StringValue str)) []] = PGL.getExprNodeSort language node
