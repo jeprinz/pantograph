@@ -21,7 +21,7 @@ import Halogen.Hooks as HK
 import Pantograph.Generic.Rendering.Style (className)
 import Type.Proxy (Proxy(..))
 
-previewComponent :: forall sn el ctx env. Renderer sn el ctx env => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
+previewComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
 previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
 
   maybeEdit /\ maybeEditStateId <- HK.useState input.maybeEdit

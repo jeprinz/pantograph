@@ -162,13 +162,13 @@ instance PL.Language SN EL where
 
   steppingRules = mempty
 
--- Renderer
+-- Rendering
 
 type CTX = (indentLevel :: Int)
 
 type ENV = () :: Row Type
 
-instance PR.Renderer SN EL CTX ENV where
+instance PR.Rendering SN EL CTX ENV where
   topCtx = Proxy /\ {indentLevel: 0}
 
   topEnv = Proxy /\ {}

@@ -26,7 +26,7 @@ import Util (fromJust')
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
-toolboxComponent :: forall sn el ctx env. Renderer sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
+toolboxComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
 toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
 
   isEnabled /\ isEnabledStateId <- HK.useState input.isEnabled

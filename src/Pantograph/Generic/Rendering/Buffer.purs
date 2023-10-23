@@ -58,7 +58,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
-bufferComponent :: forall sn el ctx env. Renderer sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
+bufferComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
 bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
 
   -- The original ExprGyro before rendering.
@@ -236,7 +236,7 @@ type HydrateCtx sn el er =
   { cursor :: SyncExprCursor sn el er
   , maybeSelect :: Maybe (SyncExprGyro sn el er) }
 
-hydrateExprNode :: forall sn el er ctx env. Renderer sn el ctx env => HydrateM sn el er (HydrateExprNode sn el er)
+hydrateExprNode :: forall sn el er ctx env. Rendering sn el ctx env => HydrateM sn el er (HydrateExprNode sn el er)
 hydrateExprNode = do
   Cursor cursor <- asks _.cursor 
   maybeSelect <- asks _.maybeSelect
@@ -252,7 +252,7 @@ hydrateExprNode = do
     , validCursor
     , validSelect }
 
-hydrateExprGyro :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
 hydrateExprGyro gyro = do
   hydratedExprGyro <- case gyro of
     RootGyro expr -> do
@@ -283,12 +283,12 @@ hydrateExprGyro gyro = do
   rehydrateExprGyro Nothing (Just hydratedExprGyro)
   pure hydratedExprGyro
 
-hydrateStep :: forall sn el er a. PrettyTreeNode el => Int -> HydrateM sn el er a -> HydrateM sn el er a
+hydrateStep :: forall sn el er a. Language sn el => Int -> HydrateM sn el er a -> HydrateM sn el er a
 hydrateStep i = local $
   R.modify (Proxy :: Proxy "cursor") (moveCursorDownOuter i) >>>
   R.modify (Proxy :: Proxy "maybeSelect") (grabGyroDown i =<< _)
 
-hydrateExprPath :: forall sn el er ctx env a. Renderer sn el ctx env => SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el er a) -> HydrateM sn el er a
+hydrateExprPath :: forall sn el er ctx env a. Rendering sn el ctx env => SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el er a) -> HydrateM sn el er a
 hydrateExprPath (Path ts0) k = go mempty (List.reverse ts0)
   where
   go path Nil = k path
@@ -321,7 +321,7 @@ hydrateExprPath (Path ts0) k = go mempty (List.reverse ts0)
       let tooth' = Tooth hydratedNode i hydratedKids
       hydrateStep i $ go (consPath path tooth') ts
 
-hydrateExpr :: forall sn el er ctx env. Renderer sn el ctx env => HydrateM sn el er (HydrateExpr sn el er)
+hydrateExpr :: forall sn el er ctx env. Rendering sn el ctx env => HydrateM sn el er (HydrateExpr sn el er)
 hydrateExpr = do
   Cursor cursor <- asks _.cursor
   maybeSelect <- asks _.maybeSelect
@@ -339,7 +339,7 @@ hydrateExpr = do
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
-rehydrateExprGyro :: forall sn el er ctx env. Renderer sn el ctx env => Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
+rehydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
 rehydrateExprGyro m_hydratedExprGyro m_hydratedExprGyro' = do
   unhydrateExprGyro
   rehydrateExprGyro'
@@ -366,12 +366,12 @@ rehydrateExprGyro m_hydratedExprGyro m_hydratedExprGyro' = do
 
 -- render
 
-renderSyncExprGyro :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprGyro (RootGyro expr) = renderSyncExpr (Path Nil) expr
 renderSyncExprGyro (CursorGyro cursor) = renderSyncExprCursor cursor
 renderSyncExprGyro (SelectGyro select) = renderSyncExprSelect select
 
-renderSyncExprSelect :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprSelect :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprSelect (Select {outside, middle, inside, orientation}) = do
   ctx <- ask
   env <- get
@@ -380,7 +380,7 @@ renderSyncExprSelect (Select {outside, middle, inside, orientation}) = do
     renderSyncExprPath outside (toPath middle) inside $
       renderSyncExpr outside_middle inside
 
-renderSyncExprCursor :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprCursor :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprCursor (Cursor {outside, inside, orientation}) = do
   ctx <- ask
   env <- get

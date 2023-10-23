@@ -32,7 +32,7 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 
-editorComponent :: forall sn el ctx env. Renderer sn el ctx env => EditorComponent sn el ctx env
+editorComponent :: forall sn el ctx env. Rendering sn el ctx env => EditorComponent sn el ctx env
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   -- keyboard

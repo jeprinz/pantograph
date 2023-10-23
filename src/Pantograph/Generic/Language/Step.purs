@@ -53,7 +53,7 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 
 -- fromStepExpr
 
-fromStepExpr :: forall sn el. PrettyTreeNode el => PrettyTreeNode sn => StepExpr sn el -> ExprCursor sn el \/ Expr sn el
+fromStepExpr :: forall sn el. Language sn el => StepExpr sn el -> ExprCursor sn el \/ Expr sn el
 fromStepExpr e0 = go e0
   where
   go :: StepExpr sn el -> ExprCursor sn el \/ Expr sn el
@@ -76,7 +76,6 @@ fromStepExpr e0 = go e0
       Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth node i kids), inside: cursor.inside, orientation: cursor.orientation}
       Nothing -> Right $ Tree node kids
 
-
 -- manipulate StepExpr
 
 wrapExprPath :: forall sn el. ExprPath sn el -> StepExpr sn el -> StepExpr sn el
@@ -92,6 +91,7 @@ modifyMarker f = case _ of
   (Boundary dir ch kid) -> Boundary dir ch $ modifyMarker f kid
   (StepExpr maybeMarker node kids) -> StepExpr (f maybeMarker) node kids
 
+boundary :: forall sn el. Direction -> Change (SortNode sn) -> StepExpr sn el -> StepExpr sn el
 boundary direction change kid = Boundary direction change kid
 
 -- setup SteExpr
@@ -125,7 +125,7 @@ setupReplace args =
 
 type StepM sn el = ReaderT (Array (SteppingRule sn el)) Identity
 
-runStepM :: forall sn el a. Eq sn => Eq el => Show sn => PrettyTreeNode sn => 
+runStepM :: forall sn el a. Language sn el =>
   Array (SteppingRule sn el) -> StepM sn el a -> a
 runStepM rules = flip runReaderT (builtinRules <> rules) >>> unwrap 
 
@@ -153,7 +153,7 @@ builtinRules =
 --   , combineUpRule
 --   , combineDownRule ]
 
-passThroughRule :: forall sn el. Eq sn => PrettyTreeNode sn => SteppingRule sn el
+passThroughRule :: forall sn el. Language sn el => SteppingRule sn el
 passThroughRule = SteppingRule case _ of
   Boundary Down down (Boundary Up up kid) -> Just
     let hypotenuse = lub' down up in

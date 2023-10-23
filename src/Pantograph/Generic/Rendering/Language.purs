@@ -45,7 +45,7 @@ type MakeAnnExprProps sn el er ctx env =
 
 type MakeSyncExprProps sn el er ctx env = MakeAnnExprProps sn el (SyncExprRow sn el er) ctx env
 
-renderAnnExprHelper :: forall sn el er ctx env. Renderer sn el ctx env =>
+renderAnnExprHelper :: forall sn el er ctx env. Rendering sn el ctx env =>
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
   MakeAnnExprProps sn el er ctx env ->
@@ -64,7 +64,7 @@ renderAnnExprHelper outside expr makeAnnExprProps arrangedKids = do
           htmls'
   pure $ [HH.div props htmls]
 
-renderAnnExpr :: forall sn el er ctx env. Renderer sn el ctx env =>
+renderAnnExpr :: forall sn el er ctx env. Rendering sn el ctx env =>
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
   MakeAnnExprProps sn el er ctx env ->
@@ -77,7 +77,7 @@ renderAnnExpr outside expr@(Tree node _) makeAnnExprProps = do
         $ renderAnnExpr (consPath outside tooth) kid makeAnnExprProps <#> (_ /\ kidNode)
   renderAnnExprHelper outside expr makeAnnExprProps arrangedKids
 
-renderAnnExprPath :: forall sn el er ctx env. Renderer sn el ctx env =>
+renderAnnExprPath :: forall sn el er ctx env. Rendering sn el ctx env =>
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
@@ -111,7 +111,7 @@ dropWhile1 cond arr =
   let {init, rest} = Array.span cond arr in
   Array.takeEnd 1 init <> rest
 
-renderAnnExprPathLeft :: forall sn el er ctx env. Renderer sn el ctx env =>
+renderAnnExprPathLeft :: forall sn el er ctx env. Rendering sn el ctx env =>
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
@@ -139,7 +139,7 @@ renderAnnExprPathLeft outside (Path (Cons tooth@(Tooth node i _) ts)) expr makeA
             $ renderAnnExpr (consPath interiorOutside tooth') kid makeAnnExprProps <#> (\item -> {item, keep} /\ kidNode)
     renderAnnExprHelper interiorOutside expr' makeAnnExprProps arrangedKids
 
-renderAnnExprPathRight :: forall sn el er ctx env. Renderer sn el ctx env =>
+renderAnnExprPathRight :: forall sn el er ctx env. Rendering sn el ctx env =>
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
@@ -169,7 +169,7 @@ renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node i _) ts)) expr make
 
 -- makeSyncExprProps
 
-makeSyncExprProps :: forall sn el er ctx env. PrettyTreeNode el => MakeSyncExprProps sn el er ctx env
+makeSyncExprProps :: forall sn el er ctx env. Rendering sn el ctx env => MakeSyncExprProps sn el er ctx env
 makeSyncExprProps outside inside@(Tree (AnnExprNode {elemId}) _) = do
   ctx <- ask
   env <- get

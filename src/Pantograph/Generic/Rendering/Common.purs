@@ -95,11 +95,11 @@ type RenderEnv sn el env =
   ( holeCount :: Int
   | env )
 
--- | # Renderer
+-- | # Rendering
 -- |
 -- | TODO: description
 
-class Language sn el <= Renderer sn el ctx env | sn -> el ctx env where
+class Language sn el <= Rendering sn el ctx env | sn -> el ctx env where
   topCtx :: Proxy sn /\ Record ctx
   topEnv :: Proxy sn /\ Record env
   arrangeExpr :: forall er a.
