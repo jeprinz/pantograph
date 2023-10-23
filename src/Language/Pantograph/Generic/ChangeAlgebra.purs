@@ -185,6 +185,14 @@ compose c1 c2 =
             let _left2 /\ right2 = endpoints c2
             Expr (Replace left1 right2) []
 
+-- (Replace (c x1…) (c x1'…)) = c (Replace x1 x1')…
+eliminateReplaces :: forall l. IsExprLabel l => Change l -> Change l
+eliminateReplaces c =
+    case c of
+        Replace (l1 % kids1) (l2 % kids2) % [] | l1 == l2 ->
+            Inject l1 % (Array.zipWith (\s1 s2 -> eliminateReplaces (Replace s1 s2 % [])) kids1 kids2)
+        other % kids -> other % map eliminateReplaces kids
+
 {-
 I don't have a good name for this operation, but what it does is:
 input Change c1 and MetaChange c2, and output sub and c3, such that:

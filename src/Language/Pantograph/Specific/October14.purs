@@ -524,19 +524,21 @@ getVarEdits sort =
 splitChange ::
   SortChange ->
   {downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort}
-splitChange c | Maybe.Just ([] /\ [ctx, ty]) <- Expr.matchChange c (TermSort %+- [cSlot, cSlot])
-    =
-        let _ctx1 /\ ctx2 = ChangeAlgebra.endpoints ctx in
-        let ty1 /\ _ty2 = ChangeAlgebra.endpoints ty in
-        {upChange: csor TermSort % [ChangeAlgebra.inject ctx2, ty]
-        , cursorSort: sor TermSort % [ctx2, ty1]
-        , downChange: csor TermSort % [ctx, ChangeAlgebra.inject ty1]}
-splitChange c | Maybe.Just ([] /\ [_ty]) <- Expr.matchChange c (TypeSort %+- [cSlot])
-    = {upChange: c, cursorSort: lEndpoint c, downChange: ChangeAlgebra.inject (lEndpoint c)}
-splitChange c | Maybe.Just ([] /\ [_gamma, _ty]) <- Expr.matchChange c (NeutralSort %+- [cSlot, cSlot])
-    = {upChange: ChangeAlgebra.inject (rEndpoint c), cursorSort: rEndpoint c, downChange: c}
--- TODO TODO TODO: Also implement the case where the change is just a metavariable identity! Later: I don't remember why I wrote this, maybe I'll find out later.
-splitChange c = bug ("splitChange - got c = " <> pretty c)
+splitChange c =
+    case ChangeAlgebra.eliminateReplaces c of
+        c | Maybe.Just ([] /\ [ctx, ty]) <- Expr.matchChange c (TermSort %+- [cSlot, cSlot])
+        ->
+            let _ctx1 /\ ctx2 = ChangeAlgebra.endpoints ctx in
+            let ty1 /\ _ty2 = ChangeAlgebra.endpoints ty in
+            {upChange: csor TermSort % [ChangeAlgebra.inject ctx2, ty]
+            , cursorSort: sor TermSort % [ctx2, ty1]
+            , downChange: csor TermSort % [ctx, ChangeAlgebra.inject ty1]}
+        c | Maybe.Just ([] /\ [_ty]) <- Expr.matchChange c (TypeSort %+- [cSlot])
+        -> {upChange: c, cursorSort: lEndpoint c, downChange: ChangeAlgebra.inject (lEndpoint c)}
+        c | Maybe.Just ([] /\ [_gamma, _ty]) <- Expr.matchChange c (NeutralSort %+- [cSlot, cSlot])
+        -> {upChange: ChangeAlgebra.inject (rEndpoint c), cursorSort: rEndpoint c, downChange: c}
+    -- TODO TODO TODO: Also implement the case where the change is just a metavariable identity! Later: I don't remember why I wrote this, maybe I'll find out later.
+        c -> bug ("splitChange - got c = " <> pretty c)
 
 makeEditFromPath = DefaultEdits.makeEditFromPath languageChanges splitChange
 

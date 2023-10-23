@@ -429,9 +429,8 @@ editorComponent = HK.component \tokens spec -> HK.do
                         (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.wrapPath clipDPath (SmallStep.Marker 0 % []))) spec.stepRules)
                 -- call splitChange to get the expected sort that the path should unify with, and the changes that will be sent up and down
-                let {downChange, upChange, cursorSort} =
-                      spec.splitChange
-                        (SmallStep.getPathChange spec.languageChanges specializedClipDPath (nonemptyPathInnerSort specializedClipDPath))
+                let pathChange = (SmallStep.getPathChange spec.languageChanges specializedClipDPath (nonemptyPathInnerSort specializedClipDPath))
+                let {downChange, upChange, cursorSort} = spec.splitChange pathChange
                 -- Then, unify to make sure the types line up
                 case Unification.unify cursorSort (derivTermSort dterm) of
                     Just (_newSort /\ unifyingSub) -> do
