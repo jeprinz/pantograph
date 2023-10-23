@@ -22,7 +22,7 @@ import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Tuple (uncurry)
 import Prim.Row (class Union)
-import Text.Pretty (class Pretty, inner, outer, pretty, ticks)
+import Text.Pretty (class Pretty, inner, outer, pretty, ticks, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -68,7 +68,7 @@ type RuleSort sn = Tree (RuleSortNode sn)
 type RuleSortTooth sn = Tooth (RuleSortNode sn)
 type RuleSortPath sn = Path (RuleSortNode sn)
 
-instance ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
+instance Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
   applyRuleSortVarSubst sigma (Tree (ConstRuleSortNode sn) kids) = Tree sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (Tree (VarRuleSortNode x) _) = applyRuleSortVarSubst sigma x
 
@@ -83,7 +83,7 @@ type SortChangeMatch sn m = ChangeMatch (SortNode sn) m
 
 type RuleSortChange sn = Change (RuleSortNode sn)
 
-instance Show sn => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
+instance Language sn el => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
   applyRuleSortVarSubst sigma (Shift sign tooth kid) = Shift sign (fromConstRuleSortNode "invalid Inject" <$> tooth) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
   applyRuleSortVarSubst sigma (Change node kids) = Change (fromConstRuleSortNode "invalid Change" node) (applyRuleSortVarSubst sigma <$> kids)
@@ -274,12 +274,18 @@ newtype RuleSortVarSubst sn = RuleSortVarSubst (Map.Map RuleSortVar (Sort sn))
 derive newtype instance Eq sn => Eq (RuleSortVarSubst sn)
 derive newtype instance Show sn => Show (RuleSortVarSubst sn)
 
+instance Language sn el => Pretty (RuleSortVarSubst sn) where
+  pretty (RuleSortVarSubst m) = "{" <> Array.intercalate ", " (items <#> \(x /\ s) -> pretty x <+> ":=" <+> pretty s) <> "}"
+    where
+    items = Map.toUnfoldable m :: Array _
+
+
 class ApplyRuleSortVarSubst sn a b | a -> b where
   applyRuleSortVarSubst :: RuleSortVarSubst sn -> a -> b
 
-instance ApplyRuleSortVarSubst sn RuleSortVar (Sort sn) where
-  applyRuleSortVarSubst (RuleSortVarSubst m) x = case Map.lookup x m of
-    Nothing -> bug $ "Could not substitute RuleVar: " <> show x
+instance Language sn el => ApplyRuleSortVarSubst sn RuleSortVar (Sort sn) where
+  applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
+    Nothing -> bug $ "Could not substitute RuleVar: " <> show x <> "; sigma = " <> pretty sigma <> "; x = " <> pretty x
     Just s -> s
 
 -- matchRuleSortVarSubst

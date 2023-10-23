@@ -251,8 +251,19 @@ assertValidTreeKids msg a k bs = unsafePartial
   if kidsCount a == Array.length bs
     then k bs
     else bug $ 
-      "invalid tree kids: " <> msg <>
+      "assertValidTreeKids: " <> msg <>
       "; a = " <> show a <> 
+      "; kidsCount a = " <> show (kidsCount a) <>
+      "; Array.length bs = " <> show (Array.length bs)
+
+assertValidToothKids :: forall a b c. Show a => TreeNode a => String -> a -> Int -> (Partial => Array b -> c) -> Array b -> c
+assertValidToothKids msg a i k bs = unsafePartial
+  if kidsCount a - 1 == Array.length bs 
+    then k bs
+    else bug $
+      "assertValidToothKids: " <> msg <>
+      "; a = " <> show a <> 
+      "; i = " <> show i <>
       "; kidsCount a = " <> show (kidsCount a) <>
       "; Array.length bs = " <> show (Array.length bs)
 

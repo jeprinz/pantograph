@@ -20,11 +20,12 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Tree.Change (lub')
+import Debug as Debug
 import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
-import Text.Pretty (pretty, ticks)
+import Text.Pretty (pretty, ticks, (<+>))
 import Type.Proxy (Proxy(..))
-import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP)
+import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP, (<$$>))
 
 -- utilities
 
@@ -109,6 +110,7 @@ setupInsert args =
   boundary Up args.outerChange $
   wrapExprPath (toPath args.middle) $
   boundary Down args.innerChange $
+  modifyMarker (const (Just (CursorMarker Outside))) $
   toStepExpr args.inside
 
 setupReplace :: forall sn el.
@@ -119,6 +121,7 @@ setupReplace :: forall sn el.
 setupReplace args = 
   wrapExprPath args.outside $
   boundary Up args.outerChange $
+  modifyMarker (const (Just (CursorMarker Outside))) $
   toStepExpr args.inside
 
 -- stepping engine
@@ -133,6 +136,7 @@ runStepExpr :: forall sn el. Language sn el =>
   StepExpr sn el ->
   Maybe (ExprGyro sn el)
 runStepExpr stepExpr =
+  Debug.trace ("[step]" <+> pretty stepExpr) \_ ->
   let stepExpr' = runStepM steppingRules $ stepFixpoint stepExpr in
   case fromStepExpr stepExpr' of
     Left cursor -> Just $ CursorGyro cursor
@@ -140,20 +144,36 @@ runStepExpr stepExpr =
 
 -- | Attempts a single step.
 step :: forall sn el. StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))
-step e = findMapM (pure <<< flip applySteppingRule e) =<< ask
+step e = ask >>= findMapM (pure <<< flip applySteppingRule e) >>= case _ of
+  Just e' -> pure (Just e')
+  Nothing -> case e of
+    Boundary dir ch e' -> Boundary dir ch <$$> step e'
+    StepExpr mbMrk node kids -> StepExpr mbMrk node <$$> stepFirstKid kids
+
+stepFirstKid :: forall sn el. Array (StepExpr sn el) -> StepM sn el (Maybe (Array (StepExpr sn el)))
+stepFirstKid kids = go 0
+  where
+  go i = case Array.index kids i of
+    Nothing -> pure Nothing
+    Just kid -> step kid >>= case _ of
+      Nothing -> go (i + 1)
+      Just kid' -> pure $ Just $ fromJust $ Array.modifyAt i (const kid') kids
 
 -- | Fixpoint of stepping.
-stepFixpoint :: forall sn el. StepExpr sn el -> StepM sn el (StepExpr sn el)
-stepFixpoint e = step e >>= maybe (pure e) stepFixpoint
+stepFixpoint :: forall sn el. Language sn el => StepExpr sn el -> StepM sn el (StepExpr sn el)
+stepFixpoint e = step e >>= case _ of
+  Nothing -> pure e
+  Just e' -> do
+    Debug.traceM $ "[step]" <+> pretty e'
+    stepFixpoint e'
 
 -- builtin SteppingRules
 
 builtinRules =
-  [ passThroughRule ]
---   , combineUpRule
---   , combineDownRule ]
+  [ passThroughRule
+  , combineUpRule
+  , combineDownRule ]
 
-passThroughRule :: forall sn el. Language sn el => SteppingRule sn el
 passThroughRule = SteppingRule case _ of
   Boundary Down down (Boundary Up up kid) -> Just
     let hypotenuse = lub' down up in
@@ -162,30 +182,22 @@ passThroughRule = SteppingRule case _ of
     Boundary Up up' (Boundary Down down' kid)
   _ -> Nothing
 
--- passThroughRule = buildSteppingRule
---   (P.boundary Down (var "down") (P.boundary Up (var "up") (var "kid"))) $
---   uP \[Right (Left down), Right (Left up), Left kid] -> Just $
---   let hypotenuse = lub' down up in
---   let up' = invert down <> hypotenuse in
---   let down' = invert up <> hypotenuse in
---   (boundary Up up' $ boundary Down down' kid)
+combineDownRule = SteppingRule case _ of
+  Boundary Down down1 (Boundary Down down2 kid) -> Just $
+    Boundary Down (down1 <> down2) kid
+  _ -> Nothing
 
--- combineDownRule = buildSteppingRule
---   (P.boundary Down (var "c1") (P.boundary Down (var "c2") (var "kid"))) $
---   uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
---   (boundary Down (c1 <> c2) kid)
+combineUpRule = SteppingRule case _ of
+  Boundary Up up1 (Boundary Up up2 kid) -> Just $
+    Boundary Up (up1 <> up2) kid
+  _ -> Nothing
 
--- combineUpRule = buildSteppingRule
---   (P.boundary Up (var "c1") (P.boundary Up (var "c2") (var "kid"))) $
---   uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
---   (boundary Up (c1 <> c2) kid)
+-- SteppingRule builder
 
--- -- SteppingRule builder
-
--- buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
---   StepExprPattern sn el ->
---   (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
---   SteppingRule sn el
--- buildSteppingRule pat k = SteppingRule $ case_ 
---   [ pat /\ Just <<< k
---   , wild /\ Just <<< const Nothing ]
+buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
+  StepExprPattern sn el ->
+  (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
+  SteppingRule sn el
+buildSteppingRule pat k = SteppingRule $ case_ 
+  [ pat /\ Just <<< k
+  , wild /\ Just <<< const Nothing ]

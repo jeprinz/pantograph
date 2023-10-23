@@ -14,6 +14,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Traversable (traverse, traverse_)
+import Data.Tree.Common (assertValidToothKids)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
 import Partial.Unsafe (unsafePartial)
@@ -22,15 +23,41 @@ import Text.Pretty (pretty)
 import Type.Proxy (Proxy(..))
 import Util (asStateT, delete', fromJust, fromJust')
 
+assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
+  let SortingRule rule = getSortingRule label in
+  if rule.parameters == Map.keys m then k unit else
+  bug $ "assertValidRuleVarSubst: For label " <> show label <> ", the substitution " <> pretty sigma <> " is invalid."
+
 -- utilities
 
 makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
+
 makeConstRuleSort n kids = Tree (makeConstRuleSortNode n) kids
+
 makeVarRuleSort x = Tree (VarRuleSortNode x) []
+
 makeSort sn kids = Tree (SortNode sn) kids
-makeExpr label sigma kids = Tree (ExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) kids
-makeExprTooth label sigma i kids = Tooth (ExprNode {label, sigma: RuleSortVarSubst (Map.fromFoldable (sigma <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort)))}) i kids
-makeStepExpr label sigma kids = StepExpr Nothing (ExprNode {label, sigma}) kids
+
+makeExprNode label sigma_ = 
+  let sigma = RuleSortVarSubst (Map.fromFoldable (sigma_ <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort))) in
+  assertValidRuleVarSubst label sigma \_ ->
+    ExprNode {label, sigma}
+
+makeExpr label sigma_ = 
+  let node = makeExprNode label sigma_ in
+  assertValidTreeKids "makeExpr" node \kids ->
+    Tree node kids
+
+makeExprTooth label sigma_ i = 
+  let node = makeExprNode label sigma_ in
+  assertValidToothKids "makeExprTooth" node i \kids ->
+    Tooth node i kids
+
+makeStepExpr label sigma_ = 
+  let node = makeExprNode label sigma_ in
+  assertValidTreeKids "makeStepExpr" node \kids -> 
+    StepExpr Nothing node kids
+
 makeNonEmptyExprPath ths = NonEmptyPath $ fromJust' "makeNonEmptyExprPath" $ NonEmptyList.fromFoldable ths
 
 defaultTopExpr =
