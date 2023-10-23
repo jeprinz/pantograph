@@ -33,37 +33,40 @@ makeExprTooth label sigma i kids = Tooth (AnnExprNode {label, sigma: RuleSortVar
 makeStepExpr label sigma kids = StepExpr Nothing (AnnExprNode {label, sigma}) kids
 makeNonEmptyExprPath ths = NonEmptyPath $ fromJust' "makeNonEmptyExprPath" $ NonEmptyList.fromFoldable ths
 
-defaultTopExpr (Language language) =
-  language.getDefaultExpr $ language.topSort
+defaultTopExpr =
+  getDefaultExpr topSort
 
-getExprNodeSort (Language language) (AnnExprNode {label, sigma}) =
-  let SortingRule sortingRule = language.getSortingRule label in
+getExprNodeSort (AnnExprNode {label, sigma}) =
+  let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
-getExprSort language (Tree el _) =
-  getExprNodeSort language el
+getExprSort (Tree el _) =
+  getExprNodeSort el
 
-getToothInteriorSort (Language language) (Tooth (AnnExprNode {label, sigma}) _ _) =
-  let SortingRule sortingRule = language.getSortingRule label in
+getToothInnerSort (Tooth (AnnExprNode {label, sigma}) i _) =
+  let SortingRule sortingRule = getSortingRule label in
+  applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
+
+getToothOuterSort (Tooth (AnnExprNode {label, sigma}) _ _) =
+  let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
-getPathInteriorSort language (Path (Cons tooth _)) = getToothInteriorSort language tooth
-getPathInteriorSort _ (Path Nil) = bug $ "getPathInteriorSort of empty Path"
+getNonEmptyPathInnerSort = unconsNonEmptyPath >>> _.inner >>> getToothInnerSort
+getNonEmptyPathOuterSort = unsnocNonEmptyPath >>> _.outer >>> getToothOuterSort
 
 -- the input sort is the bottom sort
 -- The output change goes from the bottom to the top
-getPathChange :: forall sn el. Eq sn => Show sn =>
-  Language sn el ->
+getPathChange :: forall sn el. Language sn el =>
   ExprPath sn el ->
   Sort sn ->
   SortChange sn
-getPathChange (Language language) path bottomSort = case unconsPath path of
+getPathChange path bottomSort = case unconsPath path of
   Nothing -> injectChange bottomSort
   Just {outer, inner: Tooth (AnnExprNode {label, sigma}) i _} ->
-    let ChangingRule rule = language.getChangingRule label in
+    let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
     let change = applyRuleSortVarSubst sigma ruleChange in
-    let restOfPathChange = getPathChange (Language language) outer (endpoints change).right in
+    let restOfPathChange = getPathChange outer (endpoints change).right in
     change <> restOfPathChange
 
 -- build

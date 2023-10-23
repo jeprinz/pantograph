@@ -223,15 +223,17 @@ instance Eq Marker where eq x = genericEq x
 
 -- Language
 
-newtype Language sn el = Language
-  { name :: String
-  , getSortingRule :: el -> SortingRule sn
-  , getChangingRule :: el -> ChangingRule sn
-  , topSort :: Sort sn
-  , getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
-  , getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
-  , validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
-  , steppingRules :: Array (SteppingRule sn el) }
+class 
+    (Eq sn, Show sn, PrettyTreeNode sn, Eq el, Show el, PrettyTreeNode el) <=
+    Language sn el | sn -> el, el -> sn 
+  where
+  getSortingRule :: el -> SortingRule sn
+  getChangingRule :: el -> ChangingRule sn
+  topSort :: Sort sn
+  getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
+  getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (ExprEdit sn el))
+  validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
+  steppingRules :: Array (SteppingRule sn el)
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.

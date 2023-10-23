@@ -21,7 +21,7 @@ import Halogen.Hooks as HK
 import Pantograph.Generic.Rendering.Style (className)
 import Type.Proxy (Proxy(..))
 
-previewComponent :: forall sn el ctx env. PrettyTreeNode el => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
+previewComponent :: forall sn el ctx env. Renderer sn el ctx env => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
 previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
 
   maybeEdit /\ maybeEditStateId <- HK.useState input.maybeEdit
@@ -41,14 +41,12 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
             Just (ReplaceEdit {inside}) -> 
               fst $ unwrap $ runM input.ctx input.env $ 
                 renderAnnExpr
-                  input.renderer
                   (shrinkAnnExprPath input.outside)
                   inside
                   makePreviewExprProps
             Just (InsertEdit {middle}) ->
               fst $ unwrap $ runM input.ctx input.env $
                 renderAnnExprPathLeft
-                  input.renderer
                   (shrinkAnnExprPath input.outside :: ExprPath sn el)
                   (shrinkAnnExprPath (toPath middle) :: ExprPath sn el)
                   (shrinkAnnExpr input.inside :: Expr sn el)
@@ -63,7 +61,6 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
             Just (InsertEdit {middle}) ->
               fst $ unwrap $ runM input.ctx input.env $
                 renderAnnExprPathRight
-                  input.renderer
                   (shrinkAnnExprPath input.outside :: ExprPath sn el)
                   (shrinkAnnExprPath (toPath middle) :: ExprPath sn el)
                   (shrinkAnnExpr input.inside :: Expr sn el)
@@ -71,7 +68,7 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
                   (pure [])
 
 makePreviewExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
-makePreviewExprProps (Renderer renderer) outside expr = do
+makePreviewExprProps outside expr = do
   ctx <- ask
   env <- get
   pure 

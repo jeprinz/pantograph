@@ -32,10 +32,8 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 
-editorComponent :: forall sn el ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => H.Component EditorQuery (EditorInput sn el ctx env) EditorOutput Aff
+editorComponent :: forall sn el ctx env. Renderer sn el ctx env => EditorComponent sn el ctx env
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
-  let Renderer renderer = input.renderer
-  let Language language = renderer.language
 
   -- keyboard
 
@@ -60,8 +58,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
   let bufferHtml = do
         let bufferInput = BufferInput 
               { name: "Main"
-              , renderer: Renderer renderer
-              , expr: fromJust' "defaultTopExpr" $ defaultTopExpr (Language language) }
+              , expr: fromJust' "defaultTopExpr" (defaultTopExpr :: Maybe (Expr sn el)) }
         let bufferHandler (BufferOutput output) = (output # _) $ case_
               # on (Proxy :: Proxy "write terminal") \item -> tell slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "write") item
         HH.slot (Proxy :: Proxy "buffer") unit bufferComponent bufferInput bufferHandler
@@ -79,7 +76,6 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
     { name: "EditorPanel"
     , info: 
         [ HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Pantograph"]
-        , HH.div [HP.classes [HH.ClassName "info"]] [HH.text $ rendererFullName (Renderer renderer)]
         ]
     , control:
         []

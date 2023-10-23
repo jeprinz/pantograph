@@ -12,6 +12,7 @@ import Data.Identity (Identity)
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Tree (Orientation)
+import Data.Tuple (fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant, inj)
 import Effect.Aff (Aff)
@@ -19,6 +20,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
+import Type.Proxy (Proxy)
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
 class ToClassNames a where
@@ -97,17 +99,14 @@ type RenderEnv sn el env =
 -- |
 -- | TODO: description
 
-newtype Renderer sn el ctx env = Renderer
-  { name :: String
-  , language :: Language sn el
-  , topCtx :: Record ctx
-  , topEnv :: Record env
-  , arrangeExpr :: forall er a.
-      AnnExprNode sn el er ->
-      Array (RenderM sn el ctx env (a /\ AnnExprNode sn el er)) ->
-      RenderM sn el ctx env (Array (ArrangeKid sn el a))
-  , beginsLine :: forall er. AnnExprCursor sn el er -> Boolean
-  }
+class Language sn el <= Renderer sn el ctx env | sn -> el ctx env where
+  topCtx :: Proxy sn /\ Record ctx
+  topEnv :: Proxy sn /\ Record env
+  arrangeExpr :: forall er a.
+    AnnExprNode sn el er ->
+    Array (RenderM sn el ctx env (a /\ AnnExprNode sn el er)) ->
+    RenderM sn el ctx env (Array (ArrangeKid sn el a))
+  cursorBeginsLine :: forall er. AnnExprCursor sn el er -> Boolean
 
 data ArrangeKid sn el a
   = ExprKidArrangeKid a
@@ -121,21 +120,13 @@ isExprKidArrangeKidSuchThat cond = case _ of
   ExprKidArrangeKid a -> cond a
   _ -> false
 
-rendererFullName :: forall sn el ctx env. Renderer sn el ctx env -> String
-rendererFullName (Renderer renderer@{language: Language language}) =
-  "{" <> 
-  "language: " <> language.name <>
-  ", " <> 
-  "renderer: " <> renderer.name <> 
-  "}"
-
 -- | # Editor
 -- |
 -- | TODO: description
 
+type EditorComponent sn el ctx env = H.Component EditorQuery (EditorInput sn el ctx env) EditorOutput Aff
 type EditorSlot = H.Slot EditorQuery EditorOutput EditorSlotId
-newtype EditorInput sn el ctx env = EditorInput
-  { renderer :: Renderer sn el ctx env }
+newtype EditorInput sn el ctx env = EditorInput {}
 type EditorQuery :: Type -> Type
 type EditorQuery = Const Void
 type EditorOutput = Void
@@ -148,7 +139,6 @@ type EditorSlotId = Unit
 type BufferSlot sn el = H.Slot (BufferQuery sn el) (BufferOutput sn el) BufferSlotId
 newtype BufferInput sn el ctx env = BufferInput 
   { name :: String
-  , renderer :: Renderer sn el ctx env
   , expr :: Expr sn el }
 newtype BufferQuery sn el a = BufferQuery (Variant
   ( "set exprGyro" :: ExprGyro sn el /\ a
@@ -172,8 +162,7 @@ type BufferSlots sn el =
 
 type ToolboxSlot sn el = H.Slot (ToolboxQuery sn el) (ToolboxOutput sn el) ToolboxSlotId
 newtype ToolboxInput sn el ctx env = ToolboxInput 
-  { renderer :: Renderer sn el ctx env
-  , ctx :: Record (RenderCtx sn el ctx)
+  { ctx :: Record (RenderCtx sn el ctx)
   , env :: Record (RenderEnv sn el env)
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
@@ -197,8 +186,7 @@ data ToolboxSelect = ToolboxSelect Int Int
 
 type PreviewSlot sn el = H.Slot (PreviewQuery sn el) PreviewOutput PreviewSlotId
 newtype PreviewInput sn el ctx env = PreviewInput
-  { renderer :: Renderer sn el ctx env
-  , ctx :: Record (RenderCtx sn el ctx)
+  { ctx :: Record (RenderCtx sn el ctx)
   , env :: Record (RenderEnv sn el env)
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()

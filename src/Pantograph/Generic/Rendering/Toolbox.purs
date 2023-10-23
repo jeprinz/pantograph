@@ -26,7 +26,7 @@ import Util (fromJust')
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
-toolboxComponent :: forall sn el ctx env. PrettyTreeNode el => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
+toolboxComponent :: forall sn el ctx env. Renderer sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
 toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
 
   isEnabled /\ isEnabledStateId <- HK.useState input.isEnabled
@@ -107,17 +107,17 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
                     modifyToolboxSelect $ const $ ToolboxSelect rowIndex colIndex
                 ]
                 (fst $ unwrap $ runM input.ctx input.env $
-                  renderExprEdit input.renderer (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) item)]
+                  renderExprEdit (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) item)]
         ]]
 
 makeToolboxExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
-makeToolboxExprProps (Renderer renderer) outside inside = do
+makeToolboxExprProps outside inside = do
   pure 
     [ HP.classes [className.expr, className.toolboxExpr] ]
 
-renderExprEdit renderer outside inside = case _ of
-  ReplaceEdit {inside} -> renderAnnExpr renderer outside inside makeToolboxExprProps
-  InsertEdit {middle} -> renderAnnExprPath renderer outside (toPath middle) inside makeToolboxExprProps (pure editHole)
+renderExprEdit outside inside = case _ of
+  ReplaceEdit {inside} -> renderAnnExpr outside inside makeToolboxExprProps
+  InsertEdit {middle} -> renderAnnExprPath outside (toPath middle) inside makeToolboxExprProps (pure editHole)
 
 editHole :: forall sn el. Array (BufferHtml sn el)
 editHole = [HH.div [HP.classes [HH.ClassName "EditHole"]] [HH.text " "]]

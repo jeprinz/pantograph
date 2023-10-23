@@ -49,6 +49,7 @@ import Prim.RowList (class RowToList)
 import Record as R
 import Text.Pretty (pretty)
 import Text.Pretty as Pretty
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 import Web.Event.Event as Event
@@ -57,9 +58,8 @@ import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
-bufferComponent :: forall sn el ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
+bufferComponent :: forall sn el ctx env. Renderer sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
 bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
-  let Renderer renderer = input.renderer
 
   -- The original ExprGyro before rendering.
   exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
@@ -78,7 +78,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 
     modifyExprGyro f = do
       hydratedExprGyro <- getHydratedExprGyro
-      rehydrateExprGyro (Renderer renderer) (Just hydratedExprGyro) Nothing
+      rehydrateExprGyro (Just hydratedExprGyro) Nothing
       let exprGyro' = shrinkAnnExprGyro hydratedExprGyro
       case f exprGyro' of
         Nothing -> pure unit
@@ -105,7 +105,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         Nothing -> pure unit
         Just syncedExprGyro' -> do
           liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
-          hydratedExprGyro' <- hydrateExprGyro (Renderer renderer) syncedExprGyro'
+          hydratedExprGyro' <- hydrateExprGyro syncedExprGyro'
           modifyHydratedExprGyro (const (Just hydratedExprGyro'))
 
     modifyHydratedExprGyro f = do
@@ -113,11 +113,11 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       case f hydratedExprGyro of
         Nothing -> pure unit
         Just hydratedExprGyro' -> do
-          rehydrateExprGyro (Renderer renderer) (Just hydratedExprGyro) (Just hydratedExprGyro')
+          rehydrateExprGyro (Just hydratedExprGyro) (Just hydratedExprGyro')
           liftEffect $ Ref.write (Just hydratedExprGyro') hydratedExprGyroRef
 
   renderCtx /\ renderCtxStateId <- HK.useState $
-    renderer.topCtx # R.union
+    snd (topCtx :: Proxy sn /\ Record ctx) # R.union
       { depth: 0
       , outputToken
       , slotToken
@@ -126,17 +126,17 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       }
 
   renderEnv /\ renderEnvStateId <- HK.useState $
-    renderer.topEnv # R.union
+    snd (topEnv :: Proxy sn /\ Record env) # R.union
       { holeCount: 0 
       }
 
   let
     runRenderM = unwrap <<< runM renderCtx renderEnv
-    gyroHtmls /\ _ = runRenderM $ renderSyncExprGyro (Renderer renderer) initialSyncedExprGyro
+    gyroHtmls /\ _ = runRenderM $ renderSyncExprGyro initialSyncedExprGyro
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
-    hydratedExprGyro <- hydrateExprGyro (Renderer renderer) initialSyncedExprGyro
+    hydratedExprGyro <- hydrateExprGyro initialSyncedExprGyro
     liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
     pure Nothing
 
@@ -236,33 +236,30 @@ type HydrateCtx sn el er =
   { cursor :: SyncExprCursor sn el er
   , maybeSelect :: Maybe (SyncExprGyro sn el er) }
 
-hydrateExprNode :: forall sn el er ctx env. Renderer sn el ctx env -> HydrateM sn el er (HydrateExprNode sn el er)
-hydrateExprNode (Renderer renderer) = do
-  let Language language = renderer.language
+hydrateExprNode :: forall sn el er ctx env. Renderer sn el ctx env => HydrateM sn el er (HydrateExprNode sn el er)
+hydrateExprNode = do
   Cursor cursor <- asks _.cursor 
   maybeSelect <- asks _.maybeSelect
 
   let
+    beginsLine orientation = cursorBeginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
+    validCursor orientation = validGyro (CursorGyro (Cursor cursor {orientation = orientation}))
+    validSelect = maybeSelect # maybe false validGyro
     AnnExprNode node = cursor.inside # treeNode
-    beginsLine orientation = renderer.beginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
-    validCursor orientation = language.validGyro (CursorGyro (Cursor cursor {orientation = orientation}))
-    validSelect = maybeSelect # maybe false language.validGyro
 
-    exprNode = AnnExprNode $ node # R.union
-      { beginsLine
-      , validCursor
-      , validSelect }
+  pure $ AnnExprNode $ node # R.union
+    { beginsLine
+    , validCursor
+    , validSelect }
 
-  pure exprNode
-
-hydrateExprGyro :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-hydrateExprGyro (Renderer renderer) gyro = do
+hydrateExprGyro :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+hydrateExprGyro gyro = do
   hydratedExprGyro <- case gyro of
     RootGyro expr -> do
       expr' <- flip runReaderT
           { cursor: Cursor {outside: mempty, inside: expr, orientation: Outside} 
           , maybeSelect: Just $ CursorGyro $ Cursor {outside: mempty, inside: expr, orientation: Outside} } $
-        hydrateExpr (Renderer renderer)
+        hydrateExpr
       pure $ RootGyro $ expr'
     CursorGyro cursor@(Cursor {outside, inside, orientation}) -> do
       outside' /\ inside' <- 
@@ -271,19 +268,19 @@ hydrateExprGyro (Renderer renderer) gyro = do
           , maybeSelect: case fromPathMaybe outside of
               Nothing -> Just $ CursorGyro $ Cursor {outside: mempty, inside: escapeCursor cursor, orientation: Outside}
               Just middle -> Just $ SelectGyro $ Select {outside: mempty, middle, inside, orientation: Outside} } $
-        hydrateExprPath (Renderer renderer) outside \outside' -> (outside' /\ _) <$>
-        hydrateExpr (Renderer renderer)
+        hydrateExprPath outside \outside' -> (outside' /\ _) <$>
+        hydrateExpr
       pure $ CursorGyro $ Cursor {outside: outside', inside: inside', orientation}
     SelectGyro select@(Select {outside, middle, inside, orientation}) -> do
       outside' /\ middle' /\ inside' <- 
         flip runReaderT 
           { cursor: Cursor {outside: mempty, inside: escapeCursor $ escapeSelect $ select, orientation: Outside}
           , maybeSelect: Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "hydrateExprGyro" $ outside <> toPath middle, inside, orientation: Outside} } $
-        hydrateExprPath (Renderer renderer) outside \outside' -> (outside' /\ _) <$>
-        hydrateExprPath (Renderer renderer) (toPath middle) \middle' -> (fromPath "hydrateExprGyro" middle' /\ _) <$>
-        hydrateExpr (Renderer renderer)
+        hydrateExprPath outside \outside' -> (outside' /\ _) <$>
+        hydrateExprPath (toPath middle) \middle' -> (fromPath "hydrateExprGyro" middle' /\ _) <$>
+        hydrateExpr
       pure $ SelectGyro $ Select {outside: outside', middle: middle', inside: inside', orientation}
-  rehydrateExprGyro (Renderer renderer) Nothing (Just hydratedExprGyro)
+  rehydrateExprGyro Nothing (Just hydratedExprGyro)
   pure hydratedExprGyro
 
 hydrateStep :: forall sn el er a. PrettyTreeNode el => Int -> HydrateM sn el er a -> HydrateM sn el er a
@@ -291,8 +288,8 @@ hydrateStep i = local $
   R.modify (Proxy :: Proxy "cursor") (moveCursorDownOuter i) >>>
   R.modify (Proxy :: Proxy "maybeSelect") (grabGyroDown i =<< _)
 
-hydrateExprPath :: forall sn el er ctx env a. PrettyTreeNode el => Renderer sn el ctx env -> SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el er a) -> HydrateM sn el er a
-hydrateExprPath (Renderer renderer) (Path ts0) k = go mempty (List.reverse ts0)
+hydrateExprPath :: forall sn el er ctx env a. Renderer sn el ctx env => SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el er a) -> HydrateM sn el er a
+hydrateExprPath (Path ts0) k = go mempty (List.reverse ts0)
   where
   go path Nil = k path
   go path (Cons (Tooth _ i _) ts) = do
@@ -312,38 +309,38 @@ hydrateExprPath (Renderer renderer) (Path ts0) k = go mempty (List.reverse ts0)
       --   "\n  • cursor = " <> pretty (Cursor cursor) <>
       --   "\n  • select = " <> pretty maybeSelect
 
-      hydratedNode <- hydrateExprNode (Renderer renderer)
+      hydratedNode <- hydrateExprNode
       hydratedKids <- tooths cursor.inside # Array.deleteAt i # fromJust' "hydrateExprPath" # traverse \(Tooth _ i' _ /\ _) -> do
         -- Debug.traceM $ "[hydrateExprPath]" <>
         --   "\n  • i = " <> show i' <>
         --   "\n  • cursor = " <> pretty (Cursor cursor) <>
         --   "\n  • select = " <> pretty maybeSelect
 
-        hydrateStep i' $ hydrateExpr (Renderer renderer)
+        hydrateStep i' $ hydrateExpr
 
       let tooth' = Tooth hydratedNode i hydratedKids
       hydrateStep i $ go (consPath path tooth') ts
 
-hydrateExpr :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> HydrateM sn el er (HydrateExpr sn el er)
-hydrateExpr (Renderer renderer) = do
+hydrateExpr :: forall sn el er ctx env. Renderer sn el ctx env => HydrateM sn el er (HydrateExpr sn el er)
+hydrateExpr = do
   Cursor cursor <- asks _.cursor
   maybeSelect <- asks _.maybeSelect
 
-  hydratedNode <- hydrateExprNode (Renderer renderer)
+  hydratedNode <- hydrateExprNode
   hydratedKids <- tooths cursor.inside # traverse \(Tooth _ i _ /\ _) -> do
     -- Debug.traceM $ "[hydrateExpr]" <>
     --   "\n  • i = " <> show i <>
     --   "\n  • cursor = " <> pretty (Cursor cursor) <>
     --   "\n  • select = " <> pretty maybeSelect
 
-    hydrateStep i $ hydrateExpr (Renderer renderer)
+    hydrateStep i $ hydrateExpr
   pure $ Tree hydratedNode hydratedKids
 
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
-rehydrateExprGyro :: forall sn el er ctx env. PrettyTreeNode el => Renderer sn el ctx env -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
-rehydrateExprGyro (Renderer renderer) m_hydratedExprGyro m_hydratedExprGyro' = do
+rehydrateExprGyro :: forall sn el er ctx env. Renderer sn el ctx env => Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
+rehydrateExprGyro m_hydratedExprGyro m_hydratedExprGyro' = do
   unhydrateExprGyro
   rehydrateExprGyro'
   where
@@ -369,29 +366,28 @@ rehydrateExprGyro (Renderer renderer) m_hydratedExprGyro m_hydratedExprGyro' = d
 
 -- render
 
-renderSyncExprGyro :: forall sn el er ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprGyro renderer (RootGyro expr) = renderSyncExpr renderer (Path Nil) expr
-renderSyncExprGyro renderer (CursorGyro cursor) = renderSyncExprCursor renderer cursor
-renderSyncExprGyro renderer (SelectGyro select) = renderSyncExprSelect renderer select
+renderSyncExprGyro :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprGyro (RootGyro expr) = renderSyncExpr (Path Nil) expr
+renderSyncExprGyro (CursorGyro cursor) = renderSyncExprCursor cursor
+renderSyncExprGyro (SelectGyro select) = renderSyncExprSelect select
 
-renderSyncExprSelect :: forall sn el er ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprSelect (Renderer renderer) (Select {outside, middle, inside, orientation}) = do
+renderSyncExprSelect :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprSelect (Select {outside, middle, inside, orientation}) = do
   ctx <- ask
   env <- get
   let outside_middle = outside <> (toPath middle)
-  renderSyncExprPath (Renderer renderer) mempty outside (unPath outside_middle inside) $
-    renderSyncExprPath (Renderer renderer) outside (toPath middle) inside $
-      renderSyncExpr (Renderer renderer) outside_middle inside
+  renderSyncExprPath mempty outside (unPath outside_middle inside) $
+    renderSyncExprPath outside (toPath middle) inside $
+      renderSyncExpr outside_middle inside
 
-renderSyncExprCursor :: forall sn el er ctx env. Eq sn => Eq el => Show sn => PrettyTreeNode sn => PrettyTreeNode el => Renderer sn el ctx env -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation}) = do
-  let Language language = renderer.language
+renderSyncExprCursor :: forall sn el er ctx env. Renderer sn el ctx env => SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprCursor (Cursor {outside, inside, orientation}) = do
   ctx <- ask
   env <- get
   let toolboxHandler (ToolboxOutput output) = (output # _) $ case_
         # on (Proxy :: Proxy "submit edit") (\edit -> do
             tell ctx.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const false
-            ctx.modifyExprGyro $ applyEdit (Language language) edit
+            ctx.modifyExprGyro $ applyEdit edit
           )
         # on (Proxy :: Proxy "preview edit") (\maybeEdit -> do 
             tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
@@ -399,16 +395,14 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation})
           )
   let wrapCursor htmls = do
         let toolboxInput = ToolboxInput
-              { renderer: Renderer renderer
-              , ctx
+              { ctx
               , env
               , outside: shrinkAnnExprPath outside
               , inside: shrinkAnnExpr inside
               , isEnabled: false
-              , edits: language.getEdits (getExprSort (Language language) inside) orientation }
+              , edits: getEdits (getExprSort inside) orientation }
         let previewInput position = PreviewInput 
-              { renderer: Renderer renderer
-              , ctx
+              { ctx
               , env
               , position
               , outside: shrinkAnnExprPath outside
@@ -420,6 +414,6 @@ renderSyncExprCursor (Renderer renderer) (Cursor {outside, inside, orientation})
           , htmls
           , [HH.slot_ (Proxy :: Proxy "preview") RightPreviewPosition previewComponent (previewInput RightPreviewPosition)] 
           ]
-  renderSyncExprPath (Renderer renderer) mempty outside inside $
+  renderSyncExprPath mempty outside inside $
     wrapCursor <$>
-      renderSyncExpr (Renderer renderer) outside inside
+      renderSyncExpr outside inside

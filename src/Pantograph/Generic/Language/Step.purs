@@ -28,14 +28,14 @@ import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP)
 
 -- utilities
 
-getStepExprSort :: forall sn el. Language sn el -> StepExpr sn el -> Sort sn
-getStepExprSort _ (Boundary dir ch kid) = 
+getStepExprSort :: forall sn el. Language sn el => StepExpr sn el -> Sort sn
+getStepExprSort (Boundary dir ch kid) = 
   let {left, right} = endpoints ch in
   case dir of
     Up -> left
     Down -> right
-getStepExprSort language (StepExpr _ node _) =
-  getExprNodeSort language node
+getStepExprSort (StepExpr _ node _) =
+  getExprNodeSort node
 
 -- toStepExpr
 
@@ -129,12 +129,11 @@ runStepM :: forall sn el a. Eq sn => Eq el => Show sn => PrettyTreeNode sn =>
   Array (SteppingRule sn el) -> StepM sn el a -> a
 runStepM rules = flip runReaderT (builtinRules <> rules) >>> unwrap 
 
-runStepExpr :: forall sn el. PrettyTreeNode sn => PrettyTreeNode el => Eq sn => Eq el => Show sn => 
-  Language sn el ->
+runStepExpr :: forall sn el. Language sn el =>
   StepExpr sn el ->
   Maybe (ExprGyro sn el)
-runStepExpr (Language language) stepExpr =
-  let stepExpr' = runStepM language.steppingRules $ stepFixpoint stepExpr in
+runStepExpr stepExpr =
+  let stepExpr' = runStepM steppingRules $ stepFixpoint stepExpr in
   case fromStepExpr stepExpr' of
     Left cursor -> Just $ CursorGyro cursor
     Right expr -> Just $ RootGyro expr

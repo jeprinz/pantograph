@@ -8,39 +8,38 @@ import Prelude
 import Bug (bug)
 import Data.Maybe (Maybe)
 
-applyEdit :: forall sn el. PrettyTreeNode el => Eq sn => Eq el => Show sn => PrettyTreeNode sn =>
-  Language sn el -> 
+applyEdit :: forall sn el. Language sn el =>
   ExprEdit sn el -> 
   ExprGyro sn el -> 
   Maybe (ExprGyro sn el)
 
 -- Root must be turned into a Cursor before applying the Edit
-applyEdit language 
+applyEdit 
   edit
   gyro@(RootGyro _) = 
-  applyEdit language edit =<< ensureGyroIsCursor gyro
+  applyEdit edit =<< ensureGyroIsCursor gyro
 
 -- InsertEdit
 
-applyEdit language 
+applyEdit 
   (InsertEdit {outerChange, middle, innerChange}) 
   (CursorGyro (Cursor {outside, inside, orientation})) = 
-  runStepExpr language $ setupInsert {outside, outerChange, middle, innerChange, inside, orientation}
+  runStepExpr $ setupInsert {outside, outerChange, middle, innerChange, inside, orientation}
 
-applyEdit _ 
+applyEdit
   (InsertEdit _)
   (SelectGyro _) = 
   bug $ "should this be allowed? or should you have to delete first, before inserting"
 
 -- ReplaceEdit
 
-applyEdit language 
+applyEdit 
   (ReplaceEdit {outerChange, inside}) 
   (CursorGyro (Cursor {outside, inside: _})) = 
-  runStepExpr language $ setupReplace {outside, outerChange, inside}
+  runStepExpr $ setupReplace {outside, outerChange, inside}
 
-applyEdit language 
+applyEdit 
   edit@(ReplaceEdit _)
   gyro@(SelectGyro _) = 
-  applyEdit language edit =<< ensureGyroIsCursor gyro
+  applyEdit edit =<< ensureGyroIsCursor gyro
 
