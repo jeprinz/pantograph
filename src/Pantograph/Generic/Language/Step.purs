@@ -25,7 +25,7 @@ import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
 import Text.Pretty (ticks)
 import Type.Proxy (Proxy(..))
-import Util (findMapM, fromJust, fromJust', fromRight', uP)
+import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP)
 
 -- utilities
 
@@ -56,7 +56,10 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 
 fromStepExpr :: forall sn el. StepExpr sn el -> ExprCursor sn el \/ Expr sn el
 fromStepExpr (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`"
-fromStepExpr (StepExpr maybeMarker node kids) =
+fromStepExpr (StepExpr (Just (CursorMarker orientation)) node kids) =
+  let kids' = kids <#> fromStepExpr >>> fromRight' "encountered multiple cursor during `fromStepExpr`" in
+  Left $ Cursor {outside: mempty, inside: Tree node kids', orientation}
+fromStepExpr (StepExpr Nothing node kids) =
   let
     f = case _ of
       Nothing /\ kids' -> case _ of
@@ -107,12 +110,12 @@ setupInsert args =
 
 setupReplace :: forall sn el.
   { outside :: ExprPath sn el
-  , change :: SortChange sn
+  , outerChange :: SortChange sn
   , inside :: Expr sn el } ->
   StepExpr sn el
 setupReplace args = 
   wrapExprPath args.outside $
-  boundary Up args.change $
+  boundary Up args.outerChange $
   toStepExpr args.inside
 
 -- stepping engine
@@ -121,7 +124,17 @@ type StepM sn el = ReaderT (Array (SteppingRule sn el)) Identity
 
 runStepM :: forall sn el a. Eq sn => Eq el => Show sn => PrettyTreeNode sn => 
   Array (SteppingRule sn el) -> StepM sn el a -> a
-runStepM rules = flip runReaderT (builtinRules <> rules) >>> unwrap
+runStepM rules = flip runReaderT (builtinRules <> rules) >>> unwrap 
+
+runStepExpr :: forall sn el. PrettyTreeNode sn => PrettyTreeNode el => Eq sn => Eq el => Show sn => 
+  Language sn el ->
+  StepExpr sn el ->
+  Maybe (ExprGyro sn el)
+runStepExpr (Language language) stepExpr =
+  let stepExpr' = runStepM language.steppingRules $ stepFixpoint stepExpr in
+  case fromStepExpr stepExpr' of
+    Left cursor -> Just $ CursorGyro cursor
+    Right expr -> Just $ RootGyro expr
 
 -- | Attempts a single step.
 step :: forall sn el. StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))

@@ -188,7 +188,7 @@ instance Eq a => Semigroup (Change a) where
     Change a $ fromJust $ Array.insertAt i (c <> c') $ map injectChange ts
   append c (Shift Plus th c') = Shift Plus th (c <> c')
   append (Shift Minus th c) c' = Shift Minus th (c <> c')
-  append (Shift Plus th@(Tooth a i ts) c) (Change a' _cs') 
+  append (Shift Plus th@(Tooth a i ts) c) (Change a' _cs')
     | a == a'
     , cs' /\ c' <- fromJust $ indexDeleteAt i _cs'
     , and $ map (uncurry eq) $ Array.zip (injectChange <$> ts) cs'
