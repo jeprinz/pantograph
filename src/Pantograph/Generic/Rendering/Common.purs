@@ -106,7 +106,6 @@ newtype Renderer sn el ctx env = Renderer
       AnnExprNode sn el er ->
       Array (RenderM sn el ctx env (a /\ AnnExprNode sn el er)) ->
       RenderM sn el ctx env (Array (ArrangeKid sn el a))
-  -- , beginsLine :: forall er1 er2. {outside :: AnnExprPath sn el er1, middle :: AnnExprTooth sn el er2, inside :: AnnExpr sn el er2} -> Boolean
   , beginsLine :: forall er. AnnExprCursor sn el er -> Boolean
   }
 

@@ -147,37 +147,46 @@ step e = findMapM (pure <<< flip applySteppingRule e) =<< ask
 stepFixpoint :: forall sn el. StepExpr sn el -> StepM sn el (StepExpr sn el)
 stepFixpoint e = step e >>= maybe (pure e) stepFixpoint
 
--- SteppingRule builder
-
-buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
-  StepExprPattern sn el ->
-  (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
-  SteppingRule sn el
-buildSteppingRule pat k = SteppingRule $ case_ 
-  [ pat /\ Just <<< k
-  , wild /\ Just <<< const Nothing ]
-
 -- builtin SteppingRules
 
 builtinRules =
-  [ passThroughRule
-  , combineUpRule
-  , combineDownRule ]
+  [ passThroughRule ]
+--   , combineUpRule
+--   , combineDownRule ]
 
-passThroughRule = buildSteppingRule
-  (P.boundary Down (var "down") (P.boundary Up (var "up") (var "kid"))) $
-  uP \[Right (Left down), Right (Left up), Left kid] -> Just $
-  let hypotenuse = lub' down up in
-  let up' = invert down <> hypotenuse in
-  let down' = invert up <> hypotenuse in
-  (boundary Up up' $ boundary Down down' kid)
+passThroughRule :: forall sn el. Eq sn => PrettyTreeNode sn => SteppingRule sn el
+passThroughRule = SteppingRule case _ of
+  Boundary Down down (Boundary Up up kid) -> Just
+    let hypotenuse = lub' down up in
+    let up' = invert down <> hypotenuse in
+    let down' = invert up <> hypotenuse in
+    Boundary Up up' (Boundary Down down' kid)
+  _ -> Nothing
 
-combineDownRule = buildSteppingRule
-  (P.boundary Down (var "c1") (P.boundary Down (var "c2") (var "kid"))) $
-  uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
-  (boundary Down (c1 <> c2) kid)
+-- passThroughRule = buildSteppingRule
+--   (P.boundary Down (var "down") (P.boundary Up (var "up") (var "kid"))) $
+--   uP \[Right (Left down), Right (Left up), Left kid] -> Just $
+--   let hypotenuse = lub' down up in
+--   let up' = invert down <> hypotenuse in
+--   let down' = invert up <> hypotenuse in
+--   (boundary Up up' $ boundary Down down' kid)
 
-combineUpRule = buildSteppingRule
-  (P.boundary Up (var "c1") (P.boundary Up (var "c2") (var "kid"))) $
-  uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
-  (boundary Up (c1 <> c2) kid)
+-- combineDownRule = buildSteppingRule
+--   (P.boundary Down (var "c1") (P.boundary Down (var "c2") (var "kid"))) $
+--   uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
+--   (boundary Down (c1 <> c2) kid)
+
+-- combineUpRule = buildSteppingRule
+--   (P.boundary Up (var "c1") (P.boundary Up (var "c2") (var "kid"))) $
+--   uP \[Right (Left c1), Right (Left c2), Left kid] -> Just
+--   (boundary Up (c1 <> c2) kid)
+
+-- -- SteppingRule builder
+
+-- buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
+--   StepExprPattern sn el ->
+--   (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
+--   SteppingRule sn el
+-- buildSteppingRule pat k = SteppingRule $ case_ 
+--   [ pat /\ Just <<< k
+--   , wild /\ Just <<< const Nothing ]
