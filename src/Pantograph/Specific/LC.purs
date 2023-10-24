@@ -106,6 +106,7 @@ type SortChange = PL.SortChange SN
 type RuleSort = PL.RuleSort SN
 type Sort = PL.Sort SN
 type Edit = PL.Edit SN EL
+type Edits = PL.Edits SN EL
 type SteppingRule = PL.SteppingRule SN EL
 type ChangingRule = PL.ChangingRule SN
 type SortingRule = PL.SortingRule SN
@@ -149,7 +150,7 @@ getDefaultExpr = case _ of
 
 topSort = sort.term
 
-getEdits :: Sort -> Orientation -> SearchableArray (String /\ NonEmptyArray Edit) Fuzzy.Distance
+getEdits :: Sort -> Orientation -> Edits
 getEdits =
   let
     makeInsertEdits :: Array {outerChange :: PL.SortChange SN, middle :: Array (PL.ExprTooth SN EL), innerChange :: PL.SortChange SN} -> NonEmptyArray (PL.Edit SN EL)
@@ -177,9 +178,9 @@ getEdits =
     
     maxDistance = Fuzzy.Distance 1 0 0 0 0 0
 
-    getEdits' (Tree (PL.SortNode StringSort) []) _ = SearchableArray.fuzzy maxDistance fst []
-    getEdits' (Tree (PL.SortNode TermSort) []) Outside = SearchableArray.fuzzy maxDistance fst termEdits
-    getEdits' (Tree (PL.SortNode TermSort) []) Inside = SearchableArray.fuzzy maxDistance fst []
+    getEdits' (Tree (PL.SortNode StringSort) []) _ = PL.StringEdits \str -> [NonEmptyArray.singleton $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)}]
+    getEdits' (Tree (PL.SortNode TermSort) []) Outside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst termEdits
+    getEdits' (Tree (PL.SortNode TermSort) []) Inside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst []
     getEdits' sort _ = bug $ "invalid sort: " <> show sort
   in
   getEdits'

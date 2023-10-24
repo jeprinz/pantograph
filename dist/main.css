@@ -336,6 +336,7 @@ body {
   top: 1.2em;
   background-color: rgb(217, 217, 217);
 }
+
 .ToolboxInput {
   padding: var(--it);
   font-size: 16px;
@@ -380,4 +381,17 @@ body {
 
 .PreviewLeft {}
 
+.PreviewLeftInsert {}
+
+.PreviewLeftPaste {}
+
 .PreviewRight {}
+
+
+.PreviewRightInsert {}
+
+.PreviewRightPaste {}
+
+.PreviewLeftPaste+.Expr {
+  background-color: rgb(255, 165, 165);
+}

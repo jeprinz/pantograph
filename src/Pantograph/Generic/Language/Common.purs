@@ -235,7 +235,7 @@ class
 
   steppingRules :: Array (SteppingRule sn el)
 
-  getEdits :: Sort sn -> Orientation -> SearchableArray (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance
+  getEdits :: Sort sn -> Orientation -> Edits sn el
   
   specialEdits ::
     { deleteCursor :: Sort sn -> Maybe (Edit sn el)
@@ -244,6 +244,10 @@ class
     , tab :: Unit -> Maybe (Edit sn el) }
 
   validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
+
+data Edits sn el 
+  = SearchableEdits (SearchableArray (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance)
+  | StringEdits (String -> Array (NonEmptyArray (Edit sn el)))
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.

@@ -169,7 +169,7 @@ newtype ToolboxInput sn el ctx env = ToolboxInput
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
   , isEnabled :: Boolean
-  , edits :: SearchableArray (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance }
+  , edits :: Edits sn el }
 newtype ToolboxQuery sn el a = ToolboxQuery (Variant
   ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
   , "get isEnabled" :: (Boolean -> a)

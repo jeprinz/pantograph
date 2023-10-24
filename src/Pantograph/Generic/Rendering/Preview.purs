@@ -10,7 +10,7 @@ import Prelude
 import Bug (bug)
 import Control.Monad.Reader (ask)
 import Control.Monad.State (get)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
 import Data.Newtype (unwrap)
 import Data.Tuple (fst)
 import Data.Variant (case_, on)
@@ -35,10 +35,8 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
   HK.pure $
     case input.position of
       LeftPreviewPosition ->
-        HH.div
-          [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewLeft"]]
           case maybeEdit of
-            Nothing -> []
+            Nothing -> HH.div [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewLeft"]] []
             Just (Edit edit) ->
               let 
                 insideHtml inside = 
@@ -55,19 +53,21 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
                       (shrinkAnnExpr input.inside :: Expr sn el)
                       makePreviewExprProps
                       (pure inside)
+                classes = 
+                  [HH.ClassName "Preview", HH.ClassName "PreviewLeft"] <>
+                  (if isJust edit.middle then [HH.ClassName "PreviewLeftInsert"] else []) <>
+                  (if isJust edit.inside then [HH.ClassName "PreviewLeftPaste"] else [])
               in 
               case edit.middle of
                 Nothing -> case edit.inside of
                   Nothing -> bug "TODO: how to preview this kind of Edit?"
-                  Just inside -> insideHtml inside
-                Just middle -> middleHtml middle $ case edit.inside of
-                  Nothing -> []
-                  Just inside -> insideHtml inside
+                  Just inside -> HH.div [HP.classes classes] (insideHtml inside)
+                Just middle -> case edit.inside of
+                  Nothing -> HH.div [HP.classes classes] (middleHtml middle [])
+                  Just inside -> HH.div [HP.classes classes] (middleHtml middle (insideHtml inside))
       RightPreviewPosition ->
-        HH.div
-          [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewRight"]]
           case maybeEdit of
-            Nothing -> []
+            Nothing -> HH.div [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewRight"]] []
             Just (Edit edit) ->
               let
                 middleHtml middle =
@@ -78,10 +78,15 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
                       (shrinkAnnExpr input.inside :: Expr sn el)
                       makePreviewExprProps
                       (pure [])
+
+                classes = 
+                  [HH.ClassName "Preview", HH.ClassName "PreviewRight"] <>
+                  (if isJust edit.middle then [HH.ClassName "PreviewRightInsert"] else []) <>
+                  (if isJust edit.inside then [HH.ClassName "PreviewRightPaste"] else [])
               in
               case edit.middle of
-                Nothing -> []
-                Just middle -> middleHtml middle
+                Nothing -> HH.div [HP.classes classes] []
+                Just middle -> HH.div [HP.classes classes] (middleHtml middle)
 
 makePreviewExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
 makePreviewExprProps outside expr = do
