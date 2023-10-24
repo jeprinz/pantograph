@@ -172,6 +172,7 @@ newtype ToolboxQuery sn el a = ToolboxQuery (Variant
   ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
   , "get isEnabled" :: (Boolean -> a)
   , "modify select" :: (ToolboxSelect -> ToolboxSelect) /\ a
+  , "modify query" :: (String -> String) /\ a
   , "submit edit" :: Unit /\ a))
 newtype ToolboxOutput sn el = ToolboxOutput (Variant
   ( "submit edit" :: Edit sn el

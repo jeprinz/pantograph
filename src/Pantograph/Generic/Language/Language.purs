@@ -20,6 +20,7 @@ import Data.Tuple.Nested ((/\), type (/\))
 import Partial.Unsafe (unsafePartial)
 import Record as R
 import Text.Pretty (pretty)
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Util (asStateT, delete', fromJust, fromJust')
 
@@ -58,7 +59,7 @@ makeStepExpr label sigma_ =
   assertValidTreeKids "makeStepExpr" node \kids -> 
     StepExpr Nothing node kids
 
-makeNonEmptyExprPath ths = NonEmptyPath $ fromJust' "makeNonEmptyExprPath" $ NonEmptyList.fromFoldable ths
+makeExprNonEmptyPath ths = NonEmptyPath $ fromJust' "makeExprNonEmptyPath" $ NonEmptyList.fromFoldable ths
 
 defaultTopExpr =
   getDefaultExpr topSort
@@ -67,19 +68,33 @@ getExprNodeSort (ExprNode {label, sigma}) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
-getExprSort (Tree el _) =
-  getExprNodeSort el
+getExprSort :: forall sn el. Language sn el => Expr sn el -> Sort sn
+getExprSort (Tree el _) = getExprNodeSort el
 
-getToothInnerSort (Tooth (ExprNode {label, sigma}) i _) =
+getExprToothInnerSort (Tooth (ExprNode {label, sigma}) i _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
 
-getToothOuterSort (Tooth (ExprNode {label, sigma}) _ _) =
+getExprToothOuterSort (Tooth (ExprNode {label, sigma}) _ _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
-getNonEmptyPathInnerSort = unconsNonEmptyPath >>> _.inner >>> getToothInnerSort
-getNonEmptyPathOuterSort = unsnocNonEmptyPath >>> _.outer >>> getToothOuterSort
+getExprNonEmptyPathInnerSort = unconsNonEmptyPath >>> _.inner >>> getExprToothInnerSort
+getExprNonEmptyPathOuterSort = unsnocNonEmptyPath >>> _.outer >>> getExprToothOuterSort
+
+-- | The SortChange that corresponds to going from the inner sort of the path to
+-- | the outer sort of the path.
+getExprNonEmptyPathSortChange :: forall sn el. Language sn el => ExprNonEmptyPath sn el -> SortChange sn
+getExprNonEmptyPathSortChange = unconsNonEmptyPath >>> case _ of
+  {outer: Nothing, inner} -> getExprToothSortChange inner
+  {outer: Just outer, inner} -> getExprNonEmptyPathSortChange outer <> getExprToothSortChange inner
+
+-- | The SortChange that corresponds to going from the inner sort of the tooth
+-- | to the outer sort of the path.
+getExprToothSortChange :: forall sn el. Language sn el => ExprTooth sn el -> SortChange sn
+getExprToothSortChange (Tooth (ExprNode {label, sigma}) i _) =
+  let ChangingRule rule = getChangingRule label in
+  applyRuleSortVarSubst sigma $ fromJust $ Array.index rule.kids i
 
 -- the input sort is the bottom sort
 -- The output change goes from the bottom to the top

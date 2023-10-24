@@ -7,6 +7,7 @@ import Pantograph.Generic.Rendering.Common
 import Pantograph.Generic.Rendering.Language
 import Prelude
 
+import Bug (bug)
 import Control.Monad.Reader (ask)
 import Control.Monad.State (get)
 import Data.Maybe (Maybe(..))
@@ -38,34 +39,49 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
           [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewLeft"]]
           case maybeEdit of
             Nothing -> []
-            Just (PasteEdit (Paste {inside})) -> 
-              fst $ unwrap $ runM input.ctx input.env $ 
-                renderAnnExpr
-                  (shrinkAnnExprPath input.outside)
-                  inside
-                  makePreviewExprProps
-            Just (InsertEdit (Insert {middle})) ->
-              fst $ unwrap $ runM input.ctx input.env $
-                renderAnnExprPathLeft
-                  (shrinkAnnExprPath input.outside :: ExprPath sn el)
-                  (shrinkAnnExprPath (toPath middle) :: ExprPath sn el)
-                  (shrinkAnnExpr input.inside :: Expr sn el)
-                  makePreviewExprProps
-                  (pure [])
+            Just (Edit edit) ->
+              let 
+                insideHtml inside = 
+                  fst $ unwrap $ runM input.ctx input.env $ 
+                    renderAnnExpr
+                      (shrinkAnnExprPath input.outside :: ExprPath sn el)
+                      inside
+                      makePreviewExprProps
+                middleHtml middle inside =
+                  fst $ unwrap $ runM input.ctx input.env $
+                    renderAnnExprPathLeft
+                      (shrinkAnnExprPath input.outside :: ExprPath sn el)
+                      (shrinkAnnExprPath (toPath middle) :: ExprPath sn el)
+                      (shrinkAnnExpr input.inside :: Expr sn el)
+                      makePreviewExprProps
+                      (pure inside)
+              in 
+              case edit.middle of
+                Nothing -> case edit.inside of
+                  Nothing -> bug "TODO: how to preview this kind of Edit?"
+                  Just inside -> insideHtml inside
+                Just middle -> middleHtml middle $ case edit.inside of
+                  Nothing -> []
+                  Just inside -> insideHtml inside
       RightPreviewPosition ->
         HH.div
           [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewRight"]]
           case maybeEdit of
             Nothing -> []
-            Just (PasteEdit _) -> []
-            Just (InsertEdit (Insert {middle})) ->
-              fst $ unwrap $ runM input.ctx input.env $
-                renderAnnExprPathRight
-                  (shrinkAnnExprPath input.outside :: ExprPath sn el)
-                  (shrinkAnnExprPath (toPath middle) :: ExprPath sn el)
-                  (shrinkAnnExpr input.inside :: Expr sn el)
-                  makePreviewExprProps
-                  (pure [])
+            Just (Edit edit) ->
+              let
+                middleHtml middle =
+                  fst $ unwrap $ runM input.ctx input.env $
+                    renderAnnExprPathRight
+                      (shrinkAnnExprPath input.outside :: ExprPath sn el)
+                      (shrinkAnnExprPath (toPath middle) :: ExprPath sn el)
+                      (shrinkAnnExpr input.inside :: Expr sn el)
+                      makePreviewExprProps
+                      (pure [])
+              in
+              case edit.middle of
+                Nothing -> []
+                Just middle -> middleHtml middle
 
 makePreviewExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
 makePreviewExprProps outside expr = do

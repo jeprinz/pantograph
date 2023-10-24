@@ -16,6 +16,8 @@ import Data.Either (Either(..))
 import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
+import Data.List (List)
+import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
@@ -24,6 +26,7 @@ import Debug as Debug
 import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
 import Text.Pretty (pretty, ticks, (<+>))
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP, (<$$>))
 
@@ -54,14 +57,45 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 
 -- fromStepExpr
 
+-- fromStepExpr :: forall sn el. Language sn el => StepExpr sn el -> ExprCursor sn el \/ Expr sn el
+-- fromStepExpr e0 = go mempty e0
+--   where
+--   goExpr :: StepExpr sn el -> Expr sn el
+--   goExpr (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
+--   goExpr (StepExpr (Just _) _ _) = bug $ "encountered multiple `Marker`s during `fromStepExpr`: " <> pretty e0
+--   goExpr (StepExpr Nothing node kids) = Tree node (kids <#> goExpr)
+
+--   go :: ExprPath sn el -> StepExpr sn el -> ExprCursor sn el \/ Expr sn el
+--   go _ (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
+--   go outside (StepExpr (Just (CursorMarker orientation)) node kids) = Left $ Cursor {outside, inside: Tree node (kids <#> goExpr), orientation}
+--   go outside (StepExpr Nothing node kids) = 
+--     let
+--       f = case _ of
+--         Nothing /\ kids' -> case _ of
+--           i /\ Left cursor -> Just (i /\ cursor) /\ kids'
+--           _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
+--         Just i_cursor /\ kids' -> case _ of
+--           _ /\ Left _cursor -> bug $ "encountered multiple cursors during `fromStepExpr`: " <> pretty e0
+--           _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
+--       maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ tooths (Tree ?a ?a) <#> ?a -- go <$> kids
+--     in
+--     case maybe_i_cursor of
+--       Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth node i kids), inside: cursor.inside, orientation: cursor.orientation}
+--       Nothing -> Right $ Tree node kids
+
 fromStepExpr :: forall sn el. Language sn el => StepExpr sn el -> ExprCursor sn el \/ Expr sn el
-fromStepExpr e0 = go e0
+fromStepExpr e0 = case go e0 of
+    Left {tooths, inside, orientation} -> Left (Cursor {outside: Path (List.reverse tooths), inside, orientation})
+    Right expr -> Right expr
   where
-  go :: StepExpr sn el -> ExprCursor sn el \/ Expr sn el
+  goExpr :: StepExpr sn el -> Expr sn el
+  goExpr (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
+  goExpr (StepExpr (Just _) _ _) = bug $ "encountered multiple `Marker`s during `fromStepExpr`: " <> pretty e0
+  goExpr (StepExpr Nothing node kids) = Tree node (kids <#> goExpr)
+
+  go :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
   go (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
-  go (StepExpr (Just (CursorMarker orientation)) node kids) =
-    let kids' = kids <#> go >>> fromRight' ("encountered multiple cursors during `fromStepExpr`: " <> pretty e0) in
-    Left $ Cursor {outside: mempty, inside: Tree node kids', orientation}
+  go (StepExpr (Just (CursorMarker orientation)) node kids) = Left $ {tooths: mempty, inside: Tree node (kids <#> goExpr), orientation}
   go (StepExpr Nothing node kids) =
     let
       f = case _ of
@@ -74,7 +108,7 @@ fromStepExpr e0 = go e0
       maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ go <$> kids
     in
     case maybe_i_cursor of
-      Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth node i kids), inside: cursor.inside, orientation: cursor.orientation}
+      Just (i /\ {tooths, inside, orientation}) -> Left $ {tooths: List.Cons (Tooth node i kids) tooths, inside, orientation}
       Nothing -> Right $ Tree node kids
 
 -- manipulate StepExpr
@@ -97,32 +131,14 @@ boundary direction change kid = Boundary direction change kid
 
 -- setup SteExpr
 
-setupInsert :: forall sn el.
-  { outside :: ExprPath sn el
-  , outerChange :: SortChange sn
-  , middle :: ExprNonEmptyPath sn el
-  , innerChange :: SortChange sn
-  , inside :: Expr sn el
-  , orientation :: Orientation } ->
-  StepExpr sn el
-setupInsert args =
-  wrapExprPath args.outside $
-  boundary Up args.outerChange $
-  wrapExprPath (toPath args.middle) $
-  boundary Down args.innerChange $
-  modifyMarker (const (Just (CursorMarker Outside))) $
-  toStepExpr args.inside
-
-setupReplace :: forall sn el.
-  { outside :: ExprPath sn el
-  , outerChange :: SortChange sn
-  , inside :: Expr sn el } ->
-  StepExpr sn el
-setupReplace args = 
-  wrapExprPath args.outside $
-  boundary Up args.outerChange $
-  modifyMarker (const (Just (CursorMarker Outside))) $
-  toStepExpr args.inside
+setupEdit :: forall sn el. ExprCursor sn el -> Edit sn el -> StepExpr sn el
+setupEdit (Cursor cursor) (Edit edit) =
+  wrapExprPath cursor.outside $
+  edit.outerChange # maybe identity (boundary Up) $
+  edit.middle # maybe identity (wrapExprPath <<< toPath)  $
+  edit.innerChange # maybe identity (boundary Down)  $
+  modifyMarker (const (Just (CursorMarker cursor.orientation))) $
+  toStepExpr (edit.inside # maybe cursor.inside identity)
 
 -- stepping engine
 

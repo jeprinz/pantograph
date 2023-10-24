@@ -101,6 +101,10 @@ type ExprTooth = PL.ExprTooth SN EL
 type SortChange = PL.SortChange SN
 type RuleSort = PL.RuleSort SN
 type Sort = PL.Sort SN
+type Edit = PL.Edit SN EL
+type SteppingRule = PL.SteppingRule SN EL
+type ChangingRule = PL.ChangingRule SN
+type SortingRule = PL.SortingRule SN
 
 instance PL.Language SN EL where
   getSortingRule l = getSortingRule l
@@ -110,6 +114,11 @@ instance PL.Language SN EL where
   getEdits s = getEdits s
   validGyro g = validGyro g
   steppingRules = steppingRules
+  specialEdits =
+    { deleteCursor: \sr -> PL.getDefaultExpr sr <#> \inside -> PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just inside}
+    , deleteSelect: \_ch -> Just $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing}
+    , enter: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.newline]), innerChange: Nothing, inside: Nothing} 
+    , tab: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indentedNewline]), innerChange: Nothing, inside: Nothing} }
 
 getSortingRule = case _ of
   StringRule _ -> PL.buildSortingRule [] \[] -> {kids: [], parent: ruleSort.string}
@@ -130,11 +139,8 @@ getChangingRule = case _ of
   FormatRule _format -> PL.buildChangingRule [] \[] -> [treeChange (PL.makeConstRuleSortNode TermSort) []]
 
 getDefaultExpr = case _ of
-  Tree (PL.SortNode StringSort) [] -> Just $ term.string ""
-  Tree (PL.SortNode TermSort) [] ->
-    -- Just $ term.hole
-    Just $ term.app term.hole term.hole
-    -- Just $ term.newline term.hole
+  Tree (PL.SortNode StringSort) [] -> Just $ term.string "x"
+  Tree (PL.SortNode TermSort) [] -> Just $ term.hole
   _ -> bug $ "invalid sort"
 
 topSort = sort.term
@@ -143,7 +149,7 @@ getEdits =
   let
     makeInsertEdits :: Array {outerChange :: PL.SortChange SN, middle :: Array (PL.ExprTooth SN EL), innerChange :: PL.SortChange SN} -> NonEmptyArray (PL.Edit SN EL)
     makeInsertEdits edits = fromJust $ NonEmptyArray.fromArray $ edits <#> 
-      \{outerChange, middle, innerChange} -> InsertEdit {outerChange, middle: PL.makeNonEmptyExprPath middle, innerChange}
+      \{outerChange, middle, innerChange} -> PL.Edit {outerChange: Just outerChange, middle: Just $ PL.makeExprNonEmptyPath middle, innerChange: Just innerChange, inside: Nothing}
 
     termEdits = 
       [ 
@@ -153,30 +159,39 @@ getEdits =
           , {outerChange: change.term, middle: [tooth.app.arg term.hole], innerChange: change.term} ]
       , -- LamRule
         makeInsertEdits
-          [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
-      , -- FormatRule Newline
-        makeInsertEdits
-          [ {outerChange: change.term, middle: [tooth.format.newline], innerChange: change.term} ]
-      , -- FormatRule IndentedNewline
-        makeInsertEdits
-          [ {outerChange: change.term, middle: [tooth.format.indentedNewline], innerChange: change.term} ]
+          [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "x")], innerChange: change.term} ]
+      -- , -- FormatRule Newline
+      --   makeInsertEdits
+      --     [ {outerChange: change.term, middle: [tooth.format.newline], innerChange: change.term} ]
+      -- , -- FormatRule IndentedNewline
+      --   makeInsertEdits
+      --     [ {outerChange: change.term, middle: [tooth.format.indentedNewline], innerChange: change.term} ]
       ]
+    
+    getEdits' (Tree (PL.SortNode StringSort) []) _ = mempty
+    getEdits' (Tree (PL.SortNode TermSort) []) Outside = termEdits
+    getEdits' (Tree (PL.SortNode TermSort) []) Inside = mempty
+    getEdits' sort _ = bug $ "invalid sort: " <> show sort
   in
-  \sort _ -> case sort of
-    Tree (PL.SortNode StringSort) [] -> mempty
-    Tree (PL.SortNode TermSort) [] -> termEdits
-    _ -> bug $ "invalid sort: " <> show sort
+  getEdits'
 
 validGyro = case _ of
   RootGyro _ -> true
   CursorGyro (Cursor {orientation: Outside}) -> true
   CursorGyro (Cursor {inside: Tree (PL.ExprNode {label: HoleRule}) _, orientation: Inside}) -> true
-  SelectGyro (Select {middle}) -> PL.getNonEmptyPathOuterSort middle == PL.getNonEmptyPathInnerSort middle
+  SelectGyro (Select {middle}) -> PL.getExprNonEmptyPathOuterSort middle == PL.getExprNonEmptyPathInnerSort middle
   _ -> false
 
+steppingRules :: Array SteppingRule
 steppingRules =
   [ LibStep.eraseBoundary Nothing \_ -> true
   ]
+
+deleteCursorEdit :: Sort -> Maybe Edit
+deleteCursorEdit sr = PL.getDefaultExpr sr <#> \inside -> PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just inside}
+
+deleteSelectEdit :: SortChange -> Maybe Edit
+deleteSelectEdit _ = Just $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing}
 
 -- Rendering
 

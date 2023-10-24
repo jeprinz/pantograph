@@ -120,8 +120,7 @@ body {
   background-color: var(--color2);
 }
 
-.PanelContent {
-}
+.PanelContent {}
 
 .PanelContentInterior {
   display: flex;
@@ -151,9 +150,7 @@ body {
 
 /* Buffer */
 
-.BufferPanel {
-
-}
+.BufferPanel {}
 
 .BufferPanel>.PanelContent {
   height: calc(100vh - 40*var(--it));
@@ -170,8 +167,7 @@ body {
 
 /* TerminalPanel */
 
-.TerminalPanel {
-}
+.TerminalPanel {}
 
 .TerminalPanel>.PanelContent {
   height: calc(25*var(--it));
@@ -179,8 +175,7 @@ body {
   overflow: scroll;
 }
 
-.TerminalContent {
-}
+.TerminalContent {}
 
 .TerminalContent.closed {
   display: none;
@@ -342,15 +337,27 @@ body {
   box-shadow: 0 0 0 1px black;
 }
 
-.ExprEdits {}
+.ToolboxInput {}
 
-.ExprEditsRow {}
+.ToolboxInput {
+  padding: var(--it);
+  font-size: 16px;
+  border: none;
+  outline: none;
+  border-radius: 0;
+}
 
-.ExprEditRow.SelectedExprEditRow {
+.EditRows {}
+
+.EditRow {}
+
+.EditRow.SelectedEditRow {
   background-color: rgb(211, 255, 209);
 }
 
-.ExprEdit {}
+.Edit {
+  padding: var(--it);
+}
 
 .EditHole {
   display: inline-block;

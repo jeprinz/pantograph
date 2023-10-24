@@ -230,10 +230,18 @@ class
   getChangingRule :: el -> ChangingRule sn
   topSort :: Sort sn
   getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
-  getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (Edit sn el))
-  validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
+
   steppingRules :: Array (SteppingRule sn el)
-  deleteEdit :: Sort sn -> Maybe (Expr sn el)
+
+  getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (Edit sn el))
+  
+  specialEdits ::
+    { deleteCursor :: Sort sn -> Maybe (Edit sn el)
+    , deleteSelect :: SortChange sn -> Maybe (Edit sn el)
+    , enter :: Unit -> Maybe (Edit sn el)
+    , tab :: Unit -> Maybe (Edit sn el) }
+
+  validGyro :: forall er. AnnExprGyro sn el er -> Boolean 
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
@@ -244,7 +252,7 @@ newtype SortingRule sn = SortingRule
 
 derive instance Newtype (SortingRule sn) _
 
--- | A `ChangeRule` specifies the changes from the prent to eahc kid of a
+-- | A `ChangeRule` specifies the changes from each kid to the parent of a
 -- | corresponding `SortingRule`.
 newtype ChangingRule sn = ChangingRule 
   { parameters :: Set.Set RuleSortVar
@@ -262,20 +270,14 @@ applySteppingRule = unwrap
 
 -- Edit
 
-data Edit sn el
-  = InsertEdit (Insert sn el)
-  | PasteEdit (Paste sn el)
-derive instance Generic (Edit a b) _
-instance (Show a, Show b) => Show (Edit a b) where show = genericShow
-derive instance (Eq a, Eq b) => Eq (Edit a b)
+newtype Edit sn el = Edit 
+  { outerChange :: Maybe (SortChange sn)
+  , middle :: Maybe (ExprNonEmptyPath sn el)
+  , innerChange :: Maybe (SortChange sn)
+  , inside :: Maybe (Expr sn el) }
 
-newtype Insert sn el = Insert {outerChange :: SortChange sn, middle :: ExprNonEmptyPath sn el, innerChange :: SortChange sn}
-derive newtype instance (Show a, Show b) => Show (Insert a b)
-derive newtype instance (Eq a, Eq b) => Eq (Insert a b)
-
-newtype Paste sn el = Paste {outerChange :: SortChange sn, inside :: Expr sn el}
-derive newtype instance (Show a, Show b) => Show (Paste a b)
-derive newtype instance (Eq a, Eq b) => Eq (Paste a b)
+derive newtype instance (Show sn, Show el) => Show (Edit sn el)
+derive newtype instance (Eq sn, Eq el) => Eq (Edit sn el)
 
 -- RuleSortVar
 

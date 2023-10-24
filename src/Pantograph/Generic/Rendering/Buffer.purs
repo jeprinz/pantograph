@@ -5,7 +5,6 @@ import Data.Tree
 import Data.Tree.Move
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
-import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Pantograph.Generic.Rendering.Keyboard
 import Pantograph.Generic.Rendering.Language
@@ -16,6 +15,7 @@ import Bug (bug)
 import Control.Monad.Reader (Reader, ReaderT, ask, asks, local, runReaderT)
 import Control.Monad.State (StateT, get)
 import Data.Array as Array
+import Data.CodePoint.Unicode as CodePoint
 import Data.Either (Either(..))
 import Data.Foldable (elem, foldM, foldMap, null)
 import Data.FunctorWithIndex (mapWithIndex)
@@ -23,6 +23,8 @@ import Data.List (List(..))
 import Data.List as List
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Newtype (unwrap)
+import Data.String as String
+import Data.String.Regex as Regex
 import Data.Traversable (traverse, traverse_)
 import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple (Tuple(..), fst, snd)
@@ -153,14 +155,20 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         let isEnabledToolbox = maybeIsEnabledToolbox == Just true
         let isExistingToolbox = isJust maybeIsEnabledToolbox 
 
+        -- if the Toolbox is currently ENABLED
         if isEnabledToolbox then do
           if false then pure unit
+
           else if ki.key == "Escape" then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const false
+
+          -- Enter|Spacebar: 
           else if ki.key == "Enter" || ki.key == " " then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "submit edit") $ unit
+
+          -- Arrow(Left|Right|Up|Down): move Toolbox select
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect rowIx (colIx - 1)
@@ -173,26 +181,40 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect (rowIx - 1) colIx
+
           else pure unit
 
+        -- if the Toolbox is currently DISABLED
         else do
           if false then pure unit
+
+          -- alphaNum: open Toolbox and start query with this key
+          else if (not ki.mods.special) && (ki.point # maybe false CodePoint.isAlphaNum) then do
+            liftEffect $ Event.preventDefault event
+            ensureExprGyroIsCursor
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const true
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify query") $ const (String.singleton (fromJust ki.point))
+
+          -- Escape: escape the Gyro
           else if ki.key == "Escape" then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro escapeGyro
-          else if ki.key == "ArrowLeft" && ki.shift then do
+          
+          -- Shift+Arrow(Left|Right|Up|Down): grab Gyro
+          else if ki.key == "ArrowLeft" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode {validSelect}) _ -> validSelect
-          else if ki.key == "ArrowRight" && ki.shift then do
+          else if ki.key == "ArrowRight" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode {validSelect}) _ -> validSelect
-          else if ki.key == "ArrowUp" && ki.shift then do
+          else if ki.key == "ArrowUp" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
-          else if ki.key == "ArrowDown" && ki.shift then do
+          else if ki.key == "ArrowDown" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
 
+          -- Arrow(Left|Right|Up|Down): move Gyro
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ moveGyroLeftUntil \(ExprNode {validCursor}) -> validCursor
@@ -206,14 +228,40 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ moveGyroRightUntil \(ExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
 
+          -- Spacebar: open Toolbox (no initial query)
           else if ki.key == " " then do
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const true
+
+          -- specialEdits
+          
+          -- Backspace: special "delete" Edit at Cursor or Select
           else if ki.key == "Backspace" then do
             liftEffect $ Event.preventDefault event
-            
+            hydratedExprGyro <- getHydratedExprGyro
+            let maybeEdit = case hydratedExprGyro of
+                  RootGyro expr -> specialEdits.deleteCursor $ getExprSort $ shrinkAnnExpr expr
+                  CursorGyro (Cursor cursor) -> specialEdits.deleteCursor $ getExprSort $ shrinkAnnExpr cursor.inside
+                  SelectGyro (Select select) -> specialEdits.deleteSelect $ getExprNonEmptyPathSortChange $ shrinkAnnExprNonEmptyPath select.middle
+            case maybeEdit of
+              Nothing -> pure unit
+              Just edit -> modifyExprGyro $ applyEdit edit
           
+          -- Enter: special "enter" Edit
+          else if ki.key == "Enter" then do
+            liftEffect $ Event.preventDefault event
+            case specialEdits.enter unit of
+              Nothing -> pure unit
+              Just edit -> modifyExprGyro $ applyEdit edit
+          
+          -- Tab: special "tab" Edit
+          else if ki.key == "Tab" then do
+            liftEffect $ Event.preventDefault event
+            case specialEdits.tab unit of
+              Nothing -> pure unit
+              Just edit -> modifyExprGyro $ applyEdit edit
+
           else pure unit
 
         pure $ Just a
@@ -404,7 +452,7 @@ renderSyncExprCursor (Cursor {outside, inside, orientation}) = do
               , outside: shrinkAnnExprPath outside
               , inside: shrinkAnnExpr inside
               , isEnabled: false
-              , edits: getEdits (getExprSort inside) orientation }
+              , edits: getEdits (getExprSort (shrinkAnnExpr inside)) orientation }
         let previewInput position = PreviewInput 
               { ctx
               , env
