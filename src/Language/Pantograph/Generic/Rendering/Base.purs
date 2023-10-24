@@ -41,6 +41,7 @@ import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as MouseEvent
 import Debug (trace)
 import Util as Util
+import Data.Tuple (snd)
 
 type EditorHTML l r = 
   HH.ComponentHTML 
@@ -174,8 +175,8 @@ type EditorSpec l r =
 
 editsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Array (Edit l r)
 editsAtHoleyDerivZipper spec hdzipper = case hdzipper of
-  InjectHoleyDerivZipper dz -> spec.editsAtCursor (derivZipperSort dz)
-  HoleInteriorHoleyDerivZipper _ label -> spec.editsAtHoleInterior (derivLabelSort label)
+  HoleyDerivZipper dz false -> spec.editsAtCursor (derivZipperSort dz)
+  HoleyDerivZipper dz true -> spec.editsAtHoleInterior (derivZipperSort dz)
 
 -- -- Stuff that's defined inside of the editor component
 -- type EditorLocals l r = 
@@ -260,16 +261,13 @@ type SmallStepState l r =
   { ssterm :: SSTerm l r
   }
 
-data HoleyDerivZipper l r
-  = InjectHoleyDerivZipper (DerivZipper l r)
-  | HoleInteriorHoleyDerivZipper 
-      (DerivPath Up l r) -- the path to the Hole
---      (Sort l) -- the sort of the Hole
-      (DerivLabel l r) -- the rule of the Hole
+injectHoleyDerivZipper :: forall l r. DerivZipper l r -> HoleyDerivZipper l r
+injectHoleyDerivZipper z = HoleyDerivZipper z false
+
+data HoleyDerivZipper l r = HoleyDerivZipper (DerivZipper l r) Boolean -- true if is inner hole, false if a normal cursor position
 
 isValidCursor :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Boolean
-isValidCursor spec (HoleInteriorHoleyDerivZipper _ _) = true
-isValidCursor spec (InjectHoleyDerivZipper dz) = spec.isValidCursorSort (derivZipperSort dz)
+isValidCursor spec (HoleyDerivZipper dz isInner) = isInner || spec.isValidCursorSort (derivZipperSort dz)
 
 isValidSelect :: forall l r. IsRuleLabel l r => EditorSpec l r -> DerivZipperp l r -> Boolean
 isValidSelect spec (Expr.Zipperp dpath selection dterm) =
@@ -287,33 +285,45 @@ derive instance (Ord l, Ord r) => Ord (HoleyDerivZipper l r)
 instance (Show l, Show r) => Show (HoleyDerivZipper l r) where show x = genericShow x
 
 instance IsRuleLabel l r => Pretty (HoleyDerivZipper l r) where
-  pretty (InjectHoleyDerivZipper dzipper) = pretty dzipper
-  pretty (HoleInteriorHoleyDerivZipper dpath label) = Expr.prettyPath dpath $ "(⌶{?} : " <> pretty label <> ")"
+  pretty (HoleyDerivZipper dzipper false) = pretty dzipper
+  pretty (HoleyDerivZipper (Expr.Zipper dpath dterm) true) = Expr.prettyPath dpath $ "(⌶ : " <> pretty dterm <> ")"
 
 instance IsRuleLabel l r => Zippable (HoleyDerivZipper l r) where
-  zipDowns (InjectHoleyDerivZipper dz) | Just sort <- isHoleDerivTerm (Expr.zipperExpr dz) = do
-    [HoleInteriorHoleyDerivZipper (Expr.zipperPath dz) (Expr.exprLabel (Expr.zipperExpr dz))]
-  zipDowns (InjectHoleyDerivZipper dz) = InjectHoleyDerivZipper <$> Zippable.zipDowns dz
-  zipDowns (HoleInteriorHoleyDerivZipper _ _) = []
-  zipUp' (InjectHoleyDerivZipper dz) = bimap identity InjectHoleyDerivZipper <$> Zippable.zipUp' dz
+--  zipDowns (InjectHoleyDerivZipper dz) | Just sort <- isHoleDerivTerm (Expr.zipperExpr dz) = do
+--    [HoleInteriorHoleyDerivZipper (Expr.zipperPath dz) (Expr.exprLabel (Expr.zipperExpr dz))]
+  zipDowns (HoleyDerivZipper dz false) =
+    let extraInner = case isHoleDerivTerm (Expr.zipperExpr dz) of
+            Just _ -> [HoleyDerivZipper dz true]
+            Nothing -> []
+    in
+    extraInner <> (injectHoleyDerivZipper <$> Zippable.zipDowns dz)
+  zipDowns (HoleyDerivZipper _ true) = []
+  zipUp' (HoleyDerivZipper dz false) = do
+    parentDZipper <- Zippable.zipUp' dz
+    let augmentIndices = case isHoleDerivTerm (Expr.zipperExpr (snd parentDZipper)) of
+            Just _ -> \i -> i + 1 -- take account of the inner hole being the leftmost child.
+            Nothing -> identity
+    pure (bimap augmentIndices injectHoleyDerivZipper parentDZipper)
 --  zipUp' (HoleInteriorHoleyDerivZipper dpath sort) =
 --    assert (just "Zippable (HoleyDerivZipper l r) . zipUp'" (defaultDerivTerm sort)) \dterm ->
 --      pure $ 0 /\ InjectHoleyDerivZipper (Expr.Zipper dpath dterm)
-  zipUp' (HoleInteriorHoleyDerivZipper dpath label) =
-    pure $ 0 /\ InjectHoleyDerivZipper (Expr.Zipper dpath (Expr.Expr label []))
+  zipUp' (HoleyDerivZipper dz true) =
+    pure $ 0 /\ HoleyDerivZipper dz false
 
-data HoleyDerivPath dir l r
-  = InjectHoleyDerivPath (DerivPath dir l r)
-  | HoleInteriorHoleyDerivPath (DerivPath Up l r) -- the path to the Hole
+injectHoleyDerivPath :: forall l r. DerivPath Up l r -> HoleyDerivPath l r
+injectHoleyDerivPath z = HoleyDerivPath z false
 
-derive instance Generic (HoleyDerivPath dir l r) _
-derive instance (Eq l, Eq r) => Eq (HoleyDerivPath dir l r)
-derive instance (Ord l, Ord r) => Ord (HoleyDerivPath dir l r)
-instance (Show l, Show r) => Show (HoleyDerivPath dir l r) where show x = genericShow x
+data HoleyDerivPath l r
+  = HoleyDerivPath (DerivPath Up l r) Boolean -- true means inner hole, false means normal cursor
 
-instance (IsRuleLabel l r, ReflectPathDir dir) => Pretty (HoleyDerivPath dir l r) where
-  pretty (InjectHoleyDerivPath dpath) = pretty dpath
-  pretty (HoleInteriorHoleyDerivPath dpath) = Expr.prettyPath dpath $ "(⌶{?} : _)"
+derive instance Generic (HoleyDerivPath l r) _
+derive instance (Eq l, Eq r) => Eq (HoleyDerivPath l r)
+derive instance (Ord l, Ord r) => Ord (HoleyDerivPath l r)
+instance (Show l, Show r) => Show (HoleyDerivPath l r) where show x = genericShow x
+
+instance (IsRuleLabel l r) => Pretty (HoleyDerivPath l r) where
+  pretty (HoleyDerivPath dpath false) = pretty dpath
+  pretty (HoleyDerivPath dpath true) = Expr.prettyPath dpath $ "(⌶{?} : _)"
 
 moveHoleyDerivZipper :: forall l r. IsRuleLabel l r => MoveDir -> HoleyDerivZipper l r -> Maybe (HoleyDerivZipper l r)
 moveHoleyDerivZipper = case_
@@ -336,19 +346,13 @@ moveHDZUntil dir valid hdz =
         Nothing -> Nothing
 
 hdzipperDerivPath :: forall l r. HoleyDerivZipper l r -> DerivPath Up l r
-hdzipperDerivPath (InjectHoleyDerivZipper dzipper) = Expr.zipperPath dzipper
-hdzipperDerivPath (HoleInteriorHoleyDerivZipper dpath _) = dpath
+hdzipperDerivPath (HoleyDerivZipper dzipper _) = Expr.zipperPath dzipper
 
-hdzipperHoleyDerivPath :: forall l r. HoleyDerivZipper l r -> HoleyDerivPath Up l r
-hdzipperHoleyDerivPath (InjectHoleyDerivZipper dzipper) = InjectHoleyDerivPath (Expr.zipperPath dzipper)
-hdzipperHoleyDerivPath (HoleInteriorHoleyDerivZipper dpath _) = HoleInteriorHoleyDerivPath dpath
+hdzipperHoleyDerivPath :: forall l r. HoleyDerivZipper l r -> HoleyDerivPath l r
+hdzipperHoleyDerivPath (HoleyDerivZipper dzipper isInner) = HoleyDerivPath (Expr.zipperPath dzipper) isInner
 
 hdzipperDerivTerm :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivTerm l r
-hdzipperDerivTerm (InjectHoleyDerivZipper dzipper) = Expr.zipperExpr dzipper
-hdzipperDerivTerm (HoleInteriorHoleyDerivZipper dpath label) = Expr.Expr label []
---  assert (just "hdzipperDerivTerm" (defaultDerivTerm sort)) \dterm ->
---  -- Expr.unzipper $ Expr.Zipper dpath dterm
---  dterm
+hdzipperDerivTerm (HoleyDerivZipper dzipper _isInner) = Expr.zipperExpr dzipper
 
 hdzipperDerivZipper :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> DerivZipper l r
 hdzipperDerivZipper hdzipper = do
@@ -356,11 +360,12 @@ hdzipperDerivZipper hdzipper = do
   let dterm = hdzipperDerivTerm hdzipper
   Expr.Zipper path dterm
 
+-- TODO: this can be simplified now
 escapeHoleInterior :: forall l r. IsRuleLabel l r => Cursor l r -> Cursor l r
 escapeHoleInterior cursor = do
   let path = hdzipperDerivPath cursor.hdzipper
   let dterm = hdzipperDerivTerm cursor.hdzipper
-  cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm))
+  cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper path dterm))
 
 {-
 defaultEditsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => Sort l -> HoleyDerivZipper l r -> Array (Edit l r)
@@ -372,14 +377,14 @@ defaultEditsAtHoleyDerivZipper topSort = case _ of
 _verbose_path_element_ids :: Boolean
 _verbose_path_element_ids = true
 
-fromHoleyDerivPathToElementId :: forall l r. IsRuleLabel l r => HoleyDerivPath Up l r -> String
+fromHoleyDerivPathToElementId :: forall l r. IsRuleLabel l r => HoleyDerivPath l r -> String
 fromHoleyDerivPathToElementId
   | _verbose_path_element_ids = case _ of
-      InjectHoleyDerivPath dpath -> fromPathToElementId dpath
-      HoleInteriorHoleyDerivPath dpath -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> String.replaceAll (String.Pattern " ") (String.Replacement "_") (pretty l <> "@" <> show (ZipList.leftLength kidsZip)) <> "-" <> str
+      HoleyDerivPath dpath false -> fromPathToElementId dpath
+      HoleyDerivPath dpath true -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> String.replaceAll (String.Pattern " ") (String.Replacement "_") (pretty l <> "@" <> show (ZipList.leftLength kidsZip)) <> "-" <> str
   | otherwise = case _ of
-      InjectHoleyDerivPath dpath -> fromPathToElementId dpath
-      HoleInteriorHoleyDerivPath dpath -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> show (ZipList.leftLength kidsZip) <> "-" <> str
+      HoleyDerivPath dpath false -> fromPathToElementId dpath
+      HoleyDerivPath dpath true -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> show (ZipList.leftLength kidsZip) <> "-" <> str
 
 fromPathToElementId :: forall l. Expr.IsExprLabel l => Expr.Path Up l -> String
 fromPathToElementId 

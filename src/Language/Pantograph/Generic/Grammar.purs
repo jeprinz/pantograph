@@ -339,6 +339,9 @@ nonemptyPathInnerSort (Expr.Path teeth) = case teeth of
 derivZipperSort :: forall l r. IsRuleLabel l r => DerivZipper l r -> Sort l
 derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
 
+derivZipperLabel :: forall l r. DerivZipper l r -> DerivLabel l r
+derivZipperLabel (Expr.Zipper _ (l % _)) = l
+
 derivZipperpSorts :: forall l r. IsRuleLabel l r => DerivZipperp l r -> Sort l /\ Sort l
 derivZipperpSorts (Expr.Zipperp _ selection dterm) =
     let selection' = case selection of

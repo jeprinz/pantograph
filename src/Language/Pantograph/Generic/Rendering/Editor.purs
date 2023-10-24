@@ -67,7 +67,7 @@ editorComponent = HK.component \tokens spec -> HK.do
 
   let
     initState = CursorState
-      (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty spec.dterm)))
+      (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper mempty spec.dterm)))
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
@@ -89,10 +89,10 @@ editorComponent = HK.component \tokens spec -> HK.do
     -- manipulate dom
     ------------------------------------------------------------------------------
 
-    getElementIdByHoleyDerivPath :: HoleyDerivPath Up l r -> HK.HookM Aff String
+    getElementIdByHoleyDerivPath :: HoleyDerivPath l r -> HK.HookM Aff String
     getElementIdByHoleyDerivPath = pure <<< fromHoleyDerivPathToElementId
 
-    getElementByHoleyDerivPath :: HoleyDerivPath Up l r -> HK.HookM Aff DOM.Element
+    getElementByHoleyDerivPath :: HoleyDerivPath l r -> HK.HookM Aff DOM.Element
     getElementByHoleyDerivPath hdzipper = do
       doc <- liftEffect $ HTML.window >>= Window.document
       elemId <- getElementIdByHoleyDerivPath hdzipper
@@ -103,7 +103,7 @@ editorComponent = HK.component \tokens spec -> HK.do
         Just elem -> pure elem
 
     -- setNodeElementStyle :: String -> Maybe (DerivPath Up l r) -> Maybe (DerivPath Up l r) -> HK.HookM Aff Unit
-    setNodeElementStyle :: String -> Maybe (HoleyDerivPath Up l r) -> Maybe (HoleyDerivPath Up l r) -> HK.HookM Aff Unit
+    setNodeElementStyle :: String -> Maybe (HoleyDerivPath l r) -> Maybe (HoleyDerivPath l r) -> HK.HookM Aff Unit
     setNodeElementStyle className mb_hdpath_old mb_hdpath_new = do
       case mb_hdpath_old of
         Nothing -> do
@@ -149,8 +149,8 @@ editorComponent = HK.component \tokens spec -> HK.do
           setCursorElement (Just (hdzipperHoleyDerivPath cursor.hdzipper)) Nothing
         SelectState select -> do
           setHighlightElement Nothing
-          setSelectTopElement (Just (InjectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp))) Nothing
-          setSelectBottomElement (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp))) Nothing
+          setSelectTopElement (Just (injectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp))) Nothing
+          setSelectBottomElement (Just (injectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp))) Nothing
         TopState _top -> do
           setHighlightElement Nothing
         SmallStepState _ss -> do
@@ -170,10 +170,11 @@ editorComponent = HK.component \tokens spec -> HK.do
       -- Debug.traceM $ "[setFacade'] st = " <> pretty st
       case st of
         CursorState cursor -> do
+          traceM ("Setting facade to cursor " <> pretty cursor.hdzipper)
           setCursorElement Nothing (Just (hdzipperHoleyDerivPath cursor.hdzipper))
         SelectState select -> do
-          setSelectTopElement Nothing (Just (InjectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp)))
-          setSelectBottomElement Nothing (Just (InjectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp)))
+          setSelectTopElement Nothing (Just (injectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp)))
+          setSelectBottomElement Nothing (Just (injectHoleyDerivPath (Expr.zipperpBottomPath select.dzipperp)))
         TopState _top -> do
           pure unit
         SmallStepState _ss -> do
@@ -207,7 +208,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             setState $ SmallStepState {ssterm}
         else do
             let final = SmallStep.stepRepeatedly ssterm spec.stepRules
-            setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper final)))
+            setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper final)))
 
     handleAction = case _ of
       WrapAction {topChange, dpath, botChange} -> getCursorState "handleAction" >>= \cursor -> do
@@ -227,15 +228,15 @@ editorComponent = HK.component \tokens spec -> HK.do
         let dzipper1 = subDerivZipper sub dzipper0
 --        traceM "resetting cursor to top because the rendering code is buggy" -- TODO: delete this and the next line after rendering is fixed
 --        let dzipper1' = Expr.zipAllTheWayUp dzipper1
---        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1'))
-        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper1))
+--        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper1'))
+        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper1))
 
       -- !TODO use topChange
       ReplaceAction {topChange, dterm} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
 
 --         TODO: this is old, doesn't even do smallstep
---        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper up dterm)))
+--        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper up dterm)))
 
         -- !TODO us this, same way as in WrapAction
         let ssterm = setupSSTermFromReplaceAction
@@ -256,7 +257,7 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- TODO: if cursor is moved in select state, it should set the cursor to the right or left of the selection rather than what it does now.
         -- as it is now, it ignores isValidCursor, and therefore could even cause a crash.
         SelectState select -> do
---          case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
+--          case moveHoleyDerivZipper dir (injectHoleyDerivZipper dzipper) of
 --            Nothing -> pure unit
 --            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
 --            (case_
@@ -264,17 +265,17 @@ editorComponent = HK.component \tokens spec -> HK.do
 --              # on default (\_ -> Zippable.zipRight)) dir
           let atTop = (default false #on _prev (\_ -> true)) dir
           setFacade $ CursorState (cursorFromHoleyDerivZipper
-            (InjectHoleyDerivZipper (Expr.zipperpToZipper atTop select.dzipperp)))
---            (InjectHoleyDerivZipper dzipper))
+            (injectHoleyDerivZipper (Expr.zipperpToZipper atTop select.dzipperp)))
+--            (injectHoleyDerivZipper dzipper))
         TopState top -> do
           let dzipper = Expr.Zipper mempty top.dterm
-          case moveHoleyDerivZipper dir (InjectHoleyDerivZipper dzipper) of
+          case moveHoleyDerivZipper dir (injectHoleyDerivZipper dzipper) of
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         SmallStepState _ -> pure unit
 
     normalizeZipperpToState zipperp = case zipperp of
-          (Left dzipper) -> CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
+          (Left dzipper) -> CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper))
           (Right dzipperp) -> SelectState {dzipperp}
 
     moveSelect dir = getFacade >>= case _ of
@@ -286,13 +287,13 @@ editorComponent = HK.component \tokens spec -> HK.do
           Nothing -> do
             logM "moveSelect" "failed to enter SelectState"
             pure unit
-          Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
+          Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper))
           Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       SelectState select -> do
         case moveZipperpUntil dir (isValidSelect spec) select.dzipperp of
           Nothing -> do
             logM "moveSelect" "failed to move selection"
-          Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
+          Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper))
           Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       TopState top -> do
         let mb_select = (_ $ dir) $ default Nothing -- (pure unit)
@@ -302,7 +303,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           Nothing -> pure unit
           Just select -> case moveZipperpUntil dir (isValidSelect spec) select.dzipperp of
             Nothing -> pure unit
-            Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper))
+            Just (Left dzipper) -> setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper))
             Just (Right dzipperp) -> setFacade $ SelectState select {dzipperp = dzipperp}
       SmallStepState _ -> pure unit
 
@@ -356,7 +357,7 @@ editorComponent = HK.component \tokens spec -> HK.do
         case defaultDerivTerm (ChangeAlgebra.rEndpoint upChange) of
           Nothing -> pure unit
           Just dterm' -> do
---                setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper path dterm')))
+--                setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper path dterm')))
             let ssterm = setupSSTermFromReplaceAction
                   restOfProg
                   upChange
@@ -463,7 +464,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                     Just (_newSort /\ unifyingSub) -> do
                         let unifiedDTerm = subDerivTerm unifyingSub specializedDTerm
                         let unifiedPath = subDerivPath unifyingSub path
-                        setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper unifiedPath unifiedDTerm)))
+                        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper unifiedPath unifiedDTerm)))
                     Nothing -> do -- Didn't unify; can't paste
                         pure unit
           else if cmdKey && key == "s" then do
@@ -534,12 +535,13 @@ editorComponent = HK.component \tokens spec -> HK.do
             deleteSelection unit
           else if key == "Escape" then do
             -- SelectState --> CursorState
-            setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
+            setBufferEnabled false Nothing
+            setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
           else if key == "Backspace" then deleteSelection unit
           else if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
-            let cursor = cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp))
+            let cursor = cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.unzipperp select.dzipperp))
             setFacade $ CursorState cursor
             -- activate buffer
             setBufferEnabled true Nothing
@@ -547,7 +549,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
-            let cursor = cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.unzipperp select.dzipperp))
+            let cursor = cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.unzipperp select.dzipperp))
             setFacade $ CursorState cursor
             -- activate buffer
             setBufferEnabled true (Just key)
@@ -562,9 +564,9 @@ editorComponent = HK.component \tokens spec -> HK.do
         TopState top -> do
           if isBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
+            setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
           else if isJust (readMoveDir key) then
-            setFacade $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
+            setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
           else pure unit
         ------------------------------------------------------------------------
         -- SmallStepState
@@ -572,11 +574,11 @@ editorComponent = HK.component \tokens spec -> HK.do
         SmallStepState ss -> do
           if key == " " then do
             case SmallStep.step ss.ssterm spec.stepRules of
-              Nothing -> setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper ss.ssterm)))
+              Nothing -> setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper ss.ssterm)))
               Just ssterm -> setState $ SmallStepState ss {ssterm = ssterm}
           else if key == "Enter" then do
             let final = SmallStep.stepRepeatedly ss.ssterm spec.stepRules
-            setState $ CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper (SmallStep.termToZipper final)))
+            setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper final)))
           else
             pure unit
 
@@ -643,14 +645,14 @@ editorComponent = HK.component \tokens spec -> HK.do
                 -- selected back to original node
 --              Nothing -> trace ("select Nothing out") \_ -> do
 --                    stopprop
---                    setFacade (CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper dzipper)))
+--                    setFacade (CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper)))
               Nothing -> pure unit
               Just dzipperp ->
                 case (normalizeZipperp dzipperp) of
                     Right dzipperp' -> checkValidity dzipperp'
                     Left zipperp -> do
                         stopprop
-                        setFacade (CursorState (cursorFromHoleyDerivZipper (InjectHoleyDerivZipper zipperp)))
+                        setFacade (CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper zipperp)))
           TopState _top -> pure unit
           SmallStepState _ -> pure unit
         setHighlightElement Nothing
@@ -692,10 +694,11 @@ editorComponent = HK.component \tokens spec -> HK.do
   -- render
   ------------------------------------------------------------------------------
 
-  HK.pure $ 
-    log "editorComponent.render" (P.bullets 
+  HK.pure $
+    log "editorComponent.render" (P.bullets
       [ "currentState = " <> pretty currentState ]
     ) \_ ->
+    trace "render is being run" \_ ->
     HH.div [classNames ["editor"]]
     [ HH.div
       [ classNames ["status"] ]
@@ -716,16 +719,17 @@ editorComponent = HK.component \tokens spec -> HK.do
       case currentState of
         CursorState cursor -> do
           let dzipper = hdzipperDerivZipper cursor.hdzipper
+          -- TODO: now that I've refactored HoleyDerivZipper, this code can probably be way simpler.
           case cursor.hdzipper of
-            InjectHoleyDerivZipper _ -> 
+            HoleyDerivZipper _ false ->
               [ renderPath locs dzipper 
                     (renderDerivTerm locs true dzipper)
                   (defaultRenderingContext unit)
               ]
-            HoleInteriorHoleyDerivZipper dpath label ->
+            HoleyDerivZipper dzipper true ->
               [ renderPath locs dzipper 
-                  (renderHoleExterior locs dpath label
-                      (renderHoleInterior locs true dpath label))
+                  (renderHoleExterior locs (Expr.zipperPath dzipper) (derivZipperLabel dzipper) -- TODO: look into this!
+                      (renderHoleInterior locs true dzipper))
                   (defaultRenderingContext unit)
               ]
         SelectState _select -> hole "render SelectState"

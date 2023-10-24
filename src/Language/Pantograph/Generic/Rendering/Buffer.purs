@@ -95,7 +95,7 @@ computeFocussedEdit {isEnabled, normalBufferFocus, edits} = do
 computeBufferState :: forall l r. IsRuleLabel l r => BufferInput l r -> BufferPreState l r -> BufferState l r
 computeBufferState input preSt@{isEnabled, bufferString, bufferFocus} = do
   let mb_oldString = case input.hdzipper of
-        InjectHoleyDerivZipper (Expr.Zipper _ (DerivString str % _)) -> Just str
+        HoleyDerivZipper (Expr.Zipper _ (DerivString str % _)) false -> Just str
         _ -> Nothing
   let edits = computeEdits input {bufferString, mb_oldString}
   let normalBufferFocus = computeNormalBufferFocus {bufferFocus, edits}
