@@ -9,11 +9,13 @@ import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Maybe (Maybe(..), fromMaybe', maybe)
 import Data.Newtype (unwrap)
+import Data.SearchableArray as SearchableArray
 import Data.Tree (class PrettyTreeNode, toPath)
-import Data.Tuple (Tuple(..), fst)
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested ((/\), type (/\))
 import Data.Variant (case_, inj, on)
 import Effect.Aff (Aff)
+import Effect.Class.Console as Console
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
@@ -23,40 +25,52 @@ import Halogen.Hooks as HK
 import Pantograph.Generic.Language.Language (prefixExprPathSkeleton)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
 import Pantograph.Generic.Rendering.Style (className)
-import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Util (fromJust, fromJust')
 import Web.Event.Event as Event
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as HTMLInputElement
+import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.MouseEvent as MouseEvent
 
 toolboxComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
 toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
-  let inputRefLabel = H.RefLabel "ToolboxInput"
-  let getInputElem = HK.getHTMLElementRef inputRefLabel <#> fromMaybe' (\_ -> bug "modifyIsEnabledToolbox: could not find element of inputRefLabel")
+  let queryRefLabel = H.RefLabel "ToolboxInput"
+  let getQueryElem = HK.getHTMLElementRef queryRefLabel <#> fromMaybe' (\_ -> bug "modifyIsEnabledToolbox: could not find element of queryRefLabel")
 
   isEnabled /\ isEnabledStateId <- HK.useState input.isEnabled
 
   ToolboxSelect selectRowIndex selectColIndex /\ selectStateId <- HK.useState $ ToolboxSelect 0 0
 
+  query /\ queryStateId <- HK.useState ""
+  let edits = SearchableArray.prioritizedItems query input.edits
+
+  let getEdits = do
+        query' <- HK.get queryStateId
+        pure $ SearchableArray.prioritizedItems query' input.edits
+
   let
-    normalizeSelect (ToolboxSelect rowIx colIx) =
-      if Array.length input.edits == 0 then ToolboxSelect 0 0 else
-      let rowIx' = rowIx `mod` Array.length input.edits in
-      let row = fromJust' "normalizeSelect" $ Array.index input.edits rowIx' in
-      let colIx' = colIx `mod` NonEmptyArray.length row in
-      ToolboxSelect rowIx' colIx'
+    normalizeSelect (ToolboxSelect rowIx colIx) = do
+      edits <- getEdits
+      let editsLength = Array.length edits
+      if editsLength == 0 
+        then pure $ ToolboxSelect 0 0 
+        else do
+          let rowIx' = rowIx `mod` editsLength
+          let _ /\ row = fromJust' "normalizeSelect" $ Array.index edits rowIx'
+          let colIx' = colIx `mod` NonEmptyArray.length row
+          pure $ ToolboxSelect rowIx' colIx'
 
     getSelectedEdit = do
       HK.get isEnabledStateId >>= case _ of
         false -> pure Nothing
         true -> do
           ToolboxSelect selectRowIndex' selectColIndex' <- HK.get selectStateId
+          edits <- getEdits
           pure $
-            input.edits #
+            edits #
               (_ Array.!! selectRowIndex') >>>
-              map ((_ NonEmptyArray.!! selectColIndex') >>> fromJust' "getSelectedEdit")
+              map (snd >>> (_ NonEmptyArray.!! selectColIndex') >>> fromJust' "getSelectedEdit")
 
     freshenPreview = do
       getSelectedEdit >>= case _ of
@@ -67,11 +81,13 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
       isEnabled' <- HK.modify isEnabledStateId f
       freshenPreview
       when isEnabled' do
-        inputElem <- getInputElem
-        liftEffect $ HTMLElement.focus inputElem
+        queryElem <- getQueryElem
+        liftEffect $ HTMLElement.focus queryElem
 
     modifySelect f = do
-      HK.modify_ selectStateId (f >>> normalizeSelect)
+      select <- HK.get selectStateId
+      select' <- normalizeSelect (f select)
+      HK.modify_ selectStateId (const select')
       freshenPreview
 
     resetSelect = modifySelect $ const $ ToolboxSelect 0 0
@@ -83,7 +99,11 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
           resetSelect
           HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "submit edit") edit
 
-  HK.useQuery queryToken \(ToolboxQuery query) -> (query # _) $ case_
+    modifyQuery f = do
+      HK.modify_ queryStateId f
+      resetSelect
+
+  HK.useQuery queryToken \(ToolboxQuery q) -> (q # _) $ case_
     # on (Proxy :: Proxy "modify isEnabled") (\(f /\ a) -> do
         modifyIsEnabledToolbox f
         pure (Just a)
@@ -100,9 +120,9 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         pure (Just a)
       )
     # on (Proxy :: Proxy "modify query") (\(f /\ a) -> do
-        inputElem <- getInputElem <#> HTMLInputElement.fromHTMLElement >>> fromJust
-        value <- liftEffect $ HTMLInputElement.value inputElem
-        liftEffect $ HTMLInputElement.setValue (f value) inputElem
+        queryElem <- getQueryElem <#> HTMLInputElement.fromHTMLElement >>> fromJust
+        value <- liftEffect $ HTMLInputElement.value queryElem
+        liftEffect $ HTMLInputElement.setValue (f value) queryElem
         pure (Just a)
       )
 
@@ -110,9 +130,16 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
     HH.div [HP.classes [HH.ClassName "Toolbox"]]
       if not isEnabled then [] else
       [HH.div [HP.classes [HH.ClassName "ToolboxInterior"]]
-        [ HH.input [HP.classes [HH.ClassName "ToolboxInput"], HP.ref inputRefLabel] --, HP.autofocus true]
+        [ HH.input 
+            [ HP.classes [HH.ClassName "ToolboxInput"]
+            , HP.ref queryRefLabel
+            , HE.onValueInput \_ -> do
+                queryElem <- getQueryElem
+                value <- liftEffect $ HTMLInputElement.value $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
+                modifyQuery (const value)
+            ]
         , HH.div [HP.classes [HH.ClassName "EditRows"]] $
-            input.edits # Array.mapWithIndex \rowIndex editRow ->
+            edits # Array.mapWithIndex \rowIndex (_ /\ editRow) ->
             HH.div 
               [HP.classes $ [HH.ClassName "EditRow"] <> if rowIndex == selectRowIndex then [HH.ClassName "SelectedEditRow"] else []]
               let 

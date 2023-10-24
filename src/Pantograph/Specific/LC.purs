@@ -9,11 +9,15 @@ import Control.Monad.State as State
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
+import Data.SearchableArray (SearchableArray)
+import Data.SearchableArray as SearchableArray
 import Data.Show.Generic (genericShow)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple (fst)
+import Data.Tuple.Nested ((/\), type (/\))
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language as PL
@@ -145,6 +149,7 @@ getDefaultExpr = case _ of
 
 topSort = sort.term
 
+getEdits :: Sort -> Orientation -> SearchableArray (String /\ NonEmptyArray Edit) Fuzzy.Distance
 getEdits =
   let
     makeInsertEdits :: Array {outerChange :: PL.SortChange SN, middle :: Array (PL.ExprTooth SN EL), innerChange :: PL.SortChange SN} -> NonEmptyArray (PL.Edit SN EL)
@@ -154,10 +159,12 @@ getEdits =
     termEdits = 
       [ 
         -- AppRule
+        "app" /\
         makeInsertEdits 
           [ {outerChange: change.term, middle: [tooth.app.apl term.hole], innerChange: change.term}
           , {outerChange: change.term, middle: [tooth.app.arg term.hole], innerChange: change.term} ]
       , -- LamRule
+        "lam" /\
         makeInsertEdits
           [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "x")], innerChange: change.term} ]
       -- , -- FormatRule Newline
@@ -168,9 +175,11 @@ getEdits =
       --     [ {outerChange: change.term, middle: [tooth.format.indentedNewline], innerChange: change.term} ]
       ]
     
-    getEdits' (Tree (PL.SortNode StringSort) []) _ = mempty
-    getEdits' (Tree (PL.SortNode TermSort) []) Outside = termEdits
-    getEdits' (Tree (PL.SortNode TermSort) []) Inside = mempty
+    maxDistance = Fuzzy.Distance 1 0 0 0 0 0
+
+    getEdits' (Tree (PL.SortNode StringSort) []) _ = SearchableArray.fuzzy maxDistance fst []
+    getEdits' (Tree (PL.SortNode TermSort) []) Outside = SearchableArray.fuzzy maxDistance fst termEdits
+    getEdits' (Tree (PL.SortNode TermSort) []) Inside = SearchableArray.fuzzy maxDistance fst []
     getEdits' sort _ = bug $ "invalid sort: " <> show sort
   in
   getEdits'

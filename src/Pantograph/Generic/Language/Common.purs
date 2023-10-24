@@ -14,11 +14,13 @@ import Data.Bifunctor (class Bifunctor)
 import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (foldM, traverse_)
+import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Ord.Generic (genericCompare)
+import Data.SearchableArray (SearchableArray)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Tuple (uncurry)
@@ -233,7 +235,7 @@ class
 
   steppingRules :: Array (SteppingRule sn el)
 
-  getEdits :: Sort sn -> Orientation -> Array (NonEmptyArray (Edit sn el))
+  getEdits :: Sort sn -> Orientation -> SearchableArray (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance
   
   specialEdits ::
     { deleteCursor :: Sort sn -> Maybe (Edit sn el)

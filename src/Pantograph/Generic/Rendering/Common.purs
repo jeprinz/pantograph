@@ -7,9 +7,11 @@ import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, runStateT)
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Const (Const)
+import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
 import Data.Maybe (Maybe)
+import Data.SearchableArray (SearchableArray)
 import Data.Show.Generic (genericShow)
 import Data.Tree (Orientation)
 import Data.Tuple (fst)
@@ -167,7 +169,7 @@ newtype ToolboxInput sn el ctx env = ToolboxInput
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
   , isEnabled :: Boolean
-  , edits :: Array (NonEmptyArray (Edit sn el)) }
+  , edits :: SearchableArray (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance }
 newtype ToolboxQuery sn el a = ToolboxQuery (Variant
   ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
   , "get isEnabled" :: (Boolean -> a)
