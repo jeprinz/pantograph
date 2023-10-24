@@ -333,18 +333,15 @@ body {
 .ToolboxInterior {
   position: absolute;
   top: 1.2em;
-  background-color: white;
-  box-shadow: 0 0 0 1px black;
+  background-color: rgb(217, 217, 217);
 }
-
-.ToolboxInput {}
-
 .ToolboxInput {
   padding: var(--it);
   font-size: 16px;
   border: none;
   outline: none;
   border-radius: 0;
+  background-color: rgb(217, 217, 217);
 }
 
 .EditRows {}
@@ -361,9 +358,15 @@ body {
 
 .EditHole {
   display: inline-block;
-  padding: 0 var(--it);
-  /* background-color: purple; */
+  min-width: calc(2*var(--it));
   box-shadow: 0 0 0 1px var(--color2) inset;
+  background-color: rgb(225, 225, 225);
+}
+
+.ToolboxExpr {}
+
+.AdjacentEditClasp {
+  display: inline-block;
   background-color: rgb(225, 225, 225);
 }
 

@@ -9,6 +9,7 @@ className =
   { expr: HH.ClassName "Expr"
   , previewExpr: HH.ClassName "PreviewExpr"
   , toolboxExpr: HH.ClassName "ToolboxExpr"
+  , adjacentEditClasp: HH.ClassName "AdjacentEditClasp"
   , outsideCursor, insideCursor, orientationCursor
   , outsideSelect, insideSelect, orientationSelect
   }

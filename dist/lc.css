@@ -4,11 +4,12 @@
 
 .holeIndex {
   display: inline-block;
-  margin: 0 0.2em;
-  padding: 0 0.2em;
+  /* margin: 0 0.2em;
+  padding: 0 0.2em; */
   color: red;
 }
 
 .string {
+  display: inline-block;
   color: green;
 }

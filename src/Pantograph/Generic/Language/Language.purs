@@ -96,20 +96,34 @@ getExprToothSortChange (Tooth (ExprNode {label, sigma}) i _) =
   let ChangingRule rule = getChangingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index rule.kids i
 
--- the input sort is the bottom sort
--- The output change goes from the bottom to the top
-getPathChange :: forall sn el. Language sn el =>
+-- | The input sort is the bottom sort. The output change goes from the bottom
+-- | to the top.
+getExprPathChange :: forall sn el. Language sn el =>
   ExprPath sn el ->
   Sort sn ->
   SortChange sn
-getPathChange path bottomSort = case unconsPath path of
+getExprPathChange path bottomSort = case unconsPath path of
   Nothing -> injectChange bottomSort
   Just {outer, inner: Tooth (ExprNode {label, sigma}) i _} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
     let change = applyRuleSortVarSubst sigma ruleChange in
-    let restOfPathChange = getPathChange outer (endpoints change).right in
+    let restOfPathChange = getExprPathChange outer (endpoints change).right in
     change <> restOfPathChange
+
+-- | `p1 == p2`, as path skeletons
+eqExprPathSkeleton :: forall sn el. ExprPath sn el -> ExprPath sn el -> Boolean
+eqExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
+  Nothing /\ Nothing -> true
+  Just {outer: p1', inner: Tooth _ i1 _} /\ Just {outer: p2', inner: Tooth _ i2 _} | i1 == i2 -> eqExprPathSkeleton p1' p2'
+  _ -> false
+
+-- | `p1` is a prefix of `p2``, as path skeletons
+prefixExprPathSkeleton :: forall sn el. ExprPath sn el -> ExprPath sn el -> Boolean
+prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
+  Nothing /\ _ -> true
+  Just {outer: p1', inner: Tooth _ i1 _} /\ Just {outer: p2', inner: Tooth _ i2 _} | i1 == i2 -> prefixExprPathSkeleton p1' p2'
+  _ -> false
 
 -- build
 

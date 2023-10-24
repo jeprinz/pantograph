@@ -1,16 +1,17 @@
 module Pantograph.Generic.Rendering.Toolbox where
 
+import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
 
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Maybe (Maybe(..), fromMaybe')
+import Data.Maybe (Maybe(..), fromMaybe', maybe)
 import Data.Newtype (unwrap)
 import Data.Tree (class PrettyTreeNode, toPath)
-import Data.Tuple (fst)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple (Tuple(..), fst)
+import Data.Tuple.Nested ((/\), type (/\))
 import Data.Variant (case_, inj, on)
 import Effect.Aff (Aff)
 import Halogen (liftEffect)
@@ -19,9 +20,10 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Pantograph.Generic.Language (Edit(..), shrinkAnnExpr, shrinkAnnExprPath)
+import Pantograph.Generic.Language.Language (prefixExprPathSkeleton)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
 import Pantograph.Generic.Rendering.Style (className)
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Util (fromJust, fromJust')
 import Web.Event.Event as Event
@@ -68,11 +70,11 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         inputElem <- getInputElem
         liftEffect $ HTMLElement.focus inputElem
 
-    modifyToolboxSelect f = do
+    modifySelect f = do
       HK.modify_ selectStateId (f >>> normalizeSelect)
       freshenPreview
 
-    resetSelect = modifyToolboxSelect $ const $ ToolboxSelect 0 0
+    resetSelect = modifySelect $ const $ ToolboxSelect 0 0
 
     submitEdit =
       getSelectedEdit >>= case _ of
@@ -90,7 +92,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         pure (Just (k isEnabled))
       )
     # on (Proxy :: Proxy "modify select") (\(f /\ a) -> do
-        modifyToolboxSelect f
+        modifySelect f
         pure (Just a)
       )
     # on (Proxy :: Proxy "submit edit") (\(_ /\ a) -> do
@@ -110,39 +112,60 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
       [HH.div [HP.classes [HH.ClassName "ToolboxInterior"]]
         [ HH.input [HP.classes [HH.ClassName "ToolboxInput"], HP.ref inputRefLabel] --, HP.autofocus true]
         , HH.div [HP.classes [HH.ClassName "EditRows"]] $
-            input.edits # Array.mapWithIndex \rowIndex itemRow ->
+            input.edits # Array.mapWithIndex \rowIndex editRow ->
             HH.div 
               [HP.classes $ [HH.ClassName "EditRow"] <> if rowIndex == selectRowIndex then [HH.ClassName "SelectedEditRow"] else []]
               let 
                 colIndex = if rowIndex == selectRowIndex then selectColIndex else 0
-                item = fromJust' "toolboxComponent.render" $ NonEmptyArray.index itemRow colIndex
+                edit = fromJust $ NonEmptyArray.index editRow colIndex
+                adjacentIndexedEdits = fromJust $ NonEmptyArray.deleteAt colIndex (editRow # NonEmptyArray.mapWithIndex \colIndex' edit -> {select: ToolboxSelect rowIndex colIndex', edit})
               in
               [HH.div
                 [ HP.classes [HH.ClassName "Edit"]
                 , HE.onMouseOver \mouseEvent -> do
                     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-                    modifyToolboxSelect $ const $ ToolboxSelect rowIndex colIndex
+                    modifySelect $ const $ ToolboxSelect rowIndex colIndex
                 , HE.onMouseDown \mouseEvent -> do
                     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
                     submitEdit
                 ]
                 (fst $ unwrap $ runM input.ctx input.env $
-                  renderEdit (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) item)]
+                  renderEdit {adjacentIndexedEdits, modifySelect} (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) edit)]
         ]]
 
-makeToolboxExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
-makeToolboxExprProps outside inside = do
-  pure 
-    [ HP.classes [className.expr, className.toolboxExpr] ]
+type RenderEditLocals sn el =
+  { adjacentIndexedEdits :: Array {select :: ToolboxSelect, edit :: Edit sn el}
+  , modifySelect :: (ToolboxSelect -> ToolboxSelect) -> HK.HookM Aff Unit
+  }
 
-renderEdit outside inside = case _ of
+makeToolboxExprProps :: forall sn el er ctx env. RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env
+makeToolboxExprProps {adjacentIndexedEdits, modifySelect} outside _inside =
+  case adjacentIndexedEdits # Array.find \{edit: Edit edit} -> edit.middle # maybe false \middle -> prefixExprPathSkeleton (toPath middle) (shrinkAnnExprPath outside) of
+    Nothing -> 
+      pure 
+        [ HP.classes [className.expr, className.toolboxExpr] ]
+    Just {select, edit} ->
+      pure 
+        [ HP.classes [className.expr, className.toolboxExpr, className.adjacentEditClasp] 
+        , HE.onMouseOver \mouseEvent -> do
+            liftEffect $ Event.preventDefault $ MouseEvent.toEvent mouseEvent
+            modifySelect $ const select
+        ]
+
+renderEdit :: forall sn el ctx env. Rendering sn el ctx env =>
+  RenderEditLocals sn el ->
+  ExprPath sn el ->
+  Expr sn el ->
+  Edit sn el ->
+  RenderM sn el ctx env (Array (BufferHtml sn el))
+renderEdit adjacentIndexedEdits outside inside = case _ of
   Edit edit -> case edit.middle of
     Nothing -> case edit.inside of
       Nothing -> bug "TODO: how to render this kind of Edit?"
-      Just inside -> renderAnnExpr outside inside makeToolboxExprProps
-    Just middle -> renderAnnExprPath outside (toPath middle) inside makeToolboxExprProps case edit.inside of
+      Just inside -> renderAnnExpr outside inside (makeToolboxExprProps adjacentIndexedEdits)
+    Just middle -> renderAnnExprPath outside (toPath middle) inside (makeToolboxExprProps adjacentIndexedEdits) case edit.inside of
       Nothing -> pure editHole
-      Just inside -> renderAnnExpr outside inside makeToolboxExprProps
+      Just inside -> renderAnnExpr outside inside (makeToolboxExprProps adjacentIndexedEdits)
 
 editHole :: forall sn el. Array (BufferHtml sn el)
 editHole = [HH.div [HP.classes [HH.ClassName "EditHole"]] [HH.text " "]]
