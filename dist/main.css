@@ -84,12 +84,6 @@ body {
 
 .PanelHeaderInfo>.title {
   color: var(--color1);
-  padding: 0 var(--it);
-  box-shadow:
-    -4px 0 0 0 var(--color1) inset,
-    -8px 0 0 0 var(--color2) inset,
-    4px 0 0 0 var(--color1) inset,
-    8px 0 0 0 var(--color2) inset;
   font-weight: bold;
 }
 
