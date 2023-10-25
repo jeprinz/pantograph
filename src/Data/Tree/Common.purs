@@ -4,11 +4,9 @@ import Prelude
 
 import Bug (bug)
 import Data.Array as Array
-import Data.Bifunctor (class Bifunctor, lmap)
-import Data.Either.Inject (class Inject, prj)
 import Data.Foldable (class Foldable, and)
 import Data.Generic.Rep (class Generic)
-import Data.Inject (class Subtype, inject, project)
+import Data.Subtype (class Subtype, inject, project)
 import Data.List (List(..))
 import Data.List as List
 import Data.List.NonEmpty (fromFoldable, snoc, unsnoc) as NonEmptyList

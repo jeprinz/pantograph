@@ -8,12 +8,12 @@ import Bug (bug)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.State (StateT(..), State, execState, get, gets, mapStateT, modify_)
 import Data.Array as Array
-import Data.Inject (inject)
 import Data.List (List(..))
 import Data.List.NonEmpty as NonEmptyList
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
+import Data.Subtype (inject)
 import Data.Traversable (traverse, traverse_)
 import Data.Tree.Common (assertValidToothKids)
 import Data.Tuple (uncurry)

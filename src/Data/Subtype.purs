@@ -1,4 +1,4 @@
-module Data.Inject where
+module Data.Subtype where
 
 import Prelude
 

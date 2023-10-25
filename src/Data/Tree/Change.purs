@@ -5,7 +5,6 @@ import Prelude
 
 import Bug (bug)
 import Data.Array as Array
-import Data.Either.Inject (class Inject)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Data.Tuple.Nested ((/\))
