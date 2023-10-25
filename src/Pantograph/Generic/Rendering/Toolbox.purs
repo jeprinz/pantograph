@@ -55,11 +55,9 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
     getEdits = do
       query <- HK.get queryStateId
-      Debug.traceM $ "[Toolbox] getEdits; query = " <> query
       pure $ toEditArray query
 
     normalizeSelect (ToolboxSelect rowIx colIx) = do
-      Debug.traceM "[Toolbox] normalizeSelect"
       edits <- getEdits
       let editsLength = Array.length edits
       if editsLength == 0 
@@ -71,7 +69,6 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
           pure $ ToolboxSelect rowIx' colIx'
 
     getSelectedEdit = do
-      Debug.traceM "[Toolbox] getSelectedEdit"
       HK.get isEnabledStateId >>= case _ of
         false -> pure Nothing
         true -> do
@@ -83,13 +80,11 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
               map ((_ NonEmptyArray.!! selectColIndex') >>> fromJust' "getSelectedEdit")
 
     freshenPreview = do
-      Debug.traceM "[Toolbox] freshenPreview"
       getSelectedEdit >>= case _ of
         Nothing -> HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "preview edit") Nothing
         Just edit -> HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "preview edit") $ Just edit
 
     modifyIsEnabledToolbox f = do
-      Debug.traceM "[Toolbox] modifyIsEnabledToolbox"
       isEnabled' <- HK.modify isEnabledStateId f
       freshenPreview
       when isEnabled' do
@@ -97,18 +92,15 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         liftEffect $ HTMLElement.focus queryElem
 
     modifySelect f = do
-      Debug.traceM "[Toolbox] modifySelect"
       select <- HK.get selectStateId
       select' <- normalizeSelect (f select)
       HK.modify_ selectStateId (const select')
       freshenPreview
 
     resetSelect = do
-      Debug.traceM "[Toolbox] resetSelet"
       modifySelect $ const $ ToolboxSelect 0 0
 
     submitEdit = do
-      Debug.traceM "[Toolbox] submitEdit"
       getSelectedEdit >>= case _ of
         Nothing -> pure unit
         Just edit -> do
@@ -116,14 +108,12 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
           HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "submit edit") edit
 
     modifyQuery f = do
-      Debug.traceM "[Toolbox] modifyQuery"
       query <- HK.modify queryStateId f
       queryElem <- getQueryElem
       liftEffect $ HTMLInputElement.setValue query $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
       resetSelect
 
     resetQuery = do
-      Debug.traceM "[Toolbox] modifyQuery"
       modifyQuery (const "")
 
   HK.useQuery queryToken \(ToolboxQuery q) -> (q # _) $ case_

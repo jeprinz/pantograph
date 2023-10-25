@@ -58,10 +58,6 @@ renderAnnExprHelper outside expr makeAnnExprProps arrangedKids = do
         HtmlArrangeKid htmls' ->
           [ HH.div [HP.classes [HH.ClassName "HtmlArrangeKid"]]
               htmls' ]
-        IndentationArrangeKid htmls' -> 
-          [ HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"]
-          , HH.br_ ] <>
-          htmls'
   pure $ [HH.div props htmls]
 
 renderAnnExpr :: forall sn el er ctx env. Rendering sn el ctx env =>

@@ -250,18 +250,17 @@ body {
   content: "*";
 }
 
-
 .Expr>.HtmlArrangeKid {
   display: inline;
 }
 
-.Expr>.newline-header {
+/* .Expr:hover>.HtmlArrangeKid>.newline-header {
   color: rgba(0, 0, 0, 0);
 }
 
 .Expr.hover>.newline-header {
   color: gray;
-}
+} */
 
 .Expr.OutsideCursor>.newline-header,
 .Expr.InsideCursor>.newline-header {

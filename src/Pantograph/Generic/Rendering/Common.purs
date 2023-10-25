@@ -113,7 +113,6 @@ class Language sn el <= Rendering sn el ctx env | sn -> el ctx env, el -> sn ctx
 data ArrangeKid sn el a
   = ExprKidArrangeKid a
   | HtmlArrangeKid (Array (BufferHtml sn el))
-  | IndentationArrangeKid (Array (BufferHtml sn el))
 
 derive instance Functor (ArrangeKid sn el)
 

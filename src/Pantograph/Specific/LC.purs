@@ -16,6 +16,7 @@ import Data.Maybe (Maybe(..))
 import Data.SearchableArray (SearchableArray)
 import Data.SearchableArray as SearchableArray
 import Data.Show.Generic (genericShow)
+import Data.String as String
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\), type (/\))
 import Halogen.HTML as HH
@@ -89,10 +90,10 @@ instance PrettyTreeNode EL where
       AppRule -> ass el \[f, a] -> Pretty.parens $ f <+> a
       LetRule -> ass el \[x, a, b] -> Pretty.parens $ "let" <+> x <+> "=" <+> a <+> "in" <+> b
       HoleRule -> ass el \[] -> "?"
-      FormatRule IndentedNewline -> ass el \[a] -> "<indent>" <+> a
+      FormatRule Indent -> ass el \[a] -> "<indent>" <+> a
       FormatRule Newline -> ass el \[a] -> "<newline>" <+> a
 
-data Format = IndentedNewline | Newline
+data Format = Indent | Newline
 derive instance Generic Format _
 derive instance Eq Format
 derive instance Ord Format
@@ -123,7 +124,7 @@ instance PL.Language SN EL where
     { deleteCursor: \sr -> PL.getDefaultExpr sr <#> \inside -> PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just inside}
     , deleteSelect: \_ch -> Just $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing}
     , enter: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.newline]), innerChange: Nothing, inside: Nothing} 
-    , tab: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indentedNewline]), innerChange: Nothing, inside: Nothing} }
+    , tab: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indent]), innerChange: Nothing, inside: Nothing} }
 
 getSortingRule = case _ of
   StringRule _ -> PL.buildSortingRule [] \[] -> {kids: [], parent: ruleSort.string}
@@ -144,7 +145,7 @@ getChangingRule = case _ of
   FormatRule _format -> PL.buildChangingRule [] \[] -> [treeChange (PL.makeConstRuleSortNode TermSort) []]
 
 getDefaultExpr = case _ of
-  Tree (PL.SortNode StringSort) [] -> Just $ term.string "x"
+  Tree (PL.SortNode StringSort) [] -> Just $ term.string ""
   Tree (PL.SortNode TermSort) [] -> Just $ term.hole
   _ -> bug $ "invalid sort"
 
@@ -156,8 +157,11 @@ getEdits =
     makeInsertEdits :: Array {outerChange :: PL.SortChange SN, middle :: Array (PL.ExprTooth SN EL), innerChange :: PL.SortChange SN} -> NonEmptyArray (PL.Edit SN EL)
     makeInsertEdits edits = fromJust $ NonEmptyArray.fromArray $ edits <#> 
       \{outerChange, middle, innerChange} -> PL.Edit {outerChange: Just outerChange, middle: Just $ PL.makeExprNonEmptyPath middle, innerChange: Just innerChange, inside: Nothing}
+    
+    maxDistance = Fuzzy.Distance 1 0 0 0 0 0
 
-    termEdits = 
+    getEdits' (Tree (PL.SortNode StringSort) []) _ = PL.StringEdits \str -> [NonEmptyArray.singleton $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)}]
+    getEdits' (Tree (PL.SortNode TermSort) []) Outside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst
       [ 
         -- AppRule
         "app" /\
@@ -167,21 +171,15 @@ getEdits =
       , -- LamRule
         "lam" /\
         makeInsertEdits
-          [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "x")], innerChange: change.term} ]
-      -- , -- FormatRule Newline
-      --   makeInsertEdits
-      --     [ {outerChange: change.term, middle: [tooth.format.newline], innerChange: change.term} ]
-      -- , -- FormatRule IndentedNewline
-      --   makeInsertEdits
-      --     [ {outerChange: change.term, middle: [tooth.format.indentedNewline], innerChange: change.term} ]
+          [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
       ]
-    
-    maxDistance = Fuzzy.Distance 1 0 0 0 0 0
-
-    getEdits' (Tree (PL.SortNode StringSort) []) _ = PL.StringEdits \str -> [NonEmptyArray.singleton $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)}]
-    getEdits' (Tree (PL.SortNode TermSort) []) Outside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst termEdits
-    getEdits' (Tree (PL.SortNode TermSort) []) Inside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst []
-    getEdits' sort _ = bug $ "invalid sort: " <> show sort
+    getEdits' (Tree (PL.SortNode TermSort) []) Inside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst 
+      [
+        -- VarRule
+        "var" /\ NonEmptyArray.singleton
+        (PL.Edit {outerChange: Nothing, middle: Just $ PL.makeExprNonEmptyPath [tooth.var.str], innerChange: Nothing, inside: Just (term.string "")})
+      ]
+    getEdits' sr _ = bug $ "invalid sort: " <> show sr
   in
   getEdits'
 
@@ -216,14 +214,14 @@ instance PR.Rendering SN EL CTX ENV where
 
   arrangeExpr =
     let punc str = PR.HtmlArrangeKid [HH.span_ [HH.text str]] in
-    let indent i = PR.IndentationArrangeKid (Array.replicate (i + 1) (HH.text "  ")) in
-    let newline i = PR.IndentationArrangeKid (Array.replicate i (HH.text "  ")) in
+    let indent i = PR.HtmlArrangeKid (Array.replicate i (HH.text "  ")) in
+    let newline i = PR.HtmlArrangeKid ([HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"], HH.br_] <> Array.replicate i (HH.text "  ")) in
     \node@(PL.ExprNode {label}) ->
       let ass = assertValidTreeKids "arrangeExpr" (PL.shrinkAnnExprNode node :: PL.ExprNode SN EL) in
       case label of
         StringRule str -> ass \[] -> do
           let Tree (PL.SortNode StringSort) [] = PL.getExprNodeSort node
-          pure [PR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text str]]]
+          pure [PR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text (if String.null str then "~" else str)]]]
         VarRule -> ass \[mx] -> do
           x_ /\ _x <- mx
           pure [punc "#", PR.ExprKidArrangeKid x_]
@@ -245,17 +243,16 @@ instance PR.Rendering SN EL CTX ENV where
           holeIndex <- State.gets _.holeCount
           State.modify_ _ {holeCount = holeIndex + 1}
           pure [PR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text ("?" <> show holeIndex)]]]
-        FormatRule IndentedNewline -> ass \[ma] -> do
+        FormatRule Indent -> ass \[ma] -> do
           ctx <- ask
           a_ /\ _a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
-          pure [indent ctx.indentLevel, PR.ExprKidArrangeKid a_]
+          pure [indent 1, PR.ExprKidArrangeKid a_]
         FormatRule Newline -> ass \[ma] -> do
           ctx <- ask
           a_ /\ _a <- ma
           pure [newline ctx.indentLevel, PR.ExprKidArrangeKid a_]
 
   cursorBeginsLine = case _ of
-    Cursor {outside: Path (Cons (Tooth (PL.ExprNode {label: FormatRule IndentedNewline}) _ _) _), orientation: Outside} -> true
     Cursor {outside: Path (Cons (Tooth (PL.ExprNode {label: FormatRule Newline}) _ _) _), orientation: Outside} -> true
     _ -> false
   
@@ -279,7 +276,7 @@ term = {var, string, lam, app, let_, hole, indent, newline, example}
   app f a = PL.makeExpr AppRule [] [f, a] :: Expr
   let_ str a b = PL.makeExpr LetRule [] [string str, a, newline b] :: Expr
   hole = PL.makeExpr HoleRule [] [] :: Expr
-  indent a = PL.makeExpr (FormatRule IndentedNewline) [] [a] :: Expr
+  indent a = PL.makeExpr (FormatRule Indent) [] [a] :: Expr
   newline a = PL.makeExpr (FormatRule Newline) [] [a] :: Expr
 
   example :: Int -> Expr
@@ -293,7 +290,7 @@ change = {term}
   where
   term = treeChange (PL.SortNode TermSort) [] :: SortChange
 
-tooth = {app, lam, format}
+tooth = {app, lam, var, format}
   where
   app = 
     { apl: (\arg -> PL.makeExprTooth AppRule [] 0 [arg]) :: Expr -> ExprTooth
@@ -302,8 +299,11 @@ tooth = {app, lam, format}
   
   lam =
     { bod: (\var -> PL.makeExprTooth LamRule [] 1 [var]) :: Expr -> ExprTooth }
+
+  var = 
+    { str: PL.makeExprTooth VarRule [] 0 [] :: ExprTooth }
   
   format = 
     { newline: PL.makeExprTooth (FormatRule Newline) [] 0 [] :: ExprTooth
-    , indentedNewline: PL.makeExprTooth (FormatRule IndentedNewline) [] 0 [] :: ExprTooth
+    , indent: PL.makeExprTooth (FormatRule Indent) [] 0 [] :: ExprTooth
     }
