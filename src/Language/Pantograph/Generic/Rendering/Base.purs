@@ -42,6 +42,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 import Debug (trace)
 import Util as Util
 import Data.Tuple (snd)
+import Data.Set as Set
 
 type EditorHTML l r = 
   HH.ComponentHTML 
@@ -63,6 +64,7 @@ type RenderingContext =
   , isInteractive :: Boolean
   , isInlined :: Boolean
   , metavarNumbers :: Util.Stateful (Map.Map Expr.MetaVar Int /\ Int)
+  , cssClasses :: Set.Set String
   }
 
 getMetavarNumber :: RenderingContext -> Expr.MetaVar -> Int
@@ -82,21 +84,23 @@ data Linebreak
   | UnindentedLinebreak
 
 defaultRenderingContext :: Unit -> RenderingContext
-defaultRenderingContext unit =
+defaultRenderingContext _unit =
   { indentationLevel: 0
   , isCursor: false
   , isInteractive: true
   , isInlined: false
   , metavarNumbers: Util.stateful (Map.empty /\ 0)
+  , cssClasses: Set.empty
   }
 
 previewRenderingContext :: Unit -> RenderingContext
-previewRenderingContext unit =
+previewRenderingContext _unit =
   { indentationLevel: 0
   , isCursor: false
   , isInteractive: false
   , isInlined: true
   , metavarNumbers: Util.stateful (Map.empty /\ 0)
+  , cssClasses: Set.empty
   }
 
 type ArrangeDerivTermSubs l r =

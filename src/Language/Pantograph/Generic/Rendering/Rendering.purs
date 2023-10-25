@@ -34,6 +34,16 @@ import Util (fromJust')
 import Partial.Unsafe (unsafePartial)
 import Debug (trace)
 import Debug (traceM)
+import Data.Set as Set
+
+------------------------------------------------------------------------------
+-- helper
+------------------------------------------------------------------------------
+
+applyCssClasses :: forall l r. Set.Set String -> EditorHTML l r -> EditorHTML l r
+applyCssClasses classes html =
+    if Set.isEmpty classes then html
+    else HH.div [classNames (Array.fromFoldable (Set.insert "node" classes))] [html]
 
 ------------------------------------------------------------------------------
 -- arrange
@@ -57,7 +67,8 @@ arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx =
                 [renderHoleInterior locs false dzipper] <> kidCtxElems
                 else kidCtxElems
     Array.concat $ subCtxSymElems <#> case _ of
-      Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems' kidIx)) \kidElem -> [kidElem renCtx']
+      Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems' kidIx))
+            \kidElem -> [applyCssClasses renCtx'.cssClasses (kidElem renCtx')]
       Right elems -> elems
   DerivString str % [] -> 
     [ if String.null str 
@@ -138,7 +149,7 @@ renderHoleInterior locs isCursor dzipper renCtx = do
       ])
     (arrangeNodeSubs locs isCursor hdzipper
       [ HH.div [classNames ["subnode", "holeInterior-inner"]]
-        [interrogativeElem]
+        [squareElem]
       ])
 
 ------------------------------------------------------------------------------
@@ -224,7 +235,7 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   let renderSubElem = case _ of
         -- don't use renCtx' here because rendering previews doesn't use
         -- rendering context
-        Left (_renCtx' /\ i) -> [force $ fromJust' "renderPreviewDerivTooth" $ kidElems Array.!! i]
+        Left (renCtx' /\ i) -> [applyCssClasses renCtx'.cssClasses $ force $ fromJust' "renderPreviewDerivTooth" $ kidElems Array.!! i]
         Right elems -> elems
 
   let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
@@ -286,7 +297,7 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
       [classNames ["node", "smallstep"]]
       let kidElems = renderSSTerm locs <$> kids in
       (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma} <#> case _ of
-        Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [kid renCtx']
+        Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [applyCssClasses renCtx'.cssClasses (kid renCtx')]
         Right elems -> elems)
   -- TODO for Henry from Jacob: make this work with any number of kids n, instead of just 0 and 1. Or maybe it doesn't matter.
   Marker 0 % [] -> do HH.div [classNames ["node", "smallstep", "cursor"]] []

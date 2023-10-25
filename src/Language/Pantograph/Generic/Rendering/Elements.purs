@@ -17,6 +17,7 @@ rbracketElem = makePuncElem "rbracket" "]"
 colonElem = makePuncElem "colon" ":"
 turnstileElem = makePuncElem "turnstile" "⊢"
 interrogativeElem = makePuncElem "interrogative" "?"
+squareElem = makePuncElem "square" "☐"
 upArrowElem = makePuncElem "upArrow" "↑"
 downArrowElem = makePuncElem "downArrow" "↓"
 newlineElem = HH.br_

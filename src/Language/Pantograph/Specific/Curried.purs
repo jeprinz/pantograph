@@ -24,6 +24,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Map as Map
+import Data.Set as Set
 import Data.Variant (Variant)
 import Debug (traceM, trace)
 import Debug as Debug
@@ -408,7 +409,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
       , [Left (renCtx /\ 0)] ]
   -- hole
   TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
-    ->  [Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1)]
+    ->  [pure [Rendering.lbraceElem], Left (renCtx /\ 0), pure [colonElem]
+        , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1)
+        , pure [Rendering.rbraceElem]]
 --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
   -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
   TypeHole /\ _ | Just (Expr.Meta (Left mv) % []) <- Map.lookup (Expr.RuleMetaVar "type") sigma ->

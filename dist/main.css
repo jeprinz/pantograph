@@ -135,8 +135,11 @@ body {
 
 .subnode.holeInterior-inner {
   padding: 0 0.2em;
-  box-shadow: inset 0 0 0 2px rgb(255, 139, 50);
-  /* box-shadow: 0 0 0 4px rgb(255, 139, 50) inset; */
+  /* box-shadow: inset 0 0 0 2px rgb(255, 139, 50); */
+}
+
+.node.holeInterior.cursor {
+  box-shadow: -3px 0 orange,3px 0 orange;
 }
 
 /*
@@ -437,4 +440,9 @@ console
 
 .padded {
     padding: .6em
+}
+
+.typesubscript {
+    color: gray;
+    font-size: 14px;
 }
