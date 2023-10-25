@@ -3,6 +3,7 @@ module Util where
 import Data.Foldable
 import Data.Tuple.Nested
 import Prelude
+import Todo
 
 import Bug (bug)
 import Bug as Bug
@@ -16,12 +17,17 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe (maybe)
 import Data.Newtype (unwrap)
+import Data.Set as Set
+import Data.Symbol (class IsSymbol, reflectSymbol)
 import Data.Tuple (Tuple(..))
 import Data.UUID (UUID)
 import Data.UUID as UUID
-import Todo
 import Partial.Unsafe (unsafePartial)
+import Prim.RowList (class RowToList, Cons, Nil, RowList)
+import Record.Builder as R
 import Type.Proxy (Proxy(..))
+import Type.Row.Homogeneous (class Homogeneous)
+import Unsafe.Coerce (unsafeCoerce)
 
 unwrapApply nt f = f (unwrap nt)
 infixl 1 unwrapApply as >.
@@ -177,3 +183,26 @@ findMapM f xs = case Array.uncons xs of
 
 type Px = Proxy
 px = Proxy
+
+foreign import fromHomogenousRecordToTupleArray_ :: forall r a. (String -> a -> String /\ a) -> Record r -> Array (String /\ a)
+
+fromHomogenousRecordToTupleArray :: forall r a. Homogeneous r a => Record r -> Array (String /\ a)
+fromHomogenousRecordToTupleArray = fromHomogenousRecordToTupleArray_ Tuple
+
+class RowListKeys :: forall k. RowList k -> Constraint
+class RowListKeys rl where
+  rowListKeys :: Proxy rl -> Set.Set String
+
+instance RowListKeys Nil where rowListKeys _ = Set.empty
+instance (IsSymbol x, RowListKeys rl) => RowListKeys (Cons x a rl) where rowListKeys _ = Set.insert (reflectSymbol (Proxy :: Proxy x)) (rowListKeys (Proxy :: Proxy rl))
+
+class RowKeys :: forall k. Row k -> Constraint
+class RowKeys r where
+  rowKeys :: Proxy r -> Set.Set String
+
+instance (RowToList r rl, RowListKeys rl) => RowKeys r where rowKeys _ = rowListKeys (Proxy :: Proxy rl)
+
+foreign import unsafeInsert :: forall a r1 r2. String -> a -> Record r1 -> Record r2
+
+buildFromKeys :: forall r a. RowKeys r => Homogeneous r a => (String -> a) -> Record r
+buildFromKeys f = unsafeCoerce $ Array.foldr (\x -> unsafeInsert x (f x)) {} (Array.fromFoldable (rowKeys (Proxy :: Proxy r)))

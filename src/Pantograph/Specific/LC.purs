@@ -127,13 +127,13 @@ instance PL.Language SN EL where
     , tab: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indent]), innerChange: Nothing, inside: Nothing} }
 
 getSortingRule = case _ of
-  StringRule _ -> PL.buildSortingRule [] \[] -> {kids: [], parent: ruleSort.string}
-  VarRule -> PL.buildSortingRule [] \[] -> {kids: [ruleSort.string], parent: ruleSort.term}
-  LamRule -> PL.buildSortingRule [] \[] -> {kids: [ruleSort.string, ruleSort.term], parent: ruleSort.term}
-  AppRule -> PL.buildSortingRule [] \[] -> {kids: [ruleSort.term, ruleSort.term], parent: ruleSort.term}
-  LetRule -> PL.buildSortingRule [] \[] -> {kids: [ruleSort.string, ruleSort.term, ruleSort.term], parent: ruleSort.term}
-  HoleRule -> PL.buildSortingRule [] \[] -> {kids: [], parent: ruleSort.term}
-  FormatRule _format -> PL.buildSortingRule [] \[] -> {kids: [ruleSort.term], parent: ruleSort.term}
+  StringRule _ -> PL.buildSortingRule [] \[] -> [] /\ ruleSort.string
+  VarRule -> PL.buildSortingRule [] \[] -> [ruleSort.string] /\ ruleSort.term
+  LamRule -> PL.buildSortingRule [] \[] -> [ruleSort.string, ruleSort.term] /\ ruleSort.term
+  AppRule -> PL.buildSortingRule [] \[] -> [ruleSort.term, ruleSort.term] /\ ruleSort.term
+  LetRule -> PL.buildSortingRule [] \[] -> [ruleSort.string, ruleSort.term, ruleSort.term] /\ ruleSort.term
+  HoleRule -> PL.buildSortingRule [] \[] -> [] /\ ruleSort.term
+  FormatRule _format -> PL.buildSortingRule [] \[] -> [ruleSort.term] /\ ruleSort.term
 
 getChangingRule = case _ of
   StringRule _ -> PL.buildChangingRule [] \[] -> []

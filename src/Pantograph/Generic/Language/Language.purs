@@ -19,10 +19,13 @@ import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
 import Partial.Unsafe (unsafePartial)
 import Record as R
+import Record.Builder as RB
+import Record.Builder as RecordBuilder
 import Text.Pretty (pretty)
 import Todo (todo)
 import Type.Proxy (Proxy(..))
-import Util (asStateT, delete', fromJust, fromJust')
+import Type.Row.Homogeneous (class Homogeneous)
+import Util (class RowKeys, asStateT, buildFromKeys, delete', fromHomogenousRecordToTupleArray, fromJust, fromJust', rowKeys)
 
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
@@ -44,8 +47,18 @@ makeExprNode label sigma_ =
   assertValidRuleVarSubst label sigma \_ ->
     ExprNode {label, sigma}
 
+makeExprNode' label sigma_ = 
+  let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
+  assertValidRuleVarSubst label sigma \_ ->
+    ExprNode {label, sigma}
+
 makeExpr label sigma_ = 
   let node = makeExprNode label sigma_ in
+  assertValidTreeKids "makeExpr" node \kids ->
+    Tree node kids
+
+buildExpr label sigma_ = 
+  let node = makeExprNode' label sigma_ in
   assertValidTreeKids "makeExpr" node \kids ->
     Tree node kids
 
@@ -127,12 +140,19 @@ prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
 
 -- build
 
-buildSortingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> {kids :: Array (RuleSort sn), parent :: RuleSort sn}) -> SortingRule sn
+buildSortingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
 buildSortingRule strs k = do
   let parametersArray = MakeRuleSortVar <$> strs
   let parameters = Set.fromFoldable parametersArray
   let parametersVars = makeVarRuleSort <$> parametersArray
-  let {kids, parent} = unsafePartial $ k parametersVars
+  let kids /\ parent = unsafePartial $ k parametersVars
+  SortingRule {parameters, kids, parent}
+
+buildSortingRule' :: forall r sn. RowKeys r => Homogeneous r (RuleSort sn) => Proxy r -> (Record r -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
+buildSortingRule' _ k = do
+  let parameterNames = rowKeys (Proxy :: Proxy r)
+  let parameters = parameterNames # Set.map MakeRuleSortVar
+  let kids /\ parent = unsafePartial $ k $ buildFromKeys (makeVarRuleSort <<< MakeRuleSortVar)
   SortingRule {parameters, kids, parent}
 
 buildChangingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSortChange sn)) -> ChangingRule sn
