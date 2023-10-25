@@ -142,7 +142,7 @@ getChangingRule = case _ of
   AppRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
   LetRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.string) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
   HoleRule -> PL.buildChangingRule [] \[] -> []
-  FormatRule _format -> PL.buildChangingRule [] \[] -> [treeChange (PL.makeConstRuleSortNode TermSort) []]
+  FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeConstRuleSortNode TermSort) []]
 
 getDefaultExpr = case _ of
   Tree (PL.SortNode StringSort) [] -> Just $ term.string ""
@@ -288,7 +288,7 @@ term = {var, string, lam, app, let_, hole, indent, newline, example}
 
 change = {term}
   where
-  term = treeChange (PL.SortNode TermSort) [] :: SortChange
+  term = injectChange (PL.SortNode TermSort) [] :: SortChange
 
 tooth = {app, lam, var, format}
   where

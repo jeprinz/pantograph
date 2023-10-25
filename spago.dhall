@@ -48,6 +48,7 @@ to generate this file without the comments in this block.
   , "strings"
   , "transformers"
   , "tuples"
+  , "typelevel-prelude"
   , "unfoldable"
   , "unicode"
   , "unsafe-coerce"

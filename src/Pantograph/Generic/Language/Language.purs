@@ -8,6 +8,7 @@ import Bug (bug)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.State (StateT(..), State, execState, get, gets, mapStateT, modify_)
 import Data.Array as Array
+import Data.Inject (inject)
 import Data.List (List(..))
 import Data.List.NonEmpty as NonEmptyList
 import Data.Map as Map
@@ -116,7 +117,7 @@ getExprPathChange :: forall sn el. Language sn el =>
   Sort sn ->
   SortChange sn
 getExprPathChange path bottomSort = case unconsPath path of
-  Nothing -> injectChange bottomSort
+  Nothing -> inject bottomSort
   Just {outer, inner: Tooth (ExprNode {label, sigma}) i _} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in

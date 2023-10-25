@@ -210,10 +210,10 @@ combineUpRule = SteppingRule case _ of
 
 -- SteppingRule builder
 
-buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
-  StepExprPattern sn el ->
-  (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
-  SteppingRule sn el
-buildSteppingRule pat k = SteppingRule $ case_ 
-  [ pat /\ Just <<< k
-  , wild /\ Just <<< const Nothing ]
+-- buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
+--   StepExprPattern sn el ->
+--   (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
+--   SteppingRule sn el
+-- buildSteppingRule pat k = SteppingRule $ case_ 
+--   [ pat /\ Just <<< k
+--   , wild /\ Just <<< const Nothing ]

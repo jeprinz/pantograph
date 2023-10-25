@@ -5,8 +5,10 @@ import Prelude
 import Bug (bug)
 import Data.Array as Array
 import Data.Bifunctor (class Bifunctor, lmap)
+import Data.Either.Inject (class Inject, prj)
 import Data.Foldable (class Foldable, and)
 import Data.Generic.Rep (class Generic)
+import Data.Inject (class Subtype, inject, project)
 import Data.List (List(..))
 import Data.List as List
 import Data.List.NonEmpty (fromFoldable, snoc, unsnoc) as NonEmptyList
@@ -16,7 +18,7 @@ import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty(..))
 import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
-import Data.Traversable (class Traversable)
+import Data.Traversable (class Traversable, traverse)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Partial.Unsafe (unsafePartial)
@@ -173,7 +175,7 @@ gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 data Change a
   = Shift ShiftSign (Tooth a) (Change a)
   | Replace (Tree a) (Tree a)
-  | Change a (Array (Change a))
+  | InjectChange a (Array (Change a))
 derive instance Generic (Change a) _
 instance Show a => Show (Change a) where show x = genericShow x
 derive instance Eq a => Eq (Change a)
@@ -184,24 +186,27 @@ instance Eq a => Semigroup (Change a) where
   append (Shift Plus th c) (Shift Minus th' c') | th == th' =
     c <> c'
   append (Shift Minus th@(Tooth a i ts) c) (Shift Plus th' c') | th == th' =
-    Change a $ fromJust $ Array.insertAt i (c <> c') $ map injectChange ts
+    InjectChange a $ fromJust $ Array.insertAt i (c <> c') $ map inject ts
   append c (Shift Plus th c') = Shift Plus th (c <> c')
   append (Shift Minus th c) c' = Shift Minus th (c <> c')
-  append (Shift Plus th@(Tooth a i ts) c) (Change a' _cs')
+  append (Shift Plus th@(Tooth a i ts) c) (InjectChange a' _cs')
     | a == a'
     , cs' /\ c' <- fromJust $ indexDeleteAt i _cs'
-    , and $ map (uncurry eq) $ Array.zip (injectChange <$> ts) cs'
+    , and $ map (uncurry eq) $ Array.zip (inject <$> ts) cs'
     = Shift Plus th (c <> c')
-  append (Change a _cs) (Shift Minus th@(Tooth a' i' ts') c')
+  append (InjectChange a _cs) (Shift Minus th@(Tooth a' i' ts') c')
     | a == a'
     , cs /\ c <- fromJust $ indexDeleteAt i' _cs
-    , and $ map (uncurry eq) $ Array.zip cs (injectChange <$> ts')
+    , and $ map (uncurry eq) $ Array.zip cs (inject <$> ts')
     = Shift Plus th (c <> c')
-  append (Change a cs) (Change a' cs') | a == a' = Change a (Array.zipWith append cs cs')
+  append (InjectChange a cs) (InjectChange a' cs') | a == a' = InjectChange a (Array.zipWith append cs cs')
   append c1 c2 = Replace (endpoints c1).left (endpoints c2).right
 
-injectChange :: forall a. Tree a -> Change a
-injectChange (Tree a kids) = Change a (injectChange <$> kids)
+instance Subtype (Tree a) (Change a) where
+  inject (Tree a kids) = InjectChange a (inject <$> kids)
+  project = case _ of
+    InjectChange a kids -> Tree a <$> project `traverse` kids
+    _ -> Nothing
 
 endpoints :: forall a. Change a -> {left :: Tree a, right :: Tree a}
 endpoints (Shift Plus tooth kid) =
@@ -211,7 +216,7 @@ endpoints (Shift Minus tooth kid) =
   let {left, right} = endpoints kid in
   {left: unTooth tooth left, right}
 endpoints (Replace old new) = {left: old, right: new}
-endpoints (Change a kids) = 
+endpoints (InjectChange a kids) = 
   let kids' = endpoints <$> kids in
   let leftKids /\ rightKids = Array.unzip $ map (\{left, right} -> left /\ right) kids' in
   {left: Tree a leftKids, right: Tree a rightKids}
@@ -228,7 +233,7 @@ instance Pretty ShiftSign where
 
 plusChange th ch = Shift Plus th ch
 minusChange th ch = Shift Minus th ch
-treeChange a kids = Change a kids
+injectChange a kids = InjectChange a kids
 replaceChange old new = Replace old new
 
 -- TreeNode
@@ -302,4 +307,4 @@ instance PrettyTreeNode a => Pretty (Gyro a) where
 instance PrettyTreeNode a => Pretty (Change a) where
   pretty (Shift sign tooth kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
   pretty (Replace old new) = parens (pretty old <+> "~~>" <+> pretty new)
-  pretty (Change a kids) = prettyTreeNode a (pretty <$> kids)
+  pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)
