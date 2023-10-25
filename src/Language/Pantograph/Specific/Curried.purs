@@ -404,8 +404,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
   -- format
   Newline /\ _ ->
     Array.concat
-      [ if renCtx.isInlined then [] else
-        [pure $ [Rendering.spaceElem] <> (newlineIndentElem (renCtx.indentationLevel)) <> Array.replicate renCtx.indentationLevel Rendering.indentElem]
+      [ if renCtx.isInlined then [] else [pure (newlineIndentElem renCtx.indentationLevel)]
       , [Left (renCtx /\ 0)] ]
   -- hole
   TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
@@ -453,7 +452,7 @@ dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
 tabElem = Rendering.makePuncElem "indent" "    "
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
-newlineIndentElem n = [Rendering.newlineElem] <> Array.replicate n tabElem
+newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
 
 --------------------------------------------------------------------------------
 -- Edit
@@ -539,7 +538,9 @@ splitChange c =
         -> {upChange: c, cursorSort: lEndpoint c, downChange: ChangeAlgebra.inject (lEndpoint c)}
         c | Maybe.Just ([] /\ [_gamma, _ty]) <- Expr.matchChange c (NeutralSort %+- [cSlot, cSlot])
         -> {upChange: ChangeAlgebra.inject (rEndpoint c), cursorSort: rEndpoint c, downChange: c}
-    -- TODO TODO TODO: Also implement the case where the change is just a metavariable identity! Later: I don't remember why I wrote this, maybe I'll find out later.
+        -- TODO: maybe could just generalize this to when c is the identity?
+        ((Expr.Inject (Expr.Meta (Left _))) % []) ->
+            {upChange: c, cursorSort: rEndpoint c, downChange: c}
         c -> bug ("splitChange - got c = " <> pretty c)
 
 makeEditFromPath = DefaultEdits.makeEditFromPath languageChanges splitChange
@@ -562,7 +563,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
---    , makeEditFromPath (newPathFromRule (FormatRule Newline) 0 )"newline" cursorSort
+    , makeEditFromPath (newPathFromRule Newline 0 )"newline" cursorSort
     ]
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 --------------------------------------------------------------------------------

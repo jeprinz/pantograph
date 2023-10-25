@@ -446,3 +446,11 @@ console
     color: gray;
     font-size: 14px;
 }
+
+.fill-right-space {
+    background-color: orange;
+    width: 10px;
+    display: inline;
+    cursor: pointer;
+    border-radius: 0.5em 0.5em / 0.2em;
+}

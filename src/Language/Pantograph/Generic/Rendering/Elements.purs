@@ -21,6 +21,7 @@ squareElem = makePuncElem "square" "☐"
 upArrowElem = makePuncElem "upArrow" "↑"
 downArrowElem = makePuncElem "downArrow" "↓"
 newlineElem = HH.br_
+fillRightSpace = HH.div [classNames ["fill-right-space"]] []
 indentElem = makePuncElem "indent" "  "
 
 commentBeginElem = makePuncElem "commentBegin" " /* "
