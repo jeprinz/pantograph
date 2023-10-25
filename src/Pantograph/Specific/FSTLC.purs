@@ -10,6 +10,7 @@ import Data.Maybe (Maybe)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Pantograph.Generic.Language as PL
+import Pantograph.Library.Language.Change (getDiffChangingRule)
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
 import Todo (todo)
 import Type.Proxy (Proxy(..))
@@ -188,107 +189,10 @@ instance Pretty Format where
 -- Language
 
 instance PL.Language SN EL where
-  getSortingRule =
-    let {str, jdg, ctx, ty, loc} = rsort in
-    case _ of
-      ZeroVar -> PL.buildSortingRule' (Proxy :: Proxy (gamma::_, x::_, alpha::_)) \{gamma, x, alpha} ->
-        []
-        /\
-        ( jdg.var gamma x alpha loc.local )
+  getSortingRule el = getSortingRule el
+  getChangingRule el = getChangingRule el
 
-      SucVar -> PL.buildSortingRule ["gamma", "x", "alpha", "y", "beta", "loc"] \[gamma, x, alpha, y, beta, loc] ->
-        [ jdg.var gamma x alpha loc ]
-        /\
-        ( jdg.var (ctx.cons y beta gamma) x alpha loc )
-
-      FreeVar -> PL.buildSortingRule ["x", "alpha"] \[x, alpha] ->
-        []
-        /\
-        ( jdg.var ctx.nil x alpha loc.nonlocal )
-
-      LamTerm -> PL.buildSortingRule ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
-        [ str x
-        , jdg.ty alpha
-        , jdg.term (ctx.cons x alpha gamma) beta ]
-        /\
-        ( jdg.term gamma (ty.arrow alpha beta) )
-
-      LetTerm -> PL.buildSortingRule ["s", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
-        [ str x
-        , jdg.ty alpha
-        , jdg.term (ctx.cons x alpha gamma) alpha
-        , jdg.term (ctx.cons x alpha gamma) beta
-        ]
-        /\
-        ( jdg.term gamma beta )
-
-      VarNeut -> PL.buildSortingRule ["gamma", "x", "alpha", "loc"] \[gamma, x, alpha, loc] ->
-        [ jdg.var gamma x alpha loc ]
-        /\
-        ( jdg.neut gamma alpha )
-
-      IfTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
-        [ jdg.term gamma ty.bool
-        , jdg.term gamma alpha ]
-        /\
-        ( jdg.term gamma alpha )
-
-      CallTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
-        [ jdg.neut gamma alpha ]
-        /\
-        ( jdg.term gamma alpha )
-
-      ErrorCallTerm -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-        [ jdg.neut gamma alpha ]
-        /\
-        ( jdg.term gamma beta )
-
-      HoleTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
-        [] 
-        /\
-        ( jdg.term gamma alpha )
-
-      ErrorBoundaryTerm -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-        [ jdg.term gamma alpha ]
-        /\
-        ( jdg.term gamma beta )
-
-      AppNeut -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-        [ jdg.neut gamma (ty.arrow alpha beta)
-        , jdg.term gamma alpha ]
-        /\
-        ( jdg.neut gamma beta )
-
-      GrayedAppNeut -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-        [ jdg.neut gamma beta
-        , jdg.term gamma alpha ]
-        /\
-        ( jdg.neut gamma beta )
-
-      HoleTy -> PL.buildSortingRule ["alpha"] \[alpha] ->
-        [] 
-        /\
-        ( jdg.ty alpha )
-
-      DataTyEL dt -> PL.buildSortingRule ["alpha", "beta"] \[alpha, beta] ->
-        []
-        /\
-        ( jdg.ty (ty.dt dt) )
-
-      ArrowTyEL -> PL.buildSortingRule ["alpha", "beta"] \[alpha, beta] ->
-        [ jdg.ty alpha
-        , jdg.ty beta ]
-        /\
-        ( jdg.ty (ty.arrow alpha beta) )
-
-      Format _ -> PL.buildSortingRule ["a"] \[a] -> 
-        []
-        /\
-        ( a )
-
-  getChangingRule = todo ""
-
-  topSort = todo ""
+  topSort = sort.jdg.term sort.ctx.nil (todo "sort metavar")
 
   getDefaultExpr = todo ""
 
@@ -300,6 +204,107 @@ instance PL.Language SN EL where
 
   validGyro = todo ""
 
+getSortingRule :: EL -> SortingRule
+getSortingRule =
+  let {str, jdg, ctx, ty, loc} = rsort in
+  case _ of
+    ZeroVar -> PL.buildSortingRule' (Proxy :: Proxy (gamma::_, x::_, alpha::_)) \{gamma, x, alpha} ->
+      []
+      /\
+      ( jdg.var gamma x alpha loc.local )
+
+    SucVar -> PL.buildSortingRule ["gamma", "x", "alpha", "y", "beta", "loc"] \[gamma, x, alpha, y, beta, loc] ->
+      [ jdg.var gamma x alpha loc ]
+      /\
+      ( jdg.var (ctx.cons y beta gamma) x alpha loc )
+
+    FreeVar -> PL.buildSortingRule ["x", "alpha"] \[x, alpha] ->
+      []
+      /\
+      ( jdg.var ctx.nil x alpha loc.nonlocal )
+
+    LamTerm -> PL.buildSortingRule ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
+      [ str x
+      , jdg.ty alpha
+      , jdg.term (ctx.cons x alpha gamma) beta ]
+      /\
+      ( jdg.term gamma (ty.arrow alpha beta) )
+
+    LetTerm -> PL.buildSortingRule ["s", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
+      [ str x
+      , jdg.ty alpha
+      , jdg.term (ctx.cons x alpha gamma) alpha
+      , jdg.term (ctx.cons x alpha gamma) beta
+      ]
+      /\
+      ( jdg.term gamma beta )
+
+    VarNeut -> PL.buildSortingRule ["gamma", "x", "alpha", "loc"] \[gamma, x, alpha, loc] ->
+      [ jdg.var gamma x alpha loc ]
+      /\
+      ( jdg.neut gamma alpha )
+
+    IfTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
+      [ jdg.term gamma ty.bool
+      , jdg.term gamma alpha ]
+      /\
+      ( jdg.term gamma alpha )
+
+    CallTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
+      [ jdg.neut gamma alpha ]
+      /\
+      ( jdg.term gamma alpha )
+
+    ErrorCallTerm -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+      [ jdg.neut gamma alpha ]
+      /\
+      ( jdg.term gamma beta )
+
+    HoleTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
+      [] 
+      /\
+      ( jdg.term gamma alpha )
+
+    ErrorBoundaryTerm -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+      [ jdg.term gamma alpha ]
+      /\
+      ( jdg.term gamma beta )
+
+    AppNeut -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+      [ jdg.neut gamma (ty.arrow alpha beta)
+      , jdg.term gamma alpha ]
+      /\
+      ( jdg.neut gamma beta )
+
+    GrayedAppNeut -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+      [ jdg.neut gamma beta
+      , jdg.term gamma alpha ]
+      /\
+      ( jdg.neut gamma beta )
+
+    HoleTy -> PL.buildSortingRule ["alpha"] \[alpha] ->
+      [] 
+      /\
+      ( jdg.ty alpha )
+
+    DataTyEL dt -> PL.buildSortingRule ["alpha", "beta"] \[alpha, beta] ->
+      []
+      /\
+      ( jdg.ty (ty.dt dt) )
+
+    ArrowTyEL -> PL.buildSortingRule ["alpha", "beta"] \[alpha, beta] ->
+      [ jdg.ty alpha
+      , jdg.ty beta ]
+      /\
+      ( jdg.ty (ty.arrow alpha beta) )
+
+    Format _ -> PL.buildSortingRule ["a"] \[a] -> 
+      []
+      /\
+      ( a )
+
+getChangingRule :: EL -> ChangingRule
+getChangingRule el = getDiffChangingRule {getSortingRule} el
 
 sort = {str, jdg, ctx, ty, loc}
   where

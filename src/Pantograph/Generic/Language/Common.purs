@@ -62,6 +62,7 @@ data RuleSortNode sn
 
 derive instance Generic (RuleSortNode sn) _
 instance Show sn => Show (RuleSortNode sn) where show = genericShow
+instance Eq sn => Eq (RuleSortNode sn) where eq = genericEq
 
 fromConstRuleSortNode msg = case _ of
   ConstRuleSortNode sn -> sn
