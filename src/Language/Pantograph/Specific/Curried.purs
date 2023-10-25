@@ -1,4 +1,4 @@
-module Language.Pantograph.Specific.October14 where
+module Language.Pantograph.Specific.Curried where
 
 import Data.Tuple.Nested
 import Prelude
@@ -408,9 +408,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
       , [Left (renCtx /\ 0)] ]
   -- hole
   TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
-    ->  -- TODO TODO TODO: it shouldn't just display the type as text using pretty. Ideally it should produce HTML.
-        -- One idea is that term holes could literally contain their type as a derivation.
-        [Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1)]
+    ->  [Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1)]
 --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
   -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
   TypeHole /\ _ | Just (Expr.Meta (Left mv) % []) <- Map.lookup (Expr.RuleMetaVar "type") sigma ->

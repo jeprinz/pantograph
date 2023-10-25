@@ -88,26 +88,6 @@ arrangeNodeSubs locs isCursor hdzipper subElems =
     [ HH.slot_ previewSlot rightDir previewComponent rightDir ]
   ]
 
-arrangeHoleExterior :: forall l r. IsRuleLabel l r =>
-  EditorLocals l r ->
-  DerivLabel l r ->
-  (RenderingContext -> EditorHTML l r) ->
-  RenderingContext ->
-  Array (EditorHTML l r)
-arrangeHoleExterior locs label@(DerivLabel rule sigma) holeInteriorElem renCtx = do
-  let subCtxSymElems = unsafePartial $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: derivLabelSort label, sigma}
-  -- TODO: use subCtxSymElems
-  Array.concat $ subCtxSymElems <#> case _ of
-    Left (renCtx' /\ kidIx) -> [holeInteriorElem renCtx]
-    Right elems -> elems
---  [ HH.div [classNames ["subnode", "holeExterior-inner"]]
---    [ HH.div [classNames ["subnode", "hole-interior"]] [holeInteriorElem renCtx]
---    , colonElem
---    , HH.div [classNames ["subnode", "hole-sort"]] [HH.text "replace this with what needs to be here"]
---    ]
---  ]
-arrangeHoleExterior _ _ _ _ = bug "a hole's DerivLabel shouldn't be a string"
-
 ------------------------------------------------------------------------------
 -- render term
 ------------------------------------------------------------------------------

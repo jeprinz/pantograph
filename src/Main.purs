@@ -1,7 +1,6 @@
 module Main where
 
---import Language.Pantograph.Specific.STLC (editorSpec)
-import Language.Pantograph.Specific.October14 as October14
+import Language.Pantograph.Specific.Curried as Curried
 import Tutorial.Tutorial as Tutorial
 import Language.Pantograph.Tutorial.TutorialExample as HenryTutorial
 import Prelude
@@ -21,7 +20,7 @@ import Language.Pantograph.Generic.Grammar as Grammar
 
 -- October14
 main :: Effect Unit
-main = runEditorForLang October14.editorSpec
+main = runEditorForLang Curried.editorSpec
 
 -- Tutorial test
 --main :: Effect Unit
