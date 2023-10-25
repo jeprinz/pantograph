@@ -71,7 +71,6 @@ arrangeNodeSubs :: forall l r. IsRuleLabel l r =>
   Array (EditorHTML l r) ->
   Array (EditorHTML l r)
 arrangeNodeSubs locs isCursor hdzipper subElems =
-  trace (if isCursor then ("hdzipper is: " <> show hdzipper) else "no") \_ ->
   Array.concat
   [ if not isCursor then [] else 
     [ HH.slot bufferSlot unit bufferComponent 
@@ -137,28 +136,6 @@ renderDerivTerm locs isCursor dzipper renCtx =
 -- render hole exterior and interior
 ------------------------------------------------------------------------------
 
--- !TODO I think this should actually use arrangeDerivTermSubs somehow
-renderHoleExterior :: forall l r. IsRuleLabel l r =>
-  EditorLocals l r ->
-  DerivPath Up l r ->
-  DerivLabel l r ->
-  (RenderingContext -> EditorHTML l r) ->
-  RenderingContext ->
-  EditorHTML l r
-renderHoleExterior locs dpath label holeInteriorElem renCtx =
-  HH.div
-    (Array.concat 
-      [ [classNames ["node"]]
-      , if not renCtx.isInteractive then [] else do
-        let dzipper = Expr.Zipper dpath (Expr.Expr label [])
-        let elemId = fromPathToElementId (Expr.zipperPath dzipper)
-        [ HP.id elemId
-        , HE.onMouseDown (locs.onMouseDown (injectHoleyDerivZipper dzipper))
-        , HE.onMouseOver (locs.onMouseOver (injectHoleyDerivZipper dzipper))
-        ]
-      ])
-    (arrangeHoleExterior locs label holeInteriorElem renCtx)
-
 renderHoleInterior :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
   Boolean ->
@@ -166,6 +143,7 @@ renderHoleInterior :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   EditorHTML l r
 renderHoleInterior locs isCursor dzipper renCtx = do
+--  let _ = trace ("renderHoleInterior called with dzipper = " <> pretty dzipper) \_ -> 5
   let hdzipper = (HoleyDerivZipper dzipper true)
   let hdpath = hdzipperHoleyDerivPath hdzipper
   HH.div

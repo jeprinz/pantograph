@@ -229,7 +229,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (GreyedApp /\ [f, a]) = P.parens $ f <+> "<" <+> a <+> ">"
   prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
-  prettyExprF'_unsafe_RuleLabel (TermHole /\ []) = "?"
+  prettyExprF'_unsafe_RuleLabel (TermHole /\ [ty]) = "(? : " <> ty <> ")"
   prettyExprF'_unsafe_RuleLabel (TypeHole /\ []) = "?<type>"
   prettyExprF'_unsafe_RuleLabel (Newline /\ [a]) = "<newline> " <> a
   prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
@@ -246,7 +246,8 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TypeHole -> true
     _ -> false
 
-  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma, ty]) = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [])
+  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma, ty])
+    = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [sortToType ty])
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x, _ty, _locality]) = empty
   defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % [ty]) =
     pure $ sortToType ty
@@ -301,7 +302,7 @@ language = TotalMap.makeTotalMap case _ of
     ( NeutralSort %|-* [gamma, ty] )
 
   TermHole -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
-    [ ]
+    [ TypeSort %|-* [ty] ]
     /\ --------
     ( TermSort %|-* [gamma, ty] )
 
@@ -409,7 +410,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
   TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
     ->  -- TODO TODO TODO: it shouldn't just display the type as text using pretty. Ideally it should produce HTML.
         -- One idea is that term holes could literally contain their type as a derivation.
-        [Left (renCtx /\ 0), pure [colonElem, HH.text (pretty ty)]]
+        [Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1)]
 --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
   -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
   TypeHole /\ _ | Just (Expr.Meta (Left mv) % []) <- Map.lookup (Expr.RuleMetaVar "type") sigma ->
@@ -497,7 +498,7 @@ getVarEdits sort =
                 wrapArgs neu = case Grammar.derivTermSort neu of
                     neuSort | Maybe.Just [gamma, a, b] <- Expr.matchExprImpl neuSort (sor NeutralSort %$ [{-gamma-}slot, sor Arrow %$ [{-a-}slot, {-b-}slot]]) ->
                         wrapArgs $
-                        Grammar.makeLabel App ["gamma" /\ gamma, "a" /\ a, "b" /\ b] % [neu, Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ a] % []]
+                        Grammar.makeLabel App ["gamma" /\ gamma, "a" /\ a, "b" /\ b] % [neu, Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ a] % [sortToType a]]
                     neuSort | Maybe.Just [gamma, t] <- Expr.matchExprImpl neuSort (sor NeutralSort %$ [{-gamma-}slot, {-t-}slot]) ->
                         Grammar.makeLabel FunctionCall ["gamma" /\ gamma, "type" /\ t] % [neu]
             in

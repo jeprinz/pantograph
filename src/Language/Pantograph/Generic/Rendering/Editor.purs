@@ -31,7 +31,7 @@ import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
 import Language.Pantograph.Generic.Rendering.Console (_consoleSlot, consoleComponent)
-import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleExterior, renderHoleInterior, renderPath, renderSSTerm)
+import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleInterior, renderPath, renderSSTerm)
 import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
 import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.ZipperMovement (moveZipperpUntil)
@@ -170,7 +170,6 @@ editorComponent = HK.component \tokens spec -> HK.do
       -- Debug.traceM $ "[setFacade'] st = " <> pretty st
       case st of
         CursorState cursor -> do
-          traceM ("Setting facade to cursor " <> pretty cursor.hdzipper)
           setCursorElement Nothing (Just (hdzipperHoleyDerivPath cursor.hdzipper))
         SelectState select -> do
           setSelectTopElement Nothing (Just (injectHoleyDerivPath (Expr.zipperpTopPath select.dzipperp)))
@@ -698,7 +697,7 @@ editorComponent = HK.component \tokens spec -> HK.do
     log "editorComponent.render" (P.bullets
       [ "currentState = " <> pretty currentState ]
     ) \_ ->
-    trace "render is being run" \_ ->
+--    trace "render is being run" \_ ->
     HH.div [classNames ["editor"]]
     [ HH.div
       [ classNames ["status"] ]
@@ -726,10 +725,9 @@ editorComponent = HK.component \tokens spec -> HK.do
                     (renderDerivTerm locs true dzipper)
                   (defaultRenderingContext unit)
               ]
-            HoleyDerivZipper dzipper true ->
-              [ renderPath locs dzipper 
-                  (renderHoleExterior locs (Expr.zipperPath dzipper) (derivZipperLabel dzipper) -- TODO: look into this!
-                      (renderHoleInterior locs true dzipper))
+            HoleyDerivZipper _ true ->
+              [ renderPath locs dzipper
+                    (renderHoleInterior locs true dzipper)
                   (defaultRenderingContext unit)
               ]
         SelectState _select -> hole "render SelectState"
