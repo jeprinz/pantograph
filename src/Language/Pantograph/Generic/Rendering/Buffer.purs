@@ -64,7 +64,7 @@ computeEdits input {bufferString, mb_oldString} =
                 -- !TODO compute actual change
                 -- OLD: Expr.injectExprChange sort
                 { topChange: 
-                    Expr.injectChange (pure NameSortLabel) 
+                    Expr.injectChange (Expr.MInj NameSortLabel)
                       [Expr.replaceChange 
                         (StringSortLabel oldString %* [])
                         (StringSortLabel bufferString %* [])]

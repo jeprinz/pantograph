@@ -334,7 +334,7 @@ data SSChangeRule l = SSChangeRule (Set.Set Expr.MetaVar) (Array (SSChangeSort l
 type SSChLanguage l r = TotalMap r (SSChangeRule l)
 
 metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeLabel (Expr.Meta l))
-metaInject e = map (map (Expr.Inject <<< Expr.Meta <<< Right)) e
+metaInject e = map (map (Expr.Inject <<< Expr.MInj)) e
 
 langToChLang :: forall l r. IsRuleLabel l r => Grammar.Language l r -> SSChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
@@ -509,14 +509,14 @@ makeUpRule changeMatch derivMatch output term = do
 --makeUpRule = Hole.hole "makeUpRule"
 
 injectChangeMatchExpr :: forall l. l -> Array (MatchSortChange l) -> MatchSortChange l
-injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))) % kids
+injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (Expr.MInj (Grammar.InjectSortLabel l)))) % kids
 
 infixl 7 injectChangeMatchExpr as %+-
 
 -- possible convention: names that are intentionally short to make them readable in a DSL are "d" for DSL followed by all caps
 dPLUS :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
 dPLUS l leftKids inside rightKids =
-    Expr.Plus (Expr.Tooth (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))
+    Expr.Plus (Expr.Tooth (Expr.InjectMatchLabel (Expr.MInj (Grammar.InjectSortLabel l)))
         (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
         % [inside]
 
@@ -524,7 +524,7 @@ dPLUS l leftKids inside rightKids =
 
 dMINUS :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
 dMINUS l leftKids inside rightKids =
-    Expr.Minus (Expr.Tooth (Expr.InjectMatchLabel (pure (Grammar.InjectSortLabel l)))
+    Expr.Minus (Expr.Tooth (Expr.InjectMatchLabel (Expr.MInj (Grammar.InjectSortLabel l)))
         (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
         % [inside]
 

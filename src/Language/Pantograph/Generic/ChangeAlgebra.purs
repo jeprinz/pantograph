@@ -54,7 +54,7 @@ isId _ = false
 -- Every part of the change is either the identity, or (Replace ?x something) where ?x is a metavariable only.
 isMerelyASubstitution :: forall l. IsExprLabel l => MetaChange l -> Boolean
 isMerelyASubstitution (Expr (Inject _) kids) = Array.all isMerelyASubstitution kids
-isMerelyASubstitution (Expr (Replace (Meta (Left _) % []) _) []) = true
+isMerelyASubstitution (Expr (Replace (MV _ % []) _) []) = true
 isMerelyASubstitution (Expr (Replace e1 e2) []) | e1 == e2 = true
 isMerelyASubstitution _ = false
 
@@ -64,13 +64,13 @@ isIdMaybe (Expr (Replace e1 e2) []) | e1 == e2 = Just e1
 isIdMaybe _ = Nothing
 
 collectMatches :: forall l. Eq l => Change l -> MetaExpr l -> Maybe (Map MetaVar (Set (Change l)))
-collectMatches (Expr (Inject l1) kids1) (Expr (Meta (Right l2)) kids2) | l1 == l2 =
+collectMatches (Expr (Inject l1) kids1) (Expr (MInj l2) kids2) | l1 == l2 =
     let subs = Array.zipWith collectMatches kids1 kids2 in
 --    let combine c1 c2 = if isId c1 then Just c2 else if isId c2 then Just c1 else if c1 == c2 then Just c1 else Nothing in
 --    let
 --    Array.fold subs
     Hole.hole "TODO: collectMatches"
-collectMatches c (Expr (Meta (Left x)) []) = Just $ Map.insert x (Set.singleton c) Map.empty
+collectMatches c (Expr (MV x) []) = Just $ Map.insert x (Set.singleton c) Map.empty
 collectMatches _ _ = Bug.bug "base case in collectMatches"
 
 endpoints :: forall l. IsExprLabel l => Change l -> Expr l /\ Expr l
@@ -269,6 +269,6 @@ subSomeMetaChange :: forall l. IsExprLabel l => Sub l -> MetaChange l -> MetaCha
 subSomeMetaChange sub (Expr l kids) =
     case l of
 --        Inject (Meta (Left x)) -> inject $ lookup' x sub
-        Inject (Meta (Left x)) | Just s <- Map.lookup x sub
+        Inject (MV x) | Just s <- Map.lookup x sub
             -> inject s
         _ -> Expr (subSomeChangeLabel sub l) (map (subSomeMetaChange sub) kids)

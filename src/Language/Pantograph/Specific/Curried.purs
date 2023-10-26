@@ -211,9 +211,9 @@ type Language = Grammar.Language PreSortLabel RuleLabel
 type Rule = Grammar.Rule PreSortLabel
 
 sortToType :: Sort -> DerivTerm
-sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel (DataType dt)))) []) =
+sortToType (Expr.Expr (Expr.MInj (Grammar.InjectSortLabel (DataType dt))) []) =
     Grammar.makeLabel (DataTypeRule dt) [] % []
-sortToType (Expr.Expr (Expr.Meta (Right (Grammar.InjectSortLabel Arrow))) [a, b]) =
+sortToType (Expr.Expr (Expr.MInj (Grammar.InjectSortLabel Arrow)) [a, b]) =
     Grammar.makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
 sortToType ty =
     Grammar.makeLabel TypeHole ["type" /\ ty] % []
@@ -247,13 +247,13 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TypeHole -> true
     _ -> false
 
-  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [gamma, ty])
+  defaultDerivTerm' (Expr.MInj (Grammar.InjectSortLabel TermSort) % [gamma, ty])
     = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [sortToType ty])
-  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % [_gamma, _x, _ty, _locality]) = empty
-  defaultDerivTerm' (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % [ty]) =
+  defaultDerivTerm' (Expr.MInj (Grammar.InjectSortLabel VarSort) % [_gamma, _x, _ty, _locality]) = empty
+  defaultDerivTerm' (Expr.MInj (Grammar.InjectSortLabel TypeSort) % [ty]) =
     pure $ sortToType ty
   -- TODO: This case should probably be in Generic.
-  defaultDerivTerm' (Expr.Meta (Right Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
+  defaultDerivTerm' (Expr.MInj (Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
 appRule :: Rule
@@ -368,9 +368,9 @@ languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey 
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
-  _ /\ (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) %
+  _ /\ (Expr.MInj (Grammar.InjectSortLabel VarSort) %
     [ _gamma
-    , Expr.Meta (Right (Grammar.StringSortLabel str)) % []
+    , Expr.MInj (Grammar.StringSortLabel str) % []
     , _ty
     , locality ]) ->
     -- TODO: use locality in rendering?
@@ -407,13 +407,13 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
       [ if renCtx.isInlined then [] else [pure (newlineIndentElem renCtx.indentationLevel)]
       , [Left (renCtx /\ 0)] ]
   -- hole
-  TermHole /\ (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % [_gamma, ty])
+  TermHole /\ (Expr.MInj (Grammar.InjectSortLabel TermSort) % [_gamma, ty])
     ->  [pure [Rendering.lbraceElem], Left (renCtx /\ 0), pure [colonElem]
         , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1)
         , pure [Rendering.rbraceElem]]
 --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
   -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
-  TypeHole /\ _ | Just (Expr.Meta (Left mv) % []) <- Map.lookup (Expr.RuleMetaVar "type") sigma ->
+  TypeHole /\ _ | Just (Expr.MV mv % []) <- Map.lookup (Expr.RuleMetaVar "type") sigma ->
     [Left (renCtx /\ 0), pure [HH.text (show (Base.getMetavarNumber renCtx mv))]]
   TypeHole /\ _ -> [Left (renCtx /\ 0), pure [HH.text ("error: " <> show (Map.lookup (Expr.RuleMetaVar "type") sigma))]]
   If /\ _ ->
@@ -540,7 +540,7 @@ splitChange c =
         c | Maybe.Just ([] /\ [_gamma, _ty]) <- Expr.matchChange c (NeutralSort %+- [cSlot, cSlot])
         -> {upChange: ChangeAlgebra.inject (rEndpoint c), cursorSort: rEndpoint c, downChange: c}
         -- TODO: maybe could just generalize this to when c is the identity?
-        ((Expr.Inject (Expr.Meta (Left _))) % []) ->
+        ((Expr.Inject (Expr.MV _)) % []) ->
             {upChange: c, cursorSort: rEndpoint c, downChange: c}
         c -> bug ("splitChange - got c = " <> pretty c)
 
@@ -660,7 +660,7 @@ wrapLambda = Smallstep.makeDownRule
     (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
     {-t-}slot
     (\[a] [gamma, b] [t] ->
-        let varName = (Expr.Meta (Right (Grammar.StringSortLabel "")) % []) in
+        let varName = (Expr.MInj (Grammar.StringSortLabel "") % []) in
         pure $
             dTERM Lam ["x" /\ varName, "a" /\ a, "b" /\ rEndpoint b, "gamma" /\ rEndpoint gamma] [
                     Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
@@ -682,7 +682,7 @@ unWrapLambda (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
                     -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
                     _ | Just ([a, b, x] /\ [gamma]) <- Expr.matchChange ch
                             (TermSort %+- [{-gamma-}cSlot, Expr.replaceChange ((Expr.InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
-                      , (Expr.Meta (Left _) % _) <- x
+                      , (Expr.MV _ % _) <- x
                         -> pure (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [], Expr.replaceChange b x])
                     _ -> Nothing
         pure $
@@ -724,7 +724,7 @@ makeAppGreyed ((Inject (Grammar.DerivLabel App sigma)) % [
                     -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
                     _ | Just ([a, b, x] /\ [gamma]) <- Expr.matchChange ch
                             (NeutralSort %+- [{-gamma-}cSlot, Expr.replaceChange ((Expr.InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
-                      , (Expr.Meta (Left _) % _) <- x
+                      , (Expr.MV _ % _) <- x
                         -> pure (csor NeutralSort % [gamma, Expr.replaceChange b x])
                     _ -> Nothing
         let sigma' = Map.insert (Expr.RuleMetaVar "anything") (Smallstep.ssTermSort inside) sigma -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
@@ -916,9 +916,9 @@ onDelete :: Sort -> SortChange
 onDelete cursorSort
     | Maybe.Just [ty] <- Expr.matchExprImpl cursorSort (sor TypeSort %$ [slot])
     = csor TypeSort % [Expr.replaceChange ty (Expr.fromMetaVar (Expr.freshMetaVar "deleted"))]
-onDelete (Expr.Meta (Right Grammar.NameSortLabel) % [s])
-    = Expr.Inject (Expr.Meta (Right Grammar.NameSortLabel)) %
-        [Expr.replaceChange s (Expr.Meta (Right (Grammar.StringSortLabel "")) % [])]
+onDelete (Expr.MInj Grammar.NameSortLabel % [s])
+    = Expr.Inject (Expr.MInj Grammar.NameSortLabel) %
+        [Expr.replaceChange s (Expr.MInj (Grammar.StringSortLabel "") % [])]
 onDelete cursorSort = ChangeAlgebra.inject cursorSort
 
 generalizeDerivation :: Sort -> SortChange
@@ -945,21 +945,21 @@ clipboardSort s
 clipboardSort _other = Expr.fromMetaVar (Expr.freshMetaVar "anySort")
 
 isValidCursorSort :: Sort -> Boolean
-isValidCursorSort (Expr.Meta (Right (Grammar.InjectSortLabel VarSort)) % _) = false
+isValidCursorSort (Expr.MInj (Grammar.InjectSortLabel VarSort) % _) = false
 isValidCursorSort _ = true
 
 isValidSelectionSorts :: {bottom :: Sort, top :: Sort} -> Boolean
 isValidSelectionSorts {
-        bottom: (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % _)
-        , top: (Expr.Meta (Right (Grammar.InjectSortLabel TermSort)) % _)
+        bottom: (Expr.MInj (Grammar.InjectSortLabel TermSort) % _)
+        , top: (Expr.MInj (Grammar.InjectSortLabel TermSort) % _)
     } = true
 isValidSelectionSorts {
-        bottom: (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % _)
-        , top: (Expr.Meta (Right (Grammar.InjectSortLabel TypeSort)) % _)
+        bottom: (Expr.MInj (Grammar.InjectSortLabel TypeSort) % _)
+        , top: (Expr.MInj (Grammar.InjectSortLabel TypeSort) % _)
     } = true
 isValidSelectionSorts {
-        bottom: (Expr.Meta (Right (Grammar.InjectSortLabel NeutralSort)) % _)
-        , top: (Expr.Meta (Right (Grammar.InjectSortLabel NeutralSort)) % _)
+        bottom: (Expr.MInj (Grammar.InjectSortLabel NeutralSort) % _)
+        , top: (Expr.MInj (Grammar.InjectSortLabel NeutralSort) % _)
     } = true
 isValidSelectionSorts _ = false
 

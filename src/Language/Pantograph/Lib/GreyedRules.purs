@@ -70,7 +70,7 @@ subSomeChangeLabel sub =
 subSomeMetaChange :: forall l. Expr.IsExprLabel l => ChSub l -> Expr.MetaChange l -> Expr.MetaChange l
 subSomeMetaChange sub (Expr.Expr l kids) =
     case l of
-        Expr.Inject (Expr.Meta (Left x)) | Just s <- Map.lookup x sub
+        Expr.Inject (Expr.MV x) | Just s <- Map.lookup x sub
             -> s
         _ -> Expr.Expr (subSomeChangeLabel sub l) (map (subSomeMetaChange sub) kids)
 

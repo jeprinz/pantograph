@@ -238,27 +238,27 @@ derive instance Foldable SortLabel
 derive instance Traversable SortLabel
 
 freshMetaVarSort :: forall l. String -> Sort l
-freshMetaVarSort name = Expr.Meta (Either.Left (freshMetaVar name)) % []
+freshMetaVarSort name = (Expr.MV (freshMetaVar name)) % []
 
 -- This is used as part of a DSL for building up sorts.
 sor :: forall l. l -> Expr.Meta (SortLabel l)
-sor l = pure (InjectSortLabel l)
+sor l = Expr.MInj (InjectSortLabel l)
 
 nameSort :: forall l. String -> Expr.MetaExpr (SortLabel l)
-nameSort name = pure (StringSortLabel name) % []
+nameSort name = Expr.MInj (StringSortLabel name) % []
 
 -- This is used as part of a DSL for building up sort changes
 csor :: forall l. l -> Expr.ChangeLabel (Expr.Meta (SortLabel l))
-csor l = Expr.Inject (pure (InjectSortLabel l))
+csor l = Expr.Inject (Expr.MInj (InjectSortLabel l))
 
 -- assert that a label is a name and return the string
 matchNameLabel :: forall l. Sort l -> String
-matchNameLabel (Expr.Expr (Expr.Meta (Either.Right NameSortLabel)) [Expr.Expr (Expr.Meta (Either.Right (StringSortLabel s))) []]) = s
+matchNameLabel (Expr.Expr (Expr.MInj NameSortLabel) [Expr.Expr (Expr.MInj (StringSortLabel s)) []]) = s
 matchNameLabel _ = bug "wasn't name"
 
 -- assert that a label is a string and return the string
 matchStringLabel :: forall l. Sort l -> String
-matchStringLabel (Expr.Expr (Expr.Meta (Either.Right (StringSortLabel s))) []) = s
+matchStringLabel (Expr.Expr (Expr.MInj (StringSortLabel s)) []) = s
 matchStringLabel _ = bug "wasn't stringlabel"
 
 instance Pretty l => Pretty (SortLabel l) where
@@ -369,8 +369,8 @@ data Rule l =
     (Sort l)
 
 derive instance Functor Rule
-derive instance Foldable Rule
-derive instance Traversable Rule
+--derive instance Foldable Rule
+--derive instance Traversable Rule
 
 nonDuplicateArray :: forall a. Eq a => Ord a => String -> String -> Array a -> Assertion Unit
 nonDuplicateArray source message arr = makeAssertionBoolean
@@ -418,8 +418,8 @@ defaultLanguageChanges = map \(Rule mvars kids parent) ->
 data ChangeRule l = ChangeRule (Set.Set Expr.MetaVar) (Array (Expr.MetaChange (SortLabel l)))
 
 derive instance Functor ChangeRule
-derive instance Foldable ChangeRule
-derive instance Traversable ChangeRule
+--derive instance Foldable ChangeRule
+--derive instance Traversable ChangeRule
 
 
 --------------------------------------------------------------------------------

@@ -143,25 +143,27 @@ freshenMetaVar :: MetaVar -> MetaVar
 freshenMetaVar (MetaVar (Just str) _) = freshMetaVar str
 freshenMetaVar (MetaVar Nothing _) = freshMetaVar' unit
 freshenMetaVar (RuleMetaVar _str) = bug "[freshenMetaVar] Should never try to freshen a RuleMetaVar, since it should be substituted away in any instantiated Rule i.e. Derivation"
-newtype Meta a = Meta (MetaVar \/ a)
+data Meta a = MV MetaVar | MInj a
 
-derive instance Newtype (Meta a) _
-derive newtype instance Show a => Show (Meta a)
-derive newtype instance Eq a => Eq (Meta a)
-derive newtype instance Ord a => Ord (Meta a)
-derive newtype instance Functor Meta
-derive newtype instance Apply Meta
-derive newtype instance Applicative Meta
-derive newtype instance Foldable Meta
-derive newtype instance Traversable Meta
-instance Pretty a => Pretty (Meta a) where pretty = Newtype.unwrap >>> either pretty pretty
+derive instance Generic (Meta a) _
+derive instance Functor Meta
+--derive instance Applicative Meta
+instance Show a => Show (Meta a) where show x = genericShow x
+instance Eq a => Eq (Meta a) where eq x y = genericEq x y
+instance Ord a => Ord (Meta a) where compare x y = genericCompare x y
+
+instance Pretty a => Pretty (Meta a) where
+    pretty =
+        case _ of
+        MV mv -> pretty mv
+        MInj a -> pretty a
 
 instance IsExprLabel l => IsExprLabel (Meta l) where
-  prettyExprF'_unsafe ((Meta (Left x)) /\ _kids) = pretty x
-  prettyExprF'_unsafe ((Meta (Right l)) /\ kids) = prettyExprF (l /\ kids)
+  prettyExprF'_unsafe (MV x /\ _kids) = pretty x
+  prettyExprF'_unsafe (MInj l /\ kids) = prettyExprF (l /\ kids)
 
-  expectedKidsCount (Meta (Left _)) = 0
-  expectedKidsCount (Meta (Right l)) = expectedKidsCount l
+  expectedKidsCount (MV _) = 0
+  expectedKidsCount (MInj l) = expectedKidsCount l
 
 --------------------------------------------------------------------------------
 -- Tooth
@@ -603,10 +605,10 @@ replaceChange e1 e2 = Replace e1 e2 % []
 type MetaExpr l = Expr (Meta l)
 
 fromMetaVar :: forall l. MetaVar -> MetaExpr l
-fromMetaVar mx = Meta (Left mx) % []
+fromMetaVar mx = MV mx % []
 
 pureMetaExpr :: forall l. l -> Array (MetaExpr l) -> MetaExpr l
-pureMetaExpr l = (pure l % _)
+pureMetaExpr l = (MInj l % _)
 
 infixl 7 pureMetaExpr as %*
 
@@ -621,18 +623,18 @@ subMetaExpr sigma = assertInput_ (wellformedExpr "subMetaExpr") go
   where
   go :: Partial => _
   go = case _ of
-    Meta (Left mx) % [] -> assert (hasKey "subMetaExpr" mx sigma) identity
-    Meta (Right l) % kids -> l % (go <$> kids)
+    MV mx % [] -> assert (hasKey "subMetaExpr" mx sigma) identity
+    MInj l % kids -> l % (go <$> kids)
 
 subMetaExprPartially :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
 subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially") go
   where
   go :: Partial => _
   go = case _ of
-    Meta (Left mx) % [] -> case Map.lookup mx sigma of
-      Nothing -> Meta (Left mx) % []
+    MV mx % [] -> case Map.lookup mx sigma of
+      Nothing -> (MV mx) % []
       Just mexpr -> mexpr
-    Meta (Right l) % kids -> Meta (Right l) % (go <$> kids)
+    MInj l % kids -> (MInj l) % (go <$> kids)
 
 --    Minus [kid] -> ?h
 --    Inject kids -> ?h

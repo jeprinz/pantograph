@@ -47,8 +47,8 @@ class Freshenable t where
     freshen :: Ren -> t -> t
 
 instance Freshenable (Expr.Meta l) where
-    freshen ren (Expr.Meta (Left x)) = Expr.Meta (Left (lookup' x ren))
-    freshen ren (Expr.Meta (Right l)) = Expr.Meta (Right l)
+    freshen ren (Expr.MV x) = Expr.MV (lookup' x ren)
+    freshen ren (Expr.MInj l) = Expr.MInj l
 
 -- TODO: I really want this definition, but then I get an overlapping instances issue
 --instance (Functor f, Freshenable l) => Freshenable (f l) where
@@ -93,8 +93,8 @@ noMetaVars source mexpr0 = Assertion
     { name: "noMetaVars", source
     , result: do
         let go = assertInput_ (Expr.wellformedExpr "noMetaVars") \mexpr -> case mexpr of
-                Expr.Meta (Left _) % [] -> throwError $ "Found MetaVar " <> quotes (pretty mexpr)
-                Expr.Meta (Right l) % kids -> (l % _) <$> go `traverse` kids
+                Expr.MV _ % [] -> throwError $ "Found MetaVar " <> quotes (pretty mexpr)
+                Expr.MInj l % kids -> (l % _) <$> go `traverse` kids
         go mexpr0
     }
 
@@ -103,14 +103,14 @@ noMetaVars source mexpr0 = Assertion
 -- we may need a more general notion of unification later, but this is ok for now
 -- NOTE: should prefer substituting variables from the left if possible
 unify :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
-unify e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr (Expr.Meta l2) kids2) =
+unify e1@(Expr.Expr l1 kids1) e2@(Expr.Expr l2 kids2) =
     case l1 /\ l2 of
-        Left x1 /\ Left x2 | x1 == x2 -> Just (e1 /\ Map.empty)
-        Left x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
-        _ /\ Left x -> unify e2 e1
-        Right l /\ Right l' | l == l' -> do
+        Expr.MV x1 /\ Expr.MV x2 | x1 == x2 -> Just (e1 /\ Map.empty)
+        Expr.MV x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
+        _ /\ Expr.MV x -> unify e2 e1
+        Expr.MInj l /\ Expr.MInj l' | l == l' -> do
             kids' /\ sub <- unifyLists (List.fromFoldable kids1) (List.fromFoldable kids2)
-            pure (Expr.Expr (Expr.Meta (Right l)) (Array.fromFoldable kids') /\ sub)
+            pure (Expr.Expr (Expr.MInj l) (Array.fromFoldable kids') /\ sub)
         _ /\ _ -> Nothing
 
 unifyLists :: forall l. Expr.IsExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
@@ -127,10 +127,10 @@ unifyLists _ _ = Bug.bug "[unifyLists] shouldn't happen"
 ------------- Another operation I need for typechanges stuff ------------------
 
 getMatches :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.Expr l -> Maybe (MultiMap Expr.MetaVar (Expr.Expr l))
-getMatches _e1@(Expr.Expr (Expr.Meta l1) kids1) e2@(Expr.Expr l2 kids2) =
+getMatches _e1@(Expr.Expr l1 kids1) e2@(Expr.Expr l2 kids2) =
     case l1 of
-        Left x -> Just $ MultiMap.insert x e2 (MultiMap.empty)
-        Right l | l == l2 -> foldl (lift2 MultiMap.union) (Just MultiMap.empty) (Array.zipWith getMatches kids1 kids2)
+        Expr.MV x -> Just $ MultiMap.insert x e2 (MultiMap.empty)
+        Expr.MInj l | l == l2 -> foldl (lift2 MultiMap.union) (Just MultiMap.empty) (Array.zipWith getMatches kids1 kids2)
         _ ->
             Nothing
 
