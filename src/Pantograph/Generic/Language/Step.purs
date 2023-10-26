@@ -1,7 +1,6 @@
 module Pantograph.Generic.Language.Step where
 
 import Data.Either.Nested
-import Data.Match
 import Data.Tree
 import Data.Tuple
 import Data.Tuple.Nested
@@ -23,7 +22,6 @@ import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Tree.Change (lub')
 import Debug as Debug
-import Pantograph.Generic.Language.Step.Pattern as P
 import Record as R
 import Text.Pretty (pretty, ticks, (<+>))
 import Todo (todo)
@@ -208,12 +206,3 @@ combineUpRule = SteppingRule case _ of
     Boundary Up (up1 <> up2) kid
   _ -> Nothing
 
--- SteppingRule builder
-
--- buildSteppingRule :: forall sn el. Eq sn => Eq el => Show sn =>
---   StepExprPattern sn el ->
---   (Array (StepExprMatch sn el Void) -> Maybe (StepExpr sn el)) ->
---   SteppingRule sn el
--- buildSteppingRule pat k = SteppingRule $ case_ 
---   [ pat /\ Just <<< k
---   , wild /\ Just <<< const Nothing ]
