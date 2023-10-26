@@ -364,3 +364,10 @@ body {
 .PreviewLeftPaste+.Expr {
   background-color: rgb(255, 165, 165);
 }
+
+/* Html */
+
+.Hole {
+  color: gray;
+  padding: 0 calc(0.5*var(--it));
+}

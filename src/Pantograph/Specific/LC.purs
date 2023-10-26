@@ -243,7 +243,7 @@ instance PR.Rendering SN EL CTX ENV where
         HoleRule -> ass \[] -> do
           holeIndex <- State.gets _.holeCount
           State.modify_ _ {holeCount = holeIndex + 1}
-          pure [PR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "holeIndex"]] [HH.text ("?" <> show holeIndex)]]]
+          pure [PR.HtmlArrangeKid [PH.hole {index: Just $ HH.text (show holeIndex), ann: Nothing}]]
         FormatRule Indent -> ass \[ma] -> do
           ctx <- ask
           a_ /\ _a <- local (R.modify (Proxy :: Proxy "indentLevel") (1 + _)) ma
