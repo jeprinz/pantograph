@@ -23,6 +23,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
+import Pantograph.Generic.Rendering.Html as PH
 import Pantograph.Library.Language.Step as LibStep
 import Record as R
 import Text.Pretty (quotes2, (<+>))
@@ -214,8 +215,8 @@ instance PR.Rendering SN EL CTX ENV where
 
   arrangeExpr =
     let punc str = PR.HtmlArrangeKid [HH.span_ [HH.text str]] in
-    let indent i = PR.HtmlArrangeKid (Array.replicate i (HH.text "  ")) in
-    let newline i = PR.HtmlArrangeKid ([HH.span [HP.classes [HH.ClassName "newline-header"]] [HH.text "↪"], HH.br_] <> Array.replicate i (HH.text "  ")) in
+    let indent i = PR.HtmlArrangeKid (Array.replicate i (PH.whitespace "⇥ ")) in
+    let newline i = PR.HtmlArrangeKid ([PH.whitespace " ↪", HH.br_] <> Array.replicate i (PH.whitespace "⇥ ")) in
     \node@(PL.ExprNode {label}) ->
       let ass = assertValidTreeKids "arrangeExpr" (PL.shrinkAnnExprNode node :: PL.ExprNode SN EL) in
       case label of

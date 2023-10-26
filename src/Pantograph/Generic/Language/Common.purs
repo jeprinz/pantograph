@@ -23,7 +23,10 @@ import Data.Ord.Generic (genericCompare)
 import Data.SearchableArray (SearchableArray)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Data.String as String
 import Data.Tuple (uncurry)
+import Data.UUID (UUID)
+import Data.UUID as UUID
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, inner, outer, pretty, ticks, (<+>))
 import Type.Proxy (Proxy)
@@ -33,6 +36,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 data SortNode (sn :: Type)
   = SortNode sn
+  | VarSortNode SortVar
 
 derive instance Generic (SortNode sn) _
 derive instance Eq sn => Eq (SortNode sn)
@@ -43,16 +47,21 @@ derive instance Functor SortNode
 
 instance TreeNode sn => TreeNode (SortNode sn) where
   kidsCount (SortNode node) = kidsCount node
+  kidsCount (VarSortNode _) = 0
 
-instance PrettyTreeNode sn => PrettyTreeNode (SortNode sn) where
-  prettyTreeNode (SortNode node) kids = prettyTreeNode node kids
+instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (SortNode sn) where
+  prettyTreeNode sn =
+    let ass = assertValidTreeKids "prettyTreeNode" sn in
+    case sn of
+      SortNode node -> ass \kids -> prettyTreeNode node kids
+      VarSortNode var -> ass \[] -> pretty var
 
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)
 type SortPath sn = Path (SortNode sn)
 
 -- type SortPattern sn = TreePattern (SortNodePattern sn)
-type SortMatch sn m = Sort sn \/ m
+-- type SortMatch sn m = Sort sn \/ m
 
 -- RuleSort
 
@@ -63,6 +72,17 @@ data RuleSortNode sn
 derive instance Generic (RuleSortNode sn) _
 instance Show sn => Show (RuleSortNode sn) where show = genericShow
 instance Eq sn => Eq (RuleSortNode sn) where eq = genericEq
+
+instance TreeNode sn => TreeNode (RuleSortNode sn) where
+  kidsCount (ConstRuleSortNode node) = kidsCount node
+  kidsCount (VarRuleSortNode _) = 0
+
+instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (RuleSortNode sn) where
+  prettyTreeNode rsn =
+    let ass = assertValidTreeKids "prettyTreeNode" rsn in
+    case rsn of
+      ConstRuleSortNode node -> ass \kids -> prettyTreeNode node kids
+      VarRuleSortNode x -> ass \[] -> pretty x
 
 fromConstRuleSortNode msg = case _ of
   ConstRuleSortNode sn -> sn
@@ -168,7 +188,7 @@ derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
 instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 
-instance (PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn el) where
+instance (Show sn, PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn el) where
   pretty = case _ of
     Boundary dir ch e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
     StepExpr Nothing node kids -> prettyTreeNode node (pretty <$> kids)
@@ -333,3 +353,15 @@ instance Language sn el => ApplyRuleSortVarSubst sn RuleSortVar (Sort sn) where
 --             pure $ Map.delete x sigma') 
 --       sigma sigmaPat
 --     when (not $ Map.isEmpty sigma') $ bug $ "matchRuleSortVarSubst: pattern " <> ticks (show sigmaPat) <> " should also match substitutions " <> ticks (show (pretty <$> (Set.toUnfoldable (Map.keys sigma') :: Array _)))
+
+-- SortVar
+
+newtype SortVar = SortVar UUID
+
+derive instance Generic SortVar _
+derive newtype instance Show SortVar
+derive newtype instance Eq SortVar
+derive newtype instance Ord SortVar
+
+instance Pretty SortVar where
+  pretty (SortVar uuid) = "?" <> String.take 2 (UUID.toString uuid)

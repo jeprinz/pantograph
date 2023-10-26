@@ -254,17 +254,19 @@ body {
   display: inline;
 }
 
-/* .Expr:hover>.HtmlArrangeKid>.newline-header {
+.Expr>.HtmlArrangeKid>.Whitespace {
   color: rgba(0, 0, 0, 0);
 }
 
-.Expr.hover>.newline-header {
+.Expr:hover>.HtmlArrangeKid>.Whitespace,
+.Expr.OutsideCursor>.HtmlArrangeKid>.Whitespace,
+.Expr.InsideCursor>.HtmlArrangeKid>.Whitespace,
+.Expr.OutsideSelect .Whitespace {
   color: gray;
-} */
+}
 
-.Expr.OutsideCursor>.newline-header,
-.Expr.InsideCursor>.newline-header {
-  color: gray;
+.Expr.InsideSelect .Whitespace {
+  color: rgba(0, 0, 0, 0);
 }
 
 .Expr.OutsideCursor,
@@ -290,32 +292,6 @@ body {
   background-color: white;
   box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
-
-/* 
-
-.Expr.InsideRoot {}
-
-
-.Expr.OutsideCursor {}
-
-
-
-
-.Expr.OutsideSelect {}
-
-.Expr.AtOutsideSelect {
-  background-color: var(--select-background-color);
-  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
-}
-
-.Expr.MiddleSelect {}
-
-.Expr.AtInsideSelect {
-  background-color: white;
-  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
-}
-
-.Expr.InsideSelect {} */
 
 /* Toolbox */
 

@@ -16,3 +16,5 @@ panel {name, info, control, content} =
         HH.div [HP.classes [HH.ClassName "PanelContentInterior"]]
           content
     ]
+
+whitespace str = HH.span [HP.classes [HH.ClassName "Whitespace"]] [HH.text str]
