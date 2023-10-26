@@ -62,10 +62,17 @@ buildChangingRule strs k = do
   let kids = unsafePartial $ k parametersVars
   ChangingRule {parameters, kids}
 
+buildExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => Language sn el => el -> Record r -> Array (Expr sn el) -> Expr sn el
 buildExpr label sigma_ = 
-  let node = makeExprNode' label sigma_ in
+  let node = buildExprNode label sigma_ in
   assertValidTreeKids "makeExpr" node \kids ->
     Tree node kids
+
+buildExprNode :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => Language sn el => el -> Record r -> ExprNode sn el
+buildExprNode label sigma_ = 
+  let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
+  assertValidRuleVarSubst label sigma \_ ->
+    ExprNode {label, sigma}
 
 -- make
 
@@ -75,11 +82,6 @@ makeInjectRuleSort n kids = Tree (makeInjectRuleSortNode n) kids
 
 makeExprNode label sigma_ = 
   let sigma = RuleSortVarSubst (Map.fromFoldable (sigma_ <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort))) in
-  assertValidRuleVarSubst label sigma \_ ->
-    ExprNode {label, sigma}
-
-makeExprNode' label sigma_ = 
-  let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
   assertValidRuleVarSubst label sigma \_ ->
     ExprNode {label, sigma}
 

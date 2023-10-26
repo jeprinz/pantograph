@@ -4,6 +4,7 @@ import Data.Tree
 import Data.Tuple.Nested
 import Prelude
 
+import Bug (bug)
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
@@ -14,6 +15,7 @@ import Data.StringQuery as StringQuery
 import Data.Tuple (fst)
 import Pantograph.Generic.Language as PL
 import Pantograph.Library.Language.Change (getDiffChangingRule)
+import Pantograph.Library.Language.Edit as LibEdit
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
 import Todo (todo)
 import Type.Proxy (Proxy(..))
@@ -30,6 +32,7 @@ type Edits = PL.Edits SN EL
 type SteppingRule = PL.SteppingRule SN EL
 type ChangingRule = PL.ChangingRule SN
 type SortingRule = PL.SortingRule SN
+type SplitExprPathChanges = LibEdit.SplitExprPathChanges SN EL
 
 -- SN
 
@@ -106,8 +109,10 @@ instance Pretty DataTy where
 -- EL
 
 data EL
+  -- Str
+  = StrEL
   -- Var
-  = ZeroVar
+  | ZeroVar
   | SucVar -- Var
   | FreeVar
   -- Term
@@ -136,6 +141,7 @@ instance Ord EL where compare = genericCompare
 
 instance TreeNode EL where
   kidsCount = case _ of
+    StrEL -> 0
     ZeroVar -> 0
     SucVar -> 1
     FreeVar -> 0
@@ -158,6 +164,7 @@ instance PrettyTreeNode EL where
   prettyTreeNode el =
     let ass = assertValidTreeKids "prettyTreeNode" el in
     case el of
+      StrEL -> ass \[] -> "STR"
       ZeroVar -> ass \[] -> "Z"
       SucVar -> ass \[x] -> "S" <> x
       FreeVar -> ass \[x] -> "F"
@@ -211,6 +218,11 @@ getSortingRule :: EL -> SortingRule
 getSortingRule =
   let {str, jdg, ctx, ty, loc} = rsort in
   case _ of
+    StrEL -> PL.buildSortingRule (Proxy :: Proxy (x::_)) \{x {- : StrInner -}} ->
+      []
+      /\
+      ( str x )
+
     ZeroVar -> PL.buildSortingRule (Proxy :: Proxy (gamma::_, x::_, alpha::_)) \{gamma, x, alpha} ->
       []
       /\
@@ -310,14 +322,35 @@ getChangingRule :: EL -> ChangingRule
 getChangingRule el = getDiffChangingRule {getSortingRule} el
 
 getEdits :: Sort -> Orientation -> Edits
-getEdits sr ori = PL.Edits $ StringQuery.fuzzy
-  { getItems: todo "getItems"
-  , toString: fst
-  , maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits (Tree (PL.SortNode (StrInner _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits (Tree (PL.SortNode Str) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits (Tree (PL.SortNode VarJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+getEdits sr@(Tree (PL.SortNode TermJdg) [gamma, beta]) Outside = PL.Edits $ StringQuery.fuzzy
+  { toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0
+  , getItems: const
+      [ "lambda" /\
+      let alpha = sort.freshVar "alpha" in
+      let x = sort.strInner "" in
+      LibEdit.buildEditsFromExpr {splitExprPathChanges} 
+        (expr.term.lam x alpha (sort.freshVar "beta") gamma 
+          (expr.str x) (expr.ty.hole alpha) (expr.term.hole beta))
+        sr
+    ]
+  }
+getEdits (Tree (PL.SortNode NeutJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+getEdits (Tree (PL.SortNode TyJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+getEdits (Tree (PL.SortNode (DataTySN _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+getEdits (Tree (PL.SortNode ArrowTySN) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+getEdits sort orientation = bug $ "invalid cursor position; sort = " <> show sort <> "; orientation = " <> show orientation
 
-sort = {str, jdg, ctx, ty, loc}
+splitExprPathChanges :: SplitExprPathChanges
+splitExprPathChanges = todo "type change goes up, context change goes down"
+
+sort = {strInner, str, freshVar, jdg, ctx, ty, loc}
   where
+  strInner = \string -> PL.makeSort (StrInner string) []
   str = \strInner -> PL.makeSort Str [strInner]
+  freshVar = PL.freshVarSort
   jdg =
     { var: \gamma x alpha loc -> PL.makeSort VarJdg [gamma, x, alpha, loc]
     , term: \gamma alpha -> PL.makeSort TermJdg [gamma, alpha]
@@ -334,8 +367,9 @@ sort = {str, jdg, ctx, ty, loc}
     { local: PL.makeSort LocalLoc []
     , nonlocal: PL.makeSort NonlocalLoc [] }
 
-rsort = {str, jdg, ctx, ty, loc}
+rsort = {strInner, str, jdg, ctx, ty, loc}
   where
+  strInner = \string -> PL.makeInjectRuleSort (StrInner string)
   str = \strInner -> PL.makeInjectRuleSort Str [strInner]
   jdg =
     { var: \gamma x alpha loc -> PL.makeInjectRuleSort VarJdg [gamma, x, alpha, loc]
@@ -353,14 +387,19 @@ rsort = {str, jdg, ctx, ty, loc}
     { local: PL.makeInjectRuleSort LocalLoc []
     , nonlocal: PL.makeInjectRuleSort NonlocalLoc [] }
 
-expr = {var}
+expr = {var, str, ty, term}
   where
+  str x = PL.buildExpr StrEL {x} [] 
   var = 
     { zero: \gamma x alpha -> PL.buildExpr ZeroVar {gamma, x, alpha} []
     , suc: \gamma x alpha y beta loc pred -> PL.buildExpr SucVar {gamma, x, alpha, y, beta, loc} [pred]
     , free: \x alpha -> PL.buildExpr FreeVar {x, alpha} [] }
 
-  -- term =
-  --   { lam: \x alpha beta gamma -> PL.buildExpr LamTerm {x, alpha, beta, gamma} [] 
-  --   }
+  ty = 
+    { hole: \alpha -> PL.buildExpr HoleTy {alpha} [] }
+
+  term =
+    { lam: \x alpha beta gamma xExpr alphaExpr b -> PL.buildExpr LamTerm {x, alpha, beta, gamma} [xExpr, alphaExpr, b]
+    , hole: \alpha -> PL.buildExpr HoleTerm {alpha} []
+    }
   

@@ -94,8 +94,8 @@ makeSort sn kids = Tree (SortNode sn) kids
 makeVarSort :: forall sn. SortVar -> Sort sn
 makeVarSort x = Tree (VarSortNode x) []
 
-freshVarSort :: forall sn. Unit -> Tree (SortNode sn)
-freshVarSort _ = Tree (VarSortNode (SortVar (unsafePerformEffect UUID.genUUID))) []
+freshVarSort :: forall sn. String -> Tree (SortNode sn)
+freshVarSort label = Tree (VarSortNode (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})) []
 
 injectRuleSort :: forall sn. Sort sn -> RuleSort sn
 injectRuleSort = map inject
@@ -313,7 +313,7 @@ instance Language sn el => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortCha
 
 -- SortVar
 
-newtype SortVar = SortVar UUID
+newtype SortVar = SortVar {label :: String, uuid :: UUID}
 
 derive instance Generic SortVar _
 derive newtype instance Show SortVar
@@ -321,7 +321,7 @@ derive newtype instance Eq SortVar
 derive newtype instance Ord SortVar
 
 instance Pretty SortVar where
-  pretty (SortVar uuid) = "?" <> String.take 2 (UUID.toString uuid)
+  pretty (SortVar {label, uuid}) = "?" <> label <> "#" <> String.take 2 (UUID.toString uuid)
 
 newtype SortVarSubst sn = SortVarSubst (Map.Map SortVar (Sort sn))
 derive newtype instance Eq sn => Eq (SortVarSubst sn)
