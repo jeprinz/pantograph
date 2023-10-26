@@ -28,12 +28,44 @@ import Type.Proxy (Proxy(..))
 import Type.Row.Homogeneous (class Homogeneous)
 import Util (class RowKeys, asStateT, buildFromKeys, delete', fromHomogenousRecordToTupleArray, fromJust, fromJust', rowKeys)
 
+-- assert
+
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
   if rule.parameters == Map.keys m then k unit else
   bug $ "assertValidRuleVarSubst: For label " <> show label <> ", the substitution " <> pretty sigma <> " is invalid."
 
--- utilities
+-- build
+
+buildSortingRuleFromStrings :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
+buildSortingRuleFromStrings strs k = do
+  let parametersArray = MakeRuleSortVar <$> strs
+  let parameters = Set.fromFoldable parametersArray
+  let parametersVars = makeVarRuleSort <$> parametersArray
+  let kids /\ parent = unsafePartial $ k parametersVars
+  SortingRule {parameters, kids, parent}
+
+buildSortingRule :: forall r sn. RowKeys r => Homogeneous r (RuleSort sn) => Proxy r -> (Record r -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
+buildSortingRule _ k = do
+  let parameterNames = rowKeys (Proxy :: Proxy r)
+  let parameters = parameterNames # Set.map MakeRuleSortVar
+  let kids /\ parent = unsafePartial $ k $ buildFromKeys (makeVarRuleSort <<< MakeRuleSortVar)
+  SortingRule {parameters, kids, parent}
+
+buildChangingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSortChange sn)) -> ChangingRule sn
+buildChangingRule strs k = do
+  let parametersArray = MakeRuleSortVar <$> strs
+  let parameters = Set.fromFoldable parametersArray
+  let parametersVars = makeVarRuleSort <$> parametersArray
+  let kids = unsafePartial $ k parametersVars
+  ChangingRule {parameters, kids}
+
+buildExpr label sigma_ = 
+  let node = makeExprNode' label sigma_ in
+  assertValidTreeKids "makeExpr" node \kids ->
+    Tree node kids
+
+-- make
 
 makeInjectRuleSortNode n = ConstRuleSortNode (SortNode n)
 
@@ -58,11 +90,6 @@ makeExpr label sigma_ =
   assertValidTreeKids "makeExpr" node \kids ->
     Tree node kids
 
-buildExpr label sigma_ = 
-  let node = makeExprNode' label sigma_ in
-  assertValidTreeKids "makeExpr" node \kids ->
-    Tree node kids
-
 makeExprTooth label sigma_ i = 
   let node = makeExprNode label sigma_ in
   assertValidToothKids "makeExprTooth" node i \kids ->
@@ -74,6 +101,8 @@ makeStepExpr label sigma_ =
     StepExpr Nothing node kids
 
 makeExprNonEmptyPath ths = NonEmptyPath $ fromJust' "makeExprNonEmptyPath" $ NonEmptyList.fromFoldable ths
+
+-- get
 
 defaultTopExpr =
   getDefaultExpr topSort
@@ -125,6 +154,8 @@ getExprPathChange path bottomSort = case unconsPath path of
     let restOfPathChange = getExprPathChange outer (endpoints change).right in
     change <> restOfPathChange
 
+-- misc
+
 -- | `p1 == p2`, as path skeletons
 eqExprPathSkeleton :: forall sn el. Eq sn => Eq el => ExprPath sn el -> ExprPath sn el -> Boolean
 eqExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
@@ -138,30 +169,3 @@ prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   Nothing /\ _ -> true
   Just {outer: p1', inner: Tooth node1 i1 _} /\ Just {outer: p2', inner: Tooth node2 i2 _} | node1 == node2 && i1 == i2 -> prefixExprPathSkeleton p1' p2'
   _ -> false
-
--- build
-
-buildSortingRuleFromStrings :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
-buildSortingRuleFromStrings strs k = do
-  let parametersArray = MakeRuleSortVar <$> strs
-  let parameters = Set.fromFoldable parametersArray
-  let parametersVars = makeVarRuleSort <$> parametersArray
-  let kids /\ parent = unsafePartial $ k parametersVars
-  SortingRule {parameters, kids, parent}
-
-buildSortingRule :: forall r sn. RowKeys r => Homogeneous r (RuleSort sn) => Proxy r -> (Record r -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
-buildSortingRule _ k = do
-  let parameterNames = rowKeys (Proxy :: Proxy r)
-  let parameters = parameterNames # Set.map MakeRuleSortVar
-  let kids /\ parent = unsafePartial $ k $ buildFromKeys (makeVarRuleSort <<< MakeRuleSortVar)
-  SortingRule {parameters, kids, parent}
-
-buildChangingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSortChange sn)) -> ChangingRule sn
-buildChangingRule strs k = do
-  let parametersArray = MakeRuleSortVar <$> strs
-  let parameters = Set.fromFoldable parametersArray
-  let parametersVars = makeVarRuleSort <$> parametersArray
-  let kids = unsafePartial $ k parametersVars
-  ChangingRule {parameters, kids}
-
-

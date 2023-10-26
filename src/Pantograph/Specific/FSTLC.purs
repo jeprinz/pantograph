@@ -230,7 +230,7 @@ getSortingRule =
       /\
       ( jdg.term gamma (ty.arrow alpha beta) )
 
-    LetTerm -> PL.buildSortingRuleFromStrings ["s", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
+    LetTerm -> PL.buildSortingRuleFromStrings ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
       [ str x
       , jdg.ty alpha
       , jdg.term (ctx.cons x alpha gamma) alpha
@@ -287,7 +287,7 @@ getSortingRule =
       /\
       ( jdg.ty alpha )
 
-    DataTyEL dt -> PL.buildSortingRuleFromStrings ["alpha", "beta"] \[alpha, beta] ->
+    DataTyEL dt -> PL.buildSortingRuleFromStrings [] \[] ->
       []
       /\
       ( jdg.ty (ty.dt dt) )
