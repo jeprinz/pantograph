@@ -8,7 +8,7 @@ import Bug (bug)
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.StringQuery as StringQuery
@@ -204,15 +204,15 @@ instance PL.Language SN EL where
 
   topSort = sort.jdg.term sort.ctx.nil (todo "sort metavar")
 
-  getDefaultExpr = todo ""
+  getDefaultExpr = todo "getDefaultExpr"
 
-  steppingRules = todo ""
+  steppingRules = steppingRules
 
   getEdits sr ori = getEdits sr ori
 
-  specialEdits = todo ""
+  specialEdits = todo "specialEdits"
 
-  validGyro = todo ""
+  validGyro = todo "validGyro"
 
 getSortingRule :: EL -> SortingRule
 getSortingRule =
@@ -320,6 +320,14 @@ getSortingRule =
 
 getChangingRule :: EL -> ChangingRule
 getChangingRule el = getDiffChangingRule {getSortingRule} el
+
+steppingRules :: Array SteppingRule
+steppingRules = []
+
+-- insertSucSteppingRule :: SteppingRule
+-- insertSucSteppingRule = PL.SteppingRule case _ of
+--   PL.StepExpr _ (ExprNode {label: }) kids -> ?a
+--   _ -> Nothing
 
 getEdits :: Sort -> Orientation -> Edits
 -- getEdits (Tree (PL.SortNode (StrInner _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
