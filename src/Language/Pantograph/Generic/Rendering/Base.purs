@@ -158,6 +158,9 @@ type EditorSpec l r =
   , languageChanges :: LanguageChanges l r
 
   -- Input Sort is that of the term to be deleted, output Change is propagated upwards after deletion.
+  -- use for:
+  -- - deleting a type (needs to actually change type value to type metavar)
+  -- - string derivation is replaced with empty string
   , onDelete :: Sort l -> SortChange l
     -- default is ChangeAlgebra.inject
 
@@ -167,6 +170,7 @@ type EditorSpec l r =
   , specializeDerivation :: {-clipboard-} Sort l -> {-cursor-} Sort l -> SortChange l
     -- default is ChangeAlgebra.inject
 
+  -- probably don't need this, since anything that needs to be kept during "forgetting" should be encoded in defivations 
   , forgetSorts :: DerivLabel l r -> Maybe (DerivLabel l r)
     -- default is (const Nothing)
 
