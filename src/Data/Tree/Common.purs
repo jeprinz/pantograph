@@ -26,10 +26,10 @@ import Util (fromJust, fromJust', indexDeleteAt)
 
 -- infixes
 
-infix 7 Tree as %
-infix 7 InjectChange as %!
-infix 7 Shift as %!/
-infix 7 Replace as %!~>
+infix 5 Tree as %
+infix 5 InjectChange as %!
+infix 5 Shift as %!/
+infix 5 Replace as %!~>
 
 -- Tree
 

@@ -38,8 +38,8 @@ import Unsafe.Coerce (unsafeCoerce)
 
 -- infixes
 
-infix 7 StepExpr as %.
-infix 7 Boundary as %.|
+infix 5 StepExpr as %.
+infix 5 Boundary as %.|
 
 -- Sort
 
@@ -187,8 +187,8 @@ shrinkAnnExprGyro' _ = unsafeCoerce
 -- StepExpr
 
 data StepExpr sn el
-  = StepExpr (Maybe Marker) (ExprNode sn el) (Array (StepExpr sn el))
-  | Boundary Direction (SortChange sn) (StepExpr sn el)
+  = StepExpr (Maybe Marker /\ ExprNode sn el) (Array (StepExpr sn el))
+  | Boundary (Direction /\ SortChange sn) (StepExpr sn el)
 
 derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
@@ -196,14 +196,14 @@ instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 
 instance (Show sn, PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn el) where
   pretty = case _ of
-    Boundary dir ch e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
-    StepExpr Nothing node kids -> prettyTreeNode node (pretty <$> kids)
-    StepExpr (Just (CursorMarker Outside)) node kids -> outer $ prettyTreeNode node (pretty <$> kids)
-    StepExpr (Just (CursorMarker Inside)) node kids -> inner $ prettyTreeNode node (pretty <$> kids)
+    Boundary (dir /\ ch) e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
+    StepExpr (Nothing /\ node) kids -> prettyTreeNode node (pretty <$> kids)
+    StepExpr (Just (CursorMarker Outside) /\ node) kids -> outer $ prettyTreeNode node (pretty <$> kids)
+    StepExpr (Just (CursorMarker Inside) /\ node) kids -> inner $ prettyTreeNode node (pretty <$> kids)
 
 instance Subtype (AnnExpr sn el ()) (StepExpr sn el) where
-  inject (Tree node kids) = StepExpr Nothing node (inject <$> kids)
-  project (StepExpr Nothing node kids) = Tree node <$> project `traverse` kids
+  inject (Tree node kids) = StepExpr (Nothing /\ node) (inject <$> kids)
+  project (StepExpr (Nothing /\ node) kids) = Tree node <$> project `traverse` kids
   project _ = Nothing
 
 -- Direction

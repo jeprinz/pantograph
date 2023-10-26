@@ -31,12 +31,12 @@ import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP, (<$$>))
 -- utilities
 
 getStepExprSort :: forall sn el. Language sn el => StepExpr sn el -> Sort sn
-getStepExprSort (Boundary dir ch kid) = 
+getStepExprSort (Boundary (dir /\ ch) kid) = 
   let {left, right} = endpoints ch in
   case dir of
     Up -> left
     Down -> right
-getStepExprSort (StepExpr _ node _) =
+getStepExprSort (StepExpr (_ /\ node) _) =
   getExprNodeSort node
 
 -- toStepExpr
@@ -45,7 +45,7 @@ class ToStepExpr a sn el | a -> sn el where
   toStepExpr :: a -> StepExpr sn el
 
 instance ToStepExpr (AnnExpr sn el r) sn el where
-  toStepExpr (Tree node kids) = StepExpr Nothing (shrinkAnnExprNode node) (toStepExpr <$> kids)
+  toStepExpr (Tree node kids) = StepExpr (Nothing /\ shrinkAnnExprNode node) (toStepExpr <$> kids)
 
 instance ToStepExpr (AnnExprCursor sn el r) sn el where
   toStepExpr (Cursor cursor) =
@@ -87,14 +87,14 @@ fromStepExpr e0 = case go e0 of
     Right expr -> Right expr
   where
   goExpr :: StepExpr sn el -> Expr sn el
-  goExpr (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
-  goExpr (StepExpr (Just _) _ _) = bug $ "encountered multiple `Marker`s during `fromStepExpr`: " <> pretty e0
-  goExpr (StepExpr Nothing node kids) = Tree node (kids <#> goExpr)
+  goExpr (Boundary _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
+  goExpr (StepExpr (Just _ /\ _) _) = bug $ "encountered multiple `Marker`s during `fromStepExpr`: " <> pretty e0
+  goExpr (StepExpr (Nothing /\ node) kids) = Tree node (kids <#> goExpr)
 
   go :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
-  go (Boundary _ _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
-  go (StepExpr (Just (CursorMarker orientation)) node kids) = Left $ {tooths: mempty, inside: Tree node (kids <#> goExpr), orientation}
-  go (StepExpr Nothing node kids) =
+  go (Boundary _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
+  go (StepExpr (Just (CursorMarker orientation) /\ node) kids) = Left $ {tooths: mempty, inside: Tree node (kids <#> goExpr), orientation}
+  go (StepExpr (Nothing /\ node) kids) =
     let
       f = case _ of
         Nothing /\ kids' -> case _ of
@@ -117,15 +117,15 @@ wrapExprPath p = case unconsPath p of
   Just {outer, inner} -> wrapExprPath outer <<< wrapExprTooth inner
 
 wrapExprTooth :: forall sn el. ExprTooth sn el -> StepExpr sn el -> StepExpr sn el
-wrapExprTooth (Tooth node i kids) e = StepExpr Nothing node (fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids)
+wrapExprTooth (Tooth node i kids) e = StepExpr (Nothing /\ node) (fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids)
 
 modifyMarker :: forall sn el. (Maybe Marker -> Maybe Marker) -> StepExpr sn el -> StepExpr sn el
 modifyMarker f = case _ of
-  (Boundary dir ch kid) -> Boundary dir ch $ modifyMarker f kid
-  (StepExpr maybeMarker node kids) -> StepExpr (f maybeMarker) node kids
+  (Boundary (dir /\ ch) kid) -> Boundary (dir /\ ch) $ modifyMarker f kid
+  (StepExpr (maybeMarker /\ node) kids) -> StepExpr (f maybeMarker /\ node) kids
 
 boundary :: forall sn el. Direction -> Change (SortNode sn) -> StepExpr sn el -> StepExpr sn el
-boundary direction change kid = Boundary direction change kid
+boundary dir ch kid = Boundary (dir /\ ch) kid
 
 -- setup SteExpr
 
@@ -161,8 +161,8 @@ step :: forall sn el. StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))
 step e = ask >>= findMapM (pure <<< flip applySteppingRule e) >>= case _ of
   Just e' -> pure (Just e')
   Nothing -> case e of
-    Boundary dir ch e' -> Boundary dir ch <$$> step e'
-    StepExpr mbMrk node kids -> StepExpr mbMrk node <$$> stepFirstKid kids
+    Boundary (dir /\ ch) e' -> Boundary (dir /\ ch) <$$> step e'
+    StepExpr (mbMrk /\ node) kids -> StepExpr (mbMrk /\ node) <$$> stepFirstKid kids
 
 stepFirstKid :: forall sn el. Array (StepExpr sn el) -> StepM sn el (Maybe (Array (StepExpr sn el)))
 stepFirstKid kids = go 0
@@ -189,20 +189,20 @@ builtinRules =
   , combineDownRule ]
 
 passThroughRule = SteppingRule case _ of
-  Boundary Down down (Boundary Up up kid) -> Just
+  Boundary (Down /\ down) (Boundary (Up /\ up) kid) -> Just
     let hypotenuse = lub' down up in
     let up' = invert down <> hypotenuse in
     let down' = invert up <> hypotenuse in
-    Boundary Up up' (Boundary Down down' kid)
+    Boundary (Up /\ up') (Boundary (Down /\ down') kid)
   _ -> Nothing
 
 combineDownRule = SteppingRule case _ of
-  Boundary Down down1 (Boundary Down down2 kid) -> Just $
-    Boundary Down (down1 <> down2) kid
+  Boundary (Down /\ down1) (Boundary (Down /\ down2) kid) -> Just $
+    Boundary (Down /\ (down1 <> down2)) kid
   _ -> Nothing
 
 combineUpRule = SteppingRule case _ of
-  Boundary Up up1 (Boundary Up up2 kid) -> Just $
-    Boundary Up (up1 <> up2) kid
+  Boundary (Up /\ up1) (Boundary (Up /\ up2) kid) -> Just $
+    Boundary (Up /\ (up1 <> up2)) kid
   _ -> Nothing
 
