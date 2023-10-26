@@ -137,7 +137,7 @@ mapDerivLabelSort _ (DerivString str) = DerivString str
 
 infix 8 DerivLabel as %|-
 
-injectSortLabelDerivLabel sortLabel kids = InjectSortLabel sortLabel %* kids
+injectSortLabelDerivLabel sortLabel kids = SInj sortLabel %* kids
 
 infix 8 injectSortLabelDerivLabel as %|-*
 
@@ -225,7 +225,7 @@ type Sort l = Expr.MetaExpr (SortLabel l)
 type SortChange l = Expr.MetaChange (SortLabel l)
 
 data SortLabel l  -- l is language specific sort labels, and SortLabel adds on generic ones that exist for every language
-  = InjectSortLabel l
+  = SInj l
   | NameSortLabel -- NOTE: can generalize to "TypeOf sort label" -- Jacob note: I still think that we should call this TextboxSortLabel, since it really is just used to indicate a literal in the derivations
   | StringSortLabel String -- NOTE: can generalize to DataSortLabel
 
@@ -242,14 +242,14 @@ freshMetaVarSort name = (Expr.MV (freshMetaVar name)) % []
 
 -- This is used as part of a DSL for building up sorts.
 sor :: forall l. l -> Expr.Meta (SortLabel l)
-sor l = Expr.MInj (InjectSortLabel l)
+sor l = Expr.MInj (SInj l)
 
 nameSort :: forall l. String -> Expr.MetaExpr (SortLabel l)
 nameSort name = Expr.MInj (StringSortLabel name) % []
 
 -- This is used as part of a DSL for building up sort changes
 csor :: forall l. l -> Expr.ChangeLabel (Expr.Meta (SortLabel l))
-csor l = Expr.Inject (Expr.MInj (InjectSortLabel l))
+csor l = Expr.Inject (Expr.MInj (SInj l))
 
 -- assert that a label is a name and return the string
 matchNameLabel :: forall l. Sort l -> String
@@ -262,18 +262,18 @@ matchStringLabel (Expr.Expr (Expr.MInj (StringSortLabel s)) []) = s
 matchStringLabel _ = bug "wasn't stringlabel"
 
 instance Pretty l => Pretty (SortLabel l) where
-  pretty (InjectSortLabel l) = pretty l
+  pretty (SInj l) = pretty l
   pretty NameSortLabel = "NameSort"
   pretty (StringSortLabel str) = "\"" <> str <> "\"" 
 
 instance IsExprLabel l => IsExprLabel (SortLabel l) where
   prettyExprF'_unsafe = case _ of
-    InjectSortLabel l /\ kids -> prettyExprF'_unsafe (l /\ kids)
+    SInj l /\ kids -> prettyExprF'_unsafe (l /\ kids)
     NameSortLabel /\ [string] -> "Name(" <> string <> ")"
     StringSortLabel str /\ [] -> "\"" <> str <> "\"" 
 
   expectedKidsCount = case _ of
-    InjectSortLabel l -> expectedKidsCount l
+    SInj l -> expectedKidsCount l
     NameSortLabel -> 1
     StringSortLabel _ -> 0
 

@@ -509,14 +509,14 @@ makeUpRule changeMatch derivMatch output term = do
 --makeUpRule = Hole.hole "makeUpRule"
 
 injectChangeMatchExpr :: forall l. l -> Array (MatchSortChange l) -> MatchSortChange l
-injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (Expr.MInj (Grammar.InjectSortLabel l)))) % kids
+injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (Expr.MInj (Grammar.SInj l)))) % kids
 
 infixl 7 injectChangeMatchExpr as %+-
 
 -- possible convention: names that are intentionally short to make them readable in a DSL are "d" for DSL followed by all caps
 dPLUS :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
 dPLUS l leftKids inside rightKids =
-    Expr.Plus (Expr.Tooth (Expr.InjectMatchLabel (Expr.MInj (Grammar.InjectSortLabel l)))
+    Expr.Plus (Expr.Tooth (Expr.InjectMatchLabel (Expr.MInj (Grammar.SInj l)))
         (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
         % [inside]
 
@@ -524,7 +524,7 @@ dPLUS l leftKids inside rightKids =
 
 dMINUS :: forall l. l -> Array (MatchSort l) -> MatchSortChange l -> Array (MatchSort l) -> MatchSortChange l
 dMINUS l leftKids inside rightKids =
-    Expr.Minus (Expr.Tooth (Expr.InjectMatchLabel (Expr.MInj (Grammar.InjectSortLabel l)))
+    Expr.Minus (Expr.Tooth (Expr.InjectMatchLabel (Expr.MInj (Grammar.SInj l)))
         (ZipList.Path {left: RevList.reverseArray leftKids, right: List.fromFoldable rightKids}))
         % [inside]
 

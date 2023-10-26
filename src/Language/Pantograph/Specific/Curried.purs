@@ -211,9 +211,9 @@ type Language = Grammar.Language PreSortLabel RuleLabel
 type Rule = Grammar.Rule PreSortLabel
 
 sortToType :: Sort -> DerivTerm
-sortToType (Expr.Expr (Expr.MInj (Grammar.InjectSortLabel (DataType dt))) []) =
+sortToType (Expr.Expr (Expr.MInj (Grammar.SInj (DataType dt))) []) =
     Grammar.makeLabel (DataTypeRule dt) [] % []
-sortToType (Expr.Expr (Expr.MInj (Grammar.InjectSortLabel Arrow)) [a, b]) =
+sortToType (Expr.Expr (Expr.MInj (Grammar.SInj Arrow)) [a, b]) =
     Grammar.makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
 sortToType ty =
     Grammar.makeLabel TypeHole ["type" /\ ty] % []
@@ -247,10 +247,10 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     TypeHole -> true
     _ -> false
 
-  defaultDerivTerm' (Expr.MInj (Grammar.InjectSortLabel TermSort) % [gamma, ty])
+  defaultDerivTerm' (Expr.MInj (Grammar.SInj TermSort) % [gamma, ty])
     = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [sortToType ty])
-  defaultDerivTerm' (Expr.MInj (Grammar.InjectSortLabel VarSort) % [_gamma, _x, _ty, _locality]) = empty
-  defaultDerivTerm' (Expr.MInj (Grammar.InjectSortLabel TypeSort) % [ty]) =
+  defaultDerivTerm' (Expr.MInj (Grammar.SInj VarSort) % [_gamma, _x, _ty, _locality]) = empty
+  defaultDerivTerm' (Expr.MInj (Grammar.SInj TypeSort) % [ty]) =
     pure $ sortToType ty
   -- TODO: This case should probably be in Generic.
   defaultDerivTerm' (Expr.MInj (Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
@@ -368,7 +368,7 @@ languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey 
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
-  _ /\ (Expr.MInj (Grammar.InjectSortLabel VarSort) %
+  _ /\ (Expr.MInj (Grammar.SInj VarSort) %
     [ _gamma
     , Expr.MInj (Grammar.StringSortLabel str) % []
     , _ty
@@ -407,7 +407,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
       [ if renCtx.isInlined then [] else [pure (newlineIndentElem renCtx.indentationLevel)]
       , [Left (renCtx /\ 0)] ]
   -- hole
-  TermHole /\ (Expr.MInj (Grammar.InjectSortLabel TermSort) % [_gamma, ty])
+  TermHole /\ (Expr.MInj (Grammar.SInj TermSort) % [_gamma, ty])
     ->  [pure [Rendering.lbraceElem], Left (renCtx /\ 0), pure [colonElem]
         , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1)
         , pure [Rendering.rbraceElem]]
@@ -945,21 +945,21 @@ clipboardSort s
 clipboardSort _other = Expr.fromMetaVar (Expr.freshMetaVar "anySort")
 
 isValidCursorSort :: Sort -> Boolean
-isValidCursorSort (Expr.MInj (Grammar.InjectSortLabel VarSort) % _) = false
+isValidCursorSort (Expr.MInj (Grammar.SInj VarSort) % _) = false
 isValidCursorSort _ = true
 
 isValidSelectionSorts :: {bottom :: Sort, top :: Sort} -> Boolean
 isValidSelectionSorts {
-        bottom: (Expr.MInj (Grammar.InjectSortLabel TermSort) % _)
-        , top: (Expr.MInj (Grammar.InjectSortLabel TermSort) % _)
+        bottom: (Expr.MInj (Grammar.SInj TermSort) % _)
+        , top: (Expr.MInj (Grammar.SInj TermSort) % _)
     } = true
 isValidSelectionSorts {
-        bottom: (Expr.MInj (Grammar.InjectSortLabel TypeSort) % _)
-        , top: (Expr.MInj (Grammar.InjectSortLabel TypeSort) % _)
+        bottom: (Expr.MInj (Grammar.SInj TypeSort) % _)
+        , top: (Expr.MInj (Grammar.SInj TypeSort) % _)
     } = true
 isValidSelectionSorts {
-        bottom: (Expr.MInj (Grammar.InjectSortLabel NeutralSort) % _)
-        , top: (Expr.MInj (Grammar.InjectSortLabel NeutralSort) % _)
+        bottom: (Expr.MInj (Grammar.SInj NeutralSort) % _)
+        , top: (Expr.MInj (Grammar.SInj NeutralSort) % _)
     } = true
 isValidSelectionSorts _ = false
 
