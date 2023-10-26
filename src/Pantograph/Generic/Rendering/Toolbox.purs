@@ -26,6 +26,7 @@ import Halogen.Hooks as HK
 import Pantograph.Generic.Language.Language (prefixExprPathSkeleton)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
 import Pantograph.Generic.Rendering.Style (className)
+import Text.Pretty (pretty)
 import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Util (fromJust, fromJust')
@@ -38,13 +39,13 @@ import Web.UIEvent.MouseEvent as MouseEvent
 toolboxComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
 toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
   let queryRefLabel = H.RefLabel "ToolboxInput"
-  let getQueryElem = HK.getHTMLElementRef queryRefLabel <#> fromMaybe' (\_ -> bug "getQueryElem: could not find element of queryRefLabel")
+  let getQueryElem = HK.getHTMLElementRef queryRefLabel
 
-  isEnabled /\ isEnabledStateId <- HK.useState input.isEnabled
+  enabled /\ enabledStateId <- HK.useState input.enabled
 
   ToolboxSelect selectRowIndex selectColIndex /\ selectStateId <- HK.useState $ ToolboxSelect 0 0
 
-  query /\ queryStateId <- HK.useState ""
+  query /\ queryStateId <- HK.useState input.initialQuery
 
   let
     toEditArray query = case input.edits of
@@ -69,7 +70,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
           pure $ ToolboxSelect rowIx' colIx'
 
     getSelectedEdit = do
-      HK.get isEnabledStateId >>= case _ of
+      HK.get enabledStateId >>= case _ of
         false -> pure Nothing
         true -> do
           ToolboxSelect selectRowIndex' selectColIndex' <- HK.get selectStateId
@@ -84,12 +85,12 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         Nothing -> HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "preview edit") Nothing
         Just edit -> HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "preview edit") $ Just edit
 
-    modifyIsEnabledToolbox f = do
-      isEnabled' <- HK.modify isEnabledStateId f
-      freshenPreview
-      when isEnabled' do
-        queryElem <- getQueryElem
-        liftEffect $ HTMLElement.focus queryElem
+    modifyEnabledToolbox f = do
+      enabled' <- HK.modify enabledStateId f
+      resetQuery
+      getQueryElem >>= case _ of
+        Nothing -> pure unit
+        Just queryElem -> liftEffect $ HTMLElement.focus queryElem
 
     modifySelect f = do
       select <- HK.get selectStateId
@@ -109,20 +110,21 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
     modifyQuery f = do
       query <- HK.modify queryStateId f
-      queryElem <- getQueryElem
-      liftEffect $ HTMLInputElement.setValue query $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
+      getQueryElem >>= case _ of
+        Nothing -> pure unit
+        Just queryElem -> liftEffect $ HTMLInputElement.setValue query $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
       resetSelect
 
     resetQuery = do
-      modifyQuery (const "")
+      modifyQuery (const input.initialQuery)
 
   HK.useQuery queryToken \(ToolboxQuery q) -> (q # _) $ case_
-    # on (Proxy :: Proxy "modify isEnabled") (\(f /\ a) -> do
-        modifyIsEnabledToolbox f
+    # on (Proxy :: Proxy "modify enabled") (\(f /\ a) -> do
+        modifyEnabledToolbox f
         pure (Just a)
       )
-    # on (Proxy :: Proxy "get isEnabled") (\k -> do
-        pure (Just (k isEnabled))
+    # on (Proxy :: Proxy "get enabled") (\k -> do
+        pure (Just (k enabled))
       )
     # on (Proxy :: Proxy "modify select") (\(f /\ a) -> do
         modifySelect f
@@ -139,13 +141,13 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
   HK.pure $
     HH.div [HP.classes [HH.ClassName "Toolbox"]]
-      if not isEnabled then [] else
+      if not enabled then [] else
       [HH.div [HP.classes [HH.ClassName "ToolboxInterior"]]
         [ HH.input 
             [ HP.classes [HH.ClassName "ToolboxInput"]
             , HP.ref queryRefLabel
             , HE.onValueInput \_ -> do
-                queryElem <- getQueryElem
+                queryElem <- getQueryElem <#> fromJust
                 value <- liftEffect $ HTMLInputElement.value $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
                 HK.modify_ queryStateId (const value)
                 resetSelect
@@ -177,7 +179,7 @@ type RenderEditLocals sn el =
   , modifySelect :: (ToolboxSelect -> ToolboxSelect) -> HK.HookM Aff Unit
   }
 
-makeToolboxExprProps :: forall sn el er ctx env. RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env
+makeToolboxExprProps :: forall sn el er ctx env. Rendering sn el ctx env => RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env
 makeToolboxExprProps {adjacentIndexedEdits, modifySelect} outside _inside =
   case adjacentIndexedEdits # Array.find \{edit: Edit edit} -> edit.middle # maybe false \middle -> prefixExprPathSkeleton (toPath middle) (shrinkAnnExprPath outside) of
     Nothing -> 

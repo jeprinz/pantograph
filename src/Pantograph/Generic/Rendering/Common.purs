@@ -108,7 +108,8 @@ class Language sn el <= Rendering sn el ctx env | sn -> el ctx env, el -> sn ctx
     AnnExprNode sn el er ->
     Array (RenderM sn el ctx env (a /\ AnnExprNode sn el er)) ->
     RenderM sn el ctx env (Array (ArrangeKid sn el a))
-  cursorBeginsLine :: forall er. AnnExprCursor sn el er -> Boolean
+  getBeginsLine :: forall er. AnnExprCursor sn el er -> Boolean
+  getInitialQuery :: forall er. AnnExprCursor sn el er -> String
 
 data ArrangeKid sn el a
   = ExprKidArrangeKid a
@@ -167,11 +168,12 @@ newtype ToolboxInput sn el ctx env = ToolboxInput
   , env :: Record (RenderEnv sn el env)
   , outside :: SyncExprPath sn el ()
   , inside :: SyncExpr sn el ()
-  , isEnabled :: Boolean
-  , edits :: Edits sn el }
+  , enabled :: Boolean
+  , edits :: Edits sn el
+  , initialQuery :: String }
 newtype ToolboxQuery sn el a = ToolboxQuery (Variant
-  ( "modify isEnabled" :: (Boolean -> Boolean) /\ a
-  , "get isEnabled" :: (Boolean -> a)
+  ( "modify enabled" :: (Boolean -> Boolean) /\ a
+  , "get enabled" :: (Boolean -> a)
   , "modify select" :: (ToolboxSelect -> ToolboxSelect) /\ a
   , "modify query" :: (String -> String) /\ a
   , "submit edit" :: Unit /\ a))

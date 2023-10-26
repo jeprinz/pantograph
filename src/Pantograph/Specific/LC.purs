@@ -253,9 +253,13 @@ instance PR.Rendering SN EL CTX ENV where
           a_ /\ _a <- ma
           pure [newline ctx.indentLevel, PR.ExprKidArrangeKid a_]
 
-  cursorBeginsLine = case _ of
+  getBeginsLine = case _ of
     Cursor {outside: Path (Cons (Tooth (PL.ExprNode {label: FormatRule Newline}) _ _) _), orientation: Outside} -> true
     _ -> false
+
+  getInitialQuery = case _ of
+    Cursor {inside: Tree (PL.ExprNode {label: StringRule str}) []} -> str
+    _ -> ""
   
 -- shallow
 

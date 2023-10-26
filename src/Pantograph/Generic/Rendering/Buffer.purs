@@ -60,8 +60,14 @@ import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
+type BufferLocal sn el =
+  { slotToken :: HK.SlotToken (BufferSlots sn el) }
+
 bufferComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
 bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
+  let 
+    local :: BufferLocal sn el
+    local = {slotToken}
 
   -- The original ExprGyro before rendering.
   exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
@@ -80,7 +86,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 
     modifyExprGyro f = do
       hydratedExprGyro <- getHydratedExprGyro
-      rehydrateExprGyro (Just hydratedExprGyro) Nothing
+      rehydrateExprGyro local (Just hydratedExprGyro) Nothing
       let exprGyro' = shrinkAnnExprGyro hydratedExprGyro
       case f exprGyro' of
         Nothing -> pure unit
@@ -107,7 +113,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         Nothing -> pure unit
         Just syncedExprGyro' -> do
           liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
-          hydratedExprGyro' <- hydrateExprGyro syncedExprGyro'
+          hydratedExprGyro' <- hydrateExprGyro local syncedExprGyro'
           modifyHydratedExprGyro (const (Just hydratedExprGyro'))
 
     modifyHydratedExprGyro f = do
@@ -115,7 +121,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       case f hydratedExprGyro of
         Nothing -> pure unit
         Just hydratedExprGyro' -> do
-          rehydrateExprGyro (Just hydratedExprGyro) (Just hydratedExprGyro')
+          rehydrateExprGyro local (Just hydratedExprGyro) (Just hydratedExprGyro')
           liftEffect $ Ref.write (Just hydratedExprGyro') hydratedExprGyroRef
 
   renderCtx /\ renderCtxStateId <- HK.useState $
@@ -138,7 +144,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
-    hydratedExprGyro <- hydrateExprGyro initialSyncedExprGyro
+    hydratedExprGyro <- hydrateExprGyro local initialSyncedExprGyro
     liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
     pure Nothing
 
@@ -151,36 +157,36 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         let event = KeyboardEvent.toEvent keyboardEvent
         let ki = getKeyInfo keyboardEvent
 
-        maybeIsEnabledToolbox <- request slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "get isEnabled")
-        let isEnabledToolbox = maybeIsEnabledToolbox == Just true
-        let isExistingToolbox = isJust maybeIsEnabledToolbox 
+        maybeEnabledToolbox <- request slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "get enabled")
+        let enabledToolbox = maybeEnabledToolbox == Just true
+        let isExistingToolbox = isJust maybeEnabledToolbox 
 
         -- if the Toolbox is currently ENABLED
-        if isEnabledToolbox then do
+        if enabledToolbox then do
           if false then pure unit
 
           else if ki.key == "Escape" then do
             liftEffect $ Event.preventDefault event
-            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const false
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const false
 
           -- Enter|Spacebar: 
           else if ki.key == "Enter" || ki.key == " " then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "submit edit") $ unit
 
-          -- Arrow(Left|Right|Up|Down): move Toolbox select
-          else if ki.key == "ArrowLeft" then do
+          -- Shift+Arrow(Left|Right)|Arrow(Up|Down): move Toolbox select
+          else if ki.mods.shift && ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect rowIx (colIx - 1)
-          else if ki.key == "ArrowRight" then do
+          else if ki.mods.shift && ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect rowIx (colIx + 1)
-          else if ki.key == "ArrowDown" then do
-            liftEffect $ Event.preventDefault event
-            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect (rowIx + 1) colIx
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect (rowIx - 1) colIx
+          else if ki.key == "ArrowDown" then do
+            liftEffect $ Event.preventDefault event
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify select") $ \(ToolboxSelect rowIx colIx) -> ToolboxSelect (rowIx + 1) colIx
 
           else pure unit
 
@@ -192,8 +198,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           else if (not ki.mods.special) && (ki.point # maybe false CodePoint.isAlphaNum) then do
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
-            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const true
-            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify query") $ const (String.singleton (fromJust ki.point))
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const true
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify query") $ (_ <> String.singleton (fromJust ki.point))
 
           -- Escape: escape the Gyro
           else if ki.key == "Escape" then do
@@ -232,7 +238,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           else if ki.key == " " then do
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
-            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const true
+            tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const true
 
           -- specialEdits
           
@@ -294,7 +300,7 @@ hydrateExprNode = do
   maybeSelect <- asks _.maybeSelect
 
   let
-    beginsLine orientation = cursorBeginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
+    beginsLine orientation = getBeginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
     validCursor orientation = validGyro (CursorGyro (Cursor cursor {orientation = orientation}))
     validSelect = maybeSelect # maybe false validGyro
     ExprNode node = cursor.inside # treeNode
@@ -304,8 +310,8 @@ hydrateExprNode = do
     , validCursor
     , validSelect }
 
-hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-hydrateExprGyro gyro = do
+hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+hydrateExprGyro local gyro = do
   hydratedExprGyro <- case gyro of
     RootGyro expr -> do
       expr' <- flip runReaderT
@@ -332,7 +338,7 @@ hydrateExprGyro gyro = do
         hydrateExprPath (toPath middle) \middle' -> (fromPath "hydrateExprGyro" middle' /\ _) <$>
         hydrateExpr
       pure $ SelectGyro $ Select {outside: outside', middle: middle', inside: inside', orientation}
-  rehydrateExprGyro Nothing (Just hydratedExprGyro)
+  rehydrateExprGyro local Nothing (Just hydratedExprGyro)
   pure hydratedExprGyro
 
 hydrateStep :: forall sn el er a. Language sn el => Int -> HydrateM sn el er a -> HydrateM sn el er a
@@ -391,8 +397,10 @@ hydrateExpr = do
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
-rehydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
-rehydrateExprGyro m_hydratedExprGyro m_hydratedExprGyro' = do
+rehydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
+rehydrateExprGyro local m_hydratedExprGyro m_hydratedExprGyro' = do
+  when (isJust m_hydratedExprGyro || isJust m_hydratedExprGyro') do
+    tell local.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
   unhydrateExprGyro
   rehydrateExprGyro'
   where
@@ -433,12 +441,12 @@ renderSyncExprSelect (Select {outside, middle, inside, orientation}) = do
       renderSyncExpr outside_middle inside
 
 renderSyncExprCursor :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprCursor (Cursor {outside, inside, orientation}) = do
+renderSyncExprCursor cursor@(Cursor {outside, inside, orientation}) = do
   ctx <- ask
   env <- get
   let toolboxHandler (ToolboxOutput output) = (output # _) $ case_
         # on (Proxy :: Proxy "submit edit") (\edit -> do
-            tell ctx.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify isEnabled") $ const false
+            tell ctx.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const false
             ctx.modifyExprGyro $ applyEdit edit
           )
         # on (Proxy :: Proxy "preview edit") (\maybeEdit -> do 
@@ -451,8 +459,9 @@ renderSyncExprCursor (Cursor {outside, inside, orientation}) = do
               , env
               , outside: shrinkAnnExprPath outside
               , inside: shrinkAnnExpr inside
-              , isEnabled: false
-              , edits: getEdits (getExprSort (shrinkAnnExpr inside)) orientation }
+              , enabled: false
+              , edits: getEdits (getExprSort (shrinkAnnExpr inside)) orientation
+              , initialQuery: getInitialQuery cursor }
         let previewInput position = PreviewInput 
               { ctx
               , env

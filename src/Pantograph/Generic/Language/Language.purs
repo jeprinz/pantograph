@@ -126,17 +126,17 @@ getExprPathChange path bottomSort = case unconsPath path of
     change <> restOfPathChange
 
 -- | `p1 == p2`, as path skeletons
-eqExprPathSkeleton :: forall sn el. ExprPath sn el -> ExprPath sn el -> Boolean
+eqExprPathSkeleton :: forall sn el. Eq sn => Eq el => ExprPath sn el -> ExprPath sn el -> Boolean
 eqExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   Nothing /\ Nothing -> true
-  Just {outer: p1', inner: Tooth _ i1 _} /\ Just {outer: p2', inner: Tooth _ i2 _} | i1 == i2 -> eqExprPathSkeleton p1' p2'
+  Just {outer: p1', inner: Tooth node1 i1 _} /\ Just {outer: p2', inner: Tooth node2 i2 _} | node1 == node2 && i1 == i2 -> eqExprPathSkeleton p1' p2'
   _ -> false
 
 -- | `p1` is a prefix of `p2``, as path skeletons
-prefixExprPathSkeleton :: forall sn el. ExprPath sn el -> ExprPath sn el -> Boolean
+prefixExprPathSkeleton :: forall sn el. Eq sn => Eq el => ExprPath sn el -> ExprPath sn el -> Boolean
 prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   Nothing /\ _ -> true
-  Just {outer: p1', inner: Tooth _ i1 _} /\ Just {outer: p2', inner: Tooth _ i2 _} | i1 == i2 -> prefixExprPathSkeleton p1' p2'
+  Just {outer: p1', inner: Tooth node1 i1 _} /\ Just {outer: p2', inner: Tooth node2 i2 _} | node1 == node2 && i1 == i2 -> prefixExprPathSkeleton p1' p2'
   _ -> false
 
 -- build
