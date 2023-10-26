@@ -1,0 +1,54 @@
+module Language.Pantograph.Specific.Multary where
+
+import Prelude
+
+--import Bug (bug)
+--import Bug.Assertion (assert, assertI, just)
+--import Control.Plus (empty)
+--import Data.Array as Array
+--import Data.Bounded.Generic (genericBottom, genericTop)
+--import Data.Either (Either(..))
+--import Data.Enum (class Enum)
+--import Data.Enum.Generic (genericPred, genericSucc)
+--import Data.Eq.Generic (genericEq)
+--import Data.Expr (class IsExprLabel, (%), (%*), slot, (%$))
+--import Data.Expr as Expr
+--import Data.Generic.Rep (class Generic)
+--import Data.Lazy (defer)
+--import Data.List (List(..), (:))
+--import Data.List as List
+--import Data.Maybe (Maybe(..))
+--import Data.Maybe as Maybe
+--import Data.Ord.Generic (genericCompare)
+--import Data.Show.Generic (genericShow)
+--import Data.TotalMap as TotalMap
+--import Data.Map as Map
+--import Data.Set as Set
+--import Data.Variant (Variant)
+--import Debug (traceM, trace)
+--import Debug as Debug
+--import Effect.Exception.Unsafe (unsafeThrow)
+--import Halogen.HTML as HH
+--import Halogen.Utilities (classNames)
+--import Hole (hole)
+--import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint, lEndpoint)
+--import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
+--import Language.Pantograph.Generic.Edit (newPathFromRule, newTermFromRule)
+--import Language.Pantograph.Generic.Edit as Edit
+--import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor, csor, nameSort)
+--import Language.Pantograph.Generic.Grammar as Grammar
+--import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
+--import Language.Pantograph.Generic.Rendering.Base as Base
+--import Language.Pantograph.Generic.Rendering.Console (logConsole)
+--import Language.Pantograph.Generic.Rendering.Elements as Rendering
+--import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS, (%#))
+--import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM)
+--import Language.Pantograph.Generic.Smallstep as Smallstep
+--import Language.Pantograph.Generic.Unification (unify)
+--import Text.Pretty (class Pretty, parens, pretty, (<+>))
+--import Text.Pretty as P
+--import Type.Direction (Up)
+--import Util (fromJust)
+--import Util as Util
+--import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
+--import Language.Pantograph.Lib.GreyedRules as GreyedRules

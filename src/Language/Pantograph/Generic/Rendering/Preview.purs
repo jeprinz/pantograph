@@ -32,6 +32,7 @@ import Web.Event.Event as Event
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.MouseEvent as MouseEvent
+import Debug (traceM)
 
 previewComponent :: forall l r out. H.Component (PreviewQuery l r) HorizontalDir out Aff
 previewComponent = HK.component \tokens dir -> HK.do

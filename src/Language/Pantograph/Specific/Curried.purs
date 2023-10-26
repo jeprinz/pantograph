@@ -452,7 +452,8 @@ dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
 tabElem = Rendering.makePuncElem "indent" "    "
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
-newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
+--newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
+newlineIndentElem n = [Rendering.newlineElem] <> Array.replicate n tabElem
 
 --------------------------------------------------------------------------------
 -- Edit

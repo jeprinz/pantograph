@@ -311,6 +311,7 @@ editorComponent = HK.component \tokens spec -> HK.do
       cursor <- do
         st <- getFacade
         assert (cursorState "setBufferEnabled" st) pure
+--      traceM ("in setBufferEnabled, cursor is: " <> pretty cursor.hdzipper)
       setState $ CursorState cursor {mode = if isEnabled then BufferCursorMode else NavigationCursorMode}
       HK.tell tokens.slotToken bufferSlot unit $ SetBufferEnabledQuery isEnabled mb_str
 
@@ -392,7 +393,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             HK.tell tokens.slotToken bufferSlot unit SubmitBufferQuery
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            -- tell buffer to deactivate
+            -- tell buffer to deactivate -- TODO: this causes an exception if the buffer wasn't active
             setBufferEnabled false Nothing
           else if isJust (readVerticalDir key) then
             assert (just "handleKeyboardEvent" $ readVerticalDir key) \dir -> do
@@ -725,7 +726,16 @@ editorComponent = HK.component \tokens spec -> HK.do
                     (renderDerivTerm locs true dzipper)
                   (defaultRenderingContext unit)
               ]
+            -- TODO: I think the bug is simply that this code in the below case doesn't draw the hole exterior.
+            -- It has the hole interior, and the path in dzipper is whats above the hole exterior.
+            -- But it never draws the hole exterior itself!
+            -- This bug only shows up when you put the buffer in the inner hole, specifically because
+            -- thats the only situation where the cursor actually goes there in the state.
+            -- When I fix this and make it render the hole exterior, I will need to also not have it render that
+            -- when the buffer is active.
+            -- I need to go in the git history and bring back renderHoleExterior.
             HoleyDerivZipper _ true ->
+              trace ("the cursor state is an inner hole. To reiterate, cursor is: " <> show cursor.hdzipper) \_ ->
               [ renderPath locs dzipper
                     (renderHoleInterior locs true dzipper)
                   (defaultRenderingContext unit)

@@ -84,6 +84,7 @@ body {
 
   margin-bottom: 1em;
   padding: 0.5em 0;
+
 }
 
 /* 
@@ -449,8 +450,9 @@ console
 
 .fill-right-space {
     background-color: orange;
-    width: 10px;
-    display: inline;
+    display: inline-block;
+    width: 20px;
+    height: 1em;
     cursor: pointer;
     border-radius: 0.5em 0.5em / 0.2em;
 }
