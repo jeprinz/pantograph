@@ -41,10 +41,6 @@ infixl 4 mapMapMap as <$$$>
 mapMapFlipped a f = mapMap f a
 infixl 1 mapMapFlipped as <##>
 
-hole' :: forall a. String -> a
--- hole' msg = unsafeThrow $ "hole: " <> msg
-hole' msg = todo msg
-
 lookup' :: forall k v. Ord k => k -> Map k v -> v
 lookup' x m = case lookup x m of
   Just v -> v
