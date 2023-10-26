@@ -18,6 +18,8 @@ import Data.Traversable (traverse, traverse_)
 import Data.Tree.Common (assertValidToothKids)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
+import Data.UUID as UUID
+import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafePartial)
 import Record as R
 import Record.Builder as RB
@@ -65,9 +67,14 @@ buildExpr label sigma_ =
   assertValidTreeKids "makeExpr" node \kids ->
     Tree node kids
 
+-- fresh
+
+freshVarSort :: forall sn. Unit -> Tree (SortNode sn)
+freshVarSort _ = Tree (VarSortNode (SortVar (unsafePerformEffect UUID.genUUID))) []
+
 -- make
 
-makeInjectRuleSortNode n = ConstRuleSortNode (SortNode n)
+makeInjectRuleSortNode n = InjectRuleSortNode (SortNode n)
 
 makeInjectRuleSort n kids = Tree (makeInjectRuleSortNode n) kids
 

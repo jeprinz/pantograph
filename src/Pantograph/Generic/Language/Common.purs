@@ -24,11 +24,14 @@ import Data.SearchableArray (SearchableArray)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.String as String
+import Data.Subtype (class Subtype, inject, project)
+import Data.Traversable (traverse)
 import Data.Tuple (uncurry)
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, inner, outer, pretty, ticks, (<+>))
+import Todo (todo)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -66,7 +69,7 @@ type SortPath sn = Path (SortNode sn)
 -- RuleSort
 
 data RuleSortNode sn
-  = ConstRuleSortNode (SortNode sn)
+  = InjectRuleSortNode (SortNode sn)
   | VarRuleSortNode RuleSortVar
 
 derive instance Generic (RuleSortNode sn) _
@@ -74,26 +77,34 @@ instance Show sn => Show (RuleSortNode sn) where show = genericShow
 instance Eq sn => Eq (RuleSortNode sn) where eq = genericEq
 
 instance TreeNode sn => TreeNode (RuleSortNode sn) where
-  kidsCount (ConstRuleSortNode node) = kidsCount node
+  kidsCount (InjectRuleSortNode node) = kidsCount node
   kidsCount (VarRuleSortNode _) = 0
 
 instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (RuleSortNode sn) where
   prettyTreeNode rsn =
     let ass = assertValidTreeKids "prettyTreeNode" rsn in
     case rsn of
-      ConstRuleSortNode node -> ass \kids -> prettyTreeNode node kids
+      InjectRuleSortNode node -> ass \kids -> prettyTreeNode node kids
       VarRuleSortNode x -> ass \[] -> pretty x
 
-fromConstRuleSortNode msg = case _ of
-  ConstRuleSortNode sn -> sn
-  rn -> bug $ msg <> "expected " <> ticks "ConstRuleSortNode _" <> " but found " <> ticks (show rn)
+injectRuleSort :: forall sn. Sort sn -> RuleSort sn
+injectRuleSort = map inject
+
+projectRuleSort :: forall sn. RuleSort sn -> Maybe (Sort sn)
+projectRuleSort = traverse project
+
+instance Subtype (SortNode sn) (RuleSortNode sn) where
+  inject = InjectRuleSortNode
+  project = case _ of
+    InjectRuleSortNode sn -> Just sn
+    VarRuleSortNode _ -> Nothing
 
 type RuleSort sn = Tree (RuleSortNode sn)
 type RuleSortTooth sn = Tooth (RuleSortNode sn)
 type RuleSortPath sn = Path (RuleSortNode sn)
 
 instance Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
-  applyRuleSortVarSubst sigma (Tree (ConstRuleSortNode sn) kids) = Tree sn (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (Tree (InjectRuleSortNode sn) kids) = Tree sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (Tree (VarRuleSortNode x) _) = applyRuleSortVarSubst sigma x
 
 -- SortChange
@@ -108,9 +119,9 @@ type SortChange sn = Change (SortNode sn)
 type RuleSortChange sn = Change (RuleSortNode sn)
 
 instance Language sn el => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
-  applyRuleSortVarSubst sigma (Shift sign tooth kid) = Shift sign (fromConstRuleSortNode "invalid Inject" <$> tooth) (applyRuleSortVarSubst sigma kid)
+  applyRuleSortVarSubst sigma (Shift sign tooth kid) = Shift sign (fromJust <<< project <$> tooth) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
-  applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromConstRuleSortNode "invalid Change" node) (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromJust $ project node) (applyRuleSortVarSubst sigma <$> kids)
 
 -- AnnExpr
 
