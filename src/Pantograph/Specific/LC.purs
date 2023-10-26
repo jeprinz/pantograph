@@ -128,13 +128,13 @@ instance PL.Language SN EL where
     , tab: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indent]), innerChange: Nothing, inside: Nothing} }
 
 getSortingRule = case _ of
-  StringRule _ -> PL.buildSortingRule [] \[] -> [] /\ ruleSort.string
-  VarRule -> PL.buildSortingRule [] \[] -> [ruleSort.string] /\ ruleSort.term
-  LamRule -> PL.buildSortingRule [] \[] -> [ruleSort.string, ruleSort.term] /\ ruleSort.term
-  AppRule -> PL.buildSortingRule [] \[] -> [ruleSort.term, ruleSort.term] /\ ruleSort.term
-  LetRule -> PL.buildSortingRule [] \[] -> [ruleSort.string, ruleSort.term, ruleSort.term] /\ ruleSort.term
-  HoleRule -> PL.buildSortingRule [] \[] -> [] /\ ruleSort.term
-  FormatRule _format -> PL.buildSortingRule [] \[] -> [ruleSort.term] /\ ruleSort.term
+  StringRule _ -> PL.buildSortingRuleFromStrings [] \[] -> [] /\ ruleSort.string
+  VarRule -> PL.buildSortingRuleFromStrings [] \[] -> [ruleSort.string] /\ ruleSort.term
+  LamRule -> PL.buildSortingRuleFromStrings [] \[] -> [ruleSort.string, ruleSort.term] /\ ruleSort.term
+  AppRule -> PL.buildSortingRuleFromStrings [] \[] -> [ruleSort.term, ruleSort.term] /\ ruleSort.term
+  LetRule -> PL.buildSortingRuleFromStrings [] \[] -> [ruleSort.string, ruleSort.term, ruleSort.term] /\ ruleSort.term
+  HoleRule -> PL.buildSortingRuleFromStrings [] \[] -> [] /\ ruleSort.term
+  FormatRule _format -> PL.buildSortingRuleFromStrings [] \[] -> [ruleSort.term] /\ ruleSort.term
 
 getChangingRule = case _ of
   StringRule _ -> PL.buildChangingRule [] \[] -> []
@@ -143,7 +143,7 @@ getChangingRule = case _ of
   AppRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
   LetRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.string) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
   HoleRule -> PL.buildChangingRule [] \[] -> []
-  FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeConstRuleSortNode TermSort) []]
+  FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeInjectRuleSortNode TermSort) []]
 
 getDefaultExpr = case _ of
   Tree (PL.SortNode StringSort) [] -> Just $ term.string ""
@@ -270,8 +270,8 @@ sort = {string, term}
 
 ruleSort = {string, term}
   where
-  string = PL.makeConstRuleSort StringSort [] :: RuleSort
-  term = PL.makeConstRuleSort TermSort [] :: RuleSort
+  string = PL.makeInjectRuleSort StringSort [] :: RuleSort
+  term = PL.makeInjectRuleSort TermSort [] :: RuleSort
 
 term = {var, string, lam, app, let_, hole, indent, newline, example}
   where

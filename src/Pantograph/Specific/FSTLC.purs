@@ -208,29 +208,29 @@ getSortingRule :: EL -> SortingRule
 getSortingRule =
   let {str, jdg, ctx, ty, loc} = rsort in
   case _ of
-    ZeroVar -> PL.buildSortingRule' (Proxy :: Proxy (gamma::_, x::_, alpha::_)) \{gamma, x, alpha} ->
+    ZeroVar -> PL.buildSortingRule (Proxy :: Proxy (gamma::_, x::_, alpha::_)) \{gamma, x, alpha} ->
       []
       /\
       ( jdg.var gamma x alpha loc.local )
 
-    SucVar -> PL.buildSortingRule ["gamma", "x", "alpha", "y", "beta", "loc"] \[gamma, x, alpha, y, beta, loc] ->
+    SucVar -> PL.buildSortingRuleFromStrings ["gamma", "x", "alpha", "y", "beta", "loc"] \[gamma, x, alpha, y, beta, loc] ->
       [ jdg.var gamma x alpha loc ]
       /\
       ( jdg.var (ctx.cons y beta gamma) x alpha loc )
 
-    FreeVar -> PL.buildSortingRule ["x", "alpha"] \[x, alpha] ->
+    FreeVar -> PL.buildSortingRuleFromStrings ["x", "alpha"] \[x, alpha] ->
       []
       /\
       ( jdg.var ctx.nil x alpha loc.nonlocal )
 
-    LamTerm -> PL.buildSortingRule ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
+    LamTerm -> PL.buildSortingRuleFromStrings ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
       [ str x
       , jdg.ty alpha
       , jdg.term (ctx.cons x alpha gamma) beta ]
       /\
       ( jdg.term gamma (ty.arrow alpha beta) )
 
-    LetTerm -> PL.buildSortingRule ["s", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
+    LetTerm -> PL.buildSortingRuleFromStrings ["s", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
       [ str x
       , jdg.ty alpha
       , jdg.term (ctx.cons x alpha gamma) alpha
@@ -239,66 +239,66 @@ getSortingRule =
       /\
       ( jdg.term gamma beta )
 
-    VarNeut -> PL.buildSortingRule ["gamma", "x", "alpha", "loc"] \[gamma, x, alpha, loc] ->
+    VarNeut -> PL.buildSortingRuleFromStrings ["gamma", "x", "alpha", "loc"] \[gamma, x, alpha, loc] ->
       [ jdg.var gamma x alpha loc ]
       /\
       ( jdg.neut gamma alpha )
 
-    IfTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
+    IfTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
       [ jdg.term gamma ty.bool
       , jdg.term gamma alpha ]
       /\
       ( jdg.term gamma alpha )
 
-    CallTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
+    CallTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
       [ jdg.neut gamma alpha ]
       /\
       ( jdg.term gamma alpha )
 
-    ErrorCallTerm -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+    ErrorCallTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
       [ jdg.neut gamma alpha ]
       /\
       ( jdg.term gamma beta )
 
-    HoleTerm -> PL.buildSortingRule ["gamma", "alpha"] \[gamma, alpha] ->
+    HoleTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
       [] 
       /\
       ( jdg.term gamma alpha )
 
-    ErrorBoundaryTerm -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+    ErrorBoundaryTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
       [ jdg.term gamma alpha ]
       /\
       ( jdg.term gamma beta )
 
-    AppNeut -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+    AppNeut -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
       [ jdg.neut gamma (ty.arrow alpha beta)
       , jdg.term gamma alpha ]
       /\
       ( jdg.neut gamma beta )
 
-    GrayedAppNeut -> PL.buildSortingRule ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+    GrayedAppNeut -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
       [ jdg.neut gamma beta
       , jdg.term gamma alpha ]
       /\
       ( jdg.neut gamma beta )
 
-    HoleTy -> PL.buildSortingRule ["alpha"] \[alpha] ->
+    HoleTy -> PL.buildSortingRuleFromStrings ["alpha"] \[alpha] ->
       [] 
       /\
       ( jdg.ty alpha )
 
-    DataTyEL dt -> PL.buildSortingRule ["alpha", "beta"] \[alpha, beta] ->
+    DataTyEL dt -> PL.buildSortingRuleFromStrings ["alpha", "beta"] \[alpha, beta] ->
       []
       /\
       ( jdg.ty (ty.dt dt) )
 
-    ArrowTyEL -> PL.buildSortingRule ["alpha", "beta"] \[alpha, beta] ->
+    ArrowTyEL -> PL.buildSortingRuleFromStrings ["alpha", "beta"] \[alpha, beta] ->
       [ jdg.ty alpha
       , jdg.ty beta ]
       /\
       ( jdg.ty (ty.arrow alpha beta) )
 
-    Format _ -> PL.buildSortingRule ["a"] \[a] -> 
+    Format _ -> PL.buildSortingRuleFromStrings ["a"] \[a] -> 
       []
       /\
       ( a )
@@ -327,22 +327,22 @@ sort = {str, jdg, ctx, ty, loc}
 
 rsort = {str, jdg, ctx, ty, loc}
   where
-  str = \strInner -> PL.makeConstRuleSort Str [strInner]
+  str = \strInner -> PL.makeInjectRuleSort Str [strInner]
   jdg =
-    { var: \gamma x alpha loc -> PL.makeConstRuleSort VarJdg [gamma, x, alpha, loc]
-    , term: \gamma alpha -> PL.makeConstRuleSort TermJdg [gamma, alpha]
-    , neut: \gamma alpha -> PL.makeConstRuleSort NeutJdg [gamma, alpha]
-    , ty: \alpha -> PL.makeConstRuleSort TyJdg [alpha] }
+    { var: \gamma x alpha loc -> PL.makeInjectRuleSort VarJdg [gamma, x, alpha, loc]
+    , term: \gamma alpha -> PL.makeInjectRuleSort TermJdg [gamma, alpha]
+    , neut: \gamma alpha -> PL.makeInjectRuleSort NeutJdg [gamma, alpha]
+    , ty: \alpha -> PL.makeInjectRuleSort TyJdg [alpha] }
   ctx =
-    { nil: PL.makeConstRuleSort NilCtx []
-    , cons: \gamma x alpha -> PL.makeConstRuleSort ConsCtx [gamma, x, alpha] }
+    { nil: PL.makeInjectRuleSort NilCtx []
+    , cons: \gamma x alpha -> PL.makeInjectRuleSort ConsCtx [gamma, x, alpha] }
   ty =
-    { dt: \dt -> PL.makeConstRuleSort (DataTySN dt) []
-    , arrow: \alpha beta -> PL.makeConstRuleSort ArrowTySN [alpha, beta]
-    , bool: PL.makeConstRuleSort (DataTySN BoolDataTy) [] }
+    { dt: \dt -> PL.makeInjectRuleSort (DataTySN dt) []
+    , arrow: \alpha beta -> PL.makeInjectRuleSort ArrowTySN [alpha, beta]
+    , bool: PL.makeInjectRuleSort (DataTySN BoolDataTy) [] }
   loc =
-    { local: PL.makeConstRuleSort LocalLoc []
-    , nonlocal: PL.makeConstRuleSort NonlocalLoc [] }
+    { local: PL.makeInjectRuleSort LocalLoc []
+    , nonlocal: PL.makeInjectRuleSort NonlocalLoc [] }
 
 expr = {var}
   where

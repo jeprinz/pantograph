@@ -35,9 +35,9 @@ assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
 
 -- utilities
 
-makeConstRuleSortNode n = ConstRuleSortNode (SortNode n)
+makeInjectRuleSortNode n = ConstRuleSortNode (SortNode n)
 
-makeConstRuleSort n kids = Tree (makeConstRuleSortNode n) kids
+makeInjectRuleSort n kids = Tree (makeInjectRuleSortNode n) kids
 
 makeVarRuleSort x = Tree (VarRuleSortNode x) []
 
@@ -141,16 +141,16 @@ prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
 
 -- build
 
-buildSortingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
-buildSortingRule strs k = do
+buildSortingRuleFromStrings :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
+buildSortingRuleFromStrings strs k = do
   let parametersArray = MakeRuleSortVar <$> strs
   let parameters = Set.fromFoldable parametersArray
   let parametersVars = makeVarRuleSort <$> parametersArray
   let kids /\ parent = unsafePartial $ k parametersVars
   SortingRule {parameters, kids, parent}
 
-buildSortingRule' :: forall r sn. RowKeys r => Homogeneous r (RuleSort sn) => Proxy r -> (Record r -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
-buildSortingRule' _ k = do
+buildSortingRule :: forall r sn. RowKeys r => Homogeneous r (RuleSort sn) => Proxy r -> (Record r -> Array (RuleSort sn) /\ RuleSort sn) -> SortingRule sn
+buildSortingRule _ k = do
   let parameterNames = rowKeys (Proxy :: Proxy r)
   let parameters = parameterNames # Set.map MakeRuleSortVar
   let kids /\ parent = unsafePartial $ k $ buildFromKeys (makeVarRuleSort <<< MakeRuleSortVar)
