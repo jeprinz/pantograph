@@ -5,10 +5,13 @@ import Data.Tuple.Nested
 import Prelude
 
 import Data.Eq.Generic (genericEq)
+import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
+import Data.StringQuery as StringQuery
+import Data.Tuple (fst)
 import Pantograph.Generic.Language as PL
 import Pantograph.Library.Language.Change (getDiffChangingRule)
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
@@ -198,7 +201,7 @@ instance PL.Language SN EL where
 
   steppingRules = todo ""
 
-  getEdits = todo ""
+  getEdits sr ori = getEdits sr ori
 
   specialEdits = todo ""
 
@@ -305,6 +308,12 @@ getSortingRule =
 
 getChangingRule :: EL -> ChangingRule
 getChangingRule el = getDiffChangingRule {getSortingRule} el
+
+getEdits :: Sort -> Orientation -> Edits
+getEdits sr ori = PL.Edits $ StringQuery.fuzzy
+  { getItems: todo "getItems"
+  , toString: fst
+  , maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
 
 sort = {str, jdg, ctx, ty, loc}
   where

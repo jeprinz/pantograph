@@ -67,20 +67,11 @@ buildExpr label sigma_ =
   assertValidTreeKids "makeExpr" node \kids ->
     Tree node kids
 
--- fresh
-
-freshVarSort :: forall sn. Unit -> Tree (SortNode sn)
-freshVarSort _ = Tree (VarSortNode (SortVar (unsafePerformEffect UUID.genUUID))) []
-
 -- make
 
 makeInjectRuleSortNode n = InjectRuleSortNode (SortNode n)
 
 makeInjectRuleSort n kids = Tree (makeInjectRuleSortNode n) kids
-
-makeVarRuleSort x = Tree (VarRuleSortNode x) []
-
-makeSort sn kids = Tree (SortNode sn) kids
 
 makeExprNode label sigma_ = 
   let sigma = RuleSortVarSubst (Map.fromFoldable (sigma_ <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort))) in

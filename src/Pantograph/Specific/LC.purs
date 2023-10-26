@@ -17,6 +17,7 @@ import Data.SearchableArray (SearchableArray)
 import Data.SearchableArray as SearchableArray
 import Data.Show.Generic (genericShow)
 import Data.String as String
+import Data.StringQuery as StringQuery
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\), type (/\))
 import Halogen.HTML as HH
@@ -161,25 +162,37 @@ getEdits =
     
     maxDistance = Fuzzy.Distance 1 0 0 0 0 0
 
-    getEdits' (Tree (PL.SortNode StringSort) []) _ = PL.StringEdits \str -> [NonEmptyArray.singleton $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)}]
-    getEdits' (Tree (PL.SortNode TermSort) []) Outside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst
-      [ 
-        -- AppRule
-        "app" /\
-        makeInsertEdits 
-          [ {outerChange: change.term, middle: [tooth.app.apl term.hole], innerChange: change.term}
-          , {outerChange: change.term, middle: [tooth.app.arg term.hole], innerChange: change.term} ]
-      , -- LamRule
-        "lam" /\
-        makeInsertEdits
-          [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
-      ]
-    getEdits' (Tree (PL.SortNode TermSort) []) Inside = PL.SearchableEdits $ SearchableArray.fuzzy maxDistance fst 
-      [
-        -- VarRule
-        "var" /\ NonEmptyArray.singleton
-        (PL.Edit {outerChange: Nothing, middle: Just $ PL.makeExprNonEmptyPath [tooth.var.str], innerChange: Nothing, inside: Just (term.string "")})
-      ]
+    getEdits' (Tree (PL.SortNode StringSort) []) _ = PL.Edits $ StringQuery.fuzzy 
+      { toString: fst, maxPenalty: maxDistance
+      , getItems: \str -> 
+          [ str /\ 
+            NonEmptyArray.singleton 
+              (PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)})]
+      }
+    getEdits' (Tree (PL.SortNode TermSort) []) Outside = PL.Edits $ StringQuery.fuzzy 
+      { maxPenalty: maxDistance, toString: fst
+      , getItems: const
+          [ 
+            -- AppRule
+            "app" /\
+            makeInsertEdits 
+              [ {outerChange: change.term, middle: [tooth.app.apl term.hole], innerChange: change.term}
+              , {outerChange: change.term, middle: [tooth.app.arg term.hole], innerChange: change.term} ]
+          , -- LamRule
+            "lam" /\
+            makeInsertEdits
+              [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
+          ]
+      }
+    getEdits' (Tree (PL.SortNode TermSort) []) Inside = PL.Edits $ StringQuery.fuzzy 
+      { maxPenalty: maxDistance, toString: fst
+      , getItems: const
+          [
+            -- VarRule
+            "var" /\ NonEmptyArray.singleton
+            (PL.Edit {outerChange: Nothing, middle: Just $ PL.makeExprNonEmptyPath [tooth.var.str], innerChange: Nothing, inside: Just (term.string "")})
+          ]
+      }
     getEdits' sr _ = bug $ "invalid sort: " <> show sr
   in
   getEdits'

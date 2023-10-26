@@ -10,6 +10,7 @@ import Data.Array.NonEmpty as NonEmptyArray
 import Data.Maybe (Maybe(..), fromMaybe', maybe)
 import Data.Newtype (unwrap)
 import Data.SearchableArray as SearchableArray
+import Data.StringQuery as StringQuery
 import Data.Tree (class PrettyTreeNode, toPath)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested ((/\), type (/\))
@@ -48,9 +49,9 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
   query /\ queryStateId <- HK.useState input.initialQuery
 
   let
-    toEditArray query = case input.edits of
-      SearchableEdits sa -> SearchableArray.prioritizedItems query sa <#> snd
-      StringEdits f -> f query
+    toEditArray query = 
+      let Edits stringQuery = input.edits in
+      StringQuery.getPrioritizedItems query stringQuery <#> snd
 
     edits = toEditArray query
 
