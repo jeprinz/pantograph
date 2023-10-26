@@ -24,6 +24,13 @@ import Text.Pretty (class Pretty, class PrettyS, parens, pretty, prettyS, (<+>))
 import Text.Pretty as Pretty
 import Util (fromJust, fromJust', indexDeleteAt)
 
+-- infixes
+
+infix 7 Tree as %
+infix 7 InjectChange as %!
+infix 7 Shift as %!/
+infix 7 Replace as %!~>
+
 -- Tree
 
 data Tree a = Tree a (Array (Tree a))
@@ -49,6 +56,9 @@ derive instance Traversable Tooth
 
 toothNode :: forall a. Tooth a -> a
 toothNode (Tooth a _ _) = a
+
+buildTooth :: forall a. a -> Array (Tree a) -> Array (Tree a) -> Tooth a
+buildTooth a leftKids rightKids = Tooth a (Array.length leftKids) (leftKids <> rightKids)
 
 tooths :: forall a. Tree a -> Array (Tooth a /\ Tree a)
 tooths (Tree a kids) = kids # Array.mapWithIndex \i inside -> (Tooth a i (fromJust' "tooths" $ Array.deleteAt i kids) /\ inside)
@@ -171,7 +181,7 @@ gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 -- Change
 
 data Change a
-  = Shift ShiftSign (Tooth a) (Change a)
+  = Shift (ShiftSign /\ Tooth a) (Change a)
   | Replace (Tree a) (Tree a)
   | InjectChange a (Array (Change a))
 derive instance Generic (Change a) _
@@ -181,22 +191,22 @@ derive instance Functor Change
 
 -- `Change` forms a semigroup under composition.
 instance Eq a => Semigroup (Change a) where
-  append (Shift Plus th c) (Shift Minus th' c') | th == th' =
+  append (Shift (Plus /\ th) c) (Shift (Minus /\ th') c') | th == th' =
     c <> c'
-  append (Shift Minus th@(Tooth a i ts) c) (Shift Plus th' c') | th == th' =
+  append (Shift (Minus /\ th@(Tooth a i ts)) c) (Shift (Plus /\ th') c') | th == th' =
     InjectChange a $ fromJust $ Array.insertAt i (c <> c') $ map inject ts
-  append c (Shift Plus th c') = Shift Plus th (c <> c')
-  append (Shift Minus th c) c' = Shift Minus th (c <> c')
-  append (Shift Plus th@(Tooth a i ts) c) (InjectChange a' _cs')
+  append c (Shift (Plus /\ th) c') = Shift (Plus /\ th) (c <> c')
+  append (Shift (Minus /\ th) c) c' = Shift (Minus /\ th) (c <> c')
+  append (Shift (Plus /\ th@(Tooth a i ts)) c) (InjectChange a' _cs')
     | a == a'
     , cs' /\ c' <- fromJust $ indexDeleteAt i _cs'
     , and $ map (uncurry eq) $ Array.zip (inject <$> ts) cs'
-    = Shift Plus th (c <> c')
-  append (InjectChange a _cs) (Shift Minus th@(Tooth a' i' ts') c')
+    = Shift (Plus /\ th) (c <> c')
+  append (InjectChange a _cs) (Shift (Minus /\ th@(Tooth a' i' ts')) c')
     | a == a'
     , cs /\ c <- fromJust $ indexDeleteAt i' _cs
     , and $ map (uncurry eq) $ Array.zip cs (inject <$> ts')
-    = Shift Plus th (c <> c')
+    = Shift (Plus /\ th) (c <> c')
   append (InjectChange a cs) (InjectChange a' cs') | a == a' = InjectChange a (Array.zipWith append cs cs')
   append c1 c2 = Replace (endpoints c1).left (endpoints c2).right
 
@@ -207,10 +217,10 @@ instance Subtype (Tree a) (Change a) where
     _ -> Nothing
 
 endpoints :: forall a. Change a -> {left :: Tree a, right :: Tree a}
-endpoints (Shift Plus tooth kid) =
+endpoints (Shift (Plus /\ tooth) kid) =
   let {left, right} = endpoints kid in
   {left, right: unTooth tooth right}
-endpoints (Shift Minus tooth kid) =
+endpoints (Shift (Minus /\ tooth) kid) =
   let {left, right} = endpoints kid in
   {left: unTooth tooth left, right}
 endpoints (Replace old new) = {left: old, right: new}
@@ -229,8 +239,8 @@ instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
 
-plusChange th ch = Shift Plus th ch
-minusChange th ch = Shift Minus th ch
+plusChange th ch = Shift (Plus /\ th) ch
+minusChange th ch = Shift (Minus /\ th) ch
 injectChange a kids = InjectChange a kids
 replaceChange old new = Replace old new
 
@@ -303,6 +313,6 @@ instance PrettyTreeNode a => Pretty (Gyro a) where
   pretty (SelectGyro select) = pretty select
 
 instance PrettyTreeNode a => Pretty (Change a) where
-  pretty (Shift sign tooth kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
+  pretty (Shift (sign /\ tooth) kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
   pretty (Replace old new) = parens (pretty old <+> "~~>" <+> pretty new)
   pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)

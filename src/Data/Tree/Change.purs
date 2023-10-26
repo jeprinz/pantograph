@@ -14,7 +14,7 @@ import Todo (todo)
 import Util (fromJust)
 
 invert :: forall a. Change a -> Change a
-invert (Shift sign tooth kid) = Shift (invertShiftSign sign) tooth kid
+invert (Shift (sign /\ tooth) kid) = Shift (invertShiftSign sign /\ tooth) kid
 invert (Replace old new) = Replace new old
 invert (InjectChange a kids) = InjectChange a (invert <$> kids)
 
@@ -49,13 +49,13 @@ lub c1 c2 = case c1 /\ c2 of
 
 plusLub :: forall a. Eq a => Change a -> Change a -> Maybe (Change a)
 plusLub c1 c2 | c1 == c2 = Just c1
-plusLub (Shift Plus th c1) c2 = Shift Plus th <$> plusLub c1 c2
+plusLub (Shift (Plus /\ th) c1) c2 = Shift (Plus /\ th) <$> plusLub c1 c2
 plusLub c1@(Replace _ _) c2 | isIdentity c2 = Just c1
 plusLub _ _ = Nothing
 
 minusLub :: forall a. Eq a => Change a -> Change a -> Maybe (Change a)
 minusLub c1 c2 | c1 == c2 = Just c1
-minusLub (Shift Minus th@(Tooth a i p) c1) (InjectChange a' cs) | a == a' = Shift Minus th <$> minusLub c1 (fromJust $ Array.index cs i)
+minusLub (Shift (Minus /\ th@(Tooth a i _)) c1) (InjectChange a' cs) | a == a' = Shift (Minus /\ th) <$> minusLub c1 (fromJust $ Array.index cs i)
 minusLub c1@(Replace _ _) c2 | isIdentity c2 = Just c1
 minusLub _ _ = Nothing
 
@@ -92,6 +92,6 @@ isPostfix :: forall a. Eq a => Tree a -> Tree a -> Maybe (Change a)
 isPostfix t1 t2 | t1 == t2 = Just $ inject t1
 isPostfix t1 t2 =
   Array.findMap 
-    (\(th /\ kid) -> Shift Minus th <$> isPostfix kid t2)
+    (\(th /\ kid) -> Shift (Minus /\ th) <$> isPostfix kid t2)
     (tooths t1)
 

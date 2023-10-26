@@ -74,6 +74,12 @@ buildExprNode label sigma_ =
   assertValidRuleVarSubst label sigma \_ ->
     ExprNode label sigma {}
 
+buildStepExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> Array (StepExpr sn el) -> StepExpr sn el
+buildStepExpr label sigma_ = 
+  let node = buildExprNode label sigma_ in
+  assertValidTreeKids "makeStepExpr" node \kids -> 
+    StepExpr Nothing node kids
+
 -- make
 
 makeInjectRuleSortNode n = InjectRuleSortNode (SortNode n)

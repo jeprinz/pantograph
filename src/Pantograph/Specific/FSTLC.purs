@@ -12,6 +12,7 @@ import Data.Maybe (Maybe(..))
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.StringQuery as StringQuery
+import Data.Subtype (inject)
 import Data.Tuple (fst)
 import Pantograph.Generic.Language as PL
 import Pantograph.Library.Language.Change (getDiffChangingRule)
@@ -321,13 +322,42 @@ getSortingRule =
 getChangingRule :: EL -> ChangingRule
 getChangingRule el = getDiffChangingRule {getSortingRule} el
 
+-- BEGIN SteppingRules
+
 steppingRules :: Array SteppingRule
 steppingRules = []
 
--- insertSucSteppingRule :: SteppingRule
--- insertSucSteppingRule = PL.SteppingRule case _ of
---   PL.StepExpr _ (ExprNode {label: }) kids -> ?a
---   _ -> Nothing
+-- {e}↓{Var ( +<{ y : beta, {> gamma <} }> ) x alpha loc}  ~~>  Suc {e}↓{Var gamma x alpha loc}
+insertSucSteppingRule :: SteppingRule
+insertSucSteppingRule = PL.SteppingRule case _ of
+  PL.Boundary PL.Down (InjectChange (PL.SortNode VarJdg) [Shift (Plus /\ (Tooth (PL.SortNode ConsCtx) 2 [y, beta])) gamma, x, alpha, loc]) e -> Just $
+    step.var.suc (endpoints gamma).right (endpoints x).right (endpoints alpha).right y beta (endpoints loc).right $
+      PL.Boundary PL.Down (InjectChange (PL.SortNode VarJdg) [gamma, x, alpha, loc]) e
+  _ -> Nothing
+
+-- {Zero}↓{Var ( -<{ x : alpha, {> gamma <} }> ) x alpha Local} ~~> {Free}↑{Var id x alpha (Local ~> Nonlocal)}
+localBecomesNonlocal :: SteppingRule
+localBecomesNonlocal = PL.SteppingRule case _ of
+  PL.Boundary PL.Down (InjectChange (PL.SortNode VarJdg) [Shift (Minus /\ (Tooth (PL.SortNode ConsCtx) 2 [x, alpha])) gamma, x', alpha', InjectChange (PL.SortNode LocalLoc) []]) 
+  (PL.StepExpr Nothing (PL.ExprNode ZeroVar _ _) []) 
+  | true -> Just $
+    PL.Boundary PL.Up
+      (InjectChange (PL.SortNode VarJdg) [inject (endpoints gamma).right, x', alpha', Replace sort.loc.local sort.loc.nonlocal])
+      (inject $ freeVarTerm {gamma: (endpoints gamma).right, x, alpha})
+  _ -> Nothing
+
+freeVarTerm {gamma, x, alpha} = case gamma of
+  Tree (PL.SortNode ConsCtx) [y, beta, gamma'] -> 
+    sucVar {y, beta} $ freeVarTerm {gamma: gamma', x, alpha}
+  Tree (PL.SortNode NilCtx) [] ->
+    expr.var.free x alpha
+  _ -> todo ""
+
+sucVar {y, beta} e | Tree (PL.SortNode VarJdg) [gamma, x, alpha, loc] <- PL.getExprSort e =
+  expr.var.suc gamma x alpha y beta loc e
+sucVar _ _ = bug "invalid"
+
+-- END SteppingRules
 
 getEdits :: Sort -> Orientation -> Edits
 -- getEdits (Tree (PL.SortNode (StrInner _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
@@ -410,4 +440,12 @@ expr = {var, str, ty, term}
     { lam: \x alpha beta gamma xExpr alphaExpr b -> PL.buildExpr LamTerm {x, alpha, beta, gamma} [xExpr, alphaExpr, b]
     , hole: \alpha -> PL.buildExpr HoleTerm {alpha} []
     }
-  
+
+step = 
+  { var:
+      { suc: \gamma x alpha y beta loc pred -> PL.buildStepExpr SucVar {gamma, x, alpha, y, beta, loc} [pred]
+      }
+  -- , str
+  -- , ty
+  -- , term 
+  }

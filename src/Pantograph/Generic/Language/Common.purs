@@ -36,6 +36,11 @@ import Todo (todo)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 
+-- infixes
+
+infix 7 StepExpr as %.
+infix 7 Boundary as %.|
+
 -- Sort
 
 data SortNode (sn :: Type)
@@ -182,8 +187,8 @@ shrinkAnnExprGyro' _ = unsafeCoerce
 -- StepExpr
 
 data StepExpr sn el
-  = Boundary Direction (SortChange sn) (StepExpr sn el)
-  | StepExpr (Maybe Marker) (ExprNode sn el) (Array (StepExpr sn el))
+  = StepExpr (Maybe Marker) (ExprNode sn el) (Array (StepExpr sn el))
+  | Boundary Direction (SortChange sn) (StepExpr sn el)
 
 derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
@@ -195,6 +200,11 @@ instance (Show sn, PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn 
     StepExpr Nothing node kids -> prettyTreeNode node (pretty <$> kids)
     StepExpr (Just (CursorMarker Outside)) node kids -> outer $ prettyTreeNode node (pretty <$> kids)
     StepExpr (Just (CursorMarker Inside)) node kids -> inner $ prettyTreeNode node (pretty <$> kids)
+
+instance Subtype (AnnExpr sn el ()) (StepExpr sn el) where
+  inject (Tree node kids) = StepExpr Nothing node (inject <$> kids)
+  project (StepExpr Nothing node kids) = Tree node <$> project `traverse` kids
+  project _ = Nothing
 
 -- Direction
 
@@ -312,7 +322,7 @@ instance Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) wher
   applyRuleSortVarSubst sigma (Tree (VarRuleSortNode x) _) = applyRuleSortVarSubst sigma x
 
 instance Language sn el => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
-  applyRuleSortVarSubst sigma (Shift sign tooth kid) = Shift sign (fromJust <<< project <$> tooth) (applyRuleSortVarSubst sigma kid)
+  applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (fromJust <<< project <$> tooth)) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
   applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromJust $ project node) (applyRuleSortVarSubst sigma <$> kids)
 
@@ -358,7 +368,7 @@ instance Language sn el => ApplySortVarSubst sn (Sort sn) (Sort sn) where
   applySortVarSubst sigma (Tree (VarSortNode x) _) = applySortVarSubst sigma x
 
 instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) where
-  applySortVarSubst sigma (Shift sign tooth kid) = Shift sign tooth (applySortVarSubst sigma kid)
+  applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ tooth) (applySortVarSubst sigma kid)
   applySortVarSubst sigma (Replace old new) = Replace (applySortVarSubst sigma old) (applySortVarSubst sigma new)
   applySortVarSubst sigma (InjectChange node kids) = InjectChange node (applySortVarSubst sigma <$> kids)
 
