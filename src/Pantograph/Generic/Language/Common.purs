@@ -123,17 +123,22 @@ type RuleSortChange sn = Change (RuleSortNode sn)
 
 -- AnnExpr
 
-type AnnExprNodeRow (sn :: Type) (el :: Type) (er :: Row Type) = (label :: el, sigma :: RuleSortVarSubst sn | er)
-newtype AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = ExprNode (Record (AnnExprNodeRow sn el er))
-derive instance Newtype (AnnExprNode sn el er) _
-derive newtype instance (Eq (Record (AnnExprNodeRow sn el er))) => Eq (AnnExprNode sn el er)
-derive newtype instance (Show (Record (AnnExprNodeRow sn el er))) => Show (AnnExprNode sn el er)
+data AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = ExprNode el (RuleSortVarSubst sn) (Record er)
+derive instance Generic (AnnExprNode sn el er) _
+derive instance (Eq sn, Eq el, Eq (Record er)) => Eq (AnnExprNode sn el er)
+instance (Show el, Show sn, Show (Record er)) => Show (AnnExprNode sn el er) where show = genericShow
+
+annExprAnn :: forall sn el er. Tree (AnnExprNode sn el er) -> Record er
+annExprAnn (Tree node _) = annExprNodeAnn node
+
+annExprNodeAnn :: forall sn el er. AnnExprNode sn el er -> Record er
+annExprNodeAnn (ExprNode _ _ er) = er
 
 instance TreeNode el => TreeNode (AnnExprNode sn el er) where
-  kidsCount (ExprNode {label}) = kidsCount label
+  kidsCount (ExprNode label _ _) = kidsCount label
 
 instance PrettyTreeNode el => PrettyTreeNode (AnnExprNode sn el er) where
-  prettyTreeNode (ExprNode {label}) prettiedKids = prettyTreeNode label prettiedKids
+  prettyTreeNode (ExprNode label _ _) prettiedKids = prettyTreeNode label prettiedKids
 
 type AnnExpr sn el er = Tree (AnnExprNode sn el er)
 type AnnExprTooth sn el er = Tooth (AnnExprNode sn el er)
@@ -364,7 +369,7 @@ instance Language sn el => ApplySortVarSubst sn (RuleSortVarSubst sn) (RuleSortV
   applySortVarSubst sigma (RuleSortVarSubst m) = RuleSortVarSubst $ m <#> applySortVarSubst sigma
 
 instance Language sn el => ApplySortVarSubst sn (AnnExprNode sn el er) (AnnExprNode sn el er) where
-  applySortVarSubst sigma (ExprNode node) = ExprNode node {sigma = applySortVarSubst sigma node.sigma}
+  applySortVarSubst sigma (ExprNode label sigma' er) = ExprNode label (applySortVarSubst sigma sigma') er
 
 instance Language sn el => ApplySortVarSubst sn (AnnExpr sn el er) (AnnExpr sn el er) where
   applySortVarSubst sigma = map (applySortVarSubst sigma)

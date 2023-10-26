@@ -41,6 +41,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
+import Pantograph.Generic.Language.Common (annExprAnn, annExprNodeAnn)
 import Pantograph.Generic.Language.Edit (applyEdit)
 import Pantograph.Generic.Rendering.Html as HH
 import Pantograph.Generic.Rendering.Preview (previewComponent)
@@ -209,30 +210,30 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           -- Shift+Arrow(Left|Right|Up|Down): grab Gyro
           else if ki.key == "ArrowLeft" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode {validSelect}) _ -> validSelect
+            modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode _ _ {validSelect}) _ -> validSelect
           else if ki.key == "ArrowRight" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode {validSelect}) _ -> validSelect
+            modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode _ _ {validSelect}) _ -> validSelect
           else if ki.key == "ArrowUp" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
+            modifyHydratedExprGyro $ grabGyroLeftUntil \(ExprNode _ _ {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
           else if ki.key == "ArrowDown" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
+            modifyHydratedExprGyro $ grabGyroRightUntil \(ExprNode _ _ {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
 
           -- Arrow(Left|Right|Up|Down): move Gyro
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroLeftUntil \(ExprNode {validCursor}) -> validCursor
+            modifyHydratedExprGyro $ moveGyroLeftUntil \(ExprNode _ _ {validCursor}) -> validCursor
           else if ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroRightUntil \(ExprNode {validCursor}) -> validCursor
+            modifyHydratedExprGyro $ moveGyroRightUntil \(ExprNode _ _ {validCursor}) -> validCursor
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroLeftUntil \(ExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
+            modifyHydratedExprGyro $ moveGyroLeftUntil \(ExprNode _ _ {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroRightUntil \(ExprNode {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
+            modifyHydratedExprGyro $ moveGyroRightUntil \(ExprNode _ _ {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
 
           -- Spacebar: open Toolbox (no initial query)
           else if ki.key == " " then do
@@ -303,9 +304,9 @@ hydrateExprNode = do
     beginsLine orientation = getBeginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
     validCursor orientation = validGyro (CursorGyro (Cursor cursor {orientation = orientation}))
     validSelect = maybeSelect # maybe false validGyro
-    ExprNode node = cursor.inside # treeNode
+    ExprNode label sigma ann = cursor.inside # treeNode
 
-  pure $ ExprNode $ node # R.union
+  pure $ ExprNode label sigma $ ann # R.union
     { beginsLine
     , validCursor
     , validSelect }
@@ -409,20 +410,20 @@ rehydrateExprGyro local m_hydratedExprGyro m_hydratedExprGyro' = do
     Just (RootGyro _expr) ->
       pure unit
     Just (CursorGyro (Cursor cursor)) -> do
-      liftEffect $ HU.updateClassName (cursor.inside # treeNode # unwrap # _.elemId) (className.orientationCursor cursor.orientation) (Just false)
+      liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just false)
     Just (SelectGyro (Select select)) -> do
-      liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # unwrap # _.elemId) (className.orientationSelect Outside) (Just false)
-      liftEffect $ HU.updateClassName (select.inside # treeNode # unwrap # _.elemId) (className.orientationSelect Inside) (Just false)
+      liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just false)
+      liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just false)
 
   rehydrateExprGyro' = case m_hydratedExprGyro' of
     Nothing -> pure unit
     Just (RootGyro _expr) ->
       pure unit
     Just (CursorGyro (Cursor cursor)) -> do
-      liftEffect $ HU.updateClassName (cursor.inside # treeNode # unwrap # _.elemId) (className.orientationCursor cursor.orientation) (Just true)
+      liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just true)
     Just (SelectGyro (Select select)) -> do
-      liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # unwrap # _.elemId) (className.orientationSelect Outside) (Just true)
-      liftEffect $ HU.updateClassName (select.inside # treeNode # unwrap # _.elemId) (className.orientationSelect Inside) (Just true)
+      liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just true)
+      liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just true)
 
 -- render
 

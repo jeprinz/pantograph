@@ -72,7 +72,7 @@ buildExprNode :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => La
 buildExprNode label sigma_ = 
   let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
   assertValidRuleVarSubst label sigma \_ ->
-    ExprNode {label, sigma}
+    ExprNode label sigma {}
 
 -- make
 
@@ -83,7 +83,7 @@ makeInjectRuleSort n kids = Tree (makeInjectRuleSortNode n) kids
 makeExprNode label sigma_ = 
   let sigma = RuleSortVarSubst (Map.fromFoldable (sigma_ <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort))) in
   assertValidRuleVarSubst label sigma \_ ->
-    ExprNode {label, sigma}
+    ExprNode label sigma {}
 
 makeExpr label sigma_ = 
   let node = makeExprNode label sigma_ in
@@ -107,18 +107,18 @@ makeExprNonEmptyPath ths = NonEmptyPath $ fromJust' "makeExprNonEmptyPath" $ Non
 defaultTopExpr =
   getDefaultExpr topSort
 
-getExprNodeSort (ExprNode {label, sigma}) =
+getExprNodeSort (ExprNode label sigma _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
 getExprSort :: forall sn el. Language sn el => Expr sn el -> Sort sn
 getExprSort (Tree el _) = getExprNodeSort el
 
-getExprToothInnerSort (Tooth (ExprNode {label, sigma}) i _) =
+getExprToothInnerSort (Tooth (ExprNode label sigma _) i _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
 
-getExprToothOuterSort (Tooth (ExprNode {label, sigma}) _ _) =
+getExprToothOuterSort (Tooth (ExprNode label sigma _) _ _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
@@ -135,7 +135,7 @@ getExprNonEmptyPathSortChange = unconsNonEmptyPath >>> case _ of
 -- | The SortChange that corresponds to going from the inner sort of the tooth
 -- | to the outer sort of the path.
 getExprToothSortChange :: forall sn el. Language sn el => ExprTooth sn el -> SortChange sn
-getExprToothSortChange (Tooth (ExprNode {label, sigma}) i _) =
+getExprToothSortChange (Tooth (ExprNode label sigma _) i _) =
   let ChangingRule rule = getChangingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index rule.kids i
 
@@ -147,7 +147,7 @@ getExprPathChange :: forall sn el. Language sn el =>
   SortChange sn
 getExprPathChange path bottomSort = case unconsPath path of
   Nothing -> inject bottomSort
-  Just {outer, inner: Tooth (ExprNode {label, sigma}) i _} ->
+  Just {outer, inner: Tooth (ExprNode label sigma _) i _} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
     let change = applyRuleSortVarSubst sigma ruleChange in
