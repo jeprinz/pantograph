@@ -62,7 +62,7 @@ buildExprNode :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => La
 buildExprNode label sigma_ = 
   let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
   assertValidRuleVarSubst label sigma \_ ->
-    ExprNode label sigma {}
+    EN label sigma {}
 
 buildStepExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> Array (StepExpr sn el) -> StepExpr sn el
 buildStepExpr label sigma_ = 
@@ -73,7 +73,7 @@ buildStepExpr label sigma_ =
 -- make
 
 makeInjectRuleSortNode :: forall sn. sn -> RuleSortNode sn
-makeInjectRuleSortNode n = InjectRuleSortNode (SortNode n)
+makeInjectRuleSortNode n = InjectRuleSortNode (SN n)
 
 makeInjectRuleSort :: forall sn. sn -> Array (Tree (RuleSortNode sn)) -> Tree (RuleSortNode sn)
 makeInjectRuleSort n kids = Tree (makeInjectRuleSortNode n) kids
@@ -82,7 +82,7 @@ makeExprNode :: forall sn el. Language sn el => el -> Array (String /\ (Tree (So
 makeExprNode label sigma_ = 
   let sigma = RuleSortVarSubst (Map.fromFoldable (sigma_ <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort))) in
   assertValidRuleVarSubst label sigma \_ ->
-    ExprNode label sigma {}
+    EN label sigma {}
 
 makeExpr :: forall sn el. Language sn el => el -> Array (String /\ (Tree (SortNode sn))) -> Array (Expr sn el) -> Expr sn el
 makeExpr label sigma_ = 
@@ -112,7 +112,7 @@ defaultTopExpr =
   getDefaultExpr topSort
 
 getExprNodeSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) => AnnExprNode sn el er -> Sort sn
-getExprNodeSort (ExprNode label sigma _) =
+getExprNodeSort (EN label sigma _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
@@ -120,12 +120,12 @@ getExprSort :: forall sn el. Language sn el => Expr sn el -> Sort sn
 getExprSort (Tree el _) = getExprNodeSort el
 
 getExprToothInnerSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
-getExprToothInnerSort (Tooth (ExprNode label sigma _) (i /\ _)) =
+getExprToothInnerSort (Tooth (EN label sigma _) (i /\ _)) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
 
 getExprToothOuterSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
-getExprToothOuterSort (Tooth (ExprNode label sigma _) _) =
+getExprToothOuterSort (Tooth (EN label sigma _) _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
@@ -145,7 +145,7 @@ getExprNonEmptyPathSortChange = unconsNonEmptyPath >>> case _ of
 -- | The SortChange that corresponds to going from the inner sort of the tooth
 -- | to the outer sort of the path.
 getExprToothSortChange :: forall sn el. Language sn el => ExprTooth sn el -> SortChange sn
-getExprToothSortChange (Tooth (ExprNode label sigma _) (i /\ _)) =
+getExprToothSortChange (Tooth (EN label sigma _) (i /\ _)) =
   let ChangingRule rule = getChangingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index rule.kids i
 
@@ -157,7 +157,7 @@ getExprPathChange :: forall sn el. Language sn el =>
   SortChange sn
 getExprPathChange path bottomSort = case unconsPath path of
   Nothing -> inject bottomSort
-  Just {outer, inner: Tooth (ExprNode label sigma _) (i /\ _)} ->
+  Just {outer, inner: Tooth (EN label sigma _) (i /\ _)} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
     let change = applyRuleSortVarSubst sigma ruleChange in

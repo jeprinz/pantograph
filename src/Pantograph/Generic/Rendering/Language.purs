@@ -34,7 +34,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 -- sync
 
 syncExprGyro :: forall sn el er. AnnExprGyro sn el er -> SyncExprGyro sn el er
-syncExprGyro = map \(ExprNode label sigma er) -> ExprNode label sigma $ R.union {elemId: HU.freshElementId unit} er
+syncExprGyro = map \(EN label sigma er) -> EN label sigma $ R.union {elemId: HU.freshElementId unit} er
 
 -- render
 
@@ -166,7 +166,7 @@ renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr
 -- makeSyncExprProps
 
 makeSyncExprProps :: forall sn el er ctx env. Rendering sn el ctx env => MakeSyncExprProps sn el er ctx env
-makeSyncExprProps outside inside@(Tree (ExprNode _ _ {elemId}) _) = do
+makeSyncExprProps outside inside@(Tree (EN _ _ {elemId}) _) = do
   ctx <- ask
   env <- get
   pure 

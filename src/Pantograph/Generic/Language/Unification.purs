@@ -13,14 +13,14 @@ import Data.Tree (Tree(..))
 import Data.Tuple (uncurry)
 
 unifySort :: forall sn el. Language sn el => Sort sn -> Sort sn -> Maybe (Sort sn /\ SortVarSubst sn)
-unifySort (Tree (SortNode sn1) ss1) (Tree (SortNode sn2) ss2) 
+unifySort (Tree (SN sn1) ss1) (Tree (SN sn2) ss2) 
   | sn1 == sn2 = do
     ss /\ sigmas <- Array.unzip <$> uncurry unifySort `traverse` Array.zip ss1 ss2
     let sigma = Array.foldr append mempty sigmas
-    Just $ Tree (SortNode sn1) ss /\ sigma
-unifySort (Tree (VarSortNode x1) _) s2@(Tree (VarSortNode x2) _) 
+    Just $ Tree (SN sn1) ss /\ sigma
+unifySort (Tree (VarSN x1) _) s2@(Tree (VarSN x2) _) 
   | x1 == x2 = Just (s2 /\ mempty)
-unifySort (Tree (VarSortNode x1) _) s2 = 
+unifySort (Tree (VarSN x1) _) s2 = 
   Just (s2 /\ (SortVarSubst $ Map.singleton x1 s2))
-unifySort s1 s2@(Tree (VarSortNode _) _) = unifySort s2 s1
+unifySort s1 s2@(Tree (VarSN _) _) = unifySort s2 s1
 unifySort _ _ = Nothing

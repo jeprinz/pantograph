@@ -335,35 +335,35 @@ steppingRules = []
 -- | {e}↓{Var (+ <{ y : beta, {> gamma <}}>) x alpha loc}  ~~>  Suc {e}↓{Var gamma x alpha loc}
 insertSucSteppingRule :: SteppingRule
 insertSucSteppingRule = PL.SteppingRule case _ of
-  PL.Boundary (PL.Down /\ (PL.SortNode VarJdg %! [Shift (Plus /\ (PL.SortNode ConsCtx %- 2 /\ [y, beta])) gamma, x, alpha, loc])) e -> Just $
+  PL.Boundary (PL.Down /\ (PL.SN VarJdg %! [Shift (Plus /\ (PL.SN ConsCtx %- 2 /\ [y, beta])) gamma, x, alpha, loc])) e -> Just $
     se_var_suc (epR gamma) (epR x) (epR alpha) y beta (epR loc) $
-      PL.Boundary (PL.Down /\ InjectChange (PL.SortNode VarJdg) [gamma, x, alpha, loc]) e
+      PL.Boundary (PL.Down /\ InjectChange (PL.SN VarJdg) [gamma, x, alpha, loc]) e
   _ -> Nothing
 
 
 -- | {Zero}↓{Var (- <{ x : alpha, {> gamma <}}>) x alpha Local} ~~> {Free}↑{Var id x alpha (Local ~> Nonlocal)}
 localBecomesNonlocalSteppingRule :: SteppingRule
 localBecomesNonlocalSteppingRule = PL.SteppingRule case _ of
-  PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma, x', alpha', PL.SortNode LocalLoc %! []]) %.|
-  (PL.ExprNode ZeroVar _ _ %. [])
+  PL.Down /\ (PL.SN VarJdg %! [Minus /\ (PL.SN ConsCtx %- 2 /\ [x, alpha]) %!/ gamma, x', alpha', PL.SN LocalLoc %! []]) %.|
+  (PL.EN ZeroVar _ _ %. [])
   | true -> Just $
     PL.Boundary 
-      (PL.Up /\ (PL.SortNode VarJdg %! [inject (epR gamma), x', alpha', Replace sr_loc_local sr_loc_nonlocal]))
+      (PL.Up /\ (PL.SN VarJdg %! [inject (epR gamma), x', alpha', Replace sr_loc_local sr_loc_nonlocal]))
       (inject $ freeVarTerm {gamma: (epR gamma), x, alpha})
   _ -> Nothing
 
 -- | {Var (- <{ y : beta , {> gamma <}}>) x alpha loc}↓{Suc pred} ~~> {Var gamma x alpha loc}↓{pred}
 removeSuc :: SteppingRule
 removeSuc = PL.SteppingRule case _ of
-  (PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 1 /\ [_y, _beta]) %!/ gamma, x, alpha, loc])) %.| (PL.ExprNode SucVar _sigma _ %. [pred]) -> Just $
-    PL.Down /\ (PL.SortNode VarJdg %! [gamma, x, alpha, loc]) %.| pred
+  (PL.Down /\ (PL.SN VarJdg %! [Minus /\ (PL.SN ConsCtx %- 1 /\ [_y, _beta]) %!/ gamma, x, alpha, loc])) %.| (PL.EN SucVar _sigma _ %. [pred]) -> Just $
+    PL.Down /\ (PL.SN VarJdg %! [gamma, x, alpha, loc]) %.| pred
   _ -> Nothing
 
 
 -- | {Var (+ <{ x : alpha , {> gamma< } }>) x alpha Nonlocal}↓{_} ~~> Z
 nonlocalBecomesLocal :: SteppingRule
 nonlocalBecomesLocal = PL.SteppingRule case _ of
-  (PL.Down /\ (Plus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma)) %.| a -> Just $
+  (PL.Down /\ (Plus /\ (PL.SN ConsCtx %- 2 /\ [x, alpha]) %!/ gamma)) %.| a -> Just $
     se_var_zero (epR gamma) x alpha
   _ -> Nothing
 
@@ -371,8 +371,8 @@ nonlocalBecomesLocal = PL.SteppingRule case _ of
 -- | {alpha! -> beta!}↓{alpha -> beta} ~~> {alpha}↓{alpha!} -> {beta}↓{beta!}
 passThroughArrow :: SteppingRule
 passThroughArrow = PL.SteppingRule case _ of
-  (PL.Down /\ (PL.SortNode ArrowTySN %! [alpha, beta])) %.| (PL.ExprNode ArrowTyEL sigma _ %. [alphaCh, betaCh]) -> Just $
-    PL.ExprNode ArrowTyEL sigma {} %. 
+  (PL.Down /\ (PL.SN ArrowTySN %! [alpha, beta])) %.| (PL.EN ArrowTyEL sigma _ %. [alphaCh, betaCh]) -> Just $
+    PL.EN ArrowTyEL sigma {} %. 
       [ PL.Down /\ alpha %.| alphaCh
       , PL.Down /\ beta %.| betaCh ]
   _ -> Nothing
@@ -380,14 +380,14 @@ passThroughArrow = PL.SteppingRule case _ of
 -- | {_ : Type alpha!}↓{_} ~~> alpha
 typeBecomesRhsOfChange :: SteppingRule
 typeBecomesRhsOfChange = PL.SteppingRule case _ of
-  (PL.Down /\ (PL.SortNode TyJdg %! [alpha])) %.| _ -> Just $ inject (typeSortToTypeExpr (epR alpha))
+  (PL.Down /\ (PL.SN TyJdg %! [alpha])) %.| _ -> Just $ inject (typeSortToTypeExpr (epR alpha))
   _ -> Nothing
 
 
 -- | {Term gamma (+ <{alpha -> {> beta<}}>)}↓{b} ~~> lam ~ : alpha . {Term (+ <{ ~ : alpha, {> gamma <}}>) beta}↓{b}
 wrapLambda :: SteppingRule
 wrapLambda = PL.SteppingRule case _ of
-  (PL.Down /\ (PL.SortNode TermJdg %! [gamma, Plus /\ (PL.SortNode TermJdg %- 1 /\ [alpha]) %!/ beta])) %.| b -> Just $
+  (PL.Down /\ (PL.SN TermJdg %! [gamma, Plus /\ (PL.SN TermJdg %- 1 /\ [alpha]) %!/ beta])) %.| b -> Just $
     let x = sr_strInner "" in
     se_tm_lam x alpha (epR beta) (epR gamma) (se_str x) (inject (typeSortToTypeExpr alpha)) b
   _ -> Nothing
@@ -395,9 +395,9 @@ wrapLambda = PL.SteppingRule case _ of
 -- | {Term gamma (- <{alpha -> {> beta <}}>)}↓{lam x : alpha . b} ~~> {Term (- x : alpha, gamma) beta}↓{b}
 unWrapLambda :: SteppingRule
 unWrapLambda = PL.SteppingRule case _ of
-  (PL.Down /\ (PL.SortNode TermJdg %! [gamma, Minus /\ (PL.SortNode ArrowTySN %- 1 /\ [alpha]) %!/ beta])) %.|
-  (PL.ExprNode LamTerm sigma {} %. [x, alpha', b]) -> Just $
-    PL.Down /\ (PL.SortNode TermJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [PL.getExprSort (PL.fromStepExprToExpr x), alpha]) %!/ gamma, beta]) %.|  b
+  (PL.Down /\ (PL.SN TermJdg %! [gamma, Minus /\ (PL.SN ArrowTySN %- 1 /\ [alpha]) %!/ beta])) %.|
+  (PL.EN LamTerm sigma {} %. [x, alpha', b]) -> Just $
+    PL.Down /\ (PL.SN TermJdg %! [Minus /\ (PL.SN ConsCtx %- 2 /\ [PL.getExprSort (PL.fromStepExprToExpr x), alpha]) %!/ gamma, beta]) %.|  b
   _ -> Nothing
 
 
@@ -460,14 +460,14 @@ mergeErrors = PL.SteppingRule case _ of
 -- utils
 
 freeVarTerm {gamma, x, alpha} = case gamma of
-  Tree (PL.SortNode ConsCtx) [y, beta, gamma'] -> 
+  Tree (PL.SN ConsCtx) [y, beta, gamma'] -> 
     sucVar {y, beta} $ freeVarTerm {gamma: gamma', x, alpha}
-  Tree (PL.SortNode NilCtx) [] ->
+  Tree (PL.SN NilCtx) [] ->
     ex.var_free {x, alpha}
   _ -> bug "impossible: freeVarTerm"
 
 sucVar {y, beta} pred 
-  | Tree (PL.SortNode VarJdg) [gamma, x, alpha, loc] <- PL.getExprSort pred =
+  | Tree (PL.SN VarJdg) [gamma, x, alpha, loc] <- PL.getExprSort pred =
   ex.var_suc {gamma, x, alpha, y, beta, loc, pred}
 sucVar _ _ = bug "impossible: sucVar"
 
@@ -476,8 +476,8 @@ sucVar _ _ = bug "impossible: sucVar"
 getEdits :: Sort -> Orientation -> Edits
 -- -- getEdits (Tree (PL.SortNode (StrInner _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
 -- -- getEdits (Tree (PL.SortNode Str) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- -- getEdits (Tree (PL.SortNode VarJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits sr@(Tree (PL.SortNode TermJdg) [gamma, beta]) Outside = PL.Edits $ StringQuery.fuzzy
+-- -- getEdits (Tree (PL.SN VarJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits sr@(Tree (PL.SN TermJdg) [gamma, beta]) Outside = PL.Edits $ StringQuery.fuzzy
 --   { toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0
 --   , getItems: const
 --       [ "lambda" /\
@@ -490,7 +490,7 @@ getEdits :: Sort -> Orientation -> Edits
 --     ]
 --   }
 -- getEdits (Tree (PL.SortNode NeutJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits (Tree (PL.SortNode TyJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits (Tree (PL.SN TyJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
 -- getEdits (Tree (PL.SortNode (DataTySN _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
 -- getEdits (Tree (PL.SortNode ArrowTySN) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
 getEdits sort orientation = bug $ "invalid cursor position; sort = " <> show sort <> "; orientation = " <> show orientation
@@ -501,12 +501,12 @@ splitExprPathChanges = todo "type change goes up, context change goes down"
 -- utility
 
 typeSortToTypeExpr :: Sort -> Expr
-typeSortToTypeExpr (PL.SortNode (DataTySN dt) % []) = PL.buildExpr (DataTyEL dt) {} []
-typeSortToTypeExpr (PL.SortNode ArrowTySN % [alpha, beta]) = PL.buildExpr ArrowTyEL {alpha, beta} [typeSortToTypeExpr alpha, typeSortToTypeExpr beta]
+typeSortToTypeExpr (PL.SN (DataTySN dt) % []) = PL.buildExpr (DataTyEL dt) {} []
+typeSortToTypeExpr (PL.SN ArrowTySN % [alpha, beta]) = PL.buildExpr ArrowTyEL {alpha, beta} [typeSortToTypeExpr alpha, typeSortToTypeExpr beta]
 typeSortToTypeExpr sr = bug $ "invalid: " <> show sr
 
 -- strStepExprToStrSort :: StepExpr -> Sort
--- strStepExprToStrSort (_ /\ n@(PL.ExprNode StrEL _ _) %. _)
+-- strStepExprToStrSort (_ /\ n@(PL.EN StrEL _ _) %. _)
 --   | PL.SortNode (StrInner str) % [] <- PL.getExprNodeSort n = ?a
 -- strStepExprToStrSort _ = bug "invalid"
 

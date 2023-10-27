@@ -37,8 +37,8 @@ infix 5 Boundary as %.|
 -- Sort
 
 data SortNode (sn :: Type)
-  = SortNode sn
-  | VarSortNode SortVar
+  = SN sn
+  | VarSN SortVar
 
 derive instance Generic (SortNode sn) _
 derive instance Eq sn => Eq (SortNode sn)
@@ -48,15 +48,15 @@ derive instance Functor SortNode
 -- type SortNodePattern sn = EqPattern (SortNode sn)
 
 instance TreeNode sn => TreeNode (SortNode sn) where
-  kidsCount (SortNode node) = kidsCount node
-  kidsCount (VarSortNode _) = 0
+  kidsCount (SN node) = kidsCount node
+  kidsCount (VarSN _) = 0
 
 instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (SortNode sn) where
   prettyTreeNode sn =
     let ass = assertValidTreeKids "prettyTreeNode" sn in
     case sn of
-      SortNode node -> ass \kids -> prettyTreeNode node kids
-      VarSortNode var -> ass \[] -> pretty var
+      SN node -> ass \kids -> prettyTreeNode node kids
+      VarSN var -> ass \[] -> pretty var
 
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)
@@ -87,13 +87,13 @@ makeVarRuleSort :: forall sn. RuleSortVar -> Tree (RuleSortNode sn)
 makeVarRuleSort x = Tree (VarRuleSortNode x) []
 
 makeSort :: forall sn. sn -> Array (Sort sn) -> Sort sn
-makeSort sn kids = Tree (SortNode sn) kids
+makeSort sn kids = Tree (SN sn) kids
 
 makeVarSort :: forall sn. SortVar -> Sort sn
-makeVarSort x = Tree (VarSortNode x) []
+makeVarSort x = Tree (VarSN x) []
 
 freshVarSort :: forall sn. String -> Tree (SortNode sn)
-freshVarSort label = Tree (VarSortNode (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})) []
+freshVarSort label = Tree (VarSN (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})) []
 
 injectRuleSort :: forall sn. Sort sn -> RuleSort sn
 injectRuleSort = map inject
@@ -121,7 +121,7 @@ type RuleSortChange sn = Change (RuleSortNode sn)
 
 -- AnnExpr
 
-data AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = ExprNode el (RuleSortVarSubst sn) (Record er)
+data AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = EN el (RuleSortVarSubst sn) (Record er)
 derive instance Generic (AnnExprNode sn el er) _
 derive instance (Eq sn, Eq el, Eq (Record er)) => Eq (AnnExprNode sn el er)
 instance (Show el, Show sn, Show (Record er)) => Show (AnnExprNode sn el er) where show = genericShow
@@ -130,13 +130,13 @@ annExprAnn :: forall sn el er. Tree (AnnExprNode sn el er) -> Record er
 annExprAnn (Tree node _) = annExprNodeAnn node
 
 annExprNodeAnn :: forall sn el er. AnnExprNode sn el er -> Record er
-annExprNodeAnn (ExprNode _ _ er) = er
+annExprNodeAnn (EN _ _ er) = er
 
 instance TreeNode el => TreeNode (AnnExprNode sn el er) where
-  kidsCount (ExprNode label _ _) = kidsCount label
+  kidsCount (EN label _ _) = kidsCount label
 
 instance PrettyTreeNode el => PrettyTreeNode (AnnExprNode sn el er) where
-  prettyTreeNode (ExprNode label _ _) prettiedKids = prettyTreeNode label prettiedKids
+  prettyTreeNode (EN label _ _) prettiedKids = prettyTreeNode label prettiedKids
 
 type AnnExpr sn el er = Tree (AnnExprNode sn el er)
 type AnnExprTooth sn el er = Tooth (AnnExprNode sn el er)
@@ -355,8 +355,8 @@ instance Language sn el => ApplySortVarSubst sn SortVar (Sort sn) where
     Just s -> s
 
 instance Language sn el => ApplySortVarSubst sn (Sort sn) (Sort sn) where
-  applySortVarSubst sigma (Tree sn@(SortNode _) kids) = Tree sn (applySortVarSubst sigma <$> kids)
-  applySortVarSubst sigma (Tree (VarSortNode x) _) = applySortVarSubst sigma x
+  applySortVarSubst sigma (Tree sn@(SN _) kids) = Tree sn (applySortVarSubst sigma <$> kids)
+  applySortVarSubst sigma (Tree (VarSN x) _) = applySortVarSubst sigma x
 
 instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) where
   applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ tooth) (applySortVarSubst sigma kid)
@@ -370,7 +370,7 @@ instance Language sn el => ApplySortVarSubst sn (RuleSortVarSubst sn) (RuleSortV
   applySortVarSubst sigma (RuleSortVarSubst m) = RuleSortVarSubst $ m <#> applySortVarSubst sigma
 
 instance Language sn el => ApplySortVarSubst sn (AnnExprNode sn el er) (AnnExprNode sn el er) where
-  applySortVarSubst sigma (ExprNode label sigma' er) = ExprNode label (applySortVarSubst sigma sigma') er
+  applySortVarSubst sigma (EN label sigma' er) = EN label (applySortVarSubst sigma sigma') er
 
 instance Language sn el => ApplySortVarSubst sn (AnnExpr sn el er) (AnnExpr sn el er) where
   applySortVarSubst sigma = map (applySortVarSubst sigma)

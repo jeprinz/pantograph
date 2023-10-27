@@ -147,8 +147,8 @@ getChangingRule = case _ of
   FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeInjectRuleSortNode TermSort) []]
 
 getDefaultExpr = case _ of
-  Tree (PL.SortNode StringSort) [] -> Just $ term.string ""
-  Tree (PL.SortNode TermSort) [] -> Just $ term.hole
+  Tree (PL.SN StringSort) [] -> Just $ term.string ""
+  Tree (PL.SN TermSort) [] -> Just $ term.hole
   _ -> bug $ "invalid sort"
 
 topSort = sort.term
@@ -162,14 +162,14 @@ getEdits =
     
     maxDistance = Fuzzy.Distance 1 0 0 0 0 0
 
-    getEdits' (Tree (PL.SortNode StringSort) []) _ = PL.Edits $ StringQuery.fuzzy 
+    getEdits' (Tree (PL.SN StringSort) []) _ = PL.Edits $ StringQuery.fuzzy 
       { toString: fst, maxPenalty: maxDistance
       , getItems: \str -> 
           [ str /\ 
             NonEmptyArray.singleton 
               (PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)})]
       }
-    getEdits' (Tree (PL.SortNode TermSort) []) Outside = PL.Edits $ StringQuery.fuzzy 
+    getEdits' (Tree (PL.SN TermSort) []) Outside = PL.Edits $ StringQuery.fuzzy 
       { maxPenalty: maxDistance, toString: fst
       , getItems: const
           [ 
@@ -184,7 +184,7 @@ getEdits =
               [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
           ]
       }
-    getEdits' (Tree (PL.SortNode TermSort) []) Inside = PL.Edits $ StringQuery.fuzzy 
+    getEdits' (Tree (PL.SN TermSort) []) Inside = PL.Edits $ StringQuery.fuzzy 
       { maxPenalty: maxDistance, toString: fst
       , getItems: const
           [
@@ -200,7 +200,7 @@ getEdits =
 validGyro = case _ of
   RootGyro _ -> true
   CursorGyro (Cursor {orientation: Outside}) -> true
-  CursorGyro (Cursor {inside: Tree (PL.ExprNode HoleRule _ _) _, orientation: Inside}) -> true
+  CursorGyro (Cursor {inside: Tree (PL.EN HoleRule _ _) _, orientation: Inside}) -> true
   SelectGyro (Select {middle}) -> PL.getExprNonEmptyPathOuterSort middle == PL.getExprNonEmptyPathInnerSort middle
   _ -> false
 
@@ -230,11 +230,11 @@ instance PR.Rendering SN EL CTX ENV where
     let punc str = PR.HtmlArrangeKid [HH.span_ [HH.text str]] in
     let indent i = PR.HtmlArrangeKid (Array.replicate i (PH.whitespace "⇥ ")) in
     let newline i = PR.HtmlArrangeKid ([PH.whitespace " ↪", HH.br_] <> Array.replicate i (PH.whitespace "⇥ ")) in
-    \node@(PL.ExprNode label _ _) ->
+    \node@(PL.EN label _ _) ->
       let ass = assertValidTreeKids "arrangeExpr" (PL.shrinkAnnExprNode node :: PL.ExprNode SN EL) in
       case label of
         StringRule str -> ass \[] -> do
-          let Tree (PL.SortNode StringSort) [] = PL.getExprNodeSort node
+          let Tree (PL.SN StringSort) [] = PL.getExprNodeSort node
           pure [PR.HtmlArrangeKid [HH.span [HP.classes [HH.ClassName "string"]] [HH.text (if String.null str then "~" else str)]]]
         VarRule -> ass \[mx] -> do
           x_ /\ _x <- mx
@@ -267,11 +267,11 @@ instance PR.Rendering SN EL CTX ENV where
           pure [newline ctx.indentLevel, PR.ExprKidArrangeKid a_]
 
   getBeginsLine = case _ of
-    Cursor {outside: Path (Cons (Tooth (PL.ExprNode (FormatRule Newline) _ _) _) _), orientation: Outside} -> true
+    Cursor {outside: Path (Cons (Tooth (PL.EN (FormatRule Newline) _ _) _) _), orientation: Outside} -> true
     _ -> false
 
   getInitialQuery = case _ of
-    Cursor {inside: Tree (PL.ExprNode (StringRule str) _ _) []} -> str
+    Cursor {inside: Tree (PL.EN (StringRule str) _ _) []} -> str
     _ -> ""
   
 -- shallow
@@ -306,7 +306,7 @@ term = {var, string, lam, app, let_, hole, indent, newline, example}
 
 change = {term}
   where
-  term = injectChange (PL.SortNode TermSort) [] :: SortChange
+  term = injectChange (PL.SN TermSort) [] :: SortChange
 
 tooth = {app, lam, var, format}
   where
