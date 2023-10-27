@@ -80,13 +80,13 @@ renderAnnExprPath :: forall sn el er ctx env. Rendering sn el ctx env =>
   MakeAnnExprProps sn el er ctx env ->
   RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderAnnExprPath _ (Path Nil) _ _ renderInside = renderInside
-renderAnnExprPath outside (Path (Cons tooth@(Tooth node i _) ts)) expr makeAnnExprProps renderInside = do
+renderAnnExprPath outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr makeAnnExprProps renderInside = do
   let path' = Path ts
   let expr' = unTooth tooth expr
   let interiorOutside = outside <> path'
   renderAnnExprPath outside path' expr' makeAnnExprProps do
     arrangedKids <- arrangeExpr node $
-      tooths expr' <#> \(tooth'@(Tooth _ i' _) /\ kid@(Tree kidNode _)) -> do
+      tooths expr' <#> \(tooth'@(Tooth _ (i' /\ _)) /\ kid@(Tree kidNode _)) -> do
         if i == i' then 
           renderInside <#> (_ /\ kidNode)
         else
@@ -114,7 +114,7 @@ renderAnnExprPathLeft :: forall sn el er ctx env. Rendering sn el ctx env =>
   MakeAnnExprProps sn el er ctx env ->
   RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderAnnExprPathLeft _ (Path Nil) _ _ renderInside = renderInside
-renderAnnExprPathLeft outside (Path (Cons tooth@(Tooth node i _) ts)) expr makeAnnExprProps renderInside = do
+renderAnnExprPathLeft outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr makeAnnExprProps renderInside = do
   let path' = Path ts
   let expr' = unTooth tooth expr
   let interiorOutside = outside <> path'
@@ -125,7 +125,7 @@ renderAnnExprPathLeft outside (Path (Cons tooth@(Tooth node i _) ts)) expr makeA
         ExprKidArrangeKid {keep} -> keep
         _ -> true) $
       arrangeExpr node $
-      tooths expr' <#> \(tooth'@(Tooth _ i' _) /\ kid@(Tree kidNode _)) -> do
+      tooths expr' <#> \(tooth'@(Tooth _ (i' /\ _)) /\ kid@(Tree kidNode _)) -> do
         let keep = i' < i -- strictly to the left
         if i == i' then 
           renderInside <#> (\item -> {item, keep} /\ kidNode)
@@ -142,7 +142,7 @@ renderAnnExprPathRight :: forall sn el er ctx env. Rendering sn el ctx env =>
   MakeAnnExprProps sn el er ctx env ->
   RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderAnnExprPathRight _ (Path Nil) _ _ renderInside = renderInside
-renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node i _) ts)) expr makeAnnExprProps renderInside = do
+renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr makeAnnExprProps renderInside = do
   let path' = Path ts
   let expr' = unTooth tooth expr
   let interiorOutside = outside <> path'
@@ -153,7 +153,7 @@ renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node i _) ts)) expr make
         ExprKidArrangeKid {drop} -> drop
         _ -> true) $ 
       arrangeExpr node $
-      tooths expr' <#> \(tooth'@(Tooth _ i' _) /\ kid@(Tree kidNode _)) -> do
+      tooths expr' <#> \(tooth'@(Tooth _ (i' /\ _)) /\ kid@(Tree kidNode _)) -> do
         let drop = i' < i -- middle or to the left
         if i == i' then 
           renderInside <#> (\item -> {item, drop} /\ kidNode)

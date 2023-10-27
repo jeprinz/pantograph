@@ -351,7 +351,7 @@ hydrateExprPath :: forall sn el er ctx env a. Rendering sn el ctx env => SyncExp
 hydrateExprPath (Path ts0) k = go mempty (List.reverse ts0)
   where
   go path Nil = k path
-  go path (Cons (Tooth _ i _) ts) = do
+  go path (Cons (Tooth _ (i /\ _)) ts) = do
     Cursor cursor0 <- asks _.cursor
     maybeSelect0 <- asks _.maybeSelect
 
@@ -369,7 +369,7 @@ hydrateExprPath (Path ts0) k = go mempty (List.reverse ts0)
       --   "\n  • select = " <> pretty maybeSelect
 
       hydratedNode <- hydrateExprNode
-      hydratedKids <- tooths cursor.inside # Array.deleteAt i # fromJust' "hydrateExprPath" # traverse \(Tooth _ i' _ /\ _) -> do
+      hydratedKids <- tooths cursor.inside # Array.deleteAt i # fromJust' "hydrateExprPath" # traverse \(Tooth _ (i' /\ _) /\ _) -> do
         -- Debug.traceM $ "[hydrateExprPath]" <>
         --   "\n  • i = " <> show i' <>
         --   "\n  • cursor = " <> pretty (Cursor cursor) <>
@@ -377,7 +377,7 @@ hydrateExprPath (Path ts0) k = go mempty (List.reverse ts0)
 
         hydrateStep i' $ hydrateExpr
 
-      let tooth' = Tooth hydratedNode i hydratedKids
+      let tooth' = Tooth hydratedNode (i /\ hydratedKids)
       hydrateStep i $ go (consPath path tooth') ts
 
 hydrateExpr :: forall sn el er ctx env. Rendering sn el ctx env => HydrateM sn el er (HydrateExpr sn el er)
@@ -386,7 +386,7 @@ hydrateExpr = do
   maybeSelect <- asks _.maybeSelect
 
   hydratedNode <- hydrateExprNode
-  hydratedKids <- tooths cursor.inside # traverse \(Tooth _ i _ /\ _) -> do
+  hydratedKids <- tooths cursor.inside # traverse \(Tooth _ (i /\ _) /\ _) -> do
     -- Debug.traceM $ "[hydrateExpr]" <>
     --   "\n  • i = " <> show i <>
     --   "\n  • cursor = " <> pretty (Cursor cursor) <>

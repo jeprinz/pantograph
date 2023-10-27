@@ -267,7 +267,7 @@ instance PR.Rendering SN EL CTX ENV where
           pure [newline ctx.indentLevel, PR.ExprKidArrangeKid a_]
 
   getBeginsLine = case _ of
-    Cursor {outside: Path (Cons (Tooth (PL.ExprNode (FormatRule Newline) _ _) _ _) _), orientation: Outside} -> true
+    Cursor {outside: Path (Cons (Tooth (PL.ExprNode (FormatRule Newline) _ _) _) _), orientation: Outside} -> true
     _ -> false
 
   getInitialQuery = case _ of
