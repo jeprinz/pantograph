@@ -230,6 +230,12 @@ endpoints (InjectChange a kids) =
   let leftKids /\ rightKids = Array.unzip $ map (\{left, right} -> left /\ right) kids' in
   {left: Tree a leftKids, right: Tree a rightKids}
 
+epL :: forall a. Change a -> Tree a
+epL ch = (endpoints ch).left
+
+epR :: forall a. Change a -> Tree a
+epR ch = (endpoints ch).right
+
 data ShiftSign = Plus | Minus
 derive instance Generic ShiftSign _
 instance Show ShiftSign where show = genericShow

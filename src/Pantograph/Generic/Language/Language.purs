@@ -5,33 +5,23 @@ import Pantograph.Generic.Language.Common
 import Prelude
 
 import Bug (bug)
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.State (StateT(..), State, execState, get, gets, mapStateT, modify_)
 import Data.Array as Array
-import Data.List (List(..))
 import Data.List.NonEmpty as NonEmptyList
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Subtype (inject)
-import Data.Traversable (traverse, traverse_)
 import Data.Tree.Common (assertValidToothKids)
-import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
-import Data.UUID as UUID
-import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafePartial)
-import Record as R
-import Record.Builder as RB
-import Record.Builder as RecordBuilder
 import Text.Pretty (pretty)
-import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Type.Row.Homogeneous (class Homogeneous)
-import Util (class RowKeys, asStateT, buildFromKeys, delete', fromHomogenousRecordToTupleArray, fromJust, fromJust', rowKeys)
+import Util (class RowKeys, buildFromKeys, fromHomogenousRecordToTupleArray, fromJust, fromJust', rowKeys)
 
 -- assert
 
+assertValidRuleVarSubst :: forall a sn el. Language sn el => Language sn el => el -> RuleSortVarSubst sn -> (Unit -> a) -> a
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
   if rule.parameters == Map.keys m then k unit else
@@ -82,37 +72,46 @@ buildStepExpr label sigma_ =
 
 -- make
 
+makeInjectRuleSortNode :: forall sn. sn -> RuleSortNode sn
 makeInjectRuleSortNode n = InjectRuleSortNode (SortNode n)
 
+makeInjectRuleSort :: forall sn. sn -> Array (Tree (RuleSortNode sn)) -> Tree (RuleSortNode sn)
 makeInjectRuleSort n kids = Tree (makeInjectRuleSortNode n) kids
 
+makeExprNode :: forall sn el. Language sn el => el -> Array (String /\ (Tree (SortNode sn))) -> ExprNode sn el
 makeExprNode label sigma_ = 
   let sigma = RuleSortVarSubst (Map.fromFoldable (sigma_ <#> \(str /\ sort) -> (MakeRuleSortVar str /\ sort))) in
   assertValidRuleVarSubst label sigma \_ ->
     ExprNode label sigma {}
 
+makeExpr :: forall sn el. Language sn el => el -> Array (String /\ (Tree (SortNode sn))) -> Array (Expr sn el) -> Expr sn el
 makeExpr label sigma_ = 
   let node = makeExprNode label sigma_ in
   assertValidTreeKids "makeExpr" node \kids ->
     Tree node kids
 
+makeExprTooth :: forall sn el. Language sn el => el -> Array (String /\ (Tree (SortNode sn))) -> Int -> Array (Expr sn el) -> ExprTooth sn el
 makeExprTooth label sigma_ i = 
   let node = makeExprNode label sigma_ in
   assertValidToothKids "makeExprTooth" node i \kids ->
     Tooth node (i /\ kids)
 
+makeStepExpr :: forall sn el. Language sn el => el -> Array (String /\ (Tree (SortNode sn))) -> Array (StepExpr sn el) -> StepExpr sn el
 makeStepExpr label sigma_ = 
   let node = makeExprNode label sigma_ in
   assertValidTreeKids "makeStepExpr" node \kids -> 
     StepExpr (Nothing /\ node) kids
 
+makeExprNonEmptyPath :: forall sn el. Array (ExprTooth sn el) -> ExprNonEmptyPath sn el
 makeExprNonEmptyPath ths = NonEmptyPath $ fromJust' "makeExprNonEmptyPath" $ NonEmptyList.fromFoldable ths
 
 -- get
 
+defaultTopExpr :: forall sn el. Language sn el => Maybe (Expr sn el)
 defaultTopExpr =
   getDefaultExpr topSort
 
+getExprNodeSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) => AnnExprNode sn el er -> Sort sn
 getExprNodeSort (ExprNode label sigma _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
@@ -120,15 +119,20 @@ getExprNodeSort (ExprNode label sigma _) =
 getExprSort :: forall sn el. Language sn el => Expr sn el -> Sort sn
 getExprSort (Tree el _) = getExprNodeSort el
 
+getExprToothInnerSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
 getExprToothInnerSort (Tooth (ExprNode label sigma _) (i /\ _)) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
 
+getExprToothOuterSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
 getExprToothOuterSort (Tooth (ExprNode label sigma _) _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
+getExprNonEmptyPathInnerSort :: forall sn el er. Language sn el => NonEmptyPath (AnnExprNode sn el er) -> Tree (SortNode sn)
 getExprNonEmptyPathInnerSort = unconsNonEmptyPath >>> _.inner >>> getExprToothInnerSort
+
+getExprNonEmptyPathOuterSort :: forall sn el er. Language sn el => NonEmptyPath (AnnExprNode sn el er) -> Tree (SortNode sn)
 getExprNonEmptyPathOuterSort = unsnocNonEmptyPath >>> _.outer >>> getExprToothOuterSort
 
 -- | The SortChange that corresponds to going from the inner sort of the path to

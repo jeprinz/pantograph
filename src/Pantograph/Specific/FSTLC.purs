@@ -15,7 +15,7 @@ import Data.Show.Generic (genericShow)
 import Data.StringQuery as StringQuery
 import Data.Subtype (inject)
 import Data.Tuple (fst)
-import Pantograph.Generic.Language ((%.|), (%.))
+import Pantograph.Generic.Language ((%.), (%.|))
 import Pantograph.Generic.Language as PL
 import Pantograph.Library.Language.Change (getDiffChangingRule)
 import Pantograph.Library.Language.Edit as LibEdit
@@ -27,6 +27,7 @@ import Type.Proxy (Proxy(..))
 -- types
 
 type Expr = PL.Expr SN EL
+type StepExpr = PL.StepExpr SN EL
 type ExprTooth = PL.ExprTooth SN EL
 type SortChange = PL.SortChange SN
 type RuleSort = PL.RuleSort SN
@@ -331,93 +332,128 @@ steppingRules :: Array SteppingRule
 steppingRules = []
 
 
--- {e}↓{Var (+ <{ y : beta, {> gamma <}}>) x alpha loc}  ~~>  Suc {e}↓{Var gamma x alpha loc}
+-- | {e}↓{Var (+ <{ y : beta, {> gamma <}}>) x alpha loc}  ~~>  Suc {e}↓{Var gamma x alpha loc}
 insertSucSteppingRule :: SteppingRule
 insertSucSteppingRule = PL.SteppingRule case _ of
   PL.Boundary (PL.Down /\ (PL.SortNode VarJdg %! [Shift (Plus /\ (PL.SortNode ConsCtx %- 2 /\ [y, beta])) gamma, x, alpha, loc])) e -> Just $
-    se_var_suc (endpoints gamma).right (endpoints x).right (endpoints alpha).right y beta (endpoints loc).right $
+    se_var_suc (epR gamma) (epR x) (epR alpha) y beta (epR loc) $
       PL.Boundary (PL.Down /\ InjectChange (PL.SortNode VarJdg) [gamma, x, alpha, loc]) e
   _ -> Nothing
 
 
--- {Zero}↓{Var (- <{ x : alpha, {> gamma <}}>) x alpha Local} ~~> {Free}↑{Var id x alpha (Local ~> Nonlocal)}
+-- | {Zero}↓{Var (- <{ x : alpha, {> gamma <}}>) x alpha Local} ~~> {Free}↑{Var id x alpha (Local ~> Nonlocal)}
 localBecomesNonlocalSteppingRule :: SteppingRule
 localBecomesNonlocalSteppingRule = PL.SteppingRule case _ of
   PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma, x', alpha', PL.SortNode LocalLoc %! []]) %.|
   (Nothing /\ PL.ExprNode ZeroVar _ _ %. []) 
   | true -> Just $
     PL.Boundary 
-      (PL.Up /\ (PL.SortNode VarJdg %! [inject (endpoints gamma).right, x', alpha', Replace sr_loc_local sr_loc_nonlocal]))
-      (inject $ freeVarTerm {gamma: (endpoints gamma).right, x, alpha})
+      (PL.Up /\ (PL.SortNode VarJdg %! [inject (epR gamma), x', alpha', Replace sr_loc_local sr_loc_nonlocal]))
+      (inject $ freeVarTerm {gamma: (epR gamma), x, alpha})
+  _ -> Nothing
+
+-- | {Var (- <{ y : beta , {> gamma <}}>) x alpha loc}↓{Suc pred} ~~> {Var gamma x alpha loc}↓{pred}
+removeSuc :: SteppingRule
+removeSuc = PL.SteppingRule case _ of
+  (PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 1 /\ [_y, _beta]) %!/ gamma, x, alpha, loc])) %.| (_mrk /\ PL.ExprNode SucVar _sigma _ %. [pred]) -> Just $
+    PL.Down /\ (PL.SortNode VarJdg %! [gamma, x, alpha, loc]) %.| pred
   _ -> Nothing
 
 
--- {Suc pred}↓{Var (- <{ y : beta , {> gamma <}}>) x alpha loc} ~~> {pred}↓{Var gamma x alpha loc}
-removeSuc = PL.SteppingRule $ todo ""
+-- | {Var (+ <{ x : alpha , {> gamma< } }>) x alpha Nonlocal}↓{_} ~~> Z
+nonlocalBecomesLocal :: SteppingRule
+nonlocalBecomesLocal = PL.SteppingRule case _ of
+  (PL.Down /\ (Plus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma)) %.| a -> Just $
+    PL.inheritShallowMarker a $ se_var_zero (epR gamma) x alpha
+  _ -> Nothing
 
 
--- {_}↓{Var (+ <{ x : alpha , {> gamma< } }>) x alpha Nonlocal} ~~> Z
-nonlocalBecomesLocal = PL.SteppingRule $ todo ""
+-- | {alpha! -> beta!}↓{alpha -> beta} ~~> {alpha}↓{alpha!} -> {beta}↓{beta!}
+passThroughArrow :: SteppingRule
+passThroughArrow = PL.SteppingRule case _ of
+  (PL.Down /\ (PL.SortNode ArrowTySN %! [alpha, beta])) %.| (mrk /\ PL.ExprNode ArrowTyEL sigma _ %. [alphaCh, betaCh]) -> Just $
+    mrk /\ PL.ExprNode ArrowTyEL sigma {} %. 
+      [ PL.Down /\ alpha %.| alphaCh
+      , PL.Down /\ beta %.| betaCh ]
+  _ -> Nothing
+
+-- | {_ : Type alpha!}↓{_} ~~> alpha
+typeBecomesRhsOfChange :: SteppingRule
+typeBecomesRhsOfChange = PL.SteppingRule case _ of
+  (PL.Down /\ (PL.SortNode TyJdg %! [alpha])) %.| _ -> Just $ inject (typeSortToTypeExpr (epR alpha))
+  _ -> Nothing
 
 
--- {alpha -> beta}↓{!alpha -> !beta} ~~> {alpha}↓{!alpha} -> {beta}↓{!beta}
-passThroughArrow = PL.SteppingRule $ todo ""
+-- | {Term gamma (+ <{alpha -> {> beta<}}>)}↓{b} ~~> lam ~ : alpha . {Term (+ <{ ~ : alpha, {> gamma <}}>) beta}↓{b}
+wrapLambda :: SteppingRule
+wrapLambda = PL.SteppingRule case _ of
+  (PL.Down /\ (PL.SortNode TermJdg %! [gamma, Plus /\ (PL.SortNode TermJdg %- 1 /\ [alpha]) %!/ beta])) %.| b -> Just $
+    let x = sr_strInner "" in
+    se_tm_lam x alpha (epR beta) (epR gamma) (se_str x) (inject (typeSortToTypeExpr alpha)) b
+  _ -> Nothing
+
+-- | {Term gamma (- <{alpha -> {> beta <}}>)}↓{lam x : alpha . b} ~~> {Term (- x : alpha, gamma) beta}↓{b}
+unWrapLambda :: SteppingRule
+unWrapLambda = PL.SteppingRule case _ of
+  (PL.Down /\ (PL.SortNode TermJdg %! [gamma, Minus /\ (PL.SortNode ArrowTySN %- 1 /\ [alpha]) %!/ beta])) %.|
+  (mrk /\ PL.ExprNode LamTerm sigma {} %. [x, alpha', b]) -> Just $
+    PL.Down /\ (PL.SortNode TermJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [PL.getExprSort (PL.fromStepExprToExpr x), alpha]) %!/ gamma, beta]) %.|  b
+  _ -> Nothing
 
 
--- {_}↓{_ : Type !alpha} ~~> alpha
-typeBecomesRhsOfChange = PL.SteppingRule $ todo ""
+-- | {f}↑{Term gamma (+ alpha -> beta)} ~~> {App f ?}↑{Term gamma beta}
+wrapApp = PL.SteppingRule case _ of
+  _ -> Nothing
 
 
--- {b}↓{Term gamma (+ <{alpha -> {> beta<}}>)} ~~> lam ~ : alpha . {b}↓{Term (+ <{ ~ : alpha, {> gamma <}}>) beta}
-wrapLambda = PL.SteppingRule $ todo ""
+-- | App {b}↑{Term gamma (- alpha -> beta)} a ~~> {b}_{Term gamma beta}
+unWrapApp = PL.SteppingRule case _ of
+  _ -> Nothing 
 
 
--- {lam x : alpha . b}↓{Term G (- <{alpha -> {> beta <}}>)} ~~> {b}↓{Term (- x : alpha, gamma) beta}
-unWrapLambda = PL.SteppingRule $ todo ""
+-- | App {f}↑{Neut gamma (alpha -> beta)} a ~~> {GrayedApp f a}↑{Neut gamma beta}
+-- | App {f}↑{Neut gamma ((alpha -> beta) ~> ?delta)} a ~~> {GrayedApp f a}↑{Neut gamma {beta ~> ?delta}}
+makeAppGrayed = PL.SteppingRule case _ of
+  _ -> Nothing 
 
 
--- {f}↑{Term gamma (+ alpha -> beta)} ~~> {App f ?}↑{Term gamma beta}
-wrapApp = PL.SteppingRule $ todo ""
+-- | GrayedApp f ? ~~> f
+removeGrayedHoleArg = PL.SteppingRule case _ of
+  _ -> Nothing
 
 
--- App {b}↑{Term gamma (- alpha -> beta)} a ~~> {b}_{Term gamma beta}
-unWrapApp = PL.SteppingRule $ todo "" 
+-- | GrayedApp {f}↑{Neut gamma (alpha -> beta)} a ~~> {App f a}↑{Neut gamma beta}
+rehydrateApp = PL.SteppingRule case _ of
+  _ -> Nothing
 
 
--- App {f}↑{Neut gamma (alpha -> beta)} a ~~> {GrayedApp f a}↑{Neut gamma beta}
--- App {f}↑{Neut gamma ((alpha -> beta) ~> ?delta)} a ~~> {GrayedApp f a}↑{Neut gamma {beta ~> ?delta}}
-makeAppGrayed = PL.SteppingRule $ todo "" 
+-- | {FunctionCall n}↑{Neut gamma alpha} ~~> {n}ErrorCall{Neut gamma alpha}
+replaceCallWithError = PL.SteppingRule case _ of
+  _ -> Nothing
 
 
--- GrayedApp f ? ~~> f
-removeGrayedHoleArg = PL.SteppingRule $ todo ""
+-- | {n}ErrorCall{Neut gamma loop} ~~> FunctionCall n
+replaceErrorWithCall = PL.SteppingRule case _ of
+  _ -> Nothing
 
 
--- GrayedApp {f}↑{Neut gamma (alpha -> beta)} a ~~> {App f a}↑{Neut gamma beta}
-rehydrateApp = PL.SteppingRule $ todo ""
+-- | FunctionCall ({n}↑{Neut gamma (alpha -> beta)}) ~~> {{FunctionCall n : alpha -> beta}ErrorBoundary{beta}}↑{Term gamma beta}
+wrapCallInErrorUp = PL.SteppingRule case _ of
+  _ -> Nothing
+
+-- | {FunctionCall n}↓{Term gamma alpha} ~~> {FunctionCall gamma alpha}ErrorBoundary{...}
+wrapCallInErrorDown = PL.SteppingRule case _ of
+  _ -> Nothing
 
 
--- {FunctionCall n}↑{Neut gamma alpha} ~~> {n}ErrorCall{Neut gamma alpha}
-replaceCallWithError = PL.SteppingRule $ todo ""
+-- | {a : alpha}ErrorBoundary{alpha} ~~> a
+removeError = PL.SteppingRule case _ of
+  _ -> Nothing
 
 
--- {n}ErrorCall{Neut gamma loop} ~~> FunctionCall n
-replaceErrorWithCall = PL.SteppingRule $ todo ""
-
-
--- FunctionCall ({n}↑{Neut gamma (alpha -> beta)}) ~~> {{FunctionCall n : alpha -> beta}ErrorBoundary{beta}}↑{Term gamma beta}
-wrapCallInErrorUp = PL.SteppingRule $ todo ""
-
--- {FunctionCall n}↓{Term gamma alpha} ~~> {FunctionCall gamma alpha}ErrorBoundary{...}
-wrapCallInErrorDown = PL.SteppingRule $ todo ""
-
-
--- {a : alpha}ErrorBoundary{alpha} ~~> a
-removeError = PL.SteppingRule $ todo ""
-
-
--- {{a : alpha}ErrorBoundary{beta}}ErrorBoundary{delta} ~~> {a : alpha}ErrorBoundary{delta}
-mergeErrors = PL.SteppingRule $ todo ""
+-- | {{a : alpha}ErrorBoundary{beta}}ErrorBoundary{delta} ~~> {a : alpha}ErrorBoundary{delta}
+mergeErrors = PL.SteppingRule case _ of
+  _ -> Nothing
 
 -- END SteppingRules
 
@@ -461,6 +497,18 @@ getEdits sort orientation = bug $ "invalid cursor position; sort = " <> show sor
 
 splitExprPathChanges :: SplitExprPathChanges
 splitExprPathChanges = todo "type change goes up, context change goes down"
+
+-- utility
+
+typeSortToTypeExpr :: Sort -> Expr
+typeSortToTypeExpr (PL.SortNode (DataTySN dt) % []) = PL.buildExpr (DataTyEL dt) {} []
+typeSortToTypeExpr (PL.SortNode ArrowTySN % [alpha, beta]) = PL.buildExpr ArrowTyEL {alpha, beta} [typeSortToTypeExpr alpha, typeSortToTypeExpr beta]
+typeSortToTypeExpr sr = bug $ "invalid: " <> show sr
+
+-- strStepExprToStrSort :: StepExpr -> Sort
+-- strStepExprToStrSort (_ /\ n@(PL.ExprNode StrEL _ _) %. _)
+--   | PL.SortNode (StrInner str) % [] <- PL.getExprNodeSort n = ?a
+-- strStepExprToStrSort _ = bug "invalid"
 
 -- shallow
 
@@ -541,4 +589,9 @@ ex_tm_hole alpha = PL.buildExpr HoleTerm {alpha} []
 
 -- shallow StepExpr
 
+se_str x = PL.buildStepExpr StrEL {x} [] 
+
+se_var_zero gamma x alpha = PL.buildStepExpr SucVar {gamma, x, alpha, loc: sr_loc_nonlocal} []
 se_var_suc gamma x alpha y beta loc pred = PL.buildStepExpr SucVar {gamma, x, alpha, y, beta, loc} [pred]
+
+se_tm_lam x alpha beta gamma xExpr alphaExpr b = PL.buildStepExpr LamTerm {x, alpha, beta, gamma} [xExpr, alphaExpr, b]

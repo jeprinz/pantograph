@@ -124,6 +124,15 @@ modifyMarker f = case _ of
   (Boundary (dir /\ ch) kid) -> Boundary (dir /\ ch) $ modifyMarker f kid
   (StepExpr (maybeMarker /\ node) kids) -> StepExpr (f maybeMarker /\ node) kids
 
+-- | If `e1` has a shallow marker, then `e2` inherits it.
+inheritShallowMarker :: forall sn el. StepExpr sn el -> StepExpr sn el -> StepExpr sn el
+inheritShallowMarker e1 e2 = inheritMarker (getShallowMarker e1) e2
+
+-- | If some `Marker`, and `e` doesn't have a `Marker`, then `e` gets the `Marker`.
+inheritMarker :: forall sn el. Maybe Marker -> StepExpr sn el -> StepExpr sn el
+inheritMarker Nothing e = e
+inheritMarker (Just mrk) e = modifyMarker (maybe (Just mrk) Just) e
+
 boundary :: forall sn el. Direction -> Change (SortNode sn) -> StepExpr sn el -> StepExpr sn el
 boundary dir ch kid = Boundary (dir /\ ch) kid
 
@@ -183,11 +192,13 @@ stepFixpoint e = step e >>= case _ of
 
 -- builtin SteppingRules
 
+builtinRules :: forall sn el. Eq sn => Show sn => PrettyTreeNode sn => Array (SteppingRule sn el)
 builtinRules =
   [ passThroughRule
   , combineUpRule
   , combineDownRule ]
 
+passThroughRule :: forall el sn. Eq sn => Show sn => PrettyTreeNode sn => SteppingRule sn el
 passThroughRule = SteppingRule case _ of
   Boundary (Down /\ down) (Boundary (Up /\ up) kid) -> Just
     let hypotenuse = lub' down up in
@@ -196,13 +207,21 @@ passThroughRule = SteppingRule case _ of
     Boundary (Up /\ up') (Boundary (Down /\ down') kid)
   _ -> Nothing
 
+combineDownRule :: forall sn el. Eq sn => SteppingRule sn el
 combineDownRule = SteppingRule case _ of
   Boundary (Down /\ down1) (Boundary (Down /\ down2) kid) -> Just $
     Boundary (Down /\ (down1 <> down2)) kid
   _ -> Nothing
 
+combineUpRule :: forall sn el. Eq sn => SteppingRule sn el
 combineUpRule = SteppingRule case _ of
   Boundary (Up /\ up1) (Boundary (Up /\ up2) kid) -> Just $
     Boundary (Up /\ (up1 <> up2)) kid
   _ -> Nothing
 
+-- A "shallow" `Marker` of a `StepExpr` is a `Marker` at its outer-most
+-- non-`Boundary` layer.
+getShallowMarker :: forall sn el. StepExpr sn el -> Maybe Marker
+getShallowMarker = case _ of
+  StepExpr (mrk /\ _) _ -> mrk
+  Boundary _ e -> getShallowMarker e

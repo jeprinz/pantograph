@@ -206,6 +206,11 @@ instance Subtype (AnnExpr sn el ()) (StepExpr sn el) where
   project (StepExpr (Nothing /\ node) kids) = Tree node <$> project `traverse` kids
   project _ = Nothing
 
+-- | Erases markers in `StepExpr`
+fromStepExprToExpr :: forall sn el. StepExpr sn el -> Expr sn el
+fromStepExprToExpr (StepExpr (_ /\ node) kids) = Tree node (fromStepExprToExpr <$> kids)
+fromStepExprToExpr (Boundary _ e) = fromStepExprToExpr e
+
 -- Direction
 
 data Direction = Up | Down
