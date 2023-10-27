@@ -55,7 +55,7 @@ plusLub _ _ = Nothing
 
 minusLub :: forall a. Eq a => Change a -> Change a -> Maybe (Change a)
 minusLub c1 c2 | c1 == c2 = Just c1
-minusLub (Shift (Minus /\ th@(Tooth a i _)) c1) (InjectChange a' cs) | a == a' = Shift (Minus /\ th) <$> minusLub c1 (fromJust $ Array.index cs i)
+minusLub (Shift (Minus /\ th@(Tooth a (i /\ _))) c1) (InjectChange a' cs) | a == a' = Shift (Minus /\ th) <$> minusLub c1 (fromJust $ Array.index cs i)
 minusLub c1@(Replace _ _) c2 | isIdentity c2 = Just c1
 minusLub _ _ = Nothing
 

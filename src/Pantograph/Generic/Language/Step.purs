@@ -106,7 +106,7 @@ fromStepExpr e0 = case go e0 of
       maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ go <$> kids
     in
     case maybe_i_cursor of
-      Just (i /\ {tooths, inside, orientation}) -> Left $ {tooths: List.Cons (Tooth node i kids) tooths, inside, orientation}
+      Just (i /\ {tooths, inside, orientation}) -> Left $ {tooths: List.Cons (Tooth node (i /\ kids)) tooths, inside, orientation}
       Nothing -> Right $ Tree node kids
 
 -- manipulate StepExpr
@@ -117,7 +117,7 @@ wrapExprPath p = case unconsPath p of
   Just {outer, inner} -> wrapExprPath outer <<< wrapExprTooth inner
 
 wrapExprTooth :: forall sn el. ExprTooth sn el -> StepExpr sn el -> StepExpr sn el
-wrapExprTooth (Tooth node i kids) e = StepExpr (Nothing /\ node) (fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids)
+wrapExprTooth (Tooth node (i /\ kids)) e = StepExpr (Nothing /\ node) (fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids)
 
 modifyMarker :: forall sn el. (Maybe Marker -> Maybe Marker) -> StepExpr sn el -> StepExpr sn el
 modifyMarker f = case _ of

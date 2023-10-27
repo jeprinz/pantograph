@@ -331,8 +331,7 @@ steppingRules = []
 -- {e}↓{Var ( +<{ y : beta, {> gamma <} }> ) x alpha loc}  ~~>  Suc {e}↓{Var gamma x alpha loc}
 insertSucSteppingRule :: SteppingRule
 insertSucSteppingRule = PL.SteppingRule case _ of
-  -- PL.Boundary PL.Down (InjectChange (PL.SortNode VarJdg) [Shift (Plus /\ (Tooth (PL.SortNode ConsCtx) 2 [y, beta])) gamma, x, alpha, loc]) e -> Just $
-  PL.Boundary (PL.Down /\ InjectChange (PL.SortNode VarJdg) [Shift (Plus /\ (Tooth (PL.SortNode ConsCtx) 2 [y, beta])) gamma, x, alpha, loc]) e -> Just $
+  PL.Boundary (PL.Down /\ (PL.SortNode VarJdg %! [Shift (Plus /\ (PL.SortNode ConsCtx %- 2 /\ [y, beta])) gamma, x, alpha, loc])) e -> Just $
     step.var.suc (endpoints gamma).right (endpoints x).right (endpoints alpha).right y beta (endpoints loc).right $
       PL.Boundary (PL.Down /\ InjectChange (PL.SortNode VarJdg) [gamma, x, alpha, loc]) e
   _ -> Nothing
@@ -340,11 +339,11 @@ insertSucSteppingRule = PL.SteppingRule case _ of
 -- {Zero}↓{Var ( -<{ x : alpha, {> gamma <} }> ) x alpha Local} ~~> {Free}↑{Var id x alpha (Local ~> Nonlocal)}
 localBecomesNonlocal :: SteppingRule
 localBecomesNonlocal = PL.SteppingRule case _ of
-  PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ Tooth (PL.SortNode ConsCtx) 2 [x, alpha] %!/ gamma, x', alpha', InjectChange (PL.SortNode LocalLoc) []]) %.|
+  PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma, x', alpha', PL.SortNode LocalLoc %! []]) %.|
   (Nothing /\ PL.ExprNode ZeroVar _ _ %. []) 
   | true -> Just $
     PL.Boundary 
-      (PL.Up /\ InjectChange (PL.SortNode VarJdg) [inject (endpoints gamma).right, x', alpha', Replace sort.loc.local sort.loc.nonlocal])
+      (PL.Up /\ (PL.SortNode VarJdg %! [inject (endpoints gamma).right, x', alpha', Replace sort.loc.local sort.loc.nonlocal]))
       (inject $ freeVarTerm {gamma: (endpoints gamma).right, x, alpha})
   _ -> Nothing
 
@@ -385,6 +384,8 @@ getEdits sort orientation = bug $ "invalid cursor position; sort = " <> show sor
 
 splitExprPathChanges :: SplitExprPathChanges
 splitExprPathChanges = todo "type change goes up, context change goes down"
+
+-- shallow
 
 sort = {strInner, str, freshVar, jdg, ctx, ty, loc}
   where

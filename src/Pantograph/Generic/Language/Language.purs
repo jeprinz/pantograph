@@ -99,7 +99,7 @@ makeExpr label sigma_ =
 makeExprTooth label sigma_ i = 
   let node = makeExprNode label sigma_ in
   assertValidToothKids "makeExprTooth" node i \kids ->
-    Tooth node i kids
+    Tooth node (i /\ kids)
 
 makeStepExpr label sigma_ = 
   let node = makeExprNode label sigma_ in
@@ -120,11 +120,11 @@ getExprNodeSort (ExprNode label sigma _) =
 getExprSort :: forall sn el. Language sn el => Expr sn el -> Sort sn
 getExprSort (Tree el _) = getExprNodeSort el
 
-getExprToothInnerSort (Tooth (ExprNode label sigma _) i _) =
+getExprToothInnerSort (Tooth (ExprNode label sigma _) (i /\ _)) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
 
-getExprToothOuterSort (Tooth (ExprNode label sigma _) _ _) =
+getExprToothOuterSort (Tooth (ExprNode label sigma _) _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
@@ -141,7 +141,7 @@ getExprNonEmptyPathSortChange = unconsNonEmptyPath >>> case _ of
 -- | The SortChange that corresponds to going from the inner sort of the tooth
 -- | to the outer sort of the path.
 getExprToothSortChange :: forall sn el. Language sn el => ExprTooth sn el -> SortChange sn
-getExprToothSortChange (Tooth (ExprNode label sigma _) i _) =
+getExprToothSortChange (Tooth (ExprNode label sigma _) (i /\ _)) =
   let ChangingRule rule = getChangingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index rule.kids i
 
@@ -153,7 +153,7 @@ getExprPathChange :: forall sn el. Language sn el =>
   SortChange sn
 getExprPathChange path bottomSort = case unconsPath path of
   Nothing -> inject bottomSort
-  Just {outer, inner: Tooth (ExprNode label sigma _) i _} ->
+  Just {outer, inner: Tooth (ExprNode label sigma _) (i /\ _)} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
     let change = applyRuleSortVarSubst sigma ruleChange in
@@ -166,12 +166,12 @@ getExprPathChange path bottomSort = case unconsPath path of
 eqExprPathSkeleton :: forall sn el. Eq sn => Eq el => ExprPath sn el -> ExprPath sn el -> Boolean
 eqExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   Nothing /\ Nothing -> true
-  Just {outer: p1', inner: Tooth node1 i1 _} /\ Just {outer: p2', inner: Tooth node2 i2 _} | node1 == node2 && i1 == i2 -> eqExprPathSkeleton p1' p2'
+  Just {outer: p1', inner: Tooth node1 (i1 /\ _)} /\ Just {outer: p2', inner: Tooth node2 (i2 /\ _)} | node1 == node2 && i1 == i2 -> eqExprPathSkeleton p1' p2'
   _ -> false
 
 -- | `p1` is a prefix of `p2``, as path skeletons
 prefixExprPathSkeleton :: forall sn el. Eq sn => Eq el => ExprPath sn el -> ExprPath sn el -> Boolean
 prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   Nothing /\ _ -> true
-  Just {outer: p1', inner: Tooth node1 i1 _} /\ Just {outer: p2', inner: Tooth node2 i2 _} | node1 == node2 && i1 == i2 -> prefixExprPathSkeleton p1' p2'
+  Just {outer: p1', inner: Tooth node1 (i1 /\ _)} /\ Just {outer: p2', inner: Tooth node2 (i2 /\ _)} | node1 == node2 && i1 == i2 -> prefixExprPathSkeleton p1' p2'
   _ -> false

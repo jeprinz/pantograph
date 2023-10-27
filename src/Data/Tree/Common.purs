@@ -27,6 +27,7 @@ import Util (fromJust, fromJust', indexDeleteAt)
 -- infixes
 
 infix 5 Tree as %
+infix 5 Tooth as %-
 infix 5 InjectChange as %!
 infix 5 Shift as %!/
 infix 5 Replace as %!~>
@@ -46,7 +47,7 @@ treeNode (Tree a _) = a
 
 -- Tooth
 
-data Tooth a = Tooth a Int (Array (Tree a))
+data Tooth a = Tooth a (Int /\ (Array (Tree a)))
 derive instance Generic (Tooth a) _
 instance Show a => Show (Tooth a) where show x = genericShow x
 derive instance Eq a => Eq (Tooth a)
@@ -55,16 +56,16 @@ derive instance Foldable Tooth
 derive instance Traversable Tooth
 
 toothNode :: forall a. Tooth a -> a
-toothNode (Tooth a _ _) = a
+toothNode (Tooth a _) = a
 
 buildTooth :: forall a. a -> Array (Tree a) -> Array (Tree a) -> Tooth a
-buildTooth a leftKids rightKids = Tooth a (Array.length leftKids) (leftKids <> rightKids)
+buildTooth a leftKids rightKids = Tooth a (Array.length leftKids /\ (leftKids <> rightKids))
 
 tooths :: forall a. Tree a -> Array (Tooth a /\ Tree a)
-tooths (Tree a kids) = kids # Array.mapWithIndex \i inside -> (Tooth a i (fromJust' "tooths" $ Array.deleteAt i kids) /\ inside)
+tooths (Tree a kids) = kids # Array.mapWithIndex \i inside -> (Tooth a (i /\ (fromJust' "tooths" $ Array.deleteAt i kids)) /\ inside)
 
 unTooth :: forall a. Tooth a -> Tree a -> Tree a
-unTooth (Tooth a i kids) kid = Tree a (fromJust' "unTooth" $ Array.insertAt i kid kids)
+unTooth (Tooth a (i /\ kids)) kid = Tree a (fromJust' "unTooth" $ Array.insertAt i kid kids)
 
 -- Path
 
@@ -175,7 +176,7 @@ derive instance Functor Gyro
 gyroNode :: forall a. Gyro a -> a
 gyroNode (RootGyro (Tree a _)) = a
 gyroNode (CursorGyro (Cursor {inside: Tree a _})) = a
-gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _ _} <- unconsNonEmptyPath middle = a
+gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _} <- unconsNonEmptyPath middle = a
 gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 
 -- Change
@@ -193,16 +194,16 @@ derive instance Functor Change
 instance Eq a => Semigroup (Change a) where
   append (Shift (Plus /\ th) c) (Shift (Minus /\ th') c') | th == th' =
     c <> c'
-  append (Shift (Minus /\ th@(Tooth a i ts)) c) (Shift (Plus /\ th') c') | th == th' =
+  append (Shift (Minus /\ th@(Tooth a (i /\ ts))) c) (Shift (Plus /\ th') c') | th == th' =
     InjectChange a $ fromJust $ Array.insertAt i (c <> c') $ map inject ts
   append c (Shift (Plus /\ th) c') = Shift (Plus /\ th) (c <> c')
   append (Shift (Minus /\ th) c) c' = Shift (Minus /\ th) (c <> c')
-  append (Shift (Plus /\ th@(Tooth a i ts)) c) (InjectChange a' _cs')
+  append (Shift (Plus /\ th@(Tooth a (i /\ ts))) c) (InjectChange a' _cs')
     | a == a'
     , cs' /\ c' <- fromJust $ indexDeleteAt i _cs'
     , and $ map (uncurry eq) $ Array.zip (inject <$> ts) cs'
     = Shift (Plus /\ th) (c <> c')
-  append (InjectChange a _cs) (Shift (Minus /\ th@(Tooth a' i' ts')) c')
+  append (InjectChange a _cs) (Shift (Minus /\ th@(Tooth a' (i' /\ ts'))) c')
     | a == a'
     , cs /\ c <- fromJust $ indexDeleteAt i' _cs
     , and $ map (uncurry eq) $ Array.zip cs (inject <$> ts')
@@ -279,7 +280,7 @@ instance PrettyTreeNode a => Pretty (Tree a) where
   pretty (Tree a kids) = prettyTreeNode a (pretty <$> kids)
 
 instance PrettyTreeNode a => PrettyS (Tooth a) where
-  prettyS (Tooth a i kids) str = prettyTreeNode a (fromJust' "(PrettyS (Tooth a)).prettyS" $ Array.insertAt i str (pretty <$> kids))
+  prettyS (Tooth a (i /\ kids)) str = prettyTreeNode a (fromJust' "(PrettyS (Tooth a)).prettyS" $ Array.insertAt i str (pretty <$> kids))
 
 instance PrettyTreeNode a => Pretty (Tooth a) where
   pretty tooth = prettyS tooth Pretty.cursor
