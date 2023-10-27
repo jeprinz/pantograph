@@ -31,13 +31,13 @@ import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP, (<$$>))
 -- utilities
 
 getStepExprSort :: forall sn el. Language sn el => StepExpr sn el -> Sort sn
+getStepExprSort (StepExpr node _) = getExprNodeSort node
 getStepExprSort (Boundary (dir /\ ch) kid) = 
   let {left, right} = endpoints ch in
   case dir of
     Up -> left
     Down -> right
-getStepExprSort (StepExpr (_ /\ node) _) =
-  getExprNodeSort node
+getStepExprSort (Marker e) = getStepExprSort e
 
 -- toStepExpr
 
@@ -45,12 +45,12 @@ class ToStepExpr a sn el | a -> sn el where
   toStepExpr :: a -> StepExpr sn el
 
 instance ToStepExpr (AnnExpr sn el r) sn el where
-  toStepExpr (Tree node kids) = StepExpr (Nothing /\ shrinkAnnExprNode node) (toStepExpr <$> kids)
+  toStepExpr (Tree node kids) = StepExpr (shrinkAnnExprNode node) (toStepExpr <$> kids)
 
 instance ToStepExpr (AnnExprCursor sn el r) sn el where
   toStepExpr (Cursor cursor) =
     wrapExprPath (shrinkAnnExprPath cursor.outside) $ 
-    modifyMarker (const $ Just $ CursorMarker cursor.orientation) $
+    marker $
     toStepExpr cursor.inside
 
 -- fromStepExpr
@@ -88,13 +88,13 @@ fromStepExpr e0 = case go e0 of
   where
   goExpr :: StepExpr sn el -> Expr sn el
   goExpr (Boundary _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
-  goExpr (StepExpr (Just _ /\ _) _) = bug $ "encountered multiple `Marker`s during `fromStepExpr`: " <> pretty e0
-  goExpr (StepExpr (Nothing /\ node) kids) = Tree node (kids <#> goExpr)
+  goExpr (Marker _) = bug $ "encountered multiple `Marker`s during `fromStepExpr`: " <> pretty e0
+  goExpr (StepExpr node kids) = Tree node (kids <#> goExpr)
 
   go :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
   go (Boundary _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
-  go (StepExpr (Just (CursorMarker orientation) /\ node) kids) = Left $ {tooths: mempty, inside: Tree node (kids <#> goExpr), orientation}
-  go (StepExpr (Nothing /\ node) kids) =
+  go (Marker e) = Left $ {tooths: mempty, inside: goExpr e, orientation: Outside}
+  go (StepExpr node kids) =
     let
       f = case _ of
         Nothing /\ kids' -> case _ of
@@ -117,21 +117,10 @@ wrapExprPath p = case unconsPath p of
   Just {outer, inner} -> wrapExprPath outer <<< wrapExprTooth inner
 
 wrapExprTooth :: forall sn el. ExprTooth sn el -> StepExpr sn el -> StepExpr sn el
-wrapExprTooth (Tooth node (i /\ kids)) e = StepExpr (Nothing /\ node) (fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids)
+wrapExprTooth (Tooth node (i /\ kids)) e = StepExpr node (fromJust' "wrapExprTooth" $ Array.insertAt i e $ toStepExpr <$> kids)
 
-modifyMarker :: forall sn el. (Maybe Marker -> Maybe Marker) -> StepExpr sn el -> StepExpr sn el
-modifyMarker f = case _ of
-  (Boundary (dir /\ ch) kid) -> Boundary (dir /\ ch) $ modifyMarker f kid
-  (StepExpr (maybeMarker /\ node) kids) -> StepExpr (f maybeMarker /\ node) kids
-
--- | If `e1` has a shallow marker, then `e2` inherits it.
-inheritShallowMarker :: forall sn el. StepExpr sn el -> StepExpr sn el -> StepExpr sn el
-inheritShallowMarker e1 e2 = inheritMarker (getShallowMarker e1) e2
-
--- | If some `Marker`, and `e` doesn't have a `Marker`, then `e` gets the `Marker`.
-inheritMarker :: forall sn el. Maybe Marker -> StepExpr sn el -> StepExpr sn el
-inheritMarker Nothing e = e
-inheritMarker (Just mrk) e = modifyMarker (maybe (Just mrk) Just) e
+marker :: forall sn el. StepExpr sn el -> StepExpr sn el
+marker e = Marker e
 
 boundary :: forall sn el. Direction -> Change (SortNode sn) -> StepExpr sn el -> StepExpr sn el
 boundary dir ch kid = Boundary (dir /\ ch) kid
@@ -144,7 +133,7 @@ setupEdit (Cursor cursor) (Edit edit) =
   edit.outerChange # maybe identity (boundary Up) $
   edit.middle # maybe identity (wrapExprPath <<< toPath)  $
   edit.innerChange # maybe identity (boundary Down)  $
-  modifyMarker (const (Just (CursorMarker cursor.orientation))) $
+  marker $
   toStepExpr (edit.inside # maybe cursor.inside identity)
 
 -- stepping engine
@@ -170,8 +159,9 @@ step :: forall sn el. StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))
 step e = ask >>= findMapM (pure <<< flip applySteppingRule e) >>= case _ of
   Just e' -> pure (Just e')
   Nothing -> case e of
+    StepExpr node kids -> StepExpr node <$$> stepFirstKid kids
     Boundary (dir /\ ch) e' -> Boundary (dir /\ ch) <$$> step e'
-    StepExpr (mbMrk /\ node) kids -> StepExpr (mbMrk /\ node) <$$> stepFirstKid kids
+    Marker e' -> Marker <$$> step e'
 
 stepFirstKid :: forall sn el. Array (StepExpr sn el) -> StepM sn el (Maybe (Array (StepExpr sn el)))
 stepFirstKid kids = go 0
@@ -218,10 +208,3 @@ combineUpRule = SteppingRule case _ of
   Boundary (Up /\ up1) (Boundary (Up /\ up2) kid) -> Just $
     Boundary (Up /\ (up1 <> up2)) kid
   _ -> Nothing
-
--- A "shallow" `Marker` of a `StepExpr` is a `Marker` at its outer-most
--- non-`Boundary` layer.
-getShallowMarker :: forall sn el. StepExpr sn el -> Maybe Marker
-getShallowMarker = case _ of
-  StepExpr (mrk /\ _) _ -> mrk
-  Boundary _ e -> getShallowMarker e

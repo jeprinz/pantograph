@@ -68,7 +68,7 @@ buildStepExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el
 buildStepExpr label sigma_ = 
   let node = buildExprNode label sigma_ in
   assertValidTreeKids "makeStepExpr" node \kids -> 
-    StepExpr (Nothing /\ node) kids
+    StepExpr node kids
 
 -- make
 
@@ -100,7 +100,7 @@ makeStepExpr :: forall sn el. Language sn el => el -> Array (String /\ (Tree (So
 makeStepExpr label sigma_ = 
   let node = makeExprNode label sigma_ in
   assertValidTreeKids "makeStepExpr" node \kids -> 
-    StepExpr (Nothing /\ node) kids
+    StepExpr node kids
 
 makeExprNonEmptyPath :: forall sn el. Array (ExprTooth sn el) -> ExprNonEmptyPath sn el
 makeExprNonEmptyPath ths = NonEmptyPath $ fromJust' "makeExprNonEmptyPath" $ NonEmptyList.fromFoldable ths

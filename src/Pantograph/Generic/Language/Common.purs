@@ -1,40 +1,33 @@
 module Pantograph.Generic.Language.Common where
 
-import Data.Either.Nested
-import Data.Tree
-import Data.Tuple.Nested
 import Prelude
-import Util
 
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Bifunctor (class Bifunctor)
-import Data.Either (Either(..))
 import Data.Eq.Generic (genericEq)
-import Data.Foldable (foldM, traverse_)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Ord.Generic (genericCompare)
-import Data.SearchableArray (SearchableArray)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.StringQuery (StringQuery)
 import Data.Subtype (class Subtype, inject, project)
 import Data.Traversable (traverse)
-import Data.Tuple (uncurry)
+import Data.Tree (class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation(..), Path, Select, Tooth, Tree(..), assertValidTreeKids, kidsCount, prettyTreeNode)
+import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Prim.Row (class Union)
-import Text.Pretty (class Pretty, inner, outer, pretty, ticks, (<+>))
-import Todo (todo)
+import Text.Pretty (class Pretty, braces2, inner, outer, pretty, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
+import Util (fromJust)
 
 -- infixes
 
@@ -187,8 +180,9 @@ shrinkAnnExprGyro' _ = unsafeCoerce
 -- StepExpr
 
 data StepExpr sn el
-  = StepExpr (Maybe Marker /\ ExprNode sn el) (Array (StepExpr sn el))
+  = StepExpr (ExprNode sn el) (Array (StepExpr sn el))
   | Boundary (Direction /\ SortChange sn) (StepExpr sn el)
+  | Marker (StepExpr sn el)
 
 derive instance Generic (StepExpr sn el) _
 instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
@@ -196,20 +190,20 @@ instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
 
 instance (Show sn, PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn el) where
   pretty = case _ of
+    StepExpr node kids -> prettyTreeNode node (pretty <$> kids)
     Boundary (dir /\ ch) e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
-    StepExpr (Nothing /\ node) kids -> prettyTreeNode node (pretty <$> kids)
-    StepExpr (Just (CursorMarker Outside) /\ node) kids -> outer $ prettyTreeNode node (pretty <$> kids)
-    StepExpr (Just (CursorMarker Inside) /\ node) kids -> inner $ prettyTreeNode node (pretty <$> kids)
+    Marker kid -> braces2 $ pretty kid
 
 instance Subtype (AnnExpr sn el ()) (StepExpr sn el) where
-  inject (Tree node kids) = StepExpr (Nothing /\ node) (inject <$> kids)
-  project (StepExpr (Nothing /\ node) kids) = Tree node <$> project `traverse` kids
+  inject (Tree node kids) = StepExpr node (inject <$> kids)
+  project (StepExpr node kids) = Tree node <$> project `traverse` kids
   project _ = Nothing
 
 -- | Erases markers in `StepExpr`
 fromStepExprToExpr :: forall sn el. StepExpr sn el -> Expr sn el
-fromStepExprToExpr (StepExpr (_ /\ node) kids) = Tree node (fromStepExprToExpr <$> kids)
+fromStepExprToExpr (StepExpr node kids) = Tree node (fromStepExprToExpr <$> kids)
 fromStepExprToExpr (Boundary _ e) = fromStepExprToExpr e
+fromStepExprToExpr (Marker e) = fromStepExprToExpr e
 
 -- Direction
 
@@ -222,14 +216,6 @@ instance Ord Direction where compare x y = genericCompare x y
 instance Pretty Direction where
   pretty Up = "↑"
   pretty Down = "↓"
-
--- Marker
-
-data Marker = CursorMarker Orientation
-
-derive instance Generic Marker _
-instance Show Marker where show x = genericShow x
-instance Eq Marker where eq x = genericEq x
 
 -- Language
 

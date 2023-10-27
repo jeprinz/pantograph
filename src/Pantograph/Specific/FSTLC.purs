@@ -345,7 +345,7 @@ insertSucSteppingRule = PL.SteppingRule case _ of
 localBecomesNonlocalSteppingRule :: SteppingRule
 localBecomesNonlocalSteppingRule = PL.SteppingRule case _ of
   PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma, x', alpha', PL.SortNode LocalLoc %! []]) %.|
-  (Nothing /\ PL.ExprNode ZeroVar _ _ %. []) 
+  (PL.ExprNode ZeroVar _ _ %. [])
   | true -> Just $
     PL.Boundary 
       (PL.Up /\ (PL.SortNode VarJdg %! [inject (epR gamma), x', alpha', Replace sr_loc_local sr_loc_nonlocal]))
@@ -355,7 +355,7 @@ localBecomesNonlocalSteppingRule = PL.SteppingRule case _ of
 -- | {Var (- <{ y : beta , {> gamma <}}>) x alpha loc}↓{Suc pred} ~~> {Var gamma x alpha loc}↓{pred}
 removeSuc :: SteppingRule
 removeSuc = PL.SteppingRule case _ of
-  (PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 1 /\ [_y, _beta]) %!/ gamma, x, alpha, loc])) %.| (_mrk /\ PL.ExprNode SucVar _sigma _ %. [pred]) -> Just $
+  (PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 1 /\ [_y, _beta]) %!/ gamma, x, alpha, loc])) %.| (PL.ExprNode SucVar _sigma _ %. [pred]) -> Just $
     PL.Down /\ (PL.SortNode VarJdg %! [gamma, x, alpha, loc]) %.| pred
   _ -> Nothing
 
@@ -364,15 +364,15 @@ removeSuc = PL.SteppingRule case _ of
 nonlocalBecomesLocal :: SteppingRule
 nonlocalBecomesLocal = PL.SteppingRule case _ of
   (PL.Down /\ (Plus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma)) %.| a -> Just $
-    PL.inheritShallowMarker a $ se_var_zero (epR gamma) x alpha
+    se_var_zero (epR gamma) x alpha
   _ -> Nothing
 
 
 -- | {alpha! -> beta!}↓{alpha -> beta} ~~> {alpha}↓{alpha!} -> {beta}↓{beta!}
 passThroughArrow :: SteppingRule
 passThroughArrow = PL.SteppingRule case _ of
-  (PL.Down /\ (PL.SortNode ArrowTySN %! [alpha, beta])) %.| (mrk /\ PL.ExprNode ArrowTyEL sigma _ %. [alphaCh, betaCh]) -> Just $
-    mrk /\ PL.ExprNode ArrowTyEL sigma {} %. 
+  (PL.Down /\ (PL.SortNode ArrowTySN %! [alpha, beta])) %.| (PL.ExprNode ArrowTyEL sigma _ %. [alphaCh, betaCh]) -> Just $
+    PL.ExprNode ArrowTyEL sigma {} %. 
       [ PL.Down /\ alpha %.| alphaCh
       , PL.Down /\ beta %.| betaCh ]
   _ -> Nothing
@@ -396,7 +396,7 @@ wrapLambda = PL.SteppingRule case _ of
 unWrapLambda :: SteppingRule
 unWrapLambda = PL.SteppingRule case _ of
   (PL.Down /\ (PL.SortNode TermJdg %! [gamma, Minus /\ (PL.SortNode ArrowTySN %- 1 /\ [alpha]) %!/ beta])) %.|
-  (mrk /\ PL.ExprNode LamTerm sigma {} %. [x, alpha', b]) -> Just $
+  (PL.ExprNode LamTerm sigma {} %. [x, alpha', b]) -> Just $
     PL.Down /\ (PL.SortNode TermJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [PL.getExprSort (PL.fromStepExprToExpr x), alpha]) %!/ gamma, beta]) %.|  b
   _ -> Nothing
 
