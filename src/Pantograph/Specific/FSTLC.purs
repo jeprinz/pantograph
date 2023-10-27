@@ -219,107 +219,108 @@ instance PL.Language SN EL where
   validGyro = todo "validGyro"
 
 getSortingRule :: EL -> SortingRule
-getSortingRule =
-  case _ of
-    StrEL -> PL.buildSortingRule (Proxy :: Proxy (x::_)) \{x {- : StrInner -}} ->
-      []
-      /\
-      ( rs_str x )
+getSortingRule _ = todo "getSortingRule"
+-- getSortingRule =
+--   case _ of
+--     StrEL -> PL.buildSortingRule (Proxy :: Proxy (x::_)) \{x {- : StrInner -}} ->
+--       []
+--       /\
+--       ( rs_str x )
 
-    ZeroVar -> PL.buildSortingRule (Proxy :: Proxy (gamma::_, x::_, alpha::_)) \{gamma, x, alpha} ->
-      []
-      /\
-      ( rs_jg_var gamma x alpha rs_loc_local )
+--     ZeroVar -> PL.buildSortingRule (Proxy :: Proxy (gamma::_, x::_, alpha::_)) \{gamma, x, alpha} ->
+--       []
+--       /\
+--       ( rs_jg_var gamma x alpha rs_loc_local )
 
-    SucVar -> PL.buildSortingRuleFromStrings ["gamma", "x", "alpha", "y", "beta", "loc"] \[gamma, x, alpha, y, beta, loc] ->
-      [ rs_jg_var gamma x alpha loc ]
-      /\
-      ( rs_jg_var (rs_ctx_cons y beta gamma) x alpha loc )
+--     SucVar -> PL.buildSortingRuleFromStrings ["gamma", "x", "alpha", "y", "beta", "loc"] \[gamma, x, alpha, y, beta, loc] ->
+--       [ rs_jg_var gamma x alpha loc ]
+--       /\
+--       ( rs_jg_var (rs_ctx_cons y beta gamma) x alpha loc )
 
-    FreeVar -> PL.buildSortingRuleFromStrings ["x", "alpha"] \[x, alpha] ->
-      []
-      /\
-      ( rs_jg_var rs_ctx_nil x alpha rs_loc_nonlocal )
+--     FreeVar -> PL.buildSortingRuleFromStrings ["x", "alpha"] \[x, alpha] ->
+--       []
+--       /\
+--       ( rs_jg_var rs_ctx_nil x alpha rs_loc_nonlocal )
 
-    LamTerm -> PL.buildSortingRuleFromStrings ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
-      [ rs_str x
-      , rs_jg_ty alpha
-      , rs_jg_tm (rs_ctx_cons x alpha gamma) beta ]
-      /\
-      ( rs_jg_tm gamma (rs_ty_arrow alpha beta) )
+--     LamTerm -> PL.buildSortingRuleFromStrings ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
+--       [ rs_str x
+--       , rs_jg_ty alpha
+--       , rs_jg_tm (rs_ctx_cons x alpha gamma) beta ]
+--       /\
+--       ( rs_jg_tm gamma (rs_ty_arrow alpha beta) )
 
-    LetTerm -> PL.buildSortingRuleFromStrings ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
-      [ rs_str x
-      , rs_jg_ty alpha
-      , rs_jg_tm (rs_ctx_cons x alpha gamma) alpha
-      , rs_jg_tm (rs_ctx_cons x alpha gamma) beta
-      ]
-      /\
-      ( rs_jg_tm gamma beta )
+--     LetTerm -> PL.buildSortingRuleFromStrings ["x", "alpha", "beta", "gamma"] \[x, alpha, beta, gamma] ->
+--       [ rs_str x
+--       , rs_jg_ty alpha
+--       , rs_jg_tm (rs_ctx_cons x alpha gamma) alpha
+--       , rs_jg_tm (rs_ctx_cons x alpha gamma) beta
+--       ]
+--       /\
+--       ( rs_jg_tm gamma beta )
 
-    VarNeut -> PL.buildSortingRuleFromStrings ["gamma", "x", "alpha", "loc"] \[gamma, x, alpha, loc] ->
-      [ rs_jg_var gamma x alpha loc ]
-      /\
-      ( rs_jg_ne gamma alpha )
+--     VarNeut -> PL.buildSortingRuleFromStrings ["gamma", "x", "alpha", "loc"] \[gamma, x, alpha, loc] ->
+--       [ rs_jg_var gamma x alpha loc ]
+--       /\
+--       ( rs_jg_ne gamma alpha )
 
-    IfTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
-      [ rs_jg_tm gamma rs_ty_bool
-      , rs_jg_tm gamma alpha ]
-      /\
-      ( rs_jg_tm gamma alpha )
+--     IfTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
+--       [ rs_jg_tm gamma rs_ty_bool
+--       , rs_jg_tm gamma alpha ]
+--       /\
+--       ( rs_jg_tm gamma alpha )
 
-    CallTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
-      [ rs_jg_ne gamma alpha ]
-      /\
-      ( rs_jg_tm gamma alpha )
+--     CallTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
+--       [ rs_jg_ne gamma alpha ]
+--       /\
+--       ( rs_jg_tm gamma alpha )
 
-    ErrorCallTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-      [ rs_jg_ne gamma alpha ]
-      /\
-      ( rs_jg_tm gamma beta )
+--     ErrorCallTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+--       [ rs_jg_ne gamma alpha ]
+--       /\
+--       ( rs_jg_tm gamma beta )
 
-    HoleTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
-      [] 
-      /\
-      ( rs_jg_tm gamma alpha )
+--     HoleTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha"] \[gamma, alpha] ->
+--       [] 
+--       /\
+--       ( rs_jg_tm gamma alpha )
 
-    ErrorBoundaryTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-      [ rs_jg_tm gamma alpha ]
-      /\
-      ( rs_jg_tm gamma beta )
+--     ErrorBoundaryTerm -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+--       [ rs_jg_tm gamma alpha ]
+--       /\
+--       ( rs_jg_tm gamma beta )
 
-    AppNeut -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-      [ rs_jg_ne gamma (rs_ty_arrow alpha beta)
-      , rs_jg_tm gamma alpha ]
-      /\
-      ( rs_jg_ne gamma beta )
+--     AppNeut -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+--       [ rs_jg_ne gamma (rs_ty_arrow alpha beta)
+--       , rs_jg_tm gamma alpha ]
+--       /\
+--       ( rs_jg_ne gamma beta )
 
-    GrayedAppNeut -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
-      [ rs_jg_ne gamma beta
-      , rs_jg_tm gamma alpha ]
-      /\
-      ( rs_jg_ne gamma beta )
+--     GrayedAppNeut -> PL.buildSortingRuleFromStrings ["gamma", "alpha", "beta"] \[gamma, alpha, beta] ->
+--       [ rs_jg_ne gamma beta
+--       , rs_jg_tm gamma alpha ]
+--       /\
+--       ( rs_jg_ne gamma beta )
 
-    HoleTy -> PL.buildSortingRuleFromStrings ["alpha"] \[alpha] ->
-      [] 
-      /\
-      ( rs_jg_ty alpha )
+--     HoleTy -> PL.buildSortingRuleFromStrings ["alpha"] \[alpha] ->
+--       [] 
+--       /\
+--       ( rs_jg_ty alpha )
 
-    DataTyEL dt -> PL.buildSortingRuleFromStrings [] \[] ->
-      []
-      /\
-      ( rs_jg_ty (rs_ty_dt dt) )
+--     DataTyEL dt -> PL.buildSortingRuleFromStrings [] \[] ->
+--       []
+--       /\
+--       ( rs_jg_ty (rs_ty_dt dt) )
 
-    ArrowTyEL -> PL.buildSortingRuleFromStrings ["alpha", "beta"] \[alpha, beta] ->
-      [ rs_jg_ty alpha
-      , rs_jg_ty beta ]
-      /\
-      ( rs_jg_ty (rs_ty_arrow alpha beta) )
+--     ArrowTyEL -> PL.buildSortingRuleFromStrings ["alpha", "beta"] \[alpha, beta] ->
+--       [ rs_jg_ty alpha
+--       , rs_jg_ty beta ]
+--       /\
+--       ( rs_jg_ty (rs_ty_arrow alpha beta) )
 
-    Format _ -> PL.buildSortingRuleFromStrings ["a"] \[a] -> 
-      []
-      /\
-      ( a )
+--     Format _ -> PL.buildSortingRuleFromStrings ["a"] \[a] -> 
+--       []
+--       /\
+--       ( a )
 
 getChangingRule :: EL -> ChangingRule
 getChangingRule el = getDiffChangingRule {getSortingRule} el
@@ -329,7 +330,8 @@ getChangingRule el = getDiffChangingRule {getSortingRule} el
 steppingRules :: Array SteppingRule
 steppingRules = []
 
--- {e}↓{Var ( +<{ y : beta, {> gamma <} }> ) x alpha loc}  ~~>  Suc {e}↓{Var gamma x alpha loc}
+
+-- {e}↓{Var (+ <{ y : beta, {> gamma <}}>) x alpha loc}  ~~>  Suc {e}↓{Var gamma x alpha loc}
 insertSucSteppingRule :: SteppingRule
 insertSucSteppingRule = PL.SteppingRule case _ of
   PL.Boundary (PL.Down /\ (PL.SortNode VarJdg %! [Shift (Plus /\ (PL.SortNode ConsCtx %- 2 /\ [y, beta])) gamma, x, alpha, loc])) e -> Just $
@@ -337,9 +339,10 @@ insertSucSteppingRule = PL.SteppingRule case _ of
       PL.Boundary (PL.Down /\ InjectChange (PL.SortNode VarJdg) [gamma, x, alpha, loc]) e
   _ -> Nothing
 
--- {Zero}↓{Var ( -<{ x : alpha, {> gamma <} }> ) x alpha Local} ~~> {Free}↑{Var id x alpha (Local ~> Nonlocal)}
-localBecomesNonlocal :: SteppingRule
-localBecomesNonlocal = PL.SteppingRule case _ of
+
+-- {Zero}↓{Var (- <{ x : alpha, {> gamma <}}>) x alpha Local} ~~> {Free}↑{Var id x alpha (Local ~> Nonlocal)}
+localBecomesNonlocalSteppingRule :: SteppingRule
+localBecomesNonlocalSteppingRule = PL.SteppingRule case _ of
   PL.Down /\ (PL.SortNode VarJdg %! [Minus /\ (PL.SortNode ConsCtx %- 2 /\ [x, alpha]) %!/ gamma, x', alpha', PL.SortNode LocalLoc %! []]) %.|
   (Nothing /\ PL.ExprNode ZeroVar _ _ %. []) 
   | true -> Just $
@@ -348,39 +351,112 @@ localBecomesNonlocal = PL.SteppingRule case _ of
       (inject $ freeVarTerm {gamma: (endpoints gamma).right, x, alpha})
   _ -> Nothing
 
+
+-- {Suc pred}↓{Var (- <{ y : beta , {> gamma <}}>) x alpha loc} ~~> {pred}↓{Var gamma x alpha loc}
+removeSuc = PL.SteppingRule $ todo ""
+
+
+-- {_}↓{Var (+ <{ x : alpha , {> gamma< } }>) x alpha Nonlocal} ~~> Z
+nonlocalBecomesLocal = PL.SteppingRule $ todo ""
+
+
+-- {alpha -> beta}↓{!alpha -> !beta} ~~> {alpha}↓{!alpha} -> {beta}↓{!beta}
+passThroughArrow = PL.SteppingRule $ todo ""
+
+
+-- {_}↓{_ : Type !alpha} ~~> alpha
+typeBecomesRhsOfChange = PL.SteppingRule $ todo ""
+
+
+-- {b}↓{Term gamma (+ <{alpha -> {> beta<}}>)} ~~> lam ~ : alpha . {b}↓{Term (+ <{ ~ : alpha, {> gamma <}}>) beta}
+wrapLambda = PL.SteppingRule $ todo ""
+
+
+-- {lam x : alpha . b}↓{Term G (- <{alpha -> {> beta <}}>)} ~~> {b}↓{Term (- x : alpha, gamma) beta}
+unWrapLambda = PL.SteppingRule $ todo ""
+
+
+-- {f}↑{Term gamma (+ alpha -> beta)} ~~> {App f ?}↑{Term gamma beta}
+wrapApp = PL.SteppingRule $ todo ""
+
+
+-- App {b}↑{Term gamma (- alpha -> beta)} a ~~> {b}_{Term gamma beta}
+unWrapApp = PL.SteppingRule $ todo "" 
+
+
+-- App {f}↑{Neut gamma (alpha -> beta)} a ~~> {GrayedApp f a}↑{Neut gamma beta}
+-- App {f}↑{Neut gamma ((alpha -> beta) ~> ?delta)} a ~~> {GrayedApp f a}↑{Neut gamma {beta ~> ?delta}}
+makeAppGrayed = PL.SteppingRule $ todo "" 
+
+
+-- GrayedApp f ? ~~> f
+removeGrayedHoleArg = PL.SteppingRule $ todo ""
+
+
+-- GrayedApp {f}↑{Neut gamma (alpha -> beta)} a ~~> {App f a}↑{Neut gamma beta}
+rehydrateApp = PL.SteppingRule $ todo ""
+
+
+-- {FunctionCall n}↑{Neut gamma alpha} ~~> {n}ErrorCall{Neut gamma alpha}
+replaceCallWithError = PL.SteppingRule $ todo ""
+
+
+-- {n}ErrorCall{Neut gamma loop} ~~> FunctionCall n
+replaceErrorWithCall = PL.SteppingRule $ todo ""
+
+
+-- FunctionCall ({n}↑{Neut gamma (alpha -> beta)}) ~~> {{FunctionCall n : alpha -> beta}ErrorBoundary{beta}}↑{Term gamma beta}
+wrapCallInErrorUp = PL.SteppingRule $ todo ""
+
+-- {FunctionCall n}↓{Term gamma alpha} ~~> {FunctionCall gamma alpha}ErrorBoundary{...}
+wrapCallInErrorDown = PL.SteppingRule $ todo ""
+
+
+-- {a : alpha}ErrorBoundary{alpha} ~~> a
+removeError = PL.SteppingRule $ todo ""
+
+
+-- {{a : alpha}ErrorBoundary{beta}}ErrorBoundary{delta} ~~> {a : alpha}ErrorBoundary{delta}
+mergeErrors = PL.SteppingRule $ todo ""
+
+-- END SteppingRules
+
+-- utils
+
 freeVarTerm {gamma, x, alpha} = case gamma of
   Tree (PL.SortNode ConsCtx) [y, beta, gamma'] -> 
     sucVar {y, beta} $ freeVarTerm {gamma: gamma', x, alpha}
   Tree (PL.SortNode NilCtx) [] ->
     ex.var_free {x, alpha}
-  _ -> todo ""
+  _ -> bug "impossible: freeVarTerm"
 
-sucVar {y, beta} pred | Tree (PL.SortNode VarJdg) [gamma, x, alpha, loc] <- PL.getExprSort pred =
+sucVar {y, beta} pred 
+  | Tree (PL.SortNode VarJdg) [gamma, x, alpha, loc] <- PL.getExprSort pred =
   ex.var_suc {gamma, x, alpha, y, beta, loc, pred}
-sucVar _ _ = bug "invalid"
+sucVar _ _ = bug "impossible: sucVar"
 
--- END SteppingRules
+--
 
 getEdits :: Sort -> Orientation -> Edits
--- getEdits (Tree (PL.SortNode (StrInner _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits (Tree (PL.SortNode Str) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits (Tree (PL.SortNode VarJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
-getEdits sr@(Tree (PL.SortNode TermJdg) [gamma, beta]) Outside = PL.Edits $ StringQuery.fuzzy
-  { toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0
-  , getItems: const
-      [ "lambda" /\
-      let alpha = sr_freshVar "alpha" in
-      let x = sr_strInner "" in
-      LibEdit.buildEditsFromExpr {splitExprPathChanges} 
-        (ex_tm_lam x alpha (sr_freshVar "beta") gamma 
-          (ex.str {x}) (ex_ty_hole alpha) (ex_tm_hole beta))
-        sr
-    ]
-  }
-getEdits (Tree (PL.SortNode NeutJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
-getEdits (Tree (PL.SortNode TyJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
-getEdits (Tree (PL.SortNode (DataTySN _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
-getEdits (Tree (PL.SortNode ArrowTySN) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- -- getEdits (Tree (PL.SortNode (StrInner _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- -- getEdits (Tree (PL.SortNode Str) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- -- getEdits (Tree (PL.SortNode VarJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits sr@(Tree (PL.SortNode TermJdg) [gamma, beta]) Outside = PL.Edits $ StringQuery.fuzzy
+--   { toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0
+--   , getItems: const
+--       [ "lambda" /\
+--       let alpha = sr_freshVar "alpha" in
+--       let x = sr_strInner "" in
+--       LibEdit.buildEditsFromExpr {splitExprPathChanges} 
+--         (ex_tm_lam x alpha (sr_freshVar "beta") gamma 
+--           (ex.str {x}) (ex_ty_hole alpha) (ex_tm_hole beta))
+--         sr
+--     ]
+--   }
+-- getEdits (Tree (PL.SortNode NeutJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits (Tree (PL.SortNode TyJdg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits (Tree (PL.SortNode (DataTySN _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
+-- getEdits (Tree (PL.SortNode ArrowTySN) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
 getEdits sort orientation = bug $ "invalid cursor position; sort = " <> show sort <> "; orientation = " <> show orientation
 
 splitExprPathChanges :: SplitExprPathChanges
@@ -396,12 +472,6 @@ sortNodes =
 sr = buildSortShallowSyntax (Proxy :: Proxy SN) sortNodes
 rs = buildRuleSortShallowSyntax (Proxy :: Proxy SN) sortNodes
 ch = buildSortChangeShallowSyntax (Proxy :: Proxy SN) sortNodes
-
--- instance 
-
--- -- r :: Row (forall a. a -> SN /\ Array Sort)
--- makeShallowSortSyntax :: forall r r'. Record r -> Record r'
--- makeShallowSortSyntax = ?a
 
 -- shallow Sort
 
