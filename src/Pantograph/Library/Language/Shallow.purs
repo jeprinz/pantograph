@@ -6,7 +6,7 @@ import Prelude
 import Data.HeteList (ConsTypeList, HeteList, NilTypeList, indHeteList)
 import Data.Subtype (inject)
 import Data.Symbol (class IsSymbol)
-import Data.Tree (Change(..), Tree(..), injectChange)
+import Data.Tree (Change(..), Tree(..), injectTreeIntoChange)
 import Data.Tuple.Nested (type (/\), (/\))
 import Prim.Row as R
 import Record as Rec
@@ -64,7 +64,7 @@ instance
   where
   buildSortChangeShallowSyntax p_sn = indHeteList \(p_x /\ f) cs ->
     let r = buildSortChangeShallowSyntax p_sn cs in
-    r # Rec.insert p_x (inject <<< f)
+    r # Rec.insert p_x (injectTreeIntoChange <<< f)
 
 -- ExprShallowSyntax
 

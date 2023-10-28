@@ -48,13 +48,13 @@ buildSortingRule _ k = do
   let kids /\ parent = unsafePartial $ k $ buildFromKeys (makeVarRuleSort <<< MakeRuleSortVar)
   SortingRule {parameters, kids, parent}
 
-buildChangingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSortChange sn)) -> ChangingRule sn
+buildChangingRule :: forall sn. Array String -> (Partial => Array (RuleSort sn) -> Array (RuleSortChange sn) /\ RuleSortChange sn) -> ChangingRule sn
 buildChangingRule strs k = do
   let parametersArray = MakeRuleSortVar <$> strs
   let parameters = Set.fromFoldable parametersArray
   let parametersVars = makeVarRuleSort <$> parametersArray
-  let kids = unsafePartial $ k parametersVars
-  ChangingRule {parameters, kids}
+  let kids /\ parent = unsafePartial $ k parametersVars
+  ChangingRule {parameters, kids, parent}
 
 buildExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => Language sn el => el -> Record r -> Array (Expr sn el) -> Expr sn el
 buildExpr label sigma_ = 

@@ -16,10 +16,10 @@ import Util (findIndexMap, indexDeleteAt, splitAt, splitAtFindMap)
 matchDirection :: Maybe Direction -> Direction -> Boolean
 matchDirection mbDir dir = maybe true (_ == dir) mbDir
 
-defaultDown :: forall sn el.
+makeDefaultDownSteppingRule :: forall sn el.
   {getChangingRule :: el -> ChangingRule sn} ->
   SteppingRule sn el
-defaultDown {getChangingRule} = SteppingRule case _ of
+makeDefaultDownSteppingRule {getChangingRule} = SteppingRule case _ of
   Down /\ ch %.| a@(EN label exSigma _ %. kids) -> do
     let ChangingRule rule = getChangingRule label
     let sort = getStepExprSort a
@@ -31,10 +31,10 @@ defaultDown {getChangingRule} = SteppingRule case _ of
     Just $ Up /\ chBackUp %.| (EN label (epR <$> chSigma') {} %. kidsWithBoundaries)
   _ -> Nothing
 
-defaultUp :: forall sn el.
+makeDefaultUpSteppingRule :: forall sn el.
   {getChangingRule :: el -> ChangingRule sn} ->
   SteppingRule sn el
-defaultUp {getChangingRule} = SteppingRule case _ of
+makeDefaultUpSteppingRule {getChangingRule} = SteppingRule case _ of
   EN label exSigma _ %. kids -> do
     let ChangingRule rule = getChangingRule label
     leftKidsAndSorts /\ (ch /\ kid /\ ruleCh) /\ rightKidsAndSorts <- splitAtFindMap findUpBoundary $ Array.zip kids rule.kids

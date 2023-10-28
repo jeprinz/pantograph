@@ -20,6 +20,7 @@ import Pantograph.Generic.Language as PL
 import Pantograph.Library.Language.Change (getDiffChangingRule)
 import Pantograph.Library.Language.Edit as LibEdit
 import Pantograph.Library.Language.Shallow (buildExprShallowSyntax, buildRuleSortShallowSyntax, buildSortChangeShallowSyntax, buildSortShallowSyntax)
+import Pantograph.Library.Language.Step as LibStep
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
 import Todo (todo)
 import Type.Proxy (Proxy(..))
@@ -358,7 +359,7 @@ steppingRules =
       (PL.EN ZeroVar _ _ %. [])
       | true -> Just $
         PL.Boundary 
-          (PL.Up /\ (PL.SN VarJg %! [inject (epR γ), x', α', Replace sr_loc_local sr_loc_nonlocal]))
+          (PL.Up /\ (PL.SN VarJg %! [injectTreeIntoChange (epR γ), x', α', Replace sr_loc_local sr_loc_nonlocal]))
           (inject $ freeVarTerm {γ: (epR γ), x, α})
       _ -> Nothing
   ,
@@ -505,6 +506,8 @@ steppingRules =
         let delta = PL.applyRuleSortVarSubst sigma2 "β" in
         PL.buildStepExpr ErrorBoundaryTm {γ, α, β: delta} [a]
       _ -> Nothing
+  , 
+    LibStep.makeDefaultDownSteppingRule {getChangingRule}
   ]
 
 -- utils

@@ -128,6 +128,7 @@ instance PL.Language SN EL where
     , enter: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.newline]), innerChange: Nothing, inside: Nothing} 
     , tab: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indent]), innerChange: Nothing, inside: Nothing} }
 
+getSortingRule :: EL -> SortingRule
 getSortingRule = case _ of
   StringRule _ -> PL.buildSortingRuleFromStrings [] \[] -> [] /\ ruleSort.string
   VarRule -> PL.buildSortingRuleFromStrings [] \[] -> [ruleSort.string] /\ ruleSort.term
@@ -137,20 +138,23 @@ getSortingRule = case _ of
   HoleRule -> PL.buildSortingRuleFromStrings [] \[] -> [] /\ ruleSort.term
   FormatRule _format -> PL.buildSortingRuleFromStrings [] \[] -> [ruleSort.term] /\ ruleSort.term
 
+getChangingRule :: EL -> ChangingRule
 getChangingRule = case _ of
-  StringRule _ -> PL.buildChangingRule [] \[] -> []
-  VarRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.string) (ruleSort.term)]
-  LamRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.string) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
-  AppRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
-  LetRule -> PL.buildChangingRule [] \[] -> [replaceChange (ruleSort.string) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term), replaceChange (ruleSort.term) (ruleSort.term)]
-  HoleRule -> PL.buildChangingRule [] \[] -> []
-  FormatRule _format -> PL.buildChangingRule [] \[] -> [injectChange (PL.makeInjectRuleSortNode TermSort) []]
+  StringRule _ -> PL.buildChangingRule [] \[] -> [] /\ injectTreeIntoChange ruleSort.string
+  VarRule -> PL.buildChangingRule [] \[] -> [Replace (ruleSort.string) (ruleSort.term)] /\ injectTreeIntoChange ruleSort.term
+  LamRule -> PL.buildChangingRule [] \[] -> [Replace (ruleSort.string) (ruleSort.term), Replace (ruleSort.term) (ruleSort.term)] /\ injectTreeIntoChange ruleSort.term
+  AppRule -> PL.buildChangingRule [] \[] -> [Replace (ruleSort.term) (ruleSort.term), Replace (ruleSort.term) (ruleSort.term)] /\ injectTreeIntoChange ruleSort.term
+  LetRule -> PL.buildChangingRule [] \[] -> [Replace (ruleSort.string) (ruleSort.term), Replace (ruleSort.term) (ruleSort.term), Replace (ruleSort.term) (ruleSort.term)] /\ injectTreeIntoChange ruleSort.term
+  HoleRule -> PL.buildChangingRule [] \[] -> [] /\ injectTreeIntoChange ruleSort.term
+  FormatRule _format -> PL.buildChangingRule [] \[] -> [InjectChange (PL.makeInjectRuleSortNode TermSort) []] /\ injectTreeIntoChange ruleSort.term
 
+getDefaultExpr :: Sort -> Maybe Expr
 getDefaultExpr = case _ of
   Tree (PL.SN StringSort) [] -> Just $ term.string ""
   Tree (PL.SN TermSort) [] -> Just $ term.hole
   _ -> bug $ "invalid sort"
 
+topSort :: Sort
 topSort = sort.term
 
 getEdits :: Sort -> Orientation -> Edits
@@ -306,7 +310,7 @@ term = {var, string, lam, app, let_, hole, indent, newline, example}
 
 change = {term}
   where
-  term = injectChange (PL.SN TermSort) [] :: SortChange
+  term = InjectChange (PL.SN TermSort) [] :: SortChange
 
 tooth = {app, lam, var, format}
   where
