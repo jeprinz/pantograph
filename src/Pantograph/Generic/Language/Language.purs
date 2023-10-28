@@ -15,13 +15,14 @@ import Data.Tree.Common (assertValidToothKids)
 import Data.Tuple.Nested ((/\), type (/\))
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (pretty)
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Type.Row.Homogeneous (class Homogeneous)
 import Util (class RowKeys, buildFromKeys, fromHomogenousRecordToTupleArray, fromJust, fromJust', rowKeys)
 
 -- assert
 
-assertValidRuleVarSubst :: forall a sn el. Language sn el => el -> RuleSortVarSubst sn -> (Unit -> a) -> a
+assertValidRuleVarSubst :: forall a sn el. Language sn el => el -> RuleSortVarSubst (Sort sn) -> (Unit -> a) -> a
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
   if rule.parameters == Map.keys m then k unit else
@@ -111,7 +112,7 @@ defaultTopExpr :: forall sn el. Language sn el => Maybe (Expr sn el)
 defaultTopExpr =
   getDefaultExpr topSort
 
-getExprNodeSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) => AnnExprNode sn el er -> Sort sn
+getExprNodeSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst (Sort sn) (RuleSort sn) (Sort sn) => AnnExprNode sn el er -> Sort sn
 getExprNodeSort (EN label sigma _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
@@ -119,20 +120,20 @@ getExprNodeSort (EN label sigma _) =
 getExprSort :: forall sn el. Language sn el => Expr sn el -> Sort sn
 getExprSort (Tree el _) = getExprNodeSort el
 
-getExprToothInnerSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
+getExprToothInnerSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst (Sort sn) (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
 getExprToothInnerSort (Tooth (EN label sigma _) (i /\ _)) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index sortingRule.kids i
 
-getExprToothOuterSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst sn (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
+getExprToothOuterSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst (Sort sn) (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)
 getExprToothOuterSort (Tooth (EN label sigma _) _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
-getExprNonEmptyPathInnerSort :: forall sn el er. Language sn el => NonEmptyPath (AnnExprNode sn el er) -> Tree (SortNode sn)
+getExprNonEmptyPathInnerSort :: forall sn el er. Language sn el => NonEmptyPath (AnnExprNode sn el er) -> Sort sn
 getExprNonEmptyPathInnerSort = unconsNonEmptyPath >>> _.inner >>> getExprToothInnerSort
 
-getExprNonEmptyPathOuterSort :: forall sn el er. Language sn el => NonEmptyPath (AnnExprNode sn el er) -> Tree (SortNode sn)
+getExprNonEmptyPathOuterSort :: forall sn el er. Language sn el => NonEmptyPath (AnnExprNode sn el er) -> Sort sn
 getExprNonEmptyPathOuterSort = unsnocNonEmptyPath >>> _.outer >>> getExprToothOuterSort
 
 -- | The SortChange that corresponds to going from the inner sort of the path to
@@ -179,3 +180,18 @@ prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   Nothing /\ _ -> true
   Just {outer: p1', inner: Tooth node1 (i1 /\ _)} /\ Just {outer: p2', inner: Tooth node2 (i2 /\ _)} | node1 == node2 && i1 == i2 -> prefixExprPathSkeleton p1' p2'
   _ -> false
+
+-- | I don't have a good name for this operation, but what it does is: input `c1
+-- | : Change` and `c2 : Change`, and output `sigma : SortVarSubst` and `c3 :
+-- | Change`, such that:
+-- | ```
+-- |   c1 ∘ c3 = sigma c2
+-- | ```
+-- | Also, `c3` should be _orthogonal_ to `c1`. If this doesn't exist, it
+-- | outputs `Nothing`. (Note that `c2` has metavariables in the change
+-- | positions, so its `(Expr (Meta (ChangeLabel l))))`
+doOperation :: forall sn. 
+  SortChange sn -> SortChange sn -> 
+  Maybe (SortVarSubst sn /\ SortChange sn)
+doOperation c1 c2 = do
+  todo "doOperation"

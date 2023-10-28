@@ -6,22 +6,27 @@ import Bug (bug)
 import Data.Array as Array
 import Data.Foldable (class Foldable, and)
 import Data.Generic.Rep (class Generic)
-import Data.Subtype (class Subtype, inject, project)
 import Data.List (List(..))
 import Data.List as List
 import Data.List.NonEmpty (fromFoldable, snoc, unsnoc) as NonEmptyList
 import Data.List.Types (NonEmptyList(..))
 import Data.List.Types (nelCons) as NonEmptyList
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty(..))
 import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
+import Data.String as String
+import Data.Subtype (class Subtype, inject, project)
 import Data.Traversable (class Traversable, traverse)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
+import Data.UUID (UUID)
+import Data.UUID as UUID
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, class PrettyS, parens, pretty, prettyS, (<+>))
 import Text.Pretty as Pretty
+import Todo (todo)
 import Util (fromJust, fromJust', indexDeleteAt)
 
 -- infixes
@@ -179,6 +184,69 @@ gyroNode (CursorGyro (Cursor {inside: Tree a _})) = a
 gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _} <- unconsNonEmptyPath middle = a
 gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 
+-- MetaChange
+
+data MetaChange a
+  = ShiftMeta (ShiftSign /\ Tooth a) (MetaChange a)
+  | ReplaceMeta (Tree a) (Tree a)
+  | InjectMetaChange a (Array (MetaChange a))
+  | VarMetaChange MetaChangeVar
+derive instance Generic (MetaChange a) _
+instance Show a => Show (MetaChange a) where show x = genericShow x
+derive instance Eq a => Eq (MetaChange a)
+derive instance Functor MetaChange
+
+-- MetaChangeVar
+
+newtype MetaChangeVar = MetaChangeVar {label :: String, uuid :: UUID}
+
+derive instance Generic MetaChangeVar _
+derive newtype instance Show MetaChangeVar
+derive newtype instance Eq MetaChangeVar
+derive newtype instance Ord MetaChangeVar
+
+instance Pretty MetaChangeVar where
+  pretty (MetaChangeVar {label, uuid}) = "?" <> label <> "#" <> String.take 2 (UUID.toString uuid)
+
+newtype MetaChangeVarSubst a = MetaChangeVarSubst (Map.Map MetaChangeVar (MetaChange a))
+derive newtype instance Eq a => Eq (MetaChangeVarSubst a)
+derive newtype instance Show a => Show (MetaChangeVarSubst a)
+derive instance Functor MetaChangeVarSubst
+
+-- | `MetaChangeVarSubst` forms a `Semigroup` via composition.
+instance Semigroup (MetaChangeVarSubst a) where
+  -- TODO: actually, this doesn't quite work since you have to LUB the changes that are mapped to by the same metavar
+  append (MetaChangeVarSubst m1) chi2@(MetaChangeVarSubst m2) = MetaChangeVarSubst (Map.union m1 (m2 <#> applyMetaChangeVarSubst chi2))
+
+instance Monoid (MetaChangeVarSubst a) where
+  mempty = MetaChangeVarSubst Map.empty
+
+instance PrettyTreeNode a => Pretty (MetaChangeVarSubst a) where
+  pretty (MetaChangeVarSubst m) = "{" <> Array.intercalate ", " (items <#> \(x /\ s) -> pretty x <+> ":=" <+> pretty s) <> "}"
+    where
+    items = Map.toUnfoldable m :: Array _
+
+class ApplyMetaChangeVarSubst a b c | b -> c where
+  applyMetaChangeVarSubst :: MetaChangeVarSubst a -> b -> c
+
+instance ApplyMetaChangeVarSubst a MetaChangeVar (MetaChange a) where
+  applyMetaChangeVarSubst (MetaChangeVarSubst m) x = case Map.lookup x m of
+    Nothing -> VarMetaChange x
+    Just mc -> mc
+
+instance ApplyMetaChangeVarSubst a (MetaChange a) (MetaChange a) where
+  applyMetaChangeVarSubst chi (ShiftMeta sh mc) = ShiftMeta sh (applyMetaChangeVarSubst chi mc)
+  applyMetaChangeVarSubst _ (ReplaceMeta t1 t2) = ReplaceMeta t1 t2
+  applyMetaChangeVarSubst chi (InjectMetaChange a kids) = InjectMetaChange a $ applyMetaChangeVarSubst chi <$> kids
+  applyMetaChangeVarSubst chi (VarMetaChange x) = applyMetaChangeVarSubst chi x
+
+matchMetaChange :: forall a. Eq a => MetaChange a -> Change a -> Maybe (MetaChangeVarSubst a)
+matchMetaChange (ShiftMeta sh ch) (Shift sh' ch') | sh == sh' = matchMetaChange ch ch'
+matchMetaChange (ReplaceMeta t1 t2) (Replace t1' t2') | t1 == t1', t2 == t2' = Just mempty
+matchMetaChange (InjectMetaChange a kids) (InjectChange a' kids') | a == a' = Array.fold <$> uncurry matchMetaChange `traverse` (Array.zip kids kids')
+matchMetaChange (VarMetaChange _) ch = todo ""
+matchMetaChange _ _ = Nothing
+
 -- Change
 
 data Change a
@@ -323,3 +391,9 @@ instance PrettyTreeNode a => Pretty (Change a) where
   pretty (Shift (sign /\ tooth) kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
   pretty (Replace old new) = parens (pretty old <+> "~~>" <+> pretty new)
   pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)
+
+instance PrettyTreeNode a => Pretty (MetaChange a) where
+  pretty (ShiftMeta (sign /\ tooth) kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
+  pretty (ReplaceMeta old new) = parens (pretty old <+> "~~>" <+> pretty new)
+  pretty (InjectMetaChange a kids) = prettyTreeNode a (pretty <$> kids)
+  pretty (VarMetaChange x) = pretty x

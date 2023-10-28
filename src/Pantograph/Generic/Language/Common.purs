@@ -121,7 +121,7 @@ type RuleSortChange sn = Change (RuleSortNode sn)
 
 -- AnnExpr
 
-data AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = EN el (RuleSortVarSubst sn) (Record er)
+data AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = EN el (RuleSortVarSubst (Sort sn)) (Record er)
 derive instance Generic (AnnExprNode sn el er) _
 derive instance (Eq sn, Eq el, Eq (Record er)) => Eq (AnnExprNode sn el er)
 instance (Show el, Show sn, Show (Record er)) => Show (AnnExprNode sn el er) where show = genericShow
@@ -262,12 +262,10 @@ newtype ChangingRule sn = ChangingRule
 derive instance Newtype (ChangingRule sn) _
 
 newtype SteppingRule sn el = SteppingRule
-  (StepExpr sn el -> Maybe (StepExpr sn el))
+  (Language sn el => StepExpr sn el -> Maybe (StepExpr sn el))
 
-derive instance Newtype (SteppingRule sn el) _
-
-applySteppingRule :: forall sn el. SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
-applySteppingRule = unwrap
+applySteppingRule :: forall sn el. Language sn el => SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
+applySteppingRule (SteppingRule f) = f
 
 -- Edit
 
@@ -290,37 +288,37 @@ derive instance Ord RuleSortVar
 
 instance Pretty RuleSortVar where pretty (MakeRuleSortVar str) = "$" <> str
 
-newtype RuleSortVarSubst sn = RuleSortVarSubst (Map.Map RuleSortVar (Sort sn))
-derive newtype instance Eq sn => Eq (RuleSortVarSubst sn)
-derive newtype instance Show sn => Show (RuleSortVarSubst sn)
-derive instance Functor RuleSortVarSubst
+newtype RuleSortVarSubst v = RuleSortVarSubst (Map.Map RuleSortVar v)
+derive newtype instance (Eq v) => Eq (RuleSortVarSubst v)
+derive newtype instance (Show v) => Show (RuleSortVarSubst v)
+derive instance Functor (RuleSortVarSubst)
 
-instance (Show sn, PrettyTreeNode sn) => Pretty (RuleSortVarSubst sn) where
+instance (Pretty v) => Pretty (RuleSortVarSubst v) where
   pretty (RuleSortVarSubst m) = "{" <> Array.intercalate ", " (items <#> \(x /\ s) -> pretty x <+> ":=" <+> pretty s) <> "}"
     where
     items = Map.toUnfoldable m :: Array _
 
-lookupRuleSortVarSubst :: forall sn. Show sn => PrettyTreeNode sn => RuleSortVar -> RuleSortVarSubst sn -> Sort sn
+lookupRuleSortVarSubst :: forall sn v. Show sn => PrettyTreeNode sn => Pretty v => RuleSortVar -> RuleSortVarSubst v -> v
 lookupRuleSortVarSubst x sigma@(RuleSortVarSubst m) = case Map.lookup x m of
   Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
-  Just sr -> sr
+  Just v -> v
 
-class ApplyRuleSortVarSubst sn a b | a -> b where
-  applyRuleSortVarSubst :: RuleSortVarSubst sn -> a -> b
+class ApplyRuleSortVarSubst v a b | v a -> b where
+  applyRuleSortVarSubst :: RuleSortVarSubst v -> a -> b
 
-instance Language sn el => ApplyRuleSortVarSubst sn RuleSortVar (Sort sn) where
+instance Language sn el => ApplyRuleSortVarSubst (Sort sn) RuleSortVar (Sort sn) where
   applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
     Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
     Just sr -> sr
 
-instance Language sn el => ApplyRuleSortVarSubst sn String (Sort sn) where
+instance Language sn el => ApplyRuleSortVarSubst (Sort sn) String (Sort sn) where
   applyRuleSortVarSubst sigma string = applyRuleSortVarSubst sigma (MakeRuleSortVar string)
 
-instance Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
+instance Language sn el => ApplyRuleSortVarSubst (Sort sn) (RuleSort sn) (Sort sn) where
   applyRuleSortVarSubst sigma (Tree (InjectRuleSortNode sn) kids) = Tree sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (Tree (VarRuleSortNode x) _) = applyRuleSortVarSubst sigma x
 
-instance Language sn el => ApplyRuleSortVarSubst sn (RuleSortChange sn) (SortChange sn) where
+instance Language sn el => ApplyRuleSortVarSubst (Sort sn) (RuleSortChange sn) (SortChange sn) where
   applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (fromJust <<< project <$> tooth)) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
   applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromJust $ project node) (applyRuleSortVarSubst sigma <$> kids)
@@ -374,7 +372,7 @@ instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) 
 instance Language sn el => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where
   applySortVarSubst = append
 
-instance Language sn el => ApplySortVarSubst sn (RuleSortVarSubst sn) (RuleSortVarSubst sn) where
+instance Language sn el => ApplySortVarSubst sn (RuleSortVarSubst (Sort sn)) (RuleSortVarSubst (Sort sn)) where
   applySortVarSubst sigma (RuleSortVarSubst m) = RuleSortVarSubst $ m <#> applySortVarSubst sigma
 
 instance Language sn el => ApplySortVarSubst sn (AnnExprNode sn el er) (AnnExprNode sn el er) where

@@ -64,18 +64,19 @@ lub' c1 c2 = case lub c1 c2 of
   Nothing -> bug $ "lub doesn't exist for changes: c1 = " <> ticks (pretty c1) <> "; c2 = " <> ticks (pretty c2)
   Just c -> c
 
-{-
-Implementing a real tree diff algorithm is hard, so instead I have one that makes some assumptions about the inputs.
-Its also dubious if the notion of "shortest edit sequence" is really what we want anyway. Would that really be the
-change that correctly preserves the semantic meaning?
-This diff algorithm tries to find an unambiguous diff, and if it doesn't exist just returns Replace.
-In other words, the set S of pairs of expressions (e1, e2) on which the algorithm deals doesn't just return Replace
-consists of pairs satisfying any of the following:
-- e1 = e2
-- e1 is a subexpression of e2
-- e2 is a subexpression of e1
-- e1 = Expr l1 [a1, ..., an], e2 = Expr l2 [b1, ..., bn], and for each i<=n, (ai, bi) in S.
--}
+-- | Implementing a real tree diff algorithm is hard, so instead I have one that
+-- | makes some assumptions about the inputs. Its also dubious if the notion of
+-- | "shortest edit sequence" is really what we want anyway. Would that really
+-- | be the change that correctly preserves the semantic meaning? This diff
+-- | algorithm tries to find an unambiguous diff, and if it doesn't exist just
+-- | returns `Replace`. In other words, the set `S` of pairs of expressions
+-- | `(e1, e2)` on which the algorithm deals doesn't just return `Replace`
+-- | consists of pairs satisfying any of the following:
+-- | - `e1` = `e2`
+-- | - `e1` is a subexpression of e2
+-- | - e2 is a subexpression of `e1`
+-- | - `e1` = `Expr l1 [a1, ..., an]`, `e2` = `Expr l2 [b1, ..., bn]`, and for
+-- |   each `i`<=`n`, `(ai, bi)` in `S`.
 diff :: forall a. Eq a => Tree a -> Tree a -> Change a
 diff t1 t2 | t1 == t2 = inject t1
 diff t1@(Tree a1 kids1) t2@(Tree a2 kids2) =
@@ -94,4 +95,3 @@ isPostfix t1 t2 =
   Array.findMap 
     (\(th /\ kid) -> Shift (Minus /\ th) <$> isPostfix kid t2)
     (tooths t1)
-

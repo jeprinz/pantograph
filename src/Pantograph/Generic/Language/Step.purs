@@ -155,7 +155,7 @@ runStepExpr stepExpr =
     Right expr -> Just $ RootGyro expr
 
 -- | Attempts a single step.
-step :: forall sn el. StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))
+step :: forall sn el. Language sn el => StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))
 step e = ask >>= findMapM (pure <<< flip applySteppingRule e) >>= case _ of
   Just e' -> pure (Just e')
   Nothing -> case e of
@@ -163,7 +163,7 @@ step e = ask >>= findMapM (pure <<< flip applySteppingRule e) >>= case _ of
     Boundary (dir /\ ch) e' -> Boundary (dir /\ ch) <$$> step e'
     Marker e' -> Marker <$$> step e'
 
-stepFirstKid :: forall sn el. Array (StepExpr sn el) -> StepM sn el (Maybe (Array (StepExpr sn el)))
+stepFirstKid :: forall sn el. Language sn el => Array (StepExpr sn el) -> StepM sn el (Maybe (Array (StepExpr sn el)))
 stepFirstKid kids = go 0
   where
   go i = case Array.index kids i of
