@@ -14,12 +14,12 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map, toUnfoldable, fromFoldable, lookup, member, delete, unionWith, insert)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Maybe (maybe)
 import Data.Newtype (unwrap)
 import Data.Set as Set
 import Data.Symbol (class IsSymbol, reflectSymbol)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), snd)
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Partial.Unsafe (unsafePartial)
@@ -168,7 +168,22 @@ asStateT f1 f2 (StateT k) = StateT \s2 -> map (map (f1 s2)) $ k (f2 s2)
 indexDeleteAt :: forall a. Int -> Array a -> Maybe (Tuple (Array a) a)
 indexDeleteAt i xs = Tuple <$> Array.deleteAt i xs <*> Array.index xs i
 
+splitAt :: forall a. Int -> Array a -> Maybe (Array a /\ a /\ Array a)
+splitAt i xs = do
+  let {before: l, after: xr} = Array.splitAt i xs
+  {head: x, tail: r} <- Array.uncons xr
+  Just $ l /\ x /\ r
+
+splitAtFindMap :: forall a b. (a -> Maybe b) -> Array a -> Maybe (Array a /\ b /\ Array a)
+splitAtFindMap f xs = do
+  i /\ b <- findIndexMap f xs
+  l /\ _ /\ r <- splitAt i xs
+  Just (l /\ b /\ r)
+
 uP = unsafePartial
+
+findIndexMap :: forall b a. (a -> Maybe b) -> Array a -> Maybe (Tuple Int b)
+findIndexMap f = Array.findMap (\(i /\ m) -> (i /\ _) <$> m) <<< Array.mapWithIndex (\i a -> i /\ f a)
 
 findMapM :: forall m a b. Monad m => (a -> m (Maybe b)) -> Array a -> m (Maybe b)
 findMapM f xs = case Array.uncons xs of

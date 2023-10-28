@@ -46,7 +46,7 @@ instance
   where
   buildRuleSortShallowSyntax p_sn = indHeteList \(p_x /\ f) cs ->
     let r = buildRuleSortShallowSyntax p_sn cs in
-    r # Rec.insert p_x (injectRuleSort <<< f)
+    r # Rec.insert p_x (inject <<< f)
 
 -- SortChangeShallowSyntax
 

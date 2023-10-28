@@ -7,11 +7,14 @@ import Prelude
 import Bug (bug)
 import Data.Array as Array
 import Data.List.NonEmpty as NonEmptyList
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
 import Data.Subtype (inject)
-import Data.Tree.Common (assertValidToothKids)
+import Data.Traversable (traverse)
+import Data.Tree.Common (assertValidToothKids, injectTreeIntoChange)
+import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (pretty)
@@ -157,7 +160,7 @@ getExprPathChange :: forall sn el. Language sn el =>
   Sort sn ->
   SortChange sn
 getExprPathChange path bottomSort = case unconsPath path of
-  Nothing -> inject bottomSort
+  Nothing -> injectTreeIntoChange bottomSort
   Just {outer, inner: Tooth (EN label sigma _) (i /\ _)} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
@@ -181,17 +184,31 @@ prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   Just {outer: p1', inner: Tooth node1 (i1 /\ _)} /\ Just {outer: p2', inner: Tooth node2 (i2 /\ _)} | node1 == node2 && i1 == i2 -> prefixExprPathSkeleton p1' p2'
   _ -> false
 
+matchRuleSortChangeWithSortChange :: forall sn. 
+  Eq sn => Show sn => PrettyTreeNode sn =>
+  RuleSortChange sn -> SortChange sn ->
+  Maybe (RuleSortVarSubst (SortChange sn))
+matchRuleSortChangeWithSortChange (Shift (sh /\ th) ch) (Shift (sh' /\ th') ch') | sh == sh', th == inject th' = matchRuleSortChangeWithSortChange ch ch'
+matchRuleSortChangeWithSortChange (Replace t1 t2) (Replace t1' t2') | t1 == inject t1', t2 == inject t2' = Just emptyRuleSortVarSubst
+matchRuleSortChangeWithSortChange (InjectChange (InjectRuleSortNode s) kids) (InjectChange s' kids') | s == s' = Array.fold <$> uncurry matchRuleSortChangeWithSortChange `traverse` Array.zip kids kids'
+matchRuleSortChangeWithSortChange (InjectChange (VarRuleSortNode x) []) ch' = Just $ singletonRuleSortVarSubst x ch'
+matchRuleSortChangeWithSortChange (InjectChange (VarRuleSortNode _) _) _ = bug $ "invalid"
+matchRuleSortChangeWithSortChange _ _ = Nothing
+
 -- | I don't have a good name for this operation, but what it does is: input `c1
--- | : Change` and `c2 : Change`, and output `sigma : SortVarSubst` and `c3 :
--- | Change`, such that:
+-- | : Change` and `c2 : RuleChange`, and output `sigma : RuleSortVarSubst` and
+-- | `c3 : Change`, such that:
 -- | ```
 -- |   c1 ∘ c3 = sigma c2
 -- | ```
 -- | Also, `c3` should be _orthogonal_ to `c1`. If this doesn't exist, it
 -- | outputs `Nothing`. (Note that `c2` has metavariables in the change
 -- | positions, so its `(Expr (Meta (ChangeLabel l))))`
-doOperation :: forall sn. 
-  SortChange sn -> SortChange sn -> 
-  Maybe (SortVarSubst sn /\ SortChange sn)
+doOperation :: forall sn.
+  Eq sn => Show sn => PrettyTreeNode sn =>
+  SortChange sn -> RuleSortChange sn -> 
+  Maybe (RuleSortVarSubst (SortChange sn) /\ SortChange sn)
 doOperation c1 c2 = do
-  todo "doOperation"
+  sigma <- matchRuleSortChangeWithSortChange c2 c1
+  let c2' = applyRuleSortVarSubst sigma c2
+  Just $ sigma /\ (invert c1 <> c2')

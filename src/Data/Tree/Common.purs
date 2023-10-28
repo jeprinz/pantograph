@@ -47,6 +47,10 @@ derive instance Functor Tree
 derive instance Foldable Tree
 derive instance Traversable Tree
 
+instance Subtype a b => Subtype (Tree a) (Tree b) where
+  inject = map inject
+  project = traverse project
+
 treeNode :: forall a. Tree a -> a
 treeNode (Tree a _) = a
 
@@ -59,6 +63,10 @@ derive instance Eq a => Eq (Tooth a)
 derive instance Functor Tooth
 derive instance Foldable Tooth
 derive instance Traversable Tooth
+
+instance Subtype a b => Subtype (Tooth a) (Tooth b) where
+  inject = map inject
+  project = traverse project
 
 toothNode :: forall a. Tooth a -> a
 toothNode (Tooth a _) = a
@@ -83,6 +91,10 @@ derive instance Foldable Path
 derive instance Traversable Path
 instance Semigroup (Path a) where append (Path ts1) (Path ts2) = Path (ts2 <> ts1)
 derive newtype instance Monoid (Path a)
+
+instance Subtype a b => Subtype (Path a) (Path b) where
+  inject = map inject
+  project = traverse project
 
 consPath :: forall a. Path a -> Tooth a -> Path a
 consPath (Path as) a = Path (Cons a as)
@@ -110,6 +122,10 @@ derive instance Functor NonEmptyPath
 derive instance Foldable NonEmptyPath
 derive instance Traversable NonEmptyPath
 instance Semigroup (NonEmptyPath a) where append (NonEmptyPath ts1) (NonEmptyPath ts2) = NonEmptyPath (ts2 <> ts1)
+
+instance Subtype a b => Subtype (NonEmptyPath a) (NonEmptyPath b) where
+  inject = map inject
+  project = traverse project
 
 toPath :: forall a. NonEmptyPath a -> Path a
 toPath (NonEmptyPath ts) = Path (List.fromFoldable ts)
@@ -184,6 +200,8 @@ gyroNode (CursorGyro (Cursor {inside: Tree a _})) = a
 gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _} <- unconsNonEmptyPath middle = a
 gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 
+{- TODO: MetaChange shouldnt be necessary, if RuleSortVarSubst with polymorphic values workds out
+
 -- MetaChange
 
 data MetaChange a
@@ -247,6 +265,13 @@ matchMetaChange (InjectMetaChange a kids) (InjectChange a' kids') | a == a' = Ar
 matchMetaChange (VarMetaChange _) ch = todo ""
 matchMetaChange _ _ = Nothing
 
+instance PrettyTreeNode a => Pretty (MetaChange a) where
+  pretty (ShiftMeta (sign /\ tooth) kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
+  pretty (ReplaceMeta old new) = parens (pretty old <+> "~~>" <+> pretty new)
+  pretty (InjectMetaChange a kids) = prettyTreeNode a (pretty <$> kids)
+  pretty (VarMetaChange x) = pretty x
+-}
+
 -- Change
 
 data Change a
@@ -257,33 +282,42 @@ derive instance Generic (Change a) _
 instance Show a => Show (Change a) where show x = genericShow x
 derive instance Eq a => Eq (Change a)
 derive instance Functor Change
+derive instance Foldable Change
+derive instance Traversable Change
+
+instance Subtype a b => Subtype (Change a) (Change b) where
+  inject = map inject
+  project = traverse project
 
 -- `Change` forms a semigroup under composition.
 instance Eq a => Semigroup (Change a) where
   append (Shift (Plus /\ th) c) (Shift (Minus /\ th') c') | th == th' =
     c <> c'
   append (Shift (Minus /\ th@(Tooth a (i /\ ts))) c) (Shift (Plus /\ th') c') | th == th' =
-    InjectChange a $ fromJust $ Array.insertAt i (c <> c') $ map inject ts
+    InjectChange a $ fromJust $ Array.insertAt i (c <> c') $ map injectTreeIntoChange ts
   append c (Shift (Plus /\ th) c') = Shift (Plus /\ th) (c <> c')
   append (Shift (Minus /\ th) c) c' = Shift (Minus /\ th) (c <> c')
   append (Shift (Plus /\ th@(Tooth a (i /\ ts))) c) (InjectChange a' _cs')
     | a == a'
     , cs' /\ c' <- fromJust $ indexDeleteAt i _cs'
-    , and $ map (uncurry eq) $ Array.zip (inject <$> ts) cs'
+    , and $ map (uncurry eq) $ Array.zip (injectTreeIntoChange <$> ts) cs'
     = Shift (Plus /\ th) (c <> c')
   append (InjectChange a _cs) (Shift (Minus /\ th@(Tooth a' (i' /\ ts'))) c')
     | a == a'
     , cs /\ c <- fromJust $ indexDeleteAt i' _cs
-    , and $ map (uncurry eq) $ Array.zip cs (inject <$> ts')
+    , and $ map (uncurry eq) $ Array.zip cs (injectTreeIntoChange <$> ts')
     = Shift (Plus /\ th) (c <> c')
   append (InjectChange a cs) (InjectChange a' cs') | a == a' = InjectChange a (Array.zipWith append cs cs')
   append c1 c2 = Replace (endpoints c1).left (endpoints c2).right
 
-instance Subtype (Tree a) (Change a) where
-  inject (Tree a kids) = InjectChange a (inject <$> kids)
-  project = case _ of
-    InjectChange a kids -> Tree a <$> project `traverse` kids
-    _ -> Nothing
+
+injectTreeIntoChange :: forall a. Tree a -> Change a
+injectTreeIntoChange (Tree a kids) = InjectChange a (injectTreeIntoChange <$> kids)
+
+projectTreeIntoChange :: forall a. Change a -> Maybe (Tree a)
+projectTreeIntoChange = case _ of
+  InjectChange a kids -> Tree a <$> projectTreeIntoChange `traverse` kids
+  _ -> Nothing
 
 endpoints :: forall a. Change a -> {left :: Tree a, right :: Tree a}
 endpoints (Shift (Plus /\ tooth) kid) =
@@ -313,11 +347,6 @@ derive instance Ord ShiftSign
 instance Pretty ShiftSign where
   pretty Plus = "+"
   pretty Minus = "-"
-
-plusChange th ch = Shift (Plus /\ th) ch
-minusChange th ch = Shift (Minus /\ th) ch
-injectChange a kids = InjectChange a kids
-replaceChange old new = Replace old new
 
 -- TreeNode
 
@@ -392,8 +421,3 @@ instance PrettyTreeNode a => Pretty (Change a) where
   pretty (Replace old new) = parens (pretty old <+> "~~>" <+> pretty new)
   pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)
 
-instance PrettyTreeNode a => Pretty (MetaChange a) where
-  pretty (ShiftMeta (sign /\ tooth) kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
-  pretty (ReplaceMeta old new) = parens (pretty old <+> "~~>" <+> pretty new)
-  pretty (InjectMetaChange a kids) = prettyTreeNode a (pretty <$> kids)
-  pretty (VarMetaChange x) = pretty x

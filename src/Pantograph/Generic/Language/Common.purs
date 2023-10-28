@@ -18,7 +18,7 @@ import Data.String as String
 import Data.StringQuery (StringQuery)
 import Data.Subtype (class Subtype, inject, project)
 import Data.Traversable (traverse)
-import Data.Tree (class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation(..), Path, Select, Tooth, Tree(..), assertValidTreeKids, kidsCount, prettyTreeNode)
+import Data.Tree (class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation(..), Path, Select, Tooth, Tree(..), assertValidTreeKids, kidsCount, lub', prettyTreeNode)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
@@ -94,12 +94,6 @@ makeVarSort x = Tree (VarSN x) []
 
 freshVarSort :: forall sn. String -> Tree (SortNode sn)
 freshVarSort label = Tree (VarSN (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})) []
-
-injectRuleSort :: forall sn. Sort sn -> RuleSort sn
-injectRuleSort = map inject
-
-projectRuleSort :: forall sn. RuleSort sn -> Maybe (Sort sn)
-projectRuleSort = traverse project
 
 instance Subtype (SortNode sn) (RuleSortNode sn) where
   inject = InjectRuleSortNode
@@ -254,10 +248,14 @@ newtype SortingRule sn = SortingRule
 derive instance Newtype (SortingRule sn) _
 
 -- | A `ChangeRule` specifies the changes from each kid to the parent of a
--- | corresponding `SortingRule`.
+-- | corresponding `SortingRule`. The `parent` is probably just the injection of
+-- | the the parent's sort, using `RuleSortVar`s appropriately. This is useful
+-- | for computing how changes in the kids' sorts are reflected as changes in
+-- | the parent's sort.
 newtype ChangingRule sn = ChangingRule 
   { parameters :: Set.Set RuleSortVar
-  , kids :: Array (RuleSortChange sn) }
+  , kids :: Array (RuleSortChange sn)
+  , parent :: RuleSortChange sn }
 
 derive instance Newtype (ChangingRule sn) _
 
@@ -293,6 +291,20 @@ derive newtype instance (Eq v) => Eq (RuleSortVarSubst v)
 derive newtype instance (Show v) => Show (RuleSortVarSubst v)
 derive instance Functor (RuleSortVarSubst)
 
+-- | `RuleSortVarSubst (SortChange sn)` forms a `Monoid` since we can `lub` the
+-- | multiple assignments of a single `RuleSortVar`.
+instance (Eq sn, Show sn, PrettyTreeNode sn) => Semigroup (RuleSortVarSubst (SortChange sn)) where
+  append (RuleSortVarSubst m1) (RuleSortVarSubst m2) = RuleSortVarSubst (Map.unionWith lub' m1 m2)
+
+instance (Eq sn, Show sn, PrettyTreeNode sn) => Monoid (RuleSortVarSubst (SortChange sn)) where
+  mempty = emptyRuleSortVarSubst
+
+emptyRuleSortVarSubst :: forall a. RuleSortVarSubst a
+emptyRuleSortVarSubst = RuleSortVarSubst Map.empty
+
+singletonRuleSortVarSubst :: forall a. RuleSortVar -> a -> RuleSortVarSubst a
+singletonRuleSortVarSubst k v = RuleSortVarSubst $ Map.singleton k v
+
 instance (Pretty v) => Pretty (RuleSortVarSubst v) where
   pretty (RuleSortVarSubst m) = "{" <> Array.intercalate ", " (items <#> \(x /\ s) -> pretty x <+> ":=" <+> pretty s) <> "}"
     where
@@ -306,21 +318,26 @@ lookupRuleSortVarSubst x sigma@(RuleSortVarSubst m) = case Map.lookup x m of
 class ApplyRuleSortVarSubst v a b | v a -> b where
   applyRuleSortVarSubst :: RuleSortVarSubst v -> a -> b
 
-instance Language sn el => ApplyRuleSortVarSubst (Sort sn) RuleSortVar (Sort sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) RuleSortVar (Sort sn) where
   applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
     Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
     Just sr -> sr
 
-instance Language sn el => ApplyRuleSortVarSubst (Sort sn) String (Sort sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) String (Sort sn) where
   applyRuleSortVarSubst sigma string = applyRuleSortVarSubst sigma (MakeRuleSortVar string)
 
-instance Language sn el => ApplyRuleSortVarSubst (Sort sn) (RuleSort sn) (Sort sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSort sn) (Sort sn) where
   applyRuleSortVarSubst sigma (Tree (InjectRuleSortNode sn) kids) = Tree sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (Tree (VarRuleSortNode x) _) = applyRuleSortVarSubst sigma x
 
-instance Language sn el => ApplyRuleSortVarSubst (Sort sn) (RuleSortChange sn) (SortChange sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSortChange sn) (SortChange sn) where
   applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (fromJust <<< project <$> tooth)) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
+  applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromJust $ project node) (applyRuleSortVarSubst sigma <$> kids)
+
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) where
+  applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (fromJust <<< project <$> tooth)) (applyRuleSortVarSubst sigma kid)
+  applyRuleSortVarSubst _ (Replace old new) = Replace (fromJust $ project old) (fromJust $ project new)
   applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromJust $ project node) (applyRuleSortVarSubst sigma <$> kids)
 
 -- SortVar
