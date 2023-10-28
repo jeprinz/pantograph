@@ -295,18 +295,26 @@ derive newtype instance Eq sn => Eq (RuleSortVarSubst sn)
 derive newtype instance Show sn => Show (RuleSortVarSubst sn)
 derive instance Functor RuleSortVarSubst
 
-instance Language sn el => Pretty (RuleSortVarSubst sn) where
+instance (Show sn, PrettyTreeNode sn) => Pretty (RuleSortVarSubst sn) where
   pretty (RuleSortVarSubst m) = "{" <> Array.intercalate ", " (items <#> \(x /\ s) -> pretty x <+> ":=" <+> pretty s) <> "}"
     where
     items = Map.toUnfoldable m :: Array _
+
+lookupRuleSortVarSubst :: forall sn. Show sn => PrettyTreeNode sn => RuleSortVar -> RuleSortVarSubst sn -> Sort sn
+lookupRuleSortVarSubst x sigma@(RuleSortVarSubst m) = case Map.lookup x m of
+  Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
+  Just sr -> sr
 
 class ApplyRuleSortVarSubst sn a b | a -> b where
   applyRuleSortVarSubst :: RuleSortVarSubst sn -> a -> b
 
 instance Language sn el => ApplyRuleSortVarSubst sn RuleSortVar (Sort sn) where
   applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
-    Nothing -> bug $ "Could not substitute RuleSortVar: " <> show x <> "; sigma = " <> pretty sigma <> "; x = " <> pretty x
-    Just s -> s
+    Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
+    Just sr -> sr
+
+instance Language sn el => ApplyRuleSortVarSubst sn String (Sort sn) where
+  applyRuleSortVarSubst sigma string = applyRuleSortVarSubst sigma (MakeRuleSortVar string)
 
 instance Language sn el => ApplyRuleSortVarSubst sn (RuleSort sn) (Sort sn) where
   applyRuleSortVarSubst sigma (Tree (InjectRuleSortNode sn) kids) = Tree sn (applyRuleSortVarSubst sigma <$> kids)
