@@ -41,6 +41,20 @@ type SplitExprPathChanges = LibEdit.SplitExprPathChanges SN EL
 
 -- SN
 
+type StrInner = Sort
+type Str = Sort
+type Jg = Sort
+type Ctx = Sort
+type Ty = Sort
+type Loc = Sort
+
+type StrInnerR = RuleSort
+type StrR = RuleSort
+type JgR = RuleSort
+type CtxR = RuleSort
+type TyR = RuleSort
+type LocR = RuleSort
+
 data SN
   -- StrInner
   = StrInner String
@@ -205,9 +219,10 @@ instance Pretty Format where
 
 instance PL.Language SN EL where
   getSortingRule el = getSortingRule el
+
   getChangingRule el = getChangingRule el
 
-  topSort = sr_jg_tm sr_ctx_nil (todo "sort metavar")
+  topSort = sr_jg_tm sr_ctx_nil (sr_freshVar "top")
 
   getDefaultExpr = todo "getDefaultExpr"
 
@@ -220,20 +235,19 @@ instance PL.Language SN EL where
   validGyro = todo "validGyro"
 
 getSortingRule :: EL -> SortingRule
--- getSortingRule _ = todo "getSortingRule"
 getSortingRule =
   case _ of
-    StrEL -> PL.buildSortingRule (Proxy :: Proxy (x::_)) \{x {- : StrInner -}} ->
+    StrEL -> PL.buildSortingRule (Proxy :: Proxy (x::StrInnerR)) \{x} ->
       []
       /\
       ( rs_str x )
 
-    ZeroVar -> PL.buildSortingRule (Proxy :: Proxy (γ::_, x::_, α::_)) \{γ, x, α} ->
+    ZeroVar -> PL.buildSortingRule (Proxy :: Proxy (γ::CtxR, x::StrInnerR, α::TyR)) \{γ, x, α} ->
       []
       /\
       ( rs_jg_var γ x α rs_loc_local )
 
-    SucVar -> PL.buildSortingRuleFromStrings ["γ", "x", "α", "y", "β", "loc"] \[γ, x, α, y, β, loc] ->
+    SucVar -> PL.buildSortingRule (Proxy :: Proxy (γ::CtxR, x::StrInnerR, α::TyR, y::CtxR, β::TyR, loc::LocR)) \{γ, x, α, y, β, loc} ->
       [ rs_jg_var γ x α loc ]
       /\
       ( rs_jg_var (rs_ctx_cons y β γ) x α loc )
@@ -529,17 +543,15 @@ mergeErrors = PL.SteppingRule case _ of
 
 -- utils
 
+freeVarTerm :: {x :: Sort, α :: Sort, γ :: Sort} -> Expr
 freeVarTerm {γ, x, α} = case γ of
-  Tree (PL.SN ConsCtx) [y, β, γ'] -> 
-    sucVar {y, β} $ freeVarTerm {γ: γ', x, α}
-  Tree (PL.SN NilCtx) [] ->
-    ex.var_free {x, α}
+  Tree (PL.SN ConsCtx) [y, β, γ'] -> sucVar {y, β, pred: freeVarTerm {γ: γ', x, α}}
+  Tree (PL.SN NilCtx) [] -> ex_var_free x α
   _ -> bug "impossible: freeVarTerm"
 
-sucVar {y, β} pred 
-  | Tree (PL.SN VarJg) [γ, x, α, loc] <- PL.getExprSort pred =
-  ex.var_suc {γ, x, α, y, β, loc, pred}
-sucVar _ _ = bug "impossible: sucVar"
+sucVar :: {y :: Sort, β :: Sort, pred :: Expr} -> Expr
+sucVar {y, β, pred} | PL.SN VarJg % [γ, x, α, loc] <- PL.getExprSort pred = ex_var_suc γ x α y β loc pred
+sucVar _ = bug "impossible: sucVar"
 
 --
 
@@ -555,7 +567,7 @@ getEdits :: Sort -> Orientation -> Edits
 --       let x = sr_strInner "" in
 --       LibEdit.buildEditsFromExpr {splitExprPathChanges} 
 --         (ex_tm_lam x α (sr_freshVar "β") γ 
---           (ex.str {x}) (ex_ty_hole α) (ex_tm_hole β))
+--           (ex_str {x}) (ex_ty_hole α) (ex_tm_hole β))
 --         sr
 --     ]
 --   }
@@ -582,14 +594,14 @@ typeSortToTypeExpr sr = bug $ "invalid: " <> show sr
 
 -- shallow
 
-sortNodes = 
-  ((Proxy :: Proxy "strInner") /\ \{string} -> PL.makeSort (StrInner string) []) :
-  ((Proxy :: Proxy "str") /\ \{strInner} -> PL.makeSort Str [strInner]) :
-  nil
+-- sortNodes = 
+--   ((Proxy :: Proxy "strInner") /\ \{string} -> PL.makeSort (StrInner string) []) :
+--   ((Proxy :: Proxy "str") /\ \{strInner} -> PL.makeSort Str [strInner]) :
+--   nil
 
-sr = buildSortShallowSyntax (Proxy :: Proxy SN) sortNodes
-rs = buildRuleSortShallowSyntax (Proxy :: Proxy SN) sortNodes
-ch = buildSortChangeShallowSyntax (Proxy :: Proxy SN) sortNodes
+-- sr = buildSortShallowSyntax (Proxy :: Proxy SN) sortNodes
+-- rs = buildRuleSortShallowSyntax (Proxy :: Proxy SN) sortNodes
+-- ch = buildSortChangeShallowSyntax (Proxy :: Proxy SN) sortNodes
 
 -- shallow Sort
 
@@ -637,20 +649,20 @@ rs_loc_nonlocal = PL.makeInjectRuleSort NonlocalLoc []
 
 -- shallow Expr
 
-ex = buildExprShallowSyntax (Proxy :: Proxy SN) (Proxy :: Proxy ()) exprNodes
+-- ex = buildExprShallowSyntax (Proxy :: Proxy SN) (Proxy :: Proxy ()) exprNodes
 
-exprNodes =  
-  ((Proxy :: Proxy "str") /\ \{x} -> PL.buildExpr StrEL {x} []) :
-  ((Proxy :: Proxy "var_zero") /\ \{γ, x, α} -> PL.buildExpr ZeroVar {γ, x, α} []) :
-  ((Proxy :: Proxy "var_suc") /\ \{γ, x, α, y, β, loc, pred} -> PL.buildExpr SucVar {γ, x, α, y, β, loc} [pred]) :
-  ((Proxy :: Proxy "var_free") /\ \{x, α} -> PL.buildExpr FreeVar {x, α} []) :
-  nil
+-- exprNodes =  
+--   ((Proxy :: Proxy "str") /\ \{x} -> PL.buildExpr StrEL {x} []) :
+--   ((Proxy :: Proxy "var_zero") /\ \{γ, x, α} -> PL.buildExpr ZeroVar {γ, x, α} []) :
+--   ((Proxy :: Proxy "var_suc") /\ \{γ, x, α, y, β, loc, pred} -> PL.buildExpr SucVar {γ, x, α, y, β, loc} [pred]) :
+--   ((Proxy :: Proxy "var_free") /\ \{x, α} -> PL.buildExpr FreeVar {x, α} []) :
+--   nil
 
 -- ex_str x = PL.buildExpr StrEL {x} [] 
 
--- ex_var_zero γ x α = PL.buildExpr ZeroVar {γ, x, α} []
--- ex_var_suc γ x α y β loc pred = PL.buildExpr SucVar {γ, x, α, y, β, loc} [pred]
--- ex_var_free x α = PL.buildExpr FreeVar {x, α} []
+ex_var_zero γ x α = PL.buildExpr ZeroVar {γ, x, α} []
+ex_var_suc γ x α y β loc pred = PL.buildExpr SucVar {γ, x, α, y, β, loc} [pred]
+ex_var_free x α = PL.buildExpr FreeVar {x, α} []
 
 ex_ty_hole α = PL.buildExpr HoleTy {α} []
 
