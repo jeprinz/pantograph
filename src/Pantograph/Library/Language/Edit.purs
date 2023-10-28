@@ -10,28 +10,29 @@ import Data.Tree (fromPath, singletonNonEmptyPath, tooths)
 import Data.Tuple (fst)
 import Util (fromJust)
 
-type SplitExprPathChanges sn el = ExprNonEmptyPath sn el -> Sort sn -> {outerChange :: SortChange sn, innerChange :: SortChange sn}
+type SplitChange sn = SortChange sn -> {outerChange :: SortChange sn, innerChange :: SortChange sn}
 
 buildEditFromExprNonEmptyPath :: forall sn el.
-  { splitExprPathChanges :: SplitExprPathChanges sn el } ->
+  Language sn el =>
+  {splitExprPathChanges :: SplitChange sn} ->
   ExprNonEmptyPath sn el ->
-  Sort sn ->
   Edit sn el
-buildEditFromExprNonEmptyPath {splitExprPathChanges} middle sort =
+buildEditFromExprNonEmptyPath {splitExprPathChanges} middle =
   Edit
     { outerChange: Just outerChange
     , middle: Just middle
     , innerChange: Just innerChange
     , inside: Nothing }
   where
-  {outerChange, innerChange} = splitExprPathChanges middle sort
+  ch = getExprNonEmptyPathSortChange middle
+  {outerChange, innerChange} = splitExprPathChanges ch
 
 buildEditsFromExpr :: forall sn el.
-  { splitExprPathChanges :: SplitExprPathChanges sn el } ->
+  Language sn el =>
+  {splitExprPathChanges :: SplitChange sn} ->
   Expr sn el ->
-  Sort sn ->
   NonEmptyArray (Edit sn el)
-buildEditsFromExpr {splitExprPathChanges} expr sort =
+buildEditsFromExpr {splitExprPathChanges} expr =
   let middles = singletonNonEmptyPath <<< fst <$> tooths expr in
   fromJust $ NonEmptyArray.fromArray $ middles <#> \middle -> 
-    buildEditFromExprNonEmptyPath {splitExprPathChanges} middle sort
+    buildEditFromExprNonEmptyPath {splitExprPathChanges} middle

@@ -69,3 +69,7 @@ dischargeBoundary mbDir f = SteppingRule case _ of
     , Just f' <- f ch
     -> f' kid
   _ -> Nothing
+
+-- | Conditionalize a `SteppingRule`.
+unless :: forall l r. (StepExpr l r -> Boolean) -> SteppingRule l r -> SteppingRule l r
+unless cond (SteppingRule f) = SteppingRule \e -> if cond e then Nothing else f e
