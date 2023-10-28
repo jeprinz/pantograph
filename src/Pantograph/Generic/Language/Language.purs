@@ -21,7 +21,7 @@ import Util (class RowKeys, buildFromKeys, fromHomogenousRecordToTupleArray, fro
 
 -- assert
 
-assertValidRuleVarSubst :: forall a sn el. Language sn el => Language sn el => el -> RuleSortVarSubst sn -> (Unit -> a) -> a
+assertValidRuleVarSubst :: forall a sn el. Language sn el => el -> RuleSortVarSubst sn -> (Unit -> a) -> a
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
   if rule.parameters == Map.keys m then k unit else
