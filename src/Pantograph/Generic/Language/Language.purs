@@ -56,17 +56,24 @@ buildChangingRule strs k = do
   let kids /\ parent = unsafePartial $ k parametersVars
   ChangingRule {parameters, kids, parent}
 
-buildExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => Language sn el => el -> Record r -> Array (Expr sn el) -> Expr sn el
+buildExprNode :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> ExprNode sn el
+buildExprNode label sigma_ = 
+  let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
+  assertValidRuleVarSubst label sigma \_ ->
+    EN label sigma {}
+
+buildExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> Array (Expr sn el) -> Expr sn el
 buildExpr label sigma_ = 
   let node = buildExprNode label sigma_ in
   assertValidTreeKids "makeExpr" node \kids ->
     Tree node kids
 
-buildExprNode :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => Language sn el => el -> Record r -> ExprNode sn el
-buildExprNode label sigma_ = 
-  let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
-  assertValidRuleVarSubst label sigma \_ ->
-    EN label sigma {}
+buildExprTooth :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> Array (Expr sn el) -> Array (Expr sn el) -> ExprTooth sn el
+buildExprTooth label sigma_ leftKids rightKids =
+  let node = buildExprNode label sigma_ in
+  let i = Array.length leftKids in
+  (leftKids <> rightKids) # assertValidToothKids "makeExpr" node i \kids ->
+    Tooth node (i /\ kids)
 
 buildStepExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> Array (StepExpr sn el) -> StepExpr sn el
 buildStepExpr label sigma_ = 
@@ -109,6 +116,9 @@ makeStepExpr label sigma_ =
 makeExprNonEmptyPath :: forall sn el. Array (ExprTooth sn el) -> ExprNonEmptyPath sn el
 makeExprNonEmptyPath ths = NonEmptyPath $ fromJust' "makeExprNonEmptyPath" $ NonEmptyList.fromFoldable ths
 
+singletonExprNonEmptyPath :: forall sn el. ExprTooth sn el -> ExprNonEmptyPath sn el
+singletonExprNonEmptyPath th = NonEmptyPath $ NonEmptyList.singleton th
+
 -- get
 
 defaultTopExpr :: forall sn el. Language sn el => Maybe (Expr sn el)
@@ -120,7 +130,7 @@ getExprNodeSort (EN label sigma _) =
   let SortingRule sortingRule = getSortingRule label in
   applyRuleSortVarSubst sigma sortingRule.parent
 
-getExprSort :: forall sn el. Language sn el => Expr sn el -> Sort sn
+getExprSort :: forall sn el er. Language sn el => AnnExpr sn el er -> Sort sn
 getExprSort (Tree el _) = getExprNodeSort el
 
 getExprToothInnerSort :: forall sn el er. Language sn el => ApplyRuleSortVarSubst (Sort sn) (Tree (RuleSortNode sn)) (Sort sn) => Tooth (AnnExprNode sn el er) -> (Sort sn)

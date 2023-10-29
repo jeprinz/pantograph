@@ -5,6 +5,7 @@ import Data.Tuple.Nested
 import Prelude
 
 import Bug (bug)
+import Data.Array.NonEmpty as NonEmptyArray
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
@@ -14,7 +15,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.StringQuery as StringQuery
 import Data.Subtype (inject)
-import Data.Tuple (fst)
+import Data.Tuple (Tuple(..), fst)
 import Pantograph.Generic.Language ((%.), (%.|))
 import Pantograph.Generic.Language as PL
 import Pantograph.Library.Language.Change (getDiffChangingRule)
@@ -36,6 +37,7 @@ type Sort = PL.Sort SN
 type Edit = PL.Edit SN EL
 type AnnExprGyro er = PL.AnnExprGyro SN EL er
 type Edits = PL.Edits SN EL
+type SpecialEdits = PL.SpecialEdits SN EL
 type ExprGyro = PL.ExprGyro SN EL
 type SteppingRule = PL.SteppingRule SN EL
 type ChangingRule = PL.ChangingRule SN
@@ -82,7 +84,6 @@ derive instance Generic SN _
 instance Show SN where show = genericShow
 instance Eq SN where eq = genericEq
 instance Ord SN where compare = genericCompare
-
 instance TreeNode SN where
   kidsCount = case _ of
     StrInner _ -> 0
@@ -97,7 +98,6 @@ instance TreeNode SN where
     ArrowTySN -> 2
     LocalLoc -> 0
     NonlocalLoc -> 0
-
 instance PrettyTreeNode SN where
   prettyTreeNode sn = 
     let ass = assertValidTreeKids "prettyTreeNode" sn in
@@ -123,7 +123,6 @@ derive instance Generic DataTy _
 instance Show DataTy where show = genericShow
 instance Eq DataTy where eq = genericEq
 instance Ord DataTy where compare = genericCompare
-
 instance Pretty DataTy where
   pretty = case _ of
     BoolDataTy -> "bool"
@@ -160,7 +159,6 @@ derive instance Generic EL _
 instance Show EL where show = genericShow
 instance Eq EL where eq = genericEq
 instance Ord EL where compare = genericCompare
-
 instance TreeNode EL where
   kidsCount = case _ of
     StrEL -> 0
@@ -181,7 +179,6 @@ instance TreeNode EL where
     DataTyEL _ -> 0
     ArrowTyEL -> 2
     Format _ -> 1
-
 instance PrettyTreeNode EL where
   prettyTreeNode el =
     let ass = assertValidTreeKids "prettyTreeNode" el in
@@ -207,16 +204,16 @@ instance PrettyTreeNode EL where
 
 -- Format
 
-data Format = Newline
+data Format = Newline | Indent
 
 derive instance Generic Format _
 instance Show Format where show = genericShow
 instance Eq Format where eq = genericEq
 instance Ord Format where compare = genericCompare
-
 instance Pretty Format where
   pretty = case _ of
     Newline -> "<newline>"
+    Indent -> "<indent>"
 
 -- Language
 
@@ -226,7 +223,7 @@ instance PL.Language SN EL where
   topSort = topSort
   getDefaultExpr sr = getDefaultExpr sr
   steppingRules = steppingRules
-  getEdits sr ori = getEdits sr ori
+  getEditsAtSort sr ori = getEditsAtSort sr ori
   specialEdits = specialEdits
   validGyro gyro = validGyro gyro
 
@@ -235,15 +232,36 @@ topSort = sr_jg_tm sr_ctx_nil (sr_freshVar "top")
 
 getDefaultExpr :: Sort -> Maybe Expr
 getDefaultExpr (PL.SN Str % [strInner]) = Just $ PL.buildExpr StrEL {x: strInner} []
-getDefaultExpr (PL.SN TmJg % [γ, α]) = Just $ PL.buildExpr HoleTm {γ, α} [typeSortToTypeExpr α]
-getDefaultExpr (PL.SN NeJg % [γ, α]) = Nothing -- TODO: is there such a thing?
-getDefaultExpr (PL.SN TyJg % [α]) = Just $ typeSortToTypeExpr α
+getDefaultExpr (PL.SN TmJg % [γ, α]) = Just $ PL.buildExpr HoleTm {γ, α} [fromTypeSortToTypeExpr α]
+getDefaultExpr (PL.SN TyJg % [α]) = Just $ fromTypeSortToTypeExpr α
 getDefaultExpr _ = Nothing
 
-specialEdits = todo "specialEdits"
+specialEdits :: SpecialEdits
+specialEdits = 
+  { deleteExpr: case _ of
+      -- when you delete a type-Expr, you need to push an outward change that
+      -- replaces the type-sort that is reflected in the type-Expr's sort
+      -- (otherwise the type-Expr would just be filled to correspond to its
+      -- type-Sort again)
+      PL.SN TyJg % [alpha] -> Just $ LibEdit.makeOuterChangeEdit $ PL.SN TyJg %! [alpha %!~> PL.freshVarSort "deleted"]
+      -- when you delete a string-Expr, you need to push an outward change the
+      -- replaces the StrInner-sort with the empty-string StrInner-sort
+      PL.SN Str % [strInner] -> Just $ LibEdit.makeOuterChangeEdit $ PL.SN Str %! [strInner %!~> (PL.SN (StrInner "") % [])]
+      _ -> Nothing
+  , deletePath: \ch -> Just $ LibEdit.makeOuterChangeEdit ch
+  , copyExpr: const Nothing
+  , copyPath: const Nothing
+  -- TODO: 'enter' makes a newline
+  , enter: const Nothing
+  -- TODO: 'tab' makes an indentation
+  , tab: const Nothing
+  }
 
 validGyro :: forall er. AnnExprGyro er -> Boolean
-validGyro = todo "validGyro"
+validGyro (RootGyro e) | PL.SN TmJg % [γ, α] <- PL.getExprSort e = true
+validGyro (CursorGyro (Cursor cursor)) | PL.SN TmJg % [γ, α] <- PL.getExprSort cursor.inside = true
+validGyro (SelectGyro (Select select)) | PL.SN TmJg % [γ, α] <- PL.getExprSort select.inside = true
+validGyro _ = false
 
 getSortingRule :: EL -> SortingRule
 getSortingRule =
@@ -412,14 +430,14 @@ steppingRules =
 
   -- {_ : Type α!}↓{_} ~~> α
   typeBecomesRhsOfChange = PL.SteppingRule case _ of
-    (PL.Down /\ (PL.SN TyJg %! [α])) %.| _ -> Just $ inject (typeSortToTypeExpr (epR α))
+    (PL.Down /\ (PL.SN TyJg %! [α])) %.| _ -> Just $ inject (fromTypeSortToTypeExpr (epR α))
     _ -> Nothing
 
   -- {Term γ (+ <{α -> {> β<}}>)}↓{b} ~~> lam ~ : α . {Term (+ <{ ~ : α, {> γ <}}>) β}↓{b}
   wrapLambda = PL.SteppingRule case _ of
     (PL.Down /\ (PL.SN TmJg %! [γ, Plus /\ (PL.SN TmJg %- 1 /\ [α]) %!/ β])) %.| b -> Just $
       let x = sr_strInner "" in
-      se_tm_lam x α (epR β) (epR γ) (se_str x) (inject (typeSortToTypeExpr α)) b
+      se_tm_lam x α (epR β) (epR γ) (se_str x) (inject (fromTypeSortToTypeExpr α)) b
     _ -> Nothing
 
   -- {Term γ (- <{α -> {> β <}}>)}↓{lam x : α . b} ~~> {Term (- x : α, γ) β}↓{b}
@@ -517,27 +535,36 @@ steppingRules =
       PL.buildStepExpr ErrorBoundaryTm {γ, α, β: delta} [a]
     _ -> Nothing
 
-getEdits :: Sort -> Orientation -> Edits
--- -- getEdits (Tree (PL.SortNode (StrInner _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- -- getEdits (Tree (PL.SortNode Str) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- -- getEdits (Tree (PL.SN VarJg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: todo "", toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits sr@(Tree (PL.SN TmJg) [γ, β]) Outside = PL.Edits $ StringQuery.fuzzy
---   { toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0
---   , getItems: const
---       [ "lambda" /\
---       let α = sr_freshVar "α" in
---       let x = sr_strInner "" in
---       LibEdit.buildEditsFromExpr {splitExprPathChanges} 
---         (ex_tm_lam x α (sr_freshVar "β") γ 
---           (ex_str {x}) (ex_ty_hole α) (ex_tm_hole β))
---         sr
---     ]
---   }
--- getEdits (Tree (PL.SortNode NeJg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits (Tree (PL.SN TyJg) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits (Tree (PL.SortNode (DataTySN _)) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
--- getEdits (Tree (PL.SortNode ArrowTySN) []) Outside = PL.Edits $ StringQuery.fuzzy { getItems: const [], toString: fst, maxPenalty: Fuzzy.Distance 1 0 0 0 0 0 }
-getEdits sort orientation = bug $ "invalid cursor position; sort = " <> show sort <> "; orientation = " <> show orientation
+getEditsAtSort :: Sort -> Orientation -> Edits
+getEditsAtSort (Tree (PL.SN Str) []) Outside = PL.Edits $ StringQuery.fuzzy 
+  { toString: fst, maxPenalty
+  , getItems: \string -> 
+      [ Tuple string $
+        NonEmptyArray.singleton $
+          LibEdit.makeInsideChangeEdit $ ex_str (sr_strInner string) ]
+  }
+getEditsAtSort (Tree (PL.SN VarJg) []) Outside = PL.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
+getEditsAtSort (Tree (PL.SN TmJg) [γ0, α0]) Outside = PL.Edits $ StringQuery.fuzzy
+  { toString: fst, maxPenalty
+  , getItems: const
+      [ -- (b :: Tm γ β) ~~> (λ (x="" : ?α) (b :: Tm (x : ?α , γ) β) :: Tm γ (?α -> β))
+        Tuple "lambda" do
+        let γ = γ0
+        let β = α0
+        let α = sr_freshVar "α"
+        let x = sr_strInner ""
+        let xEx = ex_str x
+        let αEx = fromTypeSortToTypeExpr α
+        NonEmptyArray.singleton $ LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} $ PL.singletonExprNonEmptyPath $
+          PL.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
+    ]
+  }
+getEditsAtSort (Tree (PL.SN NeJg) []) Outside = PL.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
+getEditsAtSort (Tree (PL.SN TyJg) []) Outside = PL.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
+getEditsAtSort sort orientation = bug $ "invalid cursor position; sort = " <> show sort <> "; orientation = " <> show orientation
+
+maxPenalty :: Fuzzy.Distance
+maxPenalty = Fuzzy.Distance 1 0 0 0 0 0
 
 -- utilities
 
@@ -577,15 +604,15 @@ isUpInCall :: StepExpr -> Boolean
 isUpInCall (PL.EN CallTm _ _ %. [PL.Up /\ (PL.SN NeJg %! [_γ, PL.SN ArrowTySN %! [_α, _beta]]) %.| _]) = true
 isUpInCall _ = false
 
-typeSortToTypeExpr :: Sort -> Expr
-typeSortToTypeExpr (PL.SN (DataTySN dt) % []) = PL.buildExpr (DataTyEL dt) {} []
-typeSortToTypeExpr (PL.SN ArrowTySN % [α, β]) = PL.buildExpr ArrowTyEL {α, β} [typeSortToTypeExpr α, typeSortToTypeExpr β]
-typeSortToTypeExpr α@(PL.VarSN x % []) = PL.buildExpr HoleTy {α} []
-typeSortToTypeExpr sr = bug $ "invalid: " <> show sr
+fromTypeSortToTypeExpr :: Sort -> Expr
+fromTypeSortToTypeExpr (PL.SN (DataTySN dt) % []) = PL.buildExpr (DataTyEL dt) {} []
+fromTypeSortToTypeExpr (PL.SN ArrowTySN % [α, β]) = PL.buildExpr ArrowTyEL {α, β} [fromTypeSortToTypeExpr α, fromTypeSortToTypeExpr β]
+fromTypeSortToTypeExpr α@(PL.VarSN x % []) = PL.buildExpr HoleTy {α} []
+fromTypeSortToTypeExpr sr = bug $ "invalid: " <> show sr
 
 -- strStepExprToStrSort :: StepExpr -> Sort
 -- strStepExprToStrSort (_ /\ n@(PL.EN StrEL _ _) %. _)
---   | PL.SortNode (StrInner str) % [] <- PL.getExprNodeSort n = ?a
+--   | PL.SN (StrInner str) % [] <- PL.getExprNodeSort n = ?a
 -- strStepExprToStrSort _ = bug "invalid"
 
 -- shallow
@@ -654,7 +681,7 @@ rs_loc_nonlocal = PL.makeInjectRuleSort NonlocalLoc []
 --   ((Proxy :: Proxy "var_free") /\ \{x, α} -> PL.buildExpr FreeVar {x, α} []) :
 --   nil
 
--- ex_str x = PL.buildExpr StrEL {x} [] 
+ex_str x = PL.buildExpr StrEL {x} [] 
 
 ex_var_zero γ x α = PL.buildExpr ZeroVar {γ, x, α} []
 ex_var_suc γ x α y β loc pred = PL.buildExpr SucVar {γ, x, α, y, β, loc} [pred]
@@ -662,7 +689,7 @@ ex_var_free x α = PL.buildExpr FreeVar {x, α} []
 
 ex_ty_hole α = PL.buildExpr HoleTy {α} []
 
-ex_tm_lam x α β γ xExpr αExpr b = PL.buildExpr LamTm {x, α, β, γ} [xExpr, αExpr, b]
+ex_tm_lam {γ, x, α, β, xEx, αEx, b} = PL.buildExpr LamTm {γ, x, α, β} [xEx, αEx, b]
 ex_tm_hole α = PL.buildExpr HoleTm {α} []
 
 -- shallow StepExpr

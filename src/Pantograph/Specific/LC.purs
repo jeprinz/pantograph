@@ -25,6 +25,7 @@ import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
 import Pantograph.Generic.Rendering.Html as PH
+import Pantograph.Library.Language.Edit as LibEdit
 import Pantograph.Library.Language.Step as LibStep
 import Record as R
 import Text.Pretty (quotes2, (<+>))
@@ -119,14 +120,14 @@ instance PL.Language SN EL where
   getChangingRule l = getChangingRule l
   getDefaultExpr s = getDefaultExpr s
   topSort = topSort
-  getEdits s = getEdits s
+  getEditsAtSort s = getEditsAtSort s
   validGyro g = validGyro g
   steppingRules = steppingRules
-  specialEdits =
-    { deleteCursor: \sr -> PL.getDefaultExpr sr <#> \inside -> PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just inside}
-    , deleteSelect: \_ch -> Just $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing}
-    , enter: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.newline]), innerChange: Nothing, inside: Nothing} 
-    , tab: \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indent]), innerChange: Nothing, inside: Nothing} }
+  specialEdits = LibEdit.identitySpecialEdits
+    { deleteExpr = \sr -> PL.getDefaultExpr sr <#> \inside -> PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just inside}
+    , deletePath = \_ch -> Just $ PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing}
+    , enter = \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.newline]), innerChange: Nothing, inside: Nothing} 
+    , tab = \_ -> Just $ PL.Edit {outerChange: Nothing, middle: Just (PL.makeExprNonEmptyPath [tooth.format.indent]), innerChange: Nothing, inside: Nothing} }
 
 getSortingRule :: EL -> SortingRule
 getSortingRule = case _ of
@@ -157,8 +158,8 @@ getDefaultExpr = case _ of
 topSort :: Sort
 topSort = sort.term
 
-getEdits :: Sort -> Orientation -> Edits
-getEdits =
+getEditsAtSort :: Sort -> Orientation -> Edits
+getEditsAtSort =
   let
     makeInsertEdits :: Array {outerChange :: PL.SortChange SN, middle :: Array (PL.ExprTooth SN EL), innerChange :: PL.SortChange SN} -> NonEmptyArray (PL.Edit SN EL)
     makeInsertEdits edits = fromJust $ NonEmptyArray.fromArray $ edits <#> 
@@ -166,14 +167,14 @@ getEdits =
     
     maxDistance = Fuzzy.Distance 1 0 0 0 0 0
 
-    getEdits' (Tree (PL.SN StringSort) []) _ = PL.Edits $ StringQuery.fuzzy 
+    getEditsAtSort' (Tree (PL.SN StringSort) []) _ = PL.Edits $ StringQuery.fuzzy 
       { toString: fst, maxPenalty: maxDistance
       , getItems: \str -> 
           [ str /\ 
             NonEmptyArray.singleton 
               (PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)})]
       }
-    getEdits' (Tree (PL.SN TermSort) []) Outside = PL.Edits $ StringQuery.fuzzy 
+    getEditsAtSort' (Tree (PL.SN TermSort) []) Outside = PL.Edits $ StringQuery.fuzzy 
       { maxPenalty: maxDistance, toString: fst
       , getItems: const
           [ 
@@ -188,7 +189,7 @@ getEdits =
               [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
           ]
       }
-    getEdits' (Tree (PL.SN TermSort) []) Inside = PL.Edits $ StringQuery.fuzzy 
+    getEditsAtSort' (Tree (PL.SN TermSort) []) Inside = PL.Edits $ StringQuery.fuzzy 
       { maxPenalty: maxDistance, toString: fst
       , getItems: const
           [
@@ -197,9 +198,9 @@ getEdits =
             (PL.Edit {outerChange: Nothing, middle: Just $ PL.makeExprNonEmptyPath [tooth.var.str], innerChange: Nothing, inside: Just (term.string "")})
           ]
       }
-    getEdits' sr _ = bug $ "invalid sort: " <> show sr
+    getEditsAtSort' sr _ = bug $ "invalid sort: " <> show sr
   in
-  getEdits'
+  getEditsAtSort'
 
 validGyro = case _ of
   RootGyro _ -> true

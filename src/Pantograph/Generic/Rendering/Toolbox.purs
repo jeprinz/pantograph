@@ -55,12 +55,12 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
     edits = toEditArray query
 
-    getEdits = do
+    getEditsAtSort = do
       query <- HK.get queryStateId
       pure $ toEditArray query
 
     normalizeSelect (ToolboxSelect rowIx colIx) = do
-      edits <- getEdits
+      edits <- getEditsAtSort
       let editsLength = Array.length edits
       if editsLength == 0 
         then pure $ ToolboxSelect 0 0 
@@ -75,7 +75,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         false -> pure Nothing
         true -> do
           ToolboxSelect selectRowIndex' selectColIndex' <- HK.get selectStateId
-          edits <- getEdits
+          edits <- getEditsAtSort
           pure $
             edits #
               (_ Array.!! selectRowIndex') >>>

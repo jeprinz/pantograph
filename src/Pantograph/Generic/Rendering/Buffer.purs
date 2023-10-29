@@ -461,7 +461,7 @@ renderSyncExprCursor cursor@(Cursor {outside, inside, orientation}) = do
               , outside: shrinkAnnExprPath outside
               , inside: shrinkAnnExpr inside
               , enabled: false
-              , edits: getEdits (getExprSort (shrinkAnnExpr inside)) orientation
+              , edits: getEditsAtSort (getExprSort (shrinkAnnExpr inside)) orientation
               , initialQuery: getInitialQuery cursor }
         let previewInput position = PreviewInput 
               { ctx

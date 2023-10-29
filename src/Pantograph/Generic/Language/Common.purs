@@ -224,19 +224,28 @@ class
 
   steppingRules :: Array (SteppingRule sn el)
 
-  getEdits :: Sort sn -> Orientation -> Edits sn el
-  
-  specialEdits ::
-    { deleteCursor :: Sort sn -> Maybe (Edit sn el)
-    , deleteSelect :: SortChange sn -> Maybe (Edit sn el)
-    , enter :: Unit -> Maybe (Edit sn el)
-    , tab :: Unit -> Maybe (Edit sn el) }
+  getEditsAtSort :: Sort sn -> Orientation -> Edits sn el
+  specialEdits :: SpecialEdits sn el
 
   validGyro :: forall er. AnnExprGyro sn el er -> Boolean
 
+-- | A collection of (optional) special edits that are applied in different
+-- | situations.
+type SpecialEdits sn el =
+  { -- delete an expr (this is applied to the cursor in order to delete)
+    deleteExpr :: Sort sn -> Maybe (Edit sn el)
+    -- copy an expr (this is applied to the expr in the clipboard)
+  , copyExpr :: Sort sn -> Maybe (Edit sn el)
+    -- delete a path (this is applied to the select in order to delete)
+  , deletePath :: SortChange sn -> Maybe (Edit sn el)
+    -- copy a path (this is applied to the path in the clipboard)
+  , copyPath :: SortChange sn -> Maybe (Edit sn el)
+  -- 'enter' key
+  , enter :: Unit -> Maybe (Edit sn el)
+  -- 'tab' key
+  , tab :: Unit -> Maybe (Edit sn el) }
+
 newtype Edits sn el = Edits (StringQuery (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance)
-  -- = SearchableEdits (SearchableArray (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance)
-  -- | StringEdits (String -> Array (NonEmptyArray (Edit sn el)))
 
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
@@ -267,12 +276,15 @@ applySteppingRule (SteppingRule f) = f
 
 -- Edit
 
+-- | An `Edit` is described by the changes, inserted path, and replacing expr
+-- | that are applied at the cursor to perform the `Edit`.
 newtype Edit sn el = Edit 
   { outerChange :: Maybe (SortChange sn)
   , middle :: Maybe (ExprNonEmptyPath sn el)
   , innerChange :: Maybe (SortChange sn)
   , inside :: Maybe (Expr sn el) }
 
+derive instance Newtype (Edit sn el) _
 derive newtype instance (Show sn, Show el) => Show (Edit sn el)
 derive newtype instance (Eq sn, Eq el) => Eq (Edit sn el)
 
