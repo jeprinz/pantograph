@@ -601,9 +601,9 @@ type ENV = ()
 instance PR.Rendering SN EL CTX ENV where
   topCtx = Proxy /\ topCtx
   topEnv = Proxy /\ topEnv
-  arrangeExpr = todo ""
-  getBeginsLine = todo ""
-  getInitialQuery = todo ""
+  arrangeExpr node kids = arrangeExpr node kids
+  getBeginsLine cursor = getBeginsLine cursor
+  getInitialQuery cursor = getInitialQuery cursor
 
 topCtx :: Record CTX
 topCtx = {}
