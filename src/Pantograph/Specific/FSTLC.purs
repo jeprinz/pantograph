@@ -610,46 +610,46 @@ topEnv = {}
 arrangeExpr :: forall er a. AnnExprNode er -> Array (RenderM (a /\ AnnExprNode er)) -> RenderM (Array (ArrangeKid a))
 arrangeExpr node@(PL.EN StrEL _ _) [] | PL.SN Str % [PL.SN (StrInner string) % []] <- PL.getExprNodeSort node = do
   pure $ Array.fromFoldable $ string ⊕ Nil
-arrangeExpr node@(PL.EN ZeroVar _ _) [] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN ZeroVar _ _) [] | _ % _ <- PL.getExprNodeSort node = do
   pure $ Array.fromFoldable $ "Z" ⊕ Nil
-arrangeExpr node@(PL.EN SucVar _ _) [x] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN SucVar _ _) [x] | _ % _ <- PL.getExprNodeSort node = do
   x /\ _ <- x
   pure $ Array.fromFoldable $ "S" ⊕ x ~⊕ Nil
-arrangeExpr node@(PL.EN FreeVar _ _) [] | PL.SN _ % _ <- PL.getExprNodeSort node =
+arrangeExpr node@(PL.EN FreeVar _ _) [] | _ % _ <- PL.getExprNodeSort node =
   pure $ Array.fromFoldable $ "F" ⊕ Nil
-arrangeExpr node@(PL.EN LamTm _ _) [x, α, b] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN LamTm _ _) [x, α, b] | _ % _ <- PL.getExprNodeSort node = do
   x /\ _ <- x
   α /\ _ <- α
   b /\ _ <- b
   pure $ Array.fromFoldable $ "λ " ⊕ x ~⊕ " : " ⊕ α ~⊕ " . " ⊕ b ~⊕ Nil
-arrangeExpr node@(PL.EN LetTm _ _) [x, alpha, a, b] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN LetTm _ _) [x, alpha, a, b] | _ % _ <- PL.getExprNodeSort node = do
   x /\ _ <- x
   α /\ _ <- alpha
   a /\ _ <- a
   b /\ _ <- b
   pure $ Array.fromFoldable $ "let " ⊕ x ~⊕ " : " ⊕ α ~⊕ " = " ⊕ a ~⊕ " in " ⊕ b ~⊕ Nil
-arrangeExpr node@(PL.EN IfTm _ _) [a, b, c] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN IfTm _ _) [a, b, c] | _ % _ <- PL.getExprNodeSort node = do
   a /\ _ <- a
   b /\ _ <- b
   c /\ _ <- c
   pure $ Array.fromFoldable $ "if " ⊕ a ~⊕ " then " ⊕ b ~⊕ " else " ⊕ c ~⊕ Nil
-arrangeExpr node@(PL.EN CallTm _ _) [ne] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN CallTm _ _) [ne] | _ % _ <- PL.getExprNodeSort node = do
   ne /\ _ <- ne
   pure $ Array.fromFoldable $ ne ~⊕ Nil
-arrangeExpr node@(PL.EN ErrorCallTm _ _) [ne] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN ErrorCallTm _ _) [ne] | _ % _ <- PL.getExprNodeSort node = do
   ne /\ _ <- ne
   pure $ Array.fromFoldable $ "ErrorCall " ⊕ ne ~⊕ Nil
-arrangeExpr node@(PL.EN HoleTm _ _) [α] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN HoleTm _ _) [α] | _ % _ <- PL.getExprNodeSort node = do
   α /\ _ <- α
   pure $ Array.fromFoldable $ "(? : " ⊕ α ~⊕ ")" ⊕ Nil
-arrangeExpr node@(PL.EN ErrorBoundaryTm _ _) [a] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN ErrorBoundaryTm _ _) [a] | _ % _ <- PL.getExprNodeSort node = do
   a /\ _ <- a
   pure $ Array.fromFoldable $ "ErrorBoundary " ⊕ a ~⊕ Nil
 arrangeExpr node@(PL.EN VarNe _ _) [_x] | PL.SN VarJg % [γ, PL.SN (StrInner string) % [], α, PL.SN LocalLoc % []] <- PL.getExprNodeSort node = 
   pure $ Array.fromFoldable $ "#" ⊕ string ⊕ Nil
 arrangeExpr node@(PL.EN VarNe _ _) [x] | PL.SN VarJg % [γ, PL.SN (StrInner string) % [], α, PL.SN NonlocalLoc % []] <- PL.getExprNodeSort node = 
   pure $ Array.fromFoldable $ "Nonlocal#" ⊕ string ⊕ Nil
-arrangeExpr node@(PL.EN AppNe _ _) [f, a] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN AppNe _ _) [f, a] | _ % _ <- PL.getExprNodeSort node = do
   f /\ _ <- f
   a /\ aNode <- a
   pure $ Array.fromFoldable $
@@ -659,15 +659,15 @@ arrangeExpr node@(PL.EN AppNe _ _) [f, a] | PL.SN _ % _ <- PL.getExprNodeSort no
   where
   argRequiresParens :: AnnExprNode er -> Boolean
   argRequiresParens _ = false
-arrangeExpr node@(PL.EN GrayAppNe _ _) [f, a] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN GrayAppNe _ _) [f, a] | _ % _ <- PL.getExprNodeSort node = do
   f /\ _ <- f
   a /\ _ <- a
   pure $ Array.fromFoldable $ f ~⊕ " " ⊕ "{" ⊕ a ~⊕ "}" ⊕ Nil
-arrangeExpr node@(PL.EN HoleTy _ _) [] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN HoleTy _ _) [] | _ % _ <- PL.getExprNodeSort node = do
   pure $ Array.fromFoldable $ "?" ⊕ Nil
-arrangeExpr node@(PL.EN (DataTyEL dt) _ _) [] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN (DataTyEL dt) _ _) [] | _ % _ <- PL.getExprNodeSort node = do
   pure $ Array.fromFoldable $ pretty dt ⊕ Nil
-arrangeExpr node@(PL.EN ArrowTyEL _ _) [alpha, beta] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- PL.getExprNodeSort node = do
   alpha /\ alphaNode <- alpha
   beta /\ _ <- beta
   pure $ Array.fromFoldable $
@@ -678,7 +678,7 @@ arrangeExpr node@(PL.EN ArrowTyEL _ _) [alpha, beta] | PL.SN _ % _ <- PL.getExpr
   domainRequiresParens :: AnnExprNode er -> Boolean
   domainRequiresParens (PL.EN ArrowTyEL _ _) = true
   domainRequiresParens _ = false
-arrangeExpr node@(PL.EN (Format fmt) _ _) [a] | PL.SN _ % _ <- PL.getExprNodeSort node = do
+arrangeExpr node@(PL.EN (Format fmt) _ _) [a] | _ % _ <- PL.getExprNodeSort node = do
   a /\ _ <- a
   pure $ Array.fromFoldable $ fmt ⊕ a ~⊕ Nil
 arrangeExpr node mkids = do
