@@ -10,7 +10,7 @@ import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (class Newtype)
 import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
@@ -18,13 +18,13 @@ import Data.String as String
 import Data.StringQuery (StringQuery)
 import Data.Subtype (class Subtype, inject, project)
 import Data.Traversable (traverse)
-import Data.Tree (class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation(..), Path, Select, Tooth, Tree(..), assertValidTreeKids, kidsCount, lub', prettyTreeNode)
+import Data.Tree (class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation, Path, Select, Tooth, Tree(..), assertValidTreeKids, kidsCount, lub', prettyTreeNode)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Prim.Row (class Union)
-import Text.Pretty (class Pretty, braces, braces2, inner, outer, parens, pretty, (<+>))
+import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 import Util (fromJust)
