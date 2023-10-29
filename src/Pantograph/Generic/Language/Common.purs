@@ -1,6 +1,7 @@
 module Pantograph.Generic.Language.Common where
 
 import Prelude
+import Data.Tree
 
 import Bug (bug)
 import Data.Array as Array
@@ -18,7 +19,6 @@ import Data.String as String
 import Data.StringQuery (StringQuery)
 import Data.Subtype (class Subtype, inject, project)
 import Data.Traversable (traverse)
-import Data.Tree (class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation, Path, Select, Tooth, Tree(..), assertValidTreeKids, kidsCount, lub', prettyTreeNode)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
@@ -27,7 +27,7 @@ import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
-import Util (fromJust)
+import Util (fromJust, fromJust')
 
 -- infixes
 
@@ -331,7 +331,7 @@ lookupRuleSortVarSubst x sigma@(RuleSortVarSubst m) = case Map.lookup x m of
 class ApplyRuleSortVarSubst v a b | v a -> b where
   applyRuleSortVarSubst :: RuleSortVarSubst v -> a -> b
 
-instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) RuleSortVar (Sort sn) where
+instance Pretty v => ApplyRuleSortVarSubst v RuleSortVar v where
   applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
     Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
     Just sr -> sr
@@ -344,14 +344,22 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSo
   applyRuleSortVarSubst sigma (Tree (VarRuleSortNode x) _) = applyRuleSortVarSubst sigma x
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSortChange sn) (SortChange sn) where
-  applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (fromJust <<< project <$> tooth)) (applyRuleSortVarSubst sigma kid)
+  applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (applyRuleSortVarSubst sigma tooth)) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
-  applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromJust $ project node) (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = injectTreeIntoChange $ applyRuleSortVarSubst sigma x
+  applyRuleSortVarSubst _ _ = bug "invalid"
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) where
   applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (fromJust <<< project <$> tooth)) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst _ (Replace old new) = Replace (fromJust $ project old) (fromJust $ project new)
-  applyRuleSortVarSubst sigma (InjectChange node kids) = InjectChange (fromJust $ project node) (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = applyRuleSortVarSubst sigma x
+  applyRuleSortVarSubst _ _ = bug "invalid"
+
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (Tooth (RuleSortNode sn)) (Tooth (SortNode sn)) where
+  applyRuleSortVarSubst sigma (InjectRuleSortNode sn %- i /\ kids) = sn %- i /\ (applyRuleSortVarSubst sigma <$> kids)
+  applyRuleSortVarSubst _ th@(VarRuleSortNode _ %- _ /\ _) = bug $ "impossible: there should never be a VarRuleSortNode at a ExprTooth; th = " <> pretty th
 
 -- SortVar
 

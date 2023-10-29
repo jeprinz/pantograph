@@ -3,6 +3,7 @@ module Data.Subtype where
 import Prelude
 
 import Data.Maybe (Maybe(..))
+import Util (fromJust')
 
 class Subtype :: Type -> Type -> Constraint
 class Subtype a b | b -> a where
@@ -12,3 +13,4 @@ class Subtype a b | b -> a where
 instance Subtype a (Maybe a) where
   inject = Just
   project = identity
+
