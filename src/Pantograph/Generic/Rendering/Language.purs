@@ -28,6 +28,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Pantograph.Generic.Rendering.Style (className)
+import Pantograph.Generic.Rendering.Terminal.TerminalItems (terminalItem)
 import Record as R
 import Text.Pretty (pretty)
 import Todo (todo)

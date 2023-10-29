@@ -9,6 +9,7 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tree (epL, epR)
 import Data.Tree.Common (injectTreeIntoChange)
+import Pantograph.Generic.Language.Step (getStepExprSort)
 import Text.Pretty (pretty)
 import Todo (todo)
 import Util (findIndexMap, indexDeleteAt, splitAt, splitAtFindMap)

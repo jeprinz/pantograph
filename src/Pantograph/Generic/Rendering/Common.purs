@@ -5,16 +5,10 @@ import Prelude
 
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, runStateT)
-import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Const (Const)
-import Data.Fuzzy as Fuzzy
-import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
 import Data.Maybe (Maybe)
-import Data.SearchableArray (SearchableArray)
-import Data.Show.Generic (genericShow)
 import Data.Tree (Orientation)
-import Data.Tuple (fst)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant, inj)
 import Effect.Aff (Aff)
@@ -22,6 +16,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
+import Pantograph.Generic.Rendering.Terminal.TerminalItems (TerminalItem)
 import Type.Proxy (Proxy)
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
@@ -235,14 +230,6 @@ newtype TerminalQuery a = TerminalQuery (Variant
   , "get inputIsFocused" :: Boolean -> a ))
 type TerminalOutput = Void
 type TerminalSlotId = Unit
-
-data TerminalItemTag = DebugTerminalItemTag
-newtype TerminalItem = TerminalItem {tag :: TerminalItemTag, html :: HH.PlainHTML}
-
-terminalItem = {debug, debugString}
-  where
-  debug html = TerminalItem {tag: DebugTerminalItemTag, html}
-  debugString = debug <<< HH.text
 
 -- | # Utilities
 

@@ -7,26 +7,22 @@ import Data.Tuple.Nested
 import Pantograph.Generic.Language.Common
 import Pantograph.Generic.Language.Language
 import Prelude
+import Util
 
 import Bug (bug)
 import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Foldable (foldr)
-import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity)
 import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
-import Data.Show.Generic (genericShow)
 import Data.Tree.Change (lub')
 import Debug as Debug
-import Record as R
-import Text.Pretty (pretty, ticks, (<+>))
+import Pantograph.Generic.Rendering.Terminal.TerminalItems as TerminalItems
+import Text.Pretty (pretty, (<+>))
 import Todo (todo)
-import Type.Proxy (Proxy(..))
-import Util (findMapM, fromJust, fromJust', fromRight, fromRight', uP, (<$$>))
 
 -- utilities
 
@@ -148,7 +144,8 @@ runStepExpr :: forall sn el. Language sn el =>
   StepExpr sn el ->
   Maybe (ExprGyro sn el)
 runStepExpr stepExpr =
-  Debug.trace ("[step]" <+> pretty stepExpr) \_ ->
+  -- Debug.trace ("[step]" <+> pretty stepExpr) \_ ->
+  TerminalItems.add (todo"") \_ ->
   let stepExpr' = runStepM steppingRules $ stepFixpoint stepExpr in
   case fromStepExpr stepExpr' of
     Left cursor -> Just $ CursorGyro cursor

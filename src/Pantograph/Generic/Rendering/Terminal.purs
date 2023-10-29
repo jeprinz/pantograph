@@ -22,6 +22,7 @@ import Halogen.Hooks as HK
 import Halogen.Utilities (freshElementId)
 import Halogen.Utilities as HU
 import Pantograph.Generic.Rendering.Html as HH
+import Pantograph.Generic.Rendering.Terminal.TerminalItems (TerminalItem(..), TerminalItemTag(..), getTerminalItems, modifyTerminalItems)
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
@@ -34,8 +35,10 @@ terminalComponent :: H.Component TerminalQuery TerminalInput TerminalOutput Aff
 terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
   let terminalInputRefLabel = RefLabel "TerminalInput"
 
+  let items = getTerminalItems unit
+
   -- state
-  items /\ itemsStateId <- HK.useState (mempty :: List TerminalItem)
+  _ /\ counterStateId <- HK.useState 0
   isOpen /\ isOpenStateId <- HK.useState true
 
   let toggleOpenTerminal mb_isOpen = do
@@ -47,8 +50,9 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
   HK.useQuery queryToken \(TerminalQuery query) -> (query # _) $ case_
     # on (Proxy :: Proxy "write") (\(item /\ a) -> do
-        HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
-        pure (Just a)
+        -- HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
+        modifyTerminalItems (List.take maximumTerminalItems <<< List.Cons item) \_ ->
+          pure (Just a)
       )
     # on (Proxy :: Proxy "toggle isOpen") (\(mb_isOpen /\ a) -> do
         toggleOpenTerminal mb_isOpen
@@ -58,7 +62,6 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
         b <- liftEffect $ Ref.read terminalInputIsFocusedRef
         pure (Just (k b))        
       )
-      
 
   -- render
   HK.pure $ HH.panel
@@ -94,6 +97,10 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
               --         , HE.onFocusOut \_ -> liftEffect $ Ref.write false terminalInputIsFocusedRef ]
               --     ]
               -- , 
+              HH.button 
+                [HE.onClick \_ -> HK.modify_ counterStateId (1 + _)]
+                [HH.text "force update"]
+            ,
               HH.fromPlainHTML $
               HH.div [HP.classes [HH.ClassName "TerminalItems"]]
                 (List.toUnfoldable items <#> \(TerminalItem item) -> do
