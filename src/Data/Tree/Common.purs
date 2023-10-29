@@ -54,6 +54,9 @@ instance Subtype a b => Subtype (Tree a) (Tree b) where
 treeNode :: forall a. Tree a -> a
 treeNode (Tree a _) = a
 
+treeKids :: forall a. Tree a -> Array (Tree a)
+treeKids (Tree _ kids) = kids
+
 -- Tooth
 
 data Tooth a = Tooth a (Int /\ (Array (Tree a)))

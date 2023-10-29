@@ -67,7 +67,7 @@ type SyncExprGyro sn el er = AnnExprGyro sn el (SyncExprRow sn el er)
 -- | `ExprNode` annotation data that is generated during initial hydrating and
 -- | mapped when re-hydrating.
 type HydrateExprRow' sn el er =
-  ( 
+  ( hydrated :: Unit
   | er )
 
 type HydrateExprRow sn el er = HydrateExprRow' sn el (SyncExprRow sn el er)

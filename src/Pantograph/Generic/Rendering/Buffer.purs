@@ -27,6 +27,7 @@ import Data.String as String
 import Data.String.Regex as Regex
 import Data.Traversable (traverse, traverse_)
 import Data.TraversableWithIndex (traverseWithIndex)
+import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Variant (case_, inj, on)
 import Debug as Debug
@@ -77,18 +78,18 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
   initialSyncedExprGyro /\ syncedExprGyroRef <- HK.useRef (syncExprGyro exprGyro)
 
   -- The HydrateExprGyro of the current facade.
-  _ /\ hydratedExprGyroRef <- HK.useRef (Nothing :: Maybe (HydrateExprGyro sn el ()))
+  _ /\ hydExprGyroRef <- HK.useRef (Nothing :: Maybe (HydrateExprGyro sn el ()))
 
   let
     getHydratedExprGyro = do
-      liftEffect (Ref.read hydratedExprGyroRef) >>= case _ of
-        Nothing -> bug "[modifyHydratedExprGyro] hydratedExprGyroRef should already be `Just _` by now"
-        Just hydratedExprGyro -> pure hydratedExprGyro
+      liftEffect (Ref.read hydExprGyroRef) >>= case _ of
+        Nothing -> bug "[modifyHydratedExprGyro] hydExprGyroRef should already be `Just _` by now"
+        Just hydExprGyro -> pure hydExprGyro
 
     modifyExprGyro f = do
-      hydratedExprGyro <- getHydratedExprGyro
-      rehydrateExprGyro local (Just hydratedExprGyro) Nothing
-      let exprGyro' = shrinkAnnExprGyro hydratedExprGyro
+      hydExprGyro <- getHydratedExprGyro
+      rehydrateExprGyro local (Just hydExprGyro) Nothing
+      let exprGyro' = shrinkAnnExprGyro hydExprGyro
       case f exprGyro' of
         Nothing -> pure unit
         Just exprGyro'' -> do
@@ -99,14 +100,14 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     -- If the exprGyro is not fresh, updates the exprGyro to correspond to the
     -- syncedExprGyro.
     ensureFreshExprGyro = do
-      hydratedExprGyro <- getHydratedExprGyro
-      modifyExprGyro (const (Just (shrinkAnnExprGyro hydratedExprGyro)))
+      hydExprGyro <- getHydratedExprGyro
+      modifyExprGyro (const (Just (shrinkAnnExprGyro hydExprGyro)))
 
     ensureExprGyroIsCursor = do
-      hydratedExprGyro <- getHydratedExprGyro
-      case ensureGyroIsCursor hydratedExprGyro of
+      hydExprGyro <- getHydratedExprGyro
+      case ensureGyroIsCursor hydExprGyro of
         Nothing -> ensureFreshExprGyro
-        Just hydratedExprGyro' -> modifyExprGyro (const (Just (shrinkAnnExprGyro hydratedExprGyro')))
+        Just hydExprGyro' -> modifyExprGyro (const (Just (shrinkAnnExprGyro hydExprGyro')))
 
     modifySyncedExprGyro f = do
       syncedExprGyro <- getHydratedExprGyro <#> shrinkAnnExprGyro
@@ -114,16 +115,17 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         Nothing -> pure unit
         Just syncedExprGyro' -> do
           liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
-          hydratedExprGyro' <- hydrateExprGyro local syncedExprGyro'
-          modifyHydratedExprGyro (const (Just hydratedExprGyro'))
+          hydExprGyro' <- hydrateExprGyro local syncedExprGyro'
+          rehydrateExprGyro local Nothing (Just hydExprGyro')
+          modifyHydratedExprGyro (const (Just hydExprGyro'))
 
     modifyHydratedExprGyro f = do
-      hydratedExprGyro <- getHydratedExprGyro
-      case f hydratedExprGyro of
+      hydExprGyro <- getHydratedExprGyro
+      case f hydExprGyro of
         Nothing -> pure unit
-        Just hydratedExprGyro' -> do
-          rehydrateExprGyro local (Just hydratedExprGyro) (Just hydratedExprGyro')
-          liftEffect $ Ref.write (Just hydratedExprGyro') hydratedExprGyroRef
+        Just hydExprGyro' -> do
+          rehydrateExprGyro local (Just hydExprGyro) (Just hydExprGyro')
+          liftEffect $ Ref.write (Just hydExprGyro') hydExprGyroRef
 
   renderCtx /\ renderCtxStateId <- HK.useState $
     snd (topCtx :: Proxy sn /\ Record ctx) # R.union
@@ -145,8 +147,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
-    hydratedExprGyro <- hydrateExprGyro local initialSyncedExprGyro
-    liftEffect $ Ref.write (Just hydratedExprGyro) hydratedExprGyroRef
+    hydExprGyro <- hydrateExprGyro local initialSyncedExprGyro
+    liftEffect $ Ref.write (Just hydExprGyro) hydExprGyroRef
     pure Nothing
 
   HK.useQuery queryToken \(BufferQuery query) -> (query # _) $ case_
@@ -246,8 +248,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           -- Backspace: special "delete" Edit at Cursor or Select
           else if ki.key == "Backspace" then do
             liftEffect $ Event.preventDefault event
-            hydratedExprGyro <- getHydratedExprGyro
-            let maybeEdit = case hydratedExprGyro of
+            hydExprGyro <- getHydratedExprGyro
+            let maybeEdit = case hydExprGyro of
                   RootGyro expr -> specialEdits.deleteExpr $ getExprSort expr
                   CursorGyro (Cursor cursor) -> specialEdits.deleteExpr $ getExprSort cursor.inside
                   SelectGyro (Select select) -> specialEdits.deleteExprPath $ getExprNonEmptyPathSortChange select.middle
@@ -288,142 +290,45 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 
 -- hydrate
 
-type HydrateM sn el er = ReaderT (HydrateCtx sn el er) (HK.HookM Aff)
+-- | Flush the `HydrateExprGyro`'s status to the DOM.
+flushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> HydrateExprGyro sn el er -> HK.HookM Aff Unit
+flushHydrateExprGyro local = case _ of
+  (RootGyro _expr) ->
+    pure unit
+  (CursorGyro (Cursor cursor)) -> do
+    liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just true)
+  (SelectGyro (Select select)) -> do
+    liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just true)
+    liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just true)
 
--- this data is _only_ used for calculating `HydrateExprRow`
-type HydrateCtx sn el er =
-  { cursor :: SyncExprCursor sn el er
-  , maybeSelect :: Maybe (SyncExprGyro sn el er) }
+-- | Unflush the `HydrateExprGyro`'s status from the DOM.
+unflushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> HydrateExprGyro sn el er -> HK.HookM Aff Unit
+unflushHydrateExprGyro local = case _ of
+  (RootGyro _expr) ->
+    pure unit
+  (CursorGyro (Cursor cursor)) -> do
+    liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just false)
+  (SelectGyro (Select select)) -> do
+    liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just false)
+    liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just false)
 
-hydrateExprNode :: forall sn el er ctx env. Rendering sn el ctx env => HydrateM sn el er (HydrateExprNode sn el er)
-hydrateExprNode = do
-  Cursor cursor <- asks _.cursor 
-  maybeSelect <- asks _.maybeSelect
-
-  let
-    beginsLine orientation = getBeginsLine (Cursor cursor {orientation = orientation}) || null cursor.outside
-    validCursor orientation = validGyro (CursorGyro (Cursor cursor {orientation = orientation}))
-    validSelect = maybeSelect # maybe false validGyro
-    EN label sigma ann = cursor.inside # treeNode
-
-  pure $ EN label sigma $ ann # R.union
-    { beginsLine
-    , validCursor
-    , validSelect }
-
+-- | The initial hydration (per render) initializes all the hydrate data and updates styles accordingly.
 hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-hydrateExprGyro local gyro = do
-  hydratedExprGyro <- case gyro of
-    RootGyro expr -> do
-      expr' <- flip runReaderT
-          { cursor: Cursor {outside: mempty, inside: expr, orientation: Outside} 
-          , maybeSelect: Just $ CursorGyro $ Cursor {outside: mempty, inside: expr, orientation: Outside} } $
-        hydrateExpr
-      pure $ RootGyro $ expr'
-    CursorGyro cursor@(Cursor {outside, inside, orientation}) -> do
-      outside' /\ inside' <- 
-        flip runReaderT 
-          { cursor: Cursor {outside: mempty, inside: escapeCursor cursor, orientation: Outside}
-          , maybeSelect: case fromPathMaybe outside of
-              Nothing -> Just $ CursorGyro $ Cursor {outside: mempty, inside: escapeCursor cursor, orientation: Outside}
-              Just middle -> Just $ SelectGyro $ Select {outside: mempty, middle, inside, orientation: Outside} } $
-        hydrateExprPath outside \outside' -> (outside' /\ _) <$>
-        hydrateExpr
-      pure $ CursorGyro $ Cursor {outside: outside', inside: inside', orientation}
-    SelectGyro select@(Select {outside, middle, inside, orientation}) -> do
-      outside' /\ middle' /\ inside' <- 
-        flip runReaderT 
-          { cursor: Cursor {outside: mempty, inside: escapeCursor $ escapeSelect $ select, orientation: Outside}
-          , maybeSelect: Just $ SelectGyro $ Select {outside: mempty, middle: fromPath "hydrateExprGyro" $ outside <> toPath middle, inside, orientation: Outside} } $
-        hydrateExprPath outside \outside' -> (outside' /\ _) <$>
-        hydrateExprPath (toPath middle) \middle' -> (fromPath "hydrateExprGyro" middle' /\ _) <$>
-        hydrateExpr
-      pure $ SelectGyro $ Select {outside: outside', middle: middle', inside: inside', orientation}
-  rehydrateExprGyro local Nothing (Just hydratedExprGyro)
-  pure hydratedExprGyro
-
-hydrateStep :: forall sn el er a. Language sn el => Int -> HydrateM sn el er a -> HydrateM sn el er a
-hydrateStep i = local $
-  R.modify (Proxy :: Proxy "cursor") (moveCursorDownOuter i) >>>
-  R.modify (Proxy :: Proxy "maybeSelect") (grabGyroDown i =<< _)
-
-hydrateExprPath :: forall sn el er ctx env a. Rendering sn el ctx env => SyncExprPath sn el er -> (HydrateExprPath sn el er -> HydrateM sn el er a) -> HydrateM sn el er a
-hydrateExprPath (Path ts0) k = go mempty (List.reverse ts0)
-  where
-  go path Nil = k path
-  go path (Cons (Tooth _ (i /\ _)) ts) = do
-    Cursor cursor0 <- asks _.cursor
-    maybeSelect0 <- asks _.maybeSelect
-
-    -- Debug.traceM $ "[hydrateExprPath]" <>
-    --   "\n  • i = " <> show i <>
-    --   "\n  • cursor0 = " <> pretty (Cursor cursor0) <>
-    --   "\n  • select0 = " <> pretty maybeSelect0
-
-    do
-      Cursor cursor <- asks _.cursor
-      maybeSelect <- asks _.maybeSelect
-
-      -- Debug.traceM $ "[hydrateExprPath]" <>
-      --   "\n  • cursor = " <> pretty (Cursor cursor) <>
-      --   "\n  • select = " <> pretty maybeSelect
-
-      hydratedNode <- hydrateExprNode
-      hydratedKids <- tooths cursor.inside # Array.deleteAt i # fromJust' "hydrateExprPath" # traverse \(Tooth _ (i' /\ _) /\ _) -> do
-        -- Debug.traceM $ "[hydrateExprPath]" <>
-        --   "\n  • i = " <> show i' <>
-        --   "\n  • cursor = " <> pretty (Cursor cursor) <>
-        --   "\n  • select = " <> pretty maybeSelect
-
-        hydrateStep i' $ hydrateExpr
-
-      let tooth' = Tooth hydratedNode (i /\ hydratedKids)
-      hydrateStep i $ go (consPath path tooth') ts
-
-hydrateExpr :: forall sn el er ctx env. Rendering sn el ctx env => HydrateM sn el er (HydrateExpr sn el er)
-hydrateExpr = do
-  Cursor cursor <- asks _.cursor
-  maybeSelect <- asks _.maybeSelect
-
-  hydratedNode <- hydrateExprNode
-  hydratedKids <- tooths cursor.inside # traverse \(Tooth _ (i /\ _) /\ _) -> do
-    -- Debug.traceM $ "[hydrateExpr]" <>
-    --   "\n  • i = " <> show i <>
-    --   "\n  • cursor = " <> pretty (Cursor cursor) <>
-    --   "\n  • select = " <> pretty maybeSelect
-
-    hydrateStep i $ hydrateExpr
-  pure $ Tree hydratedNode hydratedKids
+hydrateExprGyro local syncExprGyro = syncExprGyro # traverseGyro \{inside: EN label sigma ann % _} -> pure $ EN label sigma $ ann # R.union {hydrated: unit}
 
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
 rehydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
-rehydrateExprGyro local m_hydratedExprGyro m_hydratedExprGyro' = do
-  when (isJust m_hydratedExprGyro || isJust m_hydratedExprGyro') do
+rehydrateExprGyro local m_hydExprGyro m_hydExprGyro' = do
+  when (isJust m_hydExprGyro || isJust m_hydExprGyro') do
     tell local.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
-  unhydrateExprGyro
-  rehydrateExprGyro'
-  where
-  unhydrateExprGyro = case m_hydratedExprGyro of
+  case m_hydExprGyro of
     Nothing -> pure unit
-    Just (RootGyro _expr) ->
-      pure unit
-    Just (CursorGyro (Cursor cursor)) -> do
-      liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just false)
-    Just (SelectGyro (Select select)) -> do
-      liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just false)
-      liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just false)
-
-  rehydrateExprGyro' = case m_hydratedExprGyro' of
+    Just hydExprGyro -> unflushHydrateExprGyro local hydExprGyro
+  case m_hydExprGyro' of
     Nothing -> pure unit
-    Just (RootGyro _expr) ->
-      pure unit
-    Just (CursorGyro (Cursor cursor)) -> do
-      liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just true)
-    Just (SelectGyro (Select select)) -> do
-      liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just true)
-      liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just true)
+    Just hydExprGyro -> flushHydrateExprGyro local hydExprGyro
 
 -- render
 

@@ -25,6 +25,7 @@
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/index.js",
     "serve": "npm run build && esbuild index.js --sourcemap --bundle --outdir=dist --servedir=dist",
     "servek": "npm run serve",
+    "run": "npx spago run",
     "test": "npx spago test"
   },
   "repository": {

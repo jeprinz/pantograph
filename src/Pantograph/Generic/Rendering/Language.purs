@@ -12,9 +12,12 @@ import Control.Monad.Reader (ask, local)
 import Control.Monad.State (get)
 import DOM.HTML.Indexed as HPI
 import Data.Array as Array
-import Data.Foldable (foldMap)
+import Data.Foldable (foldMap, null)
+import Data.Identity (Identity(..))
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
+import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple.Nested ((/\))
 import Data.Variant (inj)
 import Effect.Aff (Aff)
@@ -27,14 +30,25 @@ import Halogen.Utilities as HU
 import Pantograph.Generic.Rendering.Style (className)
 import Record as R
 import Text.Pretty (pretty)
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent as MouseEvent
 
 -- sync
 
-syncExprGyro :: forall sn el er. AnnExprGyro sn el er -> SyncExprGyro sn el er
-syncExprGyro = map \(EN label sigma er) -> EN label sigma $ R.union {elemId: HU.freshElementId unit} er
+syncExprGyro :: forall sn el ctx env er. Rendering sn el ctx env => AnnExprGyro sn el er -> SyncExprGyro sn el er
+syncExprGyro = unwrap <<< traverseGyro \{outside, middle, inside: inside@(EN label sigma er % _)} -> do
+  let greaterOutside = outside <> middle
+  Identity $ 
+    EN label sigma $ er # R.union 
+      { elemId: HU.freshElementId unit
+      , beginsLine: \orientation -> getBeginsLine (Cursor {outside: greaterOutside, inside, orientation}) || null greaterOutside
+      , validCursor: \orientation -> validGyro (CursorGyro (Cursor {outside: greaterOutside, inside, orientation}))
+      , validSelect: case fromPathMaybe middle of
+          Nothing -> true
+          Just middle' -> validGyro (SelectGyro (Select {outside, middle: middle', inside, orientation: Outside}))
+      }
 
 -- render
 
