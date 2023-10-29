@@ -1,36 +1,39 @@
 module Pantograph.Generic.Rendering.Editor where
 
-import Data.Tuple.Nested
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
 import Util
 
-import Data.Array as Array
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Tree (class PrettyTreeNode)
-import Data.Variant (case_, inj, on)
+import Data.Const (Const)
+import Data.Maybe (Maybe(..))
+import Data.Variant (case_, on)
 import Effect.Aff (Aff)
-import Effect.Class.Console as Console
 import Halogen (liftEffect)
 import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
+import Halogen.Aff as HA
+import Halogen.HTML (ClassName(..), div, slot, text) as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Halogen.Query.Event as HQ
+import Halogen.VDom.Driver as VDomDriver
 import Pantograph.Generic.Rendering.Buffer (bufferComponent)
-import Pantograph.Generic.Rendering.Html as HH
-import Pantograph.Generic.Rendering.Keyboard (getKeyInfo, showKeyInfo, useKeyboardEffect)
+import Pantograph.Generic.Rendering.Html (panel) as HH
+import Pantograph.Generic.Rendering.Keyboard (getKeyInfo, useKeyboardEffect)
 import Pantograph.Generic.Rendering.Terminal (terminalComponent)
-import Prim.Row (class Lacks)
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
-import Web.HTML as HTML
-import Web.HTML.HTMLDocument as HTMLDocument
-import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
-import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
+
+runEditor :: forall sn el ctx env.
+  Rendering sn el ctx env =>
+  Proxy sn ->
+  EditorOptions -> 
+  Aff (H.HalogenIO (Const Void) Void Aff)
+runEditor _ (EditorOptions {}) = VDomDriver.runUI cmp input =<< HA.awaitBody
+  where
+  cmp = editorComponent :: EditorComponent sn el ctx env
+  input = EditorInput {}
+
 
 editorComponent :: forall sn el ctx env. Rendering sn el ctx env => EditorComponent sn el ctx env
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do

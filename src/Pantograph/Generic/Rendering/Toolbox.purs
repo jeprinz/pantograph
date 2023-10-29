@@ -191,7 +191,7 @@ makeToolboxExprProps {adjacentIndexedEdits, modifySelect, outside: toolboxOutsid
       pure 
         [ HP.classes [className.expr, className.toolboxExpr, className.adjacentEditClasp] 
         , HE.onMouseOver \mouseEvent -> do
-            liftEffect $ Event.preventDefault $ MouseEvent.toEvent mouseEvent
+            liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
             modifySelect $ const select
         ]
 

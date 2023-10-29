@@ -42,7 +42,10 @@ runM ctx env = flip runReaderT ctx >>> flip runStateT env
 
 -- | `ExprNode` annotation data that is generated during syncronizing.
 type SyncExprRow sn el er = 
-  ( elemId :: HU.ElementId 
+  ( elemId :: HU.ElementId
+  , beginsLine :: Orientation -> Boolean
+  , validCursor :: Orientation -> Boolean
+  , validSelect :: Boolean
   | er )
 type SyncExpr sn el er = AnnExpr sn el (SyncExprRow sn el er)
 type SyncExprNode sn el er = AnnExprNode sn el (SyncExprRow sn el er)
@@ -64,9 +67,7 @@ type SyncExprGyro sn el er = AnnExprGyro sn el (SyncExprRow sn el er)
 -- | `ExprNode` annotation data that is generated during initial hydrating and
 -- | mapped when re-hydrating.
 type HydrateExprRow' sn el er =
-  ( beginsLine :: Orientation -> Boolean
-  , validCursor :: Orientation -> Boolean
-  , validSelect :: Boolean
+  ( 
   | er )
 
 type HydrateExprRow sn el er = HydrateExprRow' sn el (SyncExprRow sn el er)
@@ -110,6 +111,13 @@ class Language sn el <= Rendering sn el ctx env | sn -> el ctx env, el -> sn ctx
     RenderM sn el ctx env (Array (ArrangeKid sn el a))
   getBeginsLine :: forall er. AnnExprCursor sn el er -> Boolean
   getInitialQuery :: forall er. AnnExprCursor sn el er -> String
+
+-- | # EditorOptions
+
+newtype EditorOptions = EditorOptions 
+  { verbosity :: Int }
+
+-- | # ArrangeKid
 
 data ArrangeKid sn el a
   = ArrangeKid a

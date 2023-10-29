@@ -3,6 +3,7 @@ module Pantograph.Generic.Language.Language where
 import Data.Tree
 import Pantograph.Generic.Language.Common
 import Prelude
+import Util
 
 import Bug (bug)
 import Data.Array as Array
@@ -16,12 +17,12 @@ import Data.Traversable (traverse)
 import Data.Tree.Common (assertValidToothKids, injectTreeIntoChange)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
+import Debug as Debug
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (pretty)
 import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Type.Row.Homogeneous (class Homogeneous)
-import Util (class RowKeys, buildFromKeys, fromHomogenousRecordToTupleArray, fromJust, fromJust', rowKeys)
 
 -- assert
 
@@ -29,7 +30,7 @@ assertValidRuleVarSubst :: forall a sn el. Language sn el => el -> RuleSortVarSu
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
   if rule.parameters == Map.keys m then k unit else
-  bug $ "assertValidRuleVarSubst: For label " <> show label <> ", the substitution " <> pretty sigma <> " is invalid."
+  bug $ "assertValidRuleVarSubst: For label " <> show label <> ", the substitution " <> show sigma <> " is invalid."
 
 -- build
 
@@ -57,7 +58,7 @@ buildChangingRule strs k = do
   ChangingRule {parameters, kids, parent}
 
 buildExprNode :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> ExprNode sn el
-buildExprNode label sigma_ = 
+buildExprNode label sigma_ =
   let sigma = RuleSortVarSubst $ Map.fromFoldable $ map (\(k /\ v) -> (MakeRuleSortVar k /\ v)) $ fromHomogenousRecordToTupleArray sigma_ in
   assertValidRuleVarSubst label sigma \_ ->
     EN label sigma {}

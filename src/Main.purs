@@ -5,11 +5,11 @@ import Prelude
 import Effect (Effect)
 import Effect.Class.Console as Console
 import Halogen.Aff as HA
-import Halogen.VDom.Driver as VDomDriver
-import Pantograph.Specific.LC (editorComponent, editorInput)
+import Pantograph.Generic.Rendering as PR
+import Pantograph.Specific.FSTLC as FSTLC
+import Pantograph.Specific.LC as LC
 
 main :: Effect Unit
 main = HA.runHalogenAff do
   Console.log "[main]"
-  HA.awaitBody >>=
-    VDomDriver.runUI editorComponent editorInput
+  FSTLC.runEditor (PR.EditorOptions {verbosity: 0})

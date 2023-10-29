@@ -25,6 +25,7 @@ import Halogen.HTML as HH
 import Pantograph.Generic.Language ((%.), (%.|))
 import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
+import Pantograph.Generic.Rendering.Editor as Editor
 import Pantograph.Generic.Rendering.Html as PH
 import Pantograph.Library.Language.Change (getDiffChangingRule)
 import Pantograph.Library.Language.Edit as LibEdit
@@ -32,6 +33,8 @@ import Pantograph.Library.Language.Step as LibStep
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
 import Todo (todo)
 import Type.Proxy (Proxy(..))
+
+runEditor = Editor.runEditor (Proxy :: Proxy SN)
 
 -- types
 

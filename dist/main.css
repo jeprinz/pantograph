@@ -250,17 +250,17 @@ body {
   content: "*";
 }
 
-.Expr>.HtmlArrangeKid {
+.Expr>.ArrangeHtml {
   display: inline;
 }
 
-.Expr>.HtmlArrangeKid>.Whitespace {
+.Expr>.ArrangeHtml>.Whitespace {
   color: rgba(0, 0, 0, 0);
 }
 
-.Expr:hover>.HtmlArrangeKid>.Whitespace,
-.Expr.OutsideCursor>.HtmlArrangeKid>.Whitespace,
-.Expr.InsideCursor>.HtmlArrangeKid>.Whitespace,
+.Expr:hover>.ArrangeHtml>.Whitespace,
+.Expr.OutsideCursor>.ArrangeHtml>.Whitespace,
+.Expr.InsideCursor>.ArrangeHtml>.Whitespace,
 .Expr.OutsideSelect .Whitespace {
   color: gray;
 }
