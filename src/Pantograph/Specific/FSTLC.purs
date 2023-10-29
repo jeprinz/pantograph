@@ -12,12 +12,9 @@ import Data.Const (Const(..))
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.HeteList ((:), nil)
 import Data.Identity (Identity(..))
 import Data.List (List(..))
-import Data.List as List
 import Data.Maybe (Maybe(..))
-import Data.Newtype (unwrap)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.StringQuery as StringQuery
@@ -31,7 +28,6 @@ import Pantograph.Generic.Rendering as PR
 import Pantograph.Generic.Rendering.Html as PH
 import Pantograph.Library.Language.Change (getDiffChangingRule)
 import Pantograph.Library.Language.Edit as LibEdit
-import Pantograph.Library.Language.Shallow (buildExprShallowSyntax, buildRuleSortShallowSyntax, buildSortChangeShallowSyntax, buildSortShallowSyntax)
 import Pantograph.Library.Language.Step as LibStep
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
 import Todo (todo)
