@@ -112,14 +112,14 @@ class Language sn el <= Rendering sn el ctx env | sn -> el ctx env, el -> sn ctx
   getInitialQuery :: forall er. AnnExprCursor sn el er -> String
 
 data ArrangeKid sn el a
-  = ExprKidArrangeKid a
-  | HtmlArrangeKid (Array (BufferHtml sn el))
+  = ArrangeKid a
+  | ArrangeHtml (Array (BufferHtml sn el))
 
 derive instance Functor (ArrangeKid sn el)
 
-isExprKidArrangeKidSuchThat :: forall sn el a. (a -> Boolean) -> ArrangeKid sn el a -> Boolean
-isExprKidArrangeKidSuchThat cond = case _ of
-  ExprKidArrangeKid a -> cond a
+isArrangeKidSuchThat :: forall sn el a. (a -> Boolean) -> ArrangeKid sn el a -> Boolean
+isArrangeKidSuchThat cond = case _ of
+  ArrangeKid a -> cond a
   _ -> false
 
 -- | # Editor

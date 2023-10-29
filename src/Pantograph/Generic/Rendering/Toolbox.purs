@@ -172,21 +172,22 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
                     submitEdit
                 ]
                 (fst $ unwrap $ runM input.ctx input.env $
-                  renderEdit {adjacentIndexedEdits, modifySelect} (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) edit)]
+                  renderEdit {adjacentIndexedEdits, modifySelect, outside: shrinkAnnExprPath input.outside} (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) edit)]
         ]]
 
 type RenderEditLocals sn el =
-  { adjacentIndexedEdits :: Array {select :: ToolboxSelect, edit :: Edit sn el}
+  { outside :: ExprPath sn el
+  , adjacentIndexedEdits :: Array {select :: ToolboxSelect, edit :: Edit sn el}
   , modifySelect :: (ToolboxSelect -> ToolboxSelect) -> HK.HookM Aff Unit
   }
 
 makeToolboxExprProps :: forall sn el er ctx env. Rendering sn el ctx env => RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env
-makeToolboxExprProps {adjacentIndexedEdits, modifySelect} outside _inside =
-  case adjacentIndexedEdits # Array.find \{edit: Edit edit} -> edit.middle # maybe false \middle -> prefixExprPathSkeleton (toPath middle) (shrinkAnnExprPath outside) of
+makeToolboxExprProps {adjacentIndexedEdits, modifySelect, outside: toolboxOutside} outside _inside =
+  case adjacentIndexedEdits # Array.find \{edit: Edit edit} -> edit.middle # maybe false \middle -> prefixExprPathSkeleton (toolboxOutside <> toPath middle) (shrinkAnnExprPath outside) of
     Nothing -> 
       pure 
         [ HP.classes [className.expr, className.toolboxExpr] ]
-    Just {select, edit} ->
+    Just {select} ->
       pure 
         [ HP.classes [className.expr, className.toolboxExpr, className.adjacentEditClasp] 
         , HE.onMouseOver \mouseEvent -> do

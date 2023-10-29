@@ -54,9 +54,9 @@ renderAnnExprHelper :: forall sn el er ctx env. Rendering sn el ctx env =>
 renderAnnExprHelper outside expr makeAnnExprProps arrangedKids = do
   props <- makeAnnExprProps outside expr
   let htmls = arrangedKids # foldMap case _ of
-        ExprKidArrangeKid html -> html
-        HtmlArrangeKid htmls' ->
-          [ HH.div [HP.classes [HH.ClassName "HtmlArrangeKid"]]
+        ArrangeKid html -> html
+        ArrangeHtml htmls' ->
+          [ HH.div [HP.classes [HH.ClassName "ArrangeHtml"]]
               htmls' ]
   pure $ [HH.div props htmls]
 
@@ -122,7 +122,7 @@ renderAnnExprPathLeft outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr 
     arrangedKids <-
       map (map (map _.item)) $
       map (takeWhile1 case _ of
-        ExprKidArrangeKid {keep} -> keep
+        ArrangeKid {keep} -> keep
         _ -> true) $
       arrangeExpr node $
       tooths expr' <#> \(tooth'@(Tooth _ (i' /\ _)) /\ kid@(Tree kidNode _)) -> do
@@ -150,7 +150,7 @@ renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr
     arrangedKids <-
       map (map (map _.item)) $
       map (Array.dropWhile case _ of
-        ExprKidArrangeKid {drop} -> drop
+        ArrangeKid {drop} -> drop
         _ -> true) $ 
       arrangeExpr node $
       tooths expr' <#> \(tooth'@(Tooth _ (i' /\ _)) /\ kid@(Tree kidNode _)) -> do

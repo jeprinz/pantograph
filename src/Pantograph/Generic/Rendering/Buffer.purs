@@ -248,9 +248,9 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             liftEffect $ Event.preventDefault event
             hydratedExprGyro <- getHydratedExprGyro
             let maybeEdit = case hydratedExprGyro of
-                  RootGyro expr -> specialEdits.deleteCursor $ getExprSort $ shrinkAnnExpr expr
-                  CursorGyro (Cursor cursor) -> specialEdits.deleteCursor $ getExprSort $ shrinkAnnExpr cursor.inside
-                  SelectGyro (Select select) -> specialEdits.deleteSelect $ getExprNonEmptyPathSortChange $ shrinkAnnExprNonEmptyPath select.middle
+                  RootGyro expr -> specialEdits.deleteExpr $ getExprSort expr
+                  CursorGyro (Cursor cursor) -> specialEdits.deleteExpr $ getExprSort cursor.inside
+                  SelectGyro (Select select) -> specialEdits.deleteExprPath $ getExprNonEmptyPathSortChange select.middle
             case maybeEdit of
               Nothing -> pure unit
               Just edit -> modifyExprGyro $ applyEdit edit
@@ -461,7 +461,7 @@ renderSyncExprCursor cursor@(Cursor {outside, inside, orientation}) = do
               , outside: shrinkAnnExprPath outside
               , inside: shrinkAnnExpr inside
               , enabled: false
-              , edits: getEditsAtSort (getExprSort (shrinkAnnExpr inside)) orientation
+              , edits: getEditsAtSort (getExprSort inside) orientation
               , initialQuery: getInitialQuery cursor }
         let previewInput position = PreviewInput 
               { ctx

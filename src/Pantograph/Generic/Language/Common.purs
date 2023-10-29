@@ -24,7 +24,7 @@ import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Prim.Row (class Union)
-import Text.Pretty (class Pretty, braces2, inner, outer, pretty, (<+>))
+import Text.Pretty (class Pretty, braces, braces2, inner, outer, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 import Util (fromJust)
@@ -119,6 +119,7 @@ data AnnExprNode (sn :: Type) (el :: Type) (er :: Row Type) = EN el (RuleSortVar
 derive instance Generic (AnnExprNode sn el er) _
 derive instance (Eq sn, Eq el, Eq (Record er)) => Eq (AnnExprNode sn el er)
 instance (Show el, Show sn, Show (Record er)) => Show (AnnExprNode sn el er) where show = genericShow
+instance (Show el, Show sn, PrettyTreeNode sn) => Pretty (AnnExprNode sn el er) where pretty (EN label sigma _) = parens $ show label <> " " <> braces (pretty sigma)
 
 annExprAnn :: forall sn el er. Tree (AnnExprNode sn el er) -> Record er
 annExprAnn (Tree node _) = annExprNodeAnn node
@@ -237,9 +238,9 @@ type SpecialEdits sn el =
     -- copy an expr (this is applied to the expr in the clipboard)
   , copyExpr :: Sort sn -> Maybe (Edit sn el)
     -- delete a path (this is applied to the select in order to delete)
-  , deletePath :: SortChange sn -> Maybe (Edit sn el)
+  , deleteExprPath :: SortChange sn -> Maybe (Edit sn el)
     -- copy a path (this is applied to the path in the clipboard)
-  , copyPath :: SortChange sn -> Maybe (Edit sn el)
+  , copyExprPath :: SortChange sn -> Maybe (Edit sn el)
   -- 'enter' key
   , enter :: Unit -> Maybe (Edit sn el)
   -- 'tab' key

@@ -151,14 +151,14 @@ getExprNonEmptyPathOuterSort = unsnocNonEmptyPath >>> _.outer >>> getExprToothOu
 
 -- | The SortChange that corresponds to going from the inner sort of the path to
 -- | the outer sort of the path.
-getExprNonEmptyPathSortChange :: forall sn el. Language sn el => ExprNonEmptyPath sn el -> SortChange sn
+getExprNonEmptyPathSortChange :: forall sn el er. Language sn el => AnnExprNonEmptyPath sn el er -> SortChange sn
 getExprNonEmptyPathSortChange = unconsNonEmptyPath >>> case _ of
   {outer: Nothing, inner} -> getExprToothSortChange inner
   {outer: Just outer, inner} -> getExprNonEmptyPathSortChange outer <> getExprToothSortChange inner
 
 -- | The SortChange that corresponds to going from the inner sort of the tooth
 -- | to the outer sort of the path.
-getExprToothSortChange :: forall sn el. Language sn el => ExprTooth sn el -> SortChange sn
+getExprToothSortChange :: forall sn el er. Language sn el => AnnExprTooth sn el er -> SortChange sn
 getExprToothSortChange (Tooth (EN label sigma _) (i /\ _)) =
   let ChangingRule rule = getChangingRule label in
   applyRuleSortVarSubst sigma $ fromJust $ Array.index rule.kids i

@@ -42,8 +42,8 @@ identitySpecialEdits :: forall sn el. SpecialEdits sn el
 identitySpecialEdits = 
   { deleteExpr: const Nothing
   , copyExpr: const Nothing
-  , deletePath: const Nothing
-  , copyPath: const Nothing
+  , deleteExprPath: const Nothing
+  , copyExprPath: const Nothing
   , enter: const Nothing
   , tab: const Nothing
   }
