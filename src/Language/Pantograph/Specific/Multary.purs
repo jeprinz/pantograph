@@ -12,7 +12,6 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Data.Tuple.Nested ((/\))
 import Bug (bug)
 import Bug.Assertion (assert, assertI, just)
-import Control.Plus (empty)
 import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
@@ -185,7 +184,6 @@ data RuleLabel
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
   -- TODO: how exactly do I want errors to work here with n-ary functions?
   | ErrorCall
-  | ErrorBoundary
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -201,38 +199,161 @@ instance Bounded RuleLabel where
 instance Pretty RuleLabel where
   pretty = show
 
---instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
---  prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
---  prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = pretty Suc <> x
---  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "↦" <+> b
---  prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
---  prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
---  prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
---  prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
---  prettyExprF'_unsafe_RuleLabel (GreyedApp /\ [f, a]) = P.parens $ f <+> "<" <+> a <+> ">"
---  prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
---  prettyExprF'_unsafe_RuleLabel (TermHole /\ [ty]) = "(? : " <> ty <> ")"
---  prettyExprF'_unsafe_RuleLabel (TypeHole /\ []) = "?<type>"
---  prettyExprF'_unsafe_RuleLabel (Newline /\ [a]) = "<newline> " <> a
---  prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
---  prettyExprF'_unsafe_RuleLabel (FunctionCall /\ [neu]) = "call" <+> P.parens neu
---  prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
---  prettyExprF'_unsafe_RuleLabel (ErrorCall /\ [t]) = "{{" <+> t <+> "}}"
---  prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
---  prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
---
---  language = language
---
---  isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
---    TermHole -> true
---    TypeHole -> true
---    _ -> false
---
---  defaultDerivTerm' (Expr.MInj (Grammar.SInj TermSort) % [gamma, ty])
---    = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [sortToType ty])
---  defaultDerivTerm' (Expr.MInj (Grammar.SInj VarSort) % [_gamma, _x, _ty, _locality]) = empty
---  defaultDerivTerm' (Expr.MInj (Grammar.SInj TypeSort) % [ty]) =
---    pure $ sortToType ty
---  -- TODO: This case should probably be in Generic.
---  defaultDerivTerm' (Expr.MInj (Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
---  defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
+--------------------------------------------------------------------------------
+-- Language
+--------------------------------------------------------------------------------
+
+type Language = Grammar.Language PreSortLabel RuleLabel
+type Rule = Grammar.Rule PreSortLabel
+
+sortToType :: Sort -> DerivTerm
+sortToType (Expr.Expr (Expr.MInj (Grammar.SInj (DataType dt))) []) =
+    Grammar.makeLabel (DataTypeRule dt) [] % []
+sortToType (Expr.Expr (Expr.MInj (Grammar.SInj Arrow)) [a, b]) =
+    Grammar.makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
+sortToType ty =
+    Grammar.makeLabel TypeHole ["type" /\ ty] % []
+
+instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
+  prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
+  prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = pretty Suc <> x
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "↦" <+> b
+  prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
+  prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
+  prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
+  prettyExprF'_unsafe_RuleLabel (ArgsListNil /\ []) = "[]"
+  prettyExprF'_unsafe_RuleLabel (ArgsListCons /\ [arg, rest]) = arg <+> ":" <+> rest
+  prettyExprF'_unsafe_RuleLabel (GreyedArgsListCons /\ [arg, rest]) = arg <+> ":" <+> rest
+  prettyExprF'_unsafe_RuleLabel (LocalVar /\ [x]) = "@" <> x
+  prettyExprF'_unsafe_RuleLabel (TermHole /\ [ty]) = "(? : " <> ty <> ")"
+  prettyExprF'_unsafe_RuleLabel (TypeHole /\ []) = "?<type>"
+  prettyExprF'_unsafe_RuleLabel (Newline /\ [a]) = "<newline> " <> a
+  prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
+  prettyExprF'_unsafe_RuleLabel (FunctionCall /\ [neu]) = "call" <+> P.parens neu
+  prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
+  prettyExprF'_unsafe_RuleLabel (ErrorCall /\ [t]) = "{{" <+> t <+> "}}"
+  prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
+
+  language = language
+
+  isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
+    TermHole -> true
+    TypeHole -> true
+    _ -> false
+
+  defaultDerivTerm' (Expr.MInj (Grammar.SInj TermSort) % [gamma, ty])
+    = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [sortToType ty])
+  defaultDerivTerm' (Expr.MInj (Grammar.SInj VarSort) % [_gamma, _x, _ty, _locality]) = Nothing
+  defaultDerivTerm' (Expr.MInj (Grammar.SInj TypeSort) % [ty]) =
+    pure $ sortToType ty
+  -- TODO: This case should probably be in Generic.
+  defaultDerivTerm' (Expr.MInj (Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
+  defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
+
+--appRule :: Rule
+--appRule = Grammar.makeRule ["gamma", "a", "b"] \[gamma, a, b] ->
+--    [ NeutralSort %|-* [gamma, Arrow %|-* [a, b]]
+--    , TermSort %|-* [gamma, a] ]
+--    /\ --------
+--    ( NeutralSort %|-* [gamma, b] )
+
+language :: Language
+language = TotalMap.makeTotalMap case _ of
+
+  Zero -> Grammar.makeRule ["gamma", "x", "type"] \[gamma, x, ty] ->
+    []
+    /\ --------
+    ( VarSort %|-* [CtxConsSort %|-* [x, ty, gamma], x, ty, Local %|-* []] )
+
+  Suc -> Grammar.makeRule ["gamma", "x", "typeX", "y", "typeY", "locality"] \[gamma, x, typeX, y, typeY, locality] ->
+    [ VarSort %|-* [gamma, x, typeX, locality] ]
+    /\ --------
+    ( VarSort %|-* [CtxConsSort %|-* [y, typeY, gamma], x, typeX, locality] )
+
+  FunctionCall -> Grammar.makeRule ["gamma", "args", "out"] \[gamma, args, out] ->
+    [ TermSort %|-* [gamma, Arrow %|-* [args, out]]
+    , ArgListSort %|-* [gamma, args]]
+    /\ -------
+    ( TermSort %|-* [gamma, out] )
+
+  ErrorCall -> Grammar.makeRule ["gamma", "args", "outVar", "outRes"] \[gamma, args, outVar, outRes] ->
+    [ TermSort %|-* [gamma, Arrow %|-* [args, outVar]]
+    , ArgListSort %|-* [gamma, args]]
+    /\ -------
+    ( TermSort %|-* [gamma, outRes] )
+
+  Lam -> Grammar.makeRule ["x", "a", "b", "gamma"] \[x, a, b, gamma] ->
+    [ Grammar.NameSortLabel %* [x]
+    , TypeSort %|-* [a]
+    , TermSort %|-* [CtxConsSort %|-* [x, a, gamma], b] ]
+    /\ --------
+    ( TermSort %|-* [gamma, Arrow %|-* [a, b]])
+
+  ArgsListNil -> Grammar.makeRule ["gamma"] \[gamma] ->
+    []
+    /\ -------
+    ( ArgListSort %|-* [gamma, TypeListNil %|-* []] )
+
+  ArgsListCons -> Grammar.makeRule ["gamma", "t", "ts"] \[gamma, t, ts] ->
+    [ TermSort %|-* [gamma, t]
+    , ArgListSort %|-* [gamma, ts]]
+    /\ -------
+    ( ArgListSort %|-* [gamma, TypeListCons %|-* [t, ts]] )
+
+  GreyedArgsListCons -> Grammar.makeRule ["gamma", "t", "ts"] \[gamma, t, ts] ->
+    [ TermSort %|-* [gamma, t]
+    , ArgListSort %|-* [gamma, ts]]
+    /\ -------
+    ( ArgListSort %|-* [gamma, TypeListCons %|-* [ts]] )
+
+  FreeVar -> Grammar.makeRule ["name", "type"] \[name, ty] ->
+    []
+    /\ --------
+    ( VarSort %|-* [CtxNilSort %|-* [], name, ty, NonLocal %|-* []] )
+
+  LocalVar -> Grammar.makeRule ["gamma", "x", "type", "locality"] \[gamma, x, ty, locality] ->
+    [ VarSort %|-* [gamma, x, ty, locality] ]
+    /\ --------
+    ( TermSort %|-* [gamma, ty] )
+
+  TermHole -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    [ TypeSort %|-* [ty] ]
+    /\ --------
+    ( TermSort %|-* [gamma, ty] )
+
+  Newline -> Grammar.makeRule ["s"] \[s] ->
+    [ s ]
+    /\ --------
+    ( s )
+
+  Let -> Grammar.makeRule ["x", "a", "b", "gamma"] \[x, a, b, gamma] ->
+    [ Grammar.NameSortLabel %* [x]
+    , TypeSort %|-* [a]
+    , TermSort %|-* [CtxConsSort %|-* [x, a, gamma], a]
+    , TermSort %|-* [CtxConsSort %|-* [x, a, gamma], b] ]
+    /\ --------
+    ( TermSort %|-* [gamma, b])
+
+  TypeHole -> Grammar.makeRule ["type"] \[ty] ->
+    [ ]
+    /\ --------
+    ( TypeSort %|-* [ty] )
+
+  (DataTypeRule dataType) -> Grammar.makeRule [] \[] ->
+    []
+    /\ --------
+    ( TypeSort %|-* [DataType dataType %|-* []] )
+
+  ArrowRule -> Grammar.makeRule ["a", "b"] \[a, b] ->
+    [TypeSort %|-* [a], TypeSort %|-* [b]]
+    /\ --------
+    ( TypeSort %|-* [Arrow %|-* [a, b]] )
+
+  If -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+      [ TermSort %|-* [gamma, DataType Bool %|-* []]
+      , TermSort %|-* [gamma, ty]
+      , TermSort %|-* [gamma, ty] ]
+      /\
+      ( TermSort %|-* [gamma, ty] )
+
+-- TODO TODO TODO: figure out where the type errors will go!!!

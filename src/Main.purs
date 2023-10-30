@@ -2,7 +2,6 @@ module Main where
 
 import Language.Pantograph.Specific.Curried as Curried
 import Tutorial.Tutorial as Tutorial
-import Language.Pantograph.Tutorial.TutorialExample as HenryTutorial
 import Prelude
 
 import Bug.Assertion (assert, just)
