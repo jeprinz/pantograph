@@ -1,4 +1,4 @@
-module Language.Pantograph.Specific.Curried where
+module Language.Pantograph.Specific.FullyApplied where
 
 import Data.Tuple.Nested
 import Prelude

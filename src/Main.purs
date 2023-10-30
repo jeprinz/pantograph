@@ -1,6 +1,7 @@
 module Main where
 
-import Language.Pantograph.Specific.Curried as Curried
+import Language.Pantograph.Specific.FullyApplied as FullyApplied
+import Language.Pantograph.Specific.CurryingAndProducts as CurryingAndProducts
 import Tutorial.Tutorial as Tutorial
 import Prelude
 
@@ -17,9 +18,12 @@ import Language.Pantograph.Generic.Grammar as Grammar
 
 -- Maybe in the future we can make a better way, but for now you can switch which thing gets run by uncommenting the correct main function
 
--- October14
+-- Some different languages
 main :: Effect Unit
-main = runEditorForLang Curried.editorSpec
+main = runEditorForLang FullyApplied.editorSpec
+
+--main :: Effect Unit
+--main = runEditorForLang CurryingAndProducts.editorSpec
 
 -- Tutorial test
 --main :: Effect Unit
