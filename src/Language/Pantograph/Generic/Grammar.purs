@@ -431,14 +431,21 @@ Inputs a term, and checks if it typechecks up to unification of metavariables. I
 To do regular typechecking, then check if the sub is empty.
 -}
 
+inferTerms :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    List (DerivTerm l r) -> Maybe (SortSub l)
+inferTerms Nil = Just Map.empty
+inferTerms (t : ts) = do
+    sub1 <- infer t
+    sub2 <- inferTerms (map (subDerivTerm sub1) ts)
+    pure $ composeSub sub1 sub2
+
 -- TODO: I guess this has a bug that it doesn't check the parent of the top node?
 infer :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
     DerivTerm l r -> Maybe (SortSub l)
 infer (l % kids) = do
-    subs <- sequence $ map infer kids
-    let sub1 = composeSubs subs
+    sub1 <- inferTerms (List.fromFoldable kids)
     let inferredKidSorts = map (Expr.subMetaExprPartially sub1 <<< derivTermSort) kids
-    let expectedKidSorts = kidSorts l
+    let expectedKidSorts = map (Expr.subMetaExprPartially sub1) (kidSorts l)
     _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
     let allSubs = composeSub sub1 sub2
     pure $ allSubs
@@ -448,14 +455,12 @@ inferPath :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
     Sort l -> DerivPath Dir.Up l r -> Maybe (SortSub l)
 inferPath _ (Expr.Path Nil) = Just Map.empty
 inferPath innerSort (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : ths)) = do
-    subs1 <- sequence (map infer left)
-    subs2 <- sequence (map infer right)
-    let allSubs1 = (composeSubs subs1) `composeSub` (composeSubs subs2) -- `composeSub` sub3
-    let inferredKidSorts = map (Expr.subMetaExprPartially allSubs1)
+    sub1 <- inferTerms (List.fromFoldable ((List.fromFoldable left) <> right)) -- the order shouldn't matter?
+    let inferredKidSorts = map (Expr.subMetaExprPartially sub1)
             ((derivTermSort <$> RevList.unreverse left) <> innerSort : (derivTermSort <$> right))
-    let expectedKidSorts = map (Expr.subMetaExprPartially allSubs1) (kidSorts l)
+    let expectedKidSorts = map (Expr.subMetaExprPartially sub1) (kidSorts l)
     _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
-    let sub12 = composeSub allSubs1 sub2
+    let sub12 = composeSub sub1 sub2
     sub3 <- inferPath (Expr.subMetaExprPartially sub12 (derivLabelSort l)) (subDerivPath sub12 (Expr.Path ths))
     pure $ composeSub sub12 sub3
 
