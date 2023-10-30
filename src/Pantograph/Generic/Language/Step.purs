@@ -89,12 +89,12 @@ fromStepExpr e0 = case go e0 of
     Right expr -> Right expr
   where
   goExpr :: StepExpr sn el -> Expr sn el
-  goExpr (Boundary _ _) = TI.bug $ El.ℓ [El.Classes [El.Inline]] $ [HH.text "encountered a `Boundary` during `goExpr`: "] <> runRenderStepExpr e0
-  goExpr (Marker _) = TI.bug $ El.ℓ [El.Classes [El.Inline]] $ [HH.text "encountered multiple `Marker`s during `goExpr`: "] <> runRenderStepExpr e0
+  goExpr (Boundary _ _) = TI.bug $ El.ℓ [El.Classes [El.Inline]] $ [El.text "encountered a `Boundary` during `goExpr`: "] <> runRenderStepExpr e0
+  goExpr (Marker _) = TI.bug $ El.ℓ [El.Classes [El.Inline]] $ [El.text "encountered multiple `Marker`s during `goExpr`: "] <> runRenderStepExpr e0
   goExpr (StepExpr node kids) = Tree node (kids <#> goExpr)
 
   go :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
-  go (Boundary _ _) = TI.bug $ HH.span_ $ [HH.text "encountered a `Boundary` during `fromStepExpr`: "] <> runRenderStepExpr e0
+  go (Boundary _ _) = TI.bug $ El.inline $ [El.text "encountered a `Boundary` during `fromStepExpr`: "] <> runRenderStepExpr e0
   go (Marker e) = Left $ {tooths: mempty, inside: goExpr e, orientation: Outside}
   go (StepExpr node kids) =
     let
@@ -103,7 +103,7 @@ fromStepExpr e0 = case go e0 of
           i /\ Left cursor -> Just (i /\ cursor) /\ kids'
           _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
         Just i_cursor /\ kids' -> case _ of
-          _ /\ Left _cursor -> TI.bug $ HH.span_ $ [HH.text "encountered multiple `Marker`s during `goExpr`: "] <> runRenderStepExpr e0
+          _ /\ Left _cursor -> TI.bug $ El.inline $ [El.text "encountered multiple `Marker`s during `goExpr`: "] <> runRenderStepExpr e0
           _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
       maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ go <$> kids
     in
@@ -155,7 +155,7 @@ runStepExpr :: forall sn el ctx env. Rendering sn el ctx env =>
   StepExpr sn el ->
   Maybe (ExprGyro sn el)
 runStepExpr expr =
-  TerminalItems.add (HH.span_ (runRenderStepExpr expr)) \_ ->
+  TerminalItems.add (El.inline (runRenderStepExpr expr)) \_ ->
   let expr' = runStepM steppingRules $ stepFixpoint expr in
   case fromStepExpr expr' of
     Left cursor -> Just $ CursorGyro cursor

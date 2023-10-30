@@ -4,23 +4,33 @@ import Prelude
 
 import Data.Array as Array
 import Data.Maybe (Maybe(..), maybe)
+import Halogen.Elements as El
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 
-panel {name, info, control, content} =
-  HH.div [HP.classes [HH.ClassName "Panel", HH.ClassName name]]
-    [ HH.div [HP.classes [HH.ClassName "PanelHeader"]]
-        [ HH.div [HP.classes [HH.ClassName "PanelHeaderInfo"]] info
-        , HH.div [HP.classes [HH.ClassName "PanelHeaderControl"]] control
+panel :: forall w i.
+  { content :: Array (HH.HTML w i)
+  , control :: Array (HH.HTML w i)
+  , info :: Array (HH.HTML w i)
+  , className :: El.ClassName
+  } -> 
+  HH.HTML w i
+panel {className, info, control, content} =
+  El.ℓ [El.Classes [className]]
+    [ El.ℓ [El.Classes [El.PanelHeader]]
+        [ El.ℓ [El.Classes [El.PanelHeaderInfo]] info
+        , El.ℓ [El.Classes [El.PanelHeaderControl]] control
         ]
-    , HH.div [HP.classes [HH.ClassName "PanelContent"]] $ Array.singleton $
-        HH.div [HP.classes [HH.ClassName "PanelContentInterior"]]
+    , El.ℓ [El.Classes [El.PanelContent]] $ Array.singleton $
+        El.ℓ [El.Classes [El.PanelContentInterior]]
           content
     ]
 
+hole :: forall w i.
+  { ann :: Maybe (HH.HTML w i)
+  , index :: Maybe (HH.HTML w i) } ->
+  HH.HTML w i
 hole {index, ann} = 
-  HH.span [HP.classes [HH.ClassName "Hole"]] $
-    [HH.text "□"] <>
+  El.ℓ [El.Classes [El.Hole]] $
+    [El.text "□"] <>
     (index # maybe [] (\i -> [HH.sub_ [i]]))
-
 

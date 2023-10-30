@@ -24,12 +24,12 @@ import Data.Tuple.Nested ((/\))
 import Data.Variant (inj)
 import Effect.Aff (Aff)
 import Halogen (liftEffect)
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Pantograph.Generic.Rendering.Style (className)
 import Pantograph.Generic.Rendering.Terminal.TerminalItems (terminalItem)
 import Record as R
 import Text.Pretty (pretty)
@@ -58,7 +58,8 @@ syncExprGyro = unwrap <<< traverseGyro \{outside, middle, inside: inside@(EN lab
 type MakeAnnExprProps sn el er ctx env =
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
-  RenderM sn el ctx env (Array (HH.IProp HPI.HTMLdiv (HK.HookM Aff Unit)))
+  -- RenderM sn el ctx env (Array (HH.IProp HPI.HTMLdiv (HK.HookM Aff Unit)))
+  RenderM sn el ctx env (El.Props (HK.HookM Aff Unit))
 
 type MakeSyncExprProps sn el er ctx env = MakeAnnExprProps sn el (SyncExprRow sn el er) ctx env
 
@@ -73,9 +74,9 @@ renderAnnExprHelper outside expr makeAnnExprProps arrangedKids = do
   let htmls = arrangedKids # foldMap case _ of
         ArrangeKid htmls' -> htmls'
         ArrangeHtml htmls' ->
-          [ HH.div [HP.classes [HH.ClassName "ArrangeHtml"]]
-              (embedHtml (pure unit) <$> htmls') ]
-  pure $ [HH.div props htmls]
+          [ El.ℓ [El.Classes [El.ArrangeHtml]] $
+              embedHtml (pure unit) <$> htmls' ]
+  pure $ [El.ℓ props htmls]
 
 renderAnnExpr :: forall sn el er ctx env. Rendering sn el ctx env =>
   AnnExprPath sn el er ->
@@ -186,12 +187,11 @@ makeSyncExprProps :: forall sn el er ctx env. Rendering sn el ctx env => BufferL
 makeSyncExprProps local outside inside@(Tree (EN _ _ {elemId}) _) = do
   ctx <- ask
   env <- get
-  pure 
-    [ HU.id $ elemId
-    , HP.classes [className.expr]
-    , HE.onClick \mouseEvent -> do
-        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-
+  pure
+    [ El.Id elemId
+    , El.Classes [El.Expr]
+    , El.StrictHover (const (pure unit))
+    , El.OnMouseDown \mouseEvent -> do
         HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ terminalItem.debug $ HH.div_
           [ HH.text "SyncExpr/onClick"
           , HH.ul_
@@ -207,13 +207,6 @@ makeSyncExprProps local outside inside@(Tree (EN _ _ {elemId}) _) = do
         else do
           -- NOTE: `modifySyncedExprGyro` only modifies a ref, which doesn not cause a re-render
           local.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside, orientation: Outside}
-
-    , HE.onMouseOver \mouseEvent -> do
-        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just true)
-    , HE.onMouseOut \mouseEvent -> do
-        liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-        liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just false)
     ]
 
 renderSyncExpr local outside inside = renderAnnExpr outside inside (makeSyncExprProps local)

@@ -4,7 +4,7 @@ import Pantograph.Generic.Language
 import Prelude
 
 import Data.HeteList (ConsTypeList, HeteList, NilTypeList, indHeteList)
-import Data.Subtype (inject)
+import Data.Supertype (inject)
 import Data.Symbol (class IsSymbol)
 import Data.Tree (Change(..), Tree(..), injectTreeIntoChange)
 import Data.Tuple.Nested (type (/\), (/\))

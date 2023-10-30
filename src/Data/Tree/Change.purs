@@ -6,7 +6,7 @@ import Prelude
 import Bug (bug)
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
-import Data.Subtype (inject)
+import Data.Supertype (inject)
 import Data.Traversable (traverse)
 import Data.Tuple.Nested ((/\))
 import Text.Pretty (pretty, ticks)

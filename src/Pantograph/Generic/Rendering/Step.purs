@@ -10,6 +10,7 @@ import Data.Display (Html, display)
 import Data.Foldable (foldMap)
 import Data.Tree (tooths)
 import Data.Tuple (fst, snd)
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language (StepExpr(..), ExprNode)
@@ -34,28 +35,26 @@ renderStepExpr e@(StepExpr node kids) = do
   let htmls = arrangedKids # foldMap case _ of
         ArrangeKid htmls' -> htmls'
         ArrangeHtml htmls' ->
-          [ HH.div [HP.classes [HH.ClassName "ArrangeHtml"]]
+          [ El.ℓ [El.Classes [El.ArrangeHtml]]
               htmls' ]
-  pure $ [HH.div (propsStepExpr e) htmls]
+  pure $ [El.ℓ (propsStepExpr e) htmls]
 renderStepExpr e@(Boundary (dir /\ ch) kid) = do
   htmls <- renderStepExpr kid
   pure 
-    [ HH.span [HP.classes [HH.ClassName "StepExprBoundaryInfo"]] 
-        [ HH.span [HP.classes [HH.ClassName "StepExprBoundaryDirection"]] [HH.text $ pretty dir]
-        , HH.span [HP.classes [HH.ClassName "StepExprBoundaryChange"]] [display ch] ]
-    , HH.div (propsStepExpr e) htmls ]
+    [ El.ℓ [El.Classes [El.StepExprBoundaryInfo]]
+        [ El.ℓ [El.Classes [El.StepExprBoundaryDirection]] [El.text $ pretty dir]
+        , El.ℓ [El.Classes [El.StepExprBoundaryChange]] [display ch]]
+    , El.ℓ (propsStepExpr e) htmls ]
 renderStepExpr e@(Marker kid) = do
   htmls <- renderStepExpr kid
-  pure $ [HH.div (propsStepExpr e) htmls]
+  pure $ [El.ℓ (propsStepExpr e) htmls]
 
+propsStepExpr :: forall sn el i. StepExpr sn el -> El.Props i
 propsStepExpr e = 
-  [ HP.classes $ Array.fold
-      [ [HH.ClassName "Expr"]
-      , [HH.ClassName "StepExpr"]
-      , case e of
-          StepExpr _ _ -> []
-          Boundary _ _ -> [HH.ClassName "StepExprBoundary"]
-          Marker _ -> [HH.ClassName "StepExprMarker"] ]
+  [ El.Classes case e of
+      StepExpr _ _ -> [El.StepExpr] 
+      Boundary _ _ -> [El.Boundary]
+      Marker _ -> [El.Marker]
   ]
 
 getStepExprNode :: forall sn el. StepExpr sn el -> ExprNode sn el

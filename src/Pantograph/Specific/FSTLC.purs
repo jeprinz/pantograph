@@ -18,17 +18,14 @@ import Data.Maybe (Maybe(..))
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.StringQuery as StringQuery
-import Data.Subtype (inject)
+import Data.Supertype (inject)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), fst, snd)
 import Halogen.Elements as El
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language ((%.), (%.|))
 import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
 import Pantograph.Generic.Rendering.Editor as Editor
-import Pantograph.Generic.Rendering.Html as PH
 import Pantograph.Library.Language.Change (getDiffChangingRule)
 import Pantograph.Library.Language.Edit as LibEdit
 import Pantograph.Library.Language.Step as LibStep
@@ -724,7 +721,7 @@ instance Arrangable Identity where
 instance Arrangable (Const String) where
   arrange (Const string) = PR.ArrangeHtml [El.punctuation string]
 instance Arrangable (Const Format) where 
-  arrange (Const Newline) = PR.ArrangeHtml [El.whitespace " ↪", HH.br_]
+  arrange (Const Newline) = PR.ArrangeHtml [El.whitespace " ↪", El.br]
   arrange (Const Indent) = PR.ArrangeHtml [El.whitespace "⇥ "]
 
 consArrangable :: forall f a. Arrangable f => f a -> List (ArrangeKid a) -> List (ArrangeKid a)

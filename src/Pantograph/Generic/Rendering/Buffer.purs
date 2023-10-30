@@ -36,6 +36,8 @@ import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Halogen (defer, liftAff, liftEffect)
 import Halogen as H
+import Halogen.Elements as El
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -46,7 +48,6 @@ import Pantograph.Generic.Language.Common (annExprAnn, annExprNodeAnn)
 import Pantograph.Generic.Language.Edit (applyEdit)
 import Pantograph.Generic.Rendering.Html as HH
 import Pantograph.Generic.Rendering.Preview (previewComponent)
-import Pantograph.Generic.Rendering.Style (className)
 import Pantograph.Generic.Rendering.Toolbox (toolboxComponent)
 import Prim.Row (class Lacks, class Union)
 import Prim.RowList (class RowToList)
@@ -268,14 +269,14 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 
   -- render
   HK.pure $ HH.panel
-    { name: "BufferPanel"
+    { className: El.BufferPanel
     , info:
-        [ HH.div [HP.classes [HH.ClassName "subtitle"]] [HH.text input.name] 
+        [ El.ℓ [El.Classes [El.Subtitle]] [El.text input.name] 
         ]
     , control:
-        [ HH.div [HP.classes [HH.ClassName "button"]] [HH.text "x"] ]
+        [ El.ℓ [El.Classes [El.Button]] [El.text "×"] ]
     , content:
-        [HH.div [HP.classes [HH.ClassName "program"]] gyroHtmls]
+        [ El.ℓ [El.Classes [El.Program]] gyroHtmls ]
     }
 
 -- hydrate
@@ -286,10 +287,10 @@ flushHydrateExprGyro = case _ of
   (RootGyro _expr) ->
     pure unit
   (CursorGyro (Cursor cursor)) -> do
-    liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just true)
+    liftEffect $ El.updateClassName (cursor.inside # annExprAnn # _.elemId) (fromOrientationToCursorClassName cursor.orientation) (Just true)
   (SelectGyro (Select select)) -> do
-    liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just true)
-    liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just true)
+    liftEffect $ El.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) El.OutsideSelect (Just true)
+    liftEffect $ El.updateClassName (select.inside # annExprAnn # _.elemId) El.InsideSelect (Just true)
 
 -- | Unflush the `HydrateExprGyro`'s status from the DOM.
 unflushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
@@ -297,10 +298,10 @@ unflushHydrateExprGyro = case _ of
   (RootGyro _expr) ->
     pure unit
   (CursorGyro (Cursor cursor)) -> do
-    liftEffect $ HU.updateClassName (cursor.inside # annExprAnn # _.elemId) (className.orientationCursor cursor.orientation) (Just false)
+    liftEffect $ El.updateClassName (cursor.inside # annExprAnn # _.elemId) (fromOrientationToCursorClassName cursor.orientation) (Just false)
   (SelectGyro (Select select)) -> do
-    liftEffect $ HU.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) (className.orientationSelect Outside) (Just false)
-    liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just false)
+    liftEffect $ El.updateClassName (select.middle # nonEmptyPathOuterNode # annExprNodeAnn # _.elemId) El.OutsideSelect (Just false)
+    liftEffect $ El.updateClassName (select.inside # annExprAnn # _.elemId) El.InsideSelect (Just false)
 
 -- | The initial hydration (per render) initializes all the hydrate data and updates styles accordingly.
 hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)

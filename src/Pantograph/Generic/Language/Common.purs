@@ -17,7 +17,7 @@ import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.StringQuery (StringQuery)
-import Data.Subtype (class Subtype, inject, project)
+import Data.Supertype (class Supertype, inject, project)
 import Data.Traversable (traverse)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
@@ -64,8 +64,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (SortNode sn) where
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
       SN node -> ass \kids -> displayTreeNode node kids
-      -- VarSN var -> ass \[] -> HH.div [HP.classes [HH.ClassName "VarSN"]] [HH.text $ pretty var]
-      VarSN var -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [HH.text $ pretty var]
+      VarSN var -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [El.text $ pretty var]
 
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)
@@ -104,7 +103,7 @@ makeVarSort x = Tree (VarSN x) []
 freshVarSort :: forall sn. String -> Tree (SortNode sn)
 freshVarSort label = Tree (VarSN (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})) []
 
-instance Subtype (SortNode sn) (RuleSortNode sn) where
+instance Supertype (SortNode sn) (RuleSortNode sn) where
   inject = InjectRuleSortNode
   project = case _ of
     InjectRuleSortNode sn -> Just sn
@@ -198,7 +197,7 @@ instance (Show sn, PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn 
     Boundary (dir /\ ch) e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
     Marker kid -> braces2 $ pretty kid
 
-instance Subtype (AnnExpr sn el ()) (StepExpr sn el) where
+instance Supertype (AnnExpr sn el ()) (StepExpr sn el) where
   inject (Tree node kids) = StepExpr node (inject <$> kids)
   project (StepExpr node kids) = Tree node <$> project `traverse` kids
   project _ = Nothing

@@ -8,6 +8,7 @@ import Data.List (List(..))
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Effect.Unsafe (unsafePerformEffect)
+import Halogen.Elements as El
 import Halogen.HTML as HH
 
 data TerminalItemTag = DebugTerminalItemTag
@@ -16,7 +17,7 @@ newtype TerminalItem = TerminalItem {tag :: TerminalItemTag, html :: Html}
 terminalItem = {debug, debugString}
   where
   debug html = TerminalItem {tag: DebugTerminalItemTag, html}
-  debugString = debug <<< HH.text
+  debugString = debug <<< El.text
 
 terminalItemsRef :: Ref (List TerminalItem)
 terminalItemsRef = unsafePerformEffect $ Ref.new Nil

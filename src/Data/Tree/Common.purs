@@ -18,13 +18,13 @@ import Data.NonEmpty (NonEmpty(..))
 import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
 import Data.String as String
-import Data.Subtype (class Subtype, inject, project)
+import Data.Supertype (class Supertype, inject, project)
 import Data.Traversable (class Traversable, traverse)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
-import Halogen.Elements (punctuation)
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Partial.Unsafe (unsafePartial)
@@ -51,7 +51,7 @@ derive instance Functor Tree
 derive instance Foldable Tree
 derive instance Traversable Tree
 
-instance Subtype a b => Subtype (Tree a) (Tree b) where
+instance Supertype a b => Supertype (Tree a) (Tree b) where
   inject = map inject
   project = traverse project
 
@@ -71,7 +71,7 @@ derive instance Functor Tooth
 derive instance Foldable Tooth
 derive instance Traversable Tooth
 
-instance Subtype a b => Subtype (Tooth a) (Tooth b) where
+instance Supertype a b => Supertype (Tooth a) (Tooth b) where
   inject = map inject
   project = traverse project
 
@@ -99,7 +99,7 @@ derive instance Traversable Path
 instance Semigroup (Path a) where append (Path ts1) (Path ts2) = Path (ts2 <> ts1)
 derive newtype instance Monoid (Path a)
 
-instance Subtype a b => Subtype (Path a) (Path b) where
+instance Supertype a b => Supertype (Path a) (Path b) where
   inject = map inject
   project = traverse project
 
@@ -130,7 +130,7 @@ derive instance Foldable NonEmptyPath
 derive instance Traversable NonEmptyPath
 instance Semigroup (NonEmptyPath a) where append (NonEmptyPath ts1) (NonEmptyPath ts2) = NonEmptyPath (ts2 <> ts1)
 
-instance Subtype a b => Subtype (NonEmptyPath a) (NonEmptyPath b) where
+instance Supertype a b => Supertype (NonEmptyPath a) (NonEmptyPath b) where
   inject = map inject
   project = traverse project
 
@@ -193,6 +193,10 @@ instance Show Orientation where show = genericShow
 derive instance Eq Orientation
 derive instance Ord Orientation
 
+fromOrientationToCursorClassName :: Orientation -> El.ClassName
+fromOrientationToCursorClassName Outside = El.OutsideCursor
+fromOrientationToCursorClassName Inside = El.InsideCursor
+
 -- Gyro
 
 data Gyro a = RootGyro (Tree a) | CursorGyro (Cursor a) | SelectGyro (Select a)
@@ -220,7 +224,7 @@ derive instance Functor Change
 derive instance Foldable Change
 derive instance Traversable Change
 
-instance Subtype a b => Subtype (Change a) (Change b) where
+instance Supertype a b => Supertype (Change a) (Change b) where
   inject = map inject
   project = traverse project
 
@@ -367,14 +371,14 @@ instance DisplayTreeNode a => DisplayS (Tooth a) where
 
 instance DisplayTreeNode a => Display (Change a) where
   display (Shift (sh /\ th) ch) = 
-    HH.div [HP.classes [HH.ClassName "Change", HH.ClassName "ShiftChange"]]
-      [punctuation $ pretty sh, displayS th $ HH.span [HP.classes [HH.ClassName "ShiftChangeInner"]] [display ch]]
+    El.ℓ [El.Classes [El.ShiftChange]]
+      [El.π $ pretty sh, displayS th $ El.ℓ [El.Classes [El.ShiftChangeInner]] [display ch]]
   display (Replace s1 s2) = 
-    HH.div [HP.classes [HH.ClassName "Change", HH.ClassName "ReplaceChange"]] 
-      [ HH.div [HP.classes [HH.ClassName "ReplaceChangeLeft"]] [display s1]
-      , punctuation " ~> "
-      , HH.div [HP.classes [HH.ClassName "ReplaceChangeRight"]] [display s2] ]
-  display (InjectChange a kids) = 
-    HH.div [HP.classes [HH.ClassName "Change", HH.ClassName "ChangeInjectChange"]] 
+    El.ℓ [El.Classes [El.ReplaceChange]]
+      [ El.ℓ [El.Classes [El.ReplaceChangeLeft]] [display s1]
+      , El.π " ~> "
+      , El.ℓ [El.Classes [El.ReplaceChangeRight]] [display s2] ]
+  display (InjectChange a kids) =
+    El.ℓ [El.Classes [El.InjectChange]]
       [displayTreeNode a (display <$> kids)]
 

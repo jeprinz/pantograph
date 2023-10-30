@@ -6,11 +6,7 @@ import Data.Maybe (Maybe(..))
 import Util (fromJust')
 
 class Subtype :: Type -> Type -> Constraint
-class Subtype a b | b -> a where
+class Subtype a b | a -> b where
   inject :: a -> b
   project :: b -> Maybe a
-
-instance Subtype a (Maybe a) where
-  inject = Just
-  project = identity
 

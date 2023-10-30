@@ -12,6 +12,7 @@ import Effect.Aff (Aff)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
+import Halogen.Elements as El
 import Halogen.HTML (ClassName(..), div, slot, text) as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
@@ -76,10 +77,9 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
   -- render
 
   HK.pure $ HH.panel
-    { name: "EditorPanel"
-    , info: 
-        [ HH.div [HP.classes [HH.ClassName "title"]] [HH.text $ "Pantograph"]
-        ]
+    { className: El.EditorPanel
+    , info:
+        [ El.ℓ [El.Classes [El.Title]] [El.text "Pantograph"] ]
     , control:
         []
     , content:

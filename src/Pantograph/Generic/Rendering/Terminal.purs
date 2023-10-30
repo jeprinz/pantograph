@@ -16,6 +16,7 @@ import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Halogen (RefLabel(..), liftEffect)
 import Halogen as H
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -66,53 +67,54 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
   -- render
   HK.pure $ HH.panel
-    { name: "TerminalPanel"
+    { className: El.TerminalPanel
     , info:
-        [ HH.div [HP.classes [HH.ClassName "subtitle"]] [HH.text $ "Terminal"] ]
+        [ El.ℓ [El.Classes [El.Subtitle]] [El.text $ "Terminal"] ]
     , control:
         [ if isOpen then
-            HH.div 
-              [ HP.classes [HH.ClassName "button"]
-              , HP.ref terminalInputRefLabel
-              , HE.onClick \mouseEvent -> do
+            El.ℓ
+              [ El.Classes [El.Button]
+              , El.Ref terminalInputRefLabel
+              , El.OnMouseDown \mouseEvent -> do
                   liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
                   toggleOpenTerminal (Just false) ]
-              [HH.text "↓"]
+              [El.text "↓"]
           else
-            HH.div 
-              [ HP.classes [HH.ClassName "button"]
-              , HE.onClick \mouseEvent -> do
+            El.ℓ 
+              [ El.Classes [El.Button]
+              , El.OnMouseDown \mouseEvent -> do
                   liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
                   toggleOpenTerminal (Just true)
               ]
-              [HH.text "↑"] 
+              [El.text "↑"] 
         ]
     , content:
-        [ HH.div [HP.classes $ [HH.ClassName "TerminalContent"] <> if not isOpen then [HH.ClassName "closed"] else []]
+        -- [ El.ℓ [El.Classes $ [HH.ClassName "TerminalContent"] <> if not isOpen then [HH.ClassName "closed"] else []]
+        [ El.ℓ [El.Classes $ [El.TerminalContent] <> if not isOpen then [El.Closed] else []]
             [ 
               -- TODO: should there be a text terminal?
-              --   HH.div [HP.classes [HH.ClassName "TerminalInput"]]
+              --   El.ℓ [El.Classes [HH.ClassName "TerminalInput"]]
               --     [ HH.input 
               --         [ HP.ref terminalInputRefLabel
               --         , HE.onFocusIn \_ -> liftEffect $ Ref.write true terminalInputIsFocusedRef
               --         , HE.onFocusOut \_ -> liftEffect $ Ref.write false terminalInputIsFocusedRef ]
               --     ]
               -- , 
-              HH.button 
-                [HE.onClick \_ -> HK.modify_ counterStateId (1 + _)]
-                [HH.text "force update"]
+              El.ℓ 
+                [ El.Classes [El.Button]
+                , El.OnMouseDown \_ -> HK.modify_ counterStateId (1 + _) ]
+                [ El.text "force update" ]
             ,
               embedHtml (pure unit) $
-              HH.div [HP.classes [HH.ClassName "TerminalItems"]]
+              El.ℓ [El.Classes [El.TerminalItems]]
                 (List.toUnfoldable items <#> \(TerminalItem item) -> do
-                  HH.div
-                    [HP.classes [HH.ClassName "TerminalItem"]]
+                  El.ℓ [El.Classes [El.TerminalItem]]
                     [ renderTag item.tag
-                    , HH.div [HP.classes [HH.ClassName "TerminalItemContent"]] [item.html] ])
+                    , El.ℓ [El.Classes [El.TerminalItemContent]] [item.html] ])
             ]
         ]
     }
 
 renderTag :: TerminalItemTag -> Html
 renderTag = case _ of
-  DebugTerminalItemTag -> HH.div [HP.classes [HH.ClassName "TerminalItemTag DebugTerminalItemTag"]] [HH.span_ [HH.text "debug"]]
+  DebugTerminalItemTag -> El.ℓ [El.Classes [El.TerminalItemTag, El.DebugTerminalItemTag]] [El.text "debug"]

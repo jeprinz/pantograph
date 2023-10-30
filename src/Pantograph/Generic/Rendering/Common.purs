@@ -18,6 +18,7 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant, inj)
 import Effect.Aff (Aff)
 import Halogen as H
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
@@ -28,7 +29,7 @@ import Type.Proxy (Proxy(..))
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
 class ToClassNames a where
-  toClassNames :: a -> Array HH.ClassName
+  toClassNames :: a -> Array El.ClassName
 
 -- | # M
 

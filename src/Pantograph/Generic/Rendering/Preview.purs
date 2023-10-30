@@ -8,18 +8,14 @@ import Pantograph.Generic.Rendering.Language
 import Prelude
 
 import Bug (bug)
-import Control.Monad.Reader (ask)
-import Control.Monad.State (get)
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Tuple (fst)
 import Data.Variant (case_, on)
 import Effect.Aff (Aff)
 import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
+import Halogen.Elements as El
 import Halogen.Hooks as HK
-import Pantograph.Generic.Rendering.Style (className)
 import Type.Proxy (Proxy(..))
 
 previewComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
@@ -36,7 +32,7 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
     case input.position of
       LeftPreviewPosition ->
           case maybeEdit of
-            Nothing -> HH.div [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewLeft"]] []
+            Nothing -> El.ℓ [El.Classes [El.PreviewLeft]] []
             Just (Edit edit) ->
               let 
                 insideHtml inside = 
@@ -53,21 +49,22 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
                       (shrinkAnnExpr input.inside :: Expr sn el)
                       makePreviewExprProps
                       (pure inside)
-                classes = 
-                  [HH.ClassName "Preview", HH.ClassName "PreviewLeft"] <>
-                  (if isJust edit.middle then [HH.ClassName "PreviewLeftInsert"] else []) <>
-                  (if isJust edit.inside then [HH.ClassName "PreviewLeftPaste"] else [])
+                classNames = case edit.middle /\ edit.inside of
+                  Nothing /\ Nothing -> [El.PreviewLeft]
+                  Just _ /\ Nothing -> [El.PreviewLeftInsert]
+                  Nothing /\ Just _ -> [El.PreviewLeftPaste]
+                  Just _ /\ Just _ -> [El.PreviewLeftInsert, El.PreviewLeftPaste]
               in 
               case edit.middle of
                 Nothing -> case edit.inside of
                   Nothing -> bug "TODO: how to preview this kind of Edit?"
-                  Just inside -> HH.div [HP.classes classes] (insideHtml inside)
+                  Just inside -> El.ℓ [El.Classes classNames] (insideHtml inside)
                 Just middle -> case edit.inside of
-                  Nothing -> HH.div [HP.classes classes] (middleHtml middle [])
-                  Just inside -> HH.div [HP.classes classes] (middleHtml middle (insideHtml inside))
+                  Nothing -> El.ℓ [El.Classes classNames] (middleHtml middle [])
+                  Just inside -> El.ℓ [El.Classes classNames] (middleHtml middle (insideHtml inside))
       RightPreviewPosition ->
           case maybeEdit of
-            Nothing -> HH.div [HP.classes [HH.ClassName "Preview", HH.ClassName "PreviewRight"]] []
+            Nothing -> El.ℓ [El.Classes [El.PreviewRight]] []
             Just (Edit edit) ->
               let
                 middleHtml middle =
@@ -79,19 +76,18 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
                       makePreviewExprProps
                       (pure [])
 
-                classes = 
-                  [HH.ClassName "Preview", HH.ClassName "PreviewRight"] <>
-                  (if isJust edit.middle then [HH.ClassName "PreviewRightInsert"] else []) <>
-                  (if isJust edit.inside then [HH.ClassName "PreviewRightPaste"] else [])
+                classNames = case edit.middle /\ edit.inside of
+                  Nothing /\ Nothing -> [El.PreviewRight]
+                  Just _ /\ Nothing -> [El.PreviewRightInsert]
+                  Nothing /\ Just _ -> [El.PreviewRightPaste]
+                  Just _ /\ Just _ -> [El.PreviewRightInsert, El.PreviewRightPaste]
               in
               case edit.middle of
-                Nothing -> HH.div [HP.classes classes] []
-                Just middle -> HH.div [HP.classes classes] (middleHtml middle)
+                Nothing -> El.ℓ [El.Classes classNames] []
+                Just middle -> El.ℓ [El.Classes classNames] (middleHtml middle)
 
 makePreviewExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
 makePreviewExprProps outside expr = do
-  ctx <- ask
-  env <- get
-  pure 
-    [ HP.classes [className.expr, className.previewExpr] ]
+  pure
+    [ El.Classes [El.PreviewExpr] ]
 

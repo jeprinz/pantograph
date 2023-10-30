@@ -20,13 +20,13 @@ import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Halogen (liftEffect)
 import Halogen as H
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Pantograph.Generic.Language.Language (prefixExprPathSkeleton)
 import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
-import Pantograph.Generic.Rendering.Style (className)
 import Text.Pretty (pretty)
 import Todo (todo)
 import Type.Proxy (Proxy(..))
@@ -141,9 +141,9 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
       )
 
   HK.pure $
-    HH.div [HP.classes [HH.ClassName "Toolbox"]]
+    El.ℓ [El.Classes [El.Toolbox]]
       if not enabled then [] else
-      [HH.div [HP.classes [HH.ClassName "ToolboxInterior"]]
+      [El.ℓ [El.Classes [El.ToolboxInterior]]
         [ HH.input 
             [ HP.classes [HH.ClassName "ToolboxInput"]
             , HP.ref queryRefLabel
@@ -153,21 +153,20 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
                 HK.modify_ queryStateId (const value)
                 resetSelect
             ]
-        , HH.div [HP.classes [HH.ClassName "EditRows"]] $
+        , El.ℓ [El.Classes [El.EditRow]] $
             edits # Array.mapWithIndex \rowIndex editRow ->
-            HH.div 
-              [HP.classes $ [HH.ClassName "EditRow"] <> if rowIndex == selectRowIndex then [HH.ClassName "SelectedEditRow"] else []]
+            El.ℓ [El.Classes $ if rowIndex == selectRowIndex then [El.SelectedEditRow] else [El.EditRow]]
               let 
                 colIndex = if rowIndex == selectRowIndex then selectColIndex else 0
                 edit = fromJust $ NonEmptyArray.index editRow colIndex
                 adjacentIndexedEdits = fromJust $ NonEmptyArray.deleteAt colIndex (editRow # NonEmptyArray.mapWithIndex \colIndex' edit -> {select: ToolboxSelect rowIndex colIndex', edit})
               in
-              [HH.div
-                [ HP.classes [HH.ClassName "Edit"]
-                , HE.onMouseOver \mouseEvent -> do
+              [El.ℓ
+                [ El.Classes [El.Edit]
+                , El.OnMouseOver \mouseEvent -> do
                     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
                     modifySelect $ const $ ToolboxSelect rowIndex colIndex
-                , HE.onMouseDown \mouseEvent -> do
+                , El.OnMouseDown \mouseEvent -> do
                     liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
                     submitEdit
                 ]
@@ -186,14 +185,14 @@ makeToolboxExprProps {adjacentIndexedEdits, modifySelect, outside: toolboxOutsid
   case adjacentIndexedEdits # Array.find \{edit: Edit edit} -> edit.middle # maybe false \middle -> prefixExprPathSkeleton (toolboxOutside <> toPath middle) (shrinkAnnExprPath outside) of
     Nothing -> 
       pure 
-        [ HP.classes [className.expr, className.toolboxExpr] ]
+        [ El.Classes [El.ToolboxExpr] ]
     Just {select} ->
-      pure 
-        [ HP.classes [className.expr, className.toolboxExpr, className.adjacentEditClasp] 
-        , HE.onMouseOver \mouseEvent -> do
+      pure
+        [ El.Classes [El.AdjacentEditClasp]
+        , El.OnMouseOver \mouseEvent -> do
             liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
-            modifySelect $ const select
-        ]
+            modifySelect $ const select  ]
+
 
 renderEdit :: forall sn el ctx env. Rendering sn el ctx env =>
   RenderEditLocals sn el ->
@@ -211,4 +210,4 @@ renderEdit adjacentIndexedEdits outside inside = case _ of
       Just inside -> renderAnnExpr outside inside (makeToolboxExprProps adjacentIndexedEdits)
 
 editHole :: forall sn el. Array (BufferHtml sn el)
-editHole = [HH.div [HP.classes [HH.ClassName "EditHole"]] [HH.text " "]]
+editHole = [El.ℓ [El.Classes [El.EditHole]] [El.text " "]]
