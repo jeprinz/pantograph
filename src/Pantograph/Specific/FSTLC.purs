@@ -21,7 +21,9 @@ import Data.StringQuery as StringQuery
 import Data.Subtype (inject)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), fst, snd)
+import Halogen.Elements as El
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language ((%.), (%.|))
 import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
@@ -117,7 +119,7 @@ instance PrettyTreeNode SN where
   prettyTreeNode sn = 
     let ass = assertValidTreeKids "prettyTreeNode" sn in
     case sn of
-      StrInner s -> ass \[] -> s
+      StrInner s -> ass \[] -> quotes s
       Str -> ass \[str] -> quotes str
       VarJg -> ass \[γ, x, α, loc] -> γ <+> "⊢" <+> loc <+> x <+> ":" <+> α
       TmJg -> ass \[γ, α] -> γ <+> "⊢" <+> α
@@ -129,6 +131,23 @@ instance PrettyTreeNode SN where
       ArrowTySN -> ass \[α, β] -> α <+> "→" <+> β
       LocalLoc -> ass \[] -> "[local]"
       NonlocalLoc -> ass \[] -> "[nonlocal]"
+instance DisplayTreeNode SN where
+  displayTreeNode sn = 
+    let ass = assertValidTreeKids "displayTreeNode" sn in
+    let punc = El.punctuation in
+    case sn of
+      StrInner s -> ass \[] -> El.inline [punc (quotes s)]
+      Str -> ass \[str] -> El.inline [punc "'", str, punc "'"]
+      VarJg -> ass \[γ, x, α, loc] -> El.inline [γ, punc " ⊢ ", loc, x, punc " : ", α]
+      TmJg -> ass \[γ, α] -> El.inline [γ, punc " ⊢ ", α]
+      NeJg -> ass \[γ, α] -> El.inline [γ, punc " ⊢ ", α]
+      TyJg -> ass \[α] -> El.inline [α]
+      NilCtx -> ass \[] -> El.inline [punc "∅"]
+      ConsCtx -> ass \[x, α, γ] -> El.inline [punc "(", x, punc " : ", α, punc ")", punc ", ", γ]
+      DataTySN dt -> ass \[] -> El.inline [punc (pretty dt)]
+      ArrowTySN -> ass \[α, β] -> El.inline [α, punc " → ", β]
+      LocalLoc -> ass \[] -> El.inline [punc "[local]"]
+      NonlocalLoc -> ass \[] -> El.inline [punc "[nonlocal]"]
 
 -- DataTy
 
@@ -482,7 +501,7 @@ steppingRules =
   -- {Term γ (+ α -> β)}↑{f} ~~> {Term γ β}↑{App f (? : α)}
   wrapApp = PL.SteppingRule case _ of
     PL.Up /\ (PL.SN TmJg %! [γ, Plus /\ (PL.SN ArrowTySN %- (1 /\ [α])) %!/ β]) %.| f -> Just $ 
-      PL.Up /\ (PL.SN TmJg %! [γ, β]) %.| (PL.buildStepExpr AppNe {} [f, se_tm_hole α])
+      PL.Up /\ (PL.SN TmJg %! [γ, β]) %.| (PL.buildStepExpr AppNe {γ: epL γ, α, β: epL β} [f, se_tm_hole (epR γ) α (inject (fromTypeSortToTypeExpr α))])
     _ -> Nothing
 
   -- App {Term γ (- α -> β)}↑{b} a ~~> {Term γ β}↑{b}
@@ -703,10 +722,10 @@ class Arrangable f where
 instance Arrangable Identity where
   arrange (Identity a) = PR.ArrangeKid a
 instance Arrangable (Const String) where
-  arrange (Const string) = PR.ArrangeHtml [HH.span_ [HH.text string]]
+  arrange (Const string) = PR.ArrangeHtml [El.punctuation string]
 instance Arrangable (Const Format) where 
-  arrange (Const Newline) = PR.ArrangeHtml [PH.whitespace " ↪", HH.br_]
-  arrange (Const Indent) = PR.ArrangeHtml [PH.whitespace "⇥ "]
+  arrange (Const Newline) = PR.ArrangeHtml [El.whitespace " ↪", HH.br_]
+  arrange (Const Indent) = PR.ArrangeHtml [El.whitespace "⇥ "]
 
 consArrangable :: forall f a. Arrangable f => f a -> List (ArrangeKid a) -> List (ArrangeKid a)
 consArrangable a aks = Cons (arrange a) aks
@@ -828,7 +847,7 @@ ex_var_free x α = PL.buildExpr FreeVar {x, α} []
 ex_ty_hole α = PL.buildExpr HoleTy {α} []
 
 ex_tm_lam {γ, x, α, β, xEx, αEx, b} = PL.buildExpr LamTm {γ, x, α, β} [xEx, αEx, b]
-ex_tm_hole α = PL.buildExpr HoleTm {α} []
+ex_tm_hole γ α αEx = PL.buildExpr HoleTm {γ, α} [αEx]
 
 -- shallow StepExpr
 
@@ -838,4 +857,4 @@ se_var_zero γ x α = PL.buildStepExpr SucVar {γ, x, α, loc: sr_loc_nonlocal} 
 se_var_suc γ x α y β loc pred = PL.buildStepExpr SucVar {γ, x, α, y, β, loc} [pred]
 
 se_tm_lam x α β γ xExpr αExpr b = PL.buildStepExpr LamTm {x, α, β, γ} [xExpr, αExpr, b]
-se_tm_hole α = PL.buildStepExpr HoleTm {α} []
+se_tm_hole γ α αEx = PL.buildStepExpr HoleTm {γ, α} [αEx]

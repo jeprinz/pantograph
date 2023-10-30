@@ -18,8 +18,6 @@ panel {name, info, control, content} =
           content
     ]
 
-whitespace str = HH.span [HP.classes [HH.ClassName "Whitespace"]] [HH.text str]
-
 hole {index, ann} = 
   HH.span [HP.classes [HH.ClassName "Hole"]] $
     [HH.text "□"] <>

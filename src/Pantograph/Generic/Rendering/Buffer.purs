@@ -62,14 +62,11 @@ import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
-type BufferLocal sn el =
-  { slotToken :: HK.SlotToken (BufferSlots sn el) }
-
 bufferComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
 bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
   let 
-    local :: BufferLocal sn el
-    local = {slotToken}
+    tokens :: BufferLocalTokens sn el
+    tokens = {slotToken, outputToken}
 
   -- The original ExprGyro before rendering.
   exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
@@ -88,7 +85,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 
     modifyExprGyro f = do
       hydExprGyro <- getHydratedExprGyro
-      rehydrateExprGyro local (Just hydExprGyro) Nothing
+      rehydrateExprGyro tokens (Just hydExprGyro) Nothing
       let exprGyro' = shrinkAnnExprGyro hydExprGyro
       case f exprGyro' of
         Nothing -> pure unit
@@ -115,8 +112,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         Nothing -> pure unit
         Just syncedExprGyro' -> do
           liftEffect $ Ref.write syncedExprGyro' syncedExprGyroRef
-          hydExprGyro' <- hydrateExprGyro local syncedExprGyro'
-          rehydrateExprGyro local Nothing (Just hydExprGyro')
+          hydExprGyro' <- hydrateExprGyro syncedExprGyro'
+          rehydrateExprGyro tokens Nothing (Just hydExprGyro')
           modifyHydratedExprGyro (const (Just hydExprGyro'))
 
     modifyHydratedExprGyro f = do
@@ -124,30 +121,23 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       case f hydExprGyro of
         Nothing -> pure unit
         Just hydExprGyro' -> do
-          rehydrateExprGyro local (Just hydExprGyro) (Just hydExprGyro')
+          rehydrateExprGyro tokens (Just hydExprGyro) (Just hydExprGyro')
           liftEffect $ Ref.write (Just hydExprGyro') hydExprGyroRef
 
-  renderCtx /\ renderCtxStateId <- HK.useState $
-    snd (topCtx :: Proxy sn /\ Record ctx) # R.union
-      { depth: 0
-      , outputToken
-      , slotToken
+  let
+    local :: BufferLocal sn el
+    local = 
+      { tokens
       , modifyExprGyro
-      , modifySyncedExprGyro
-      }
-
-  renderEnv /\ renderEnvStateId <- HK.useState $
-    snd (topEnv :: Proxy sn /\ Record env) # R.union
-      { holeCount: 0 
-      }
+      , modifySyncedExprGyro }
 
   let
-    runRenderM = unwrap <<< runM renderCtx renderEnv
-    gyroHtmls /\ _ = runRenderM $ renderSyncExprGyro initialSyncedExprGyro
+    -- runRenderM = unwrap <<< runM renderCtx renderEnv
+    gyroHtmls /\ _ = snd (runRenderM :: Proxy sn /\ _) $ renderSyncExprGyro local initialSyncedExprGyro
 
   -- runs after each render
   HK.captures {} HK.useTickEffect do
-    hydExprGyro <- hydrateExprGyro local initialSyncedExprGyro
+    hydExprGyro <- hydrateExprGyro initialSyncedExprGyro
     liftEffect $ Ref.write (Just hydExprGyro) hydExprGyroRef
     pure Nothing
 
@@ -291,8 +281,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 -- hydrate
 
 -- | Flush the `HydrateExprGyro`'s status to the DOM.
-flushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> HydrateExprGyro sn el er -> HK.HookM Aff Unit
-flushHydrateExprGyro local = case _ of
+flushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
+flushHydrateExprGyro = case _ of
   (RootGyro _expr) ->
     pure unit
   (CursorGyro (Cursor cursor)) -> do
@@ -302,8 +292,8 @@ flushHydrateExprGyro local = case _ of
     liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just true)
 
 -- | Unflush the `HydrateExprGyro`'s status from the DOM.
-unflushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> HydrateExprGyro sn el er -> HK.HookM Aff Unit
-unflushHydrateExprGyro local = case _ of
+unflushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
+unflushHydrateExprGyro = case _ of
   (RootGyro _expr) ->
     pure unit
   (CursorGyro (Cursor cursor)) -> do
@@ -313,51 +303,49 @@ unflushHydrateExprGyro local = case _ of
     liftEffect $ HU.updateClassName (select.inside # annExprAnn # _.elemId) (className.orientationSelect Inside) (Just false)
 
 -- | The initial hydration (per render) initializes all the hydrate data and updates styles accordingly.
-hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
-hydrateExprGyro local syncExprGyro = syncExprGyro # traverseGyro \{inside: EN label sigma ann % _} -> pure $ EN label sigma $ ann # R.union {hydrated: unit}
+hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+hydrateExprGyro syncExprGyro = syncExprGyro # traverseGyro \{inside: EN label sigma ann % _} -> pure $ EN label sigma $ ann # R.union {hydrated: unit}
 
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
-rehydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
-rehydrateExprGyro local m_hydExprGyro m_hydExprGyro' = do
+rehydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocalTokens sn el -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
+rehydrateExprGyro {slotToken} m_hydExprGyro m_hydExprGyro' = do
   when (isJust m_hydExprGyro || isJust m_hydExprGyro') do
-    tell local.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
+    tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
   case m_hydExprGyro of
     Nothing -> pure unit
-    Just hydExprGyro -> unflushHydrateExprGyro local hydExprGyro
+    Just hydExprGyro -> unflushHydrateExprGyro hydExprGyro
   case m_hydExprGyro' of
     Nothing -> pure unit
-    Just hydExprGyro -> flushHydrateExprGyro local hydExprGyro
+    Just hydExprGyro -> flushHydrateExprGyro hydExprGyro
 
 -- render
 
-renderSyncExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprGyro (RootGyro expr) = renderSyncExpr (Path Nil) expr
-renderSyncExprGyro (CursorGyro cursor) = renderSyncExprCursor cursor
-renderSyncExprGyro (SelectGyro select) = renderSyncExprSelect select
+renderSyncExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprGyro local (RootGyro expr) = renderSyncExpr local (Path Nil) expr
+renderSyncExprGyro local (CursorGyro cursor) = renderSyncExprCursor local cursor
+renderSyncExprGyro local (SelectGyro select) = renderSyncExprSelect local select
 
-renderSyncExprSelect :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprSelect (Select {outside, middle, inside, orientation}) = do
-  ctx <- ask
-  env <- get
+renderSyncExprSelect :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprSelect local (Select {outside, middle, inside, orientation}) = do
   let outside_middle = outside <> (toPath middle)
-  renderSyncExprPath mempty outside (unPath outside_middle inside) $
-    renderSyncExprPath outside (toPath middle) inside $
-      renderSyncExpr outside_middle inside
+  renderSyncExprPath local mempty outside (unPath outside_middle inside) $
+    renderSyncExprPath local outside (toPath middle) inside $
+      renderSyncExpr local outside_middle inside
 
-renderSyncExprCursor :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprCursor cursor@(Cursor {outside, inside, orientation}) = do
+renderSyncExprCursor :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprCursor local cursor@(Cursor {outside, inside, orientation}) = do
   ctx <- ask
   env <- get
   let toolboxHandler (ToolboxOutput output) = (output # _) $ case_
         # on (Proxy :: Proxy "submit edit") (\edit -> do
-            tell ctx.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const false
-            ctx.modifyExprGyro $ applyEdit edit
+            tell local.tokens.slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const false
+            local.modifyExprGyro $ applyEdit edit
           )
         # on (Proxy :: Proxy "preview edit") (\maybeEdit -> do 
-            tell ctx.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
-            tell ctx.slotToken (Proxy :: Proxy "preview") RightPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
+            tell local.tokens.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
+            tell local.tokens.slotToken (Proxy :: Proxy "preview") RightPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
           )
   let wrapCursor htmls = do
         let toolboxInput = ToolboxInput
@@ -381,6 +369,6 @@ renderSyncExprCursor cursor@(Cursor {outside, inside, orientation}) = do
           , htmls
           , [HH.slot_ (Proxy :: Proxy "preview") RightPreviewPosition previewComponent (previewInput RightPreviewPosition)] 
           ]
-  renderSyncExprPath mempty outside inside $
+  renderSyncExprPath local mempty outside inside $
     wrapCursor <$>
-      renderSyncExpr outside inside
+      renderSyncExpr local outside inside

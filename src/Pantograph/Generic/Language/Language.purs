@@ -30,7 +30,8 @@ assertValidRuleVarSubst :: forall a sn el. Language sn el => el -> RuleSortVarSu
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
   if rule.parameters == Map.keys m then k unit else
-  bug $ "assertValidRuleVarSubst: For label " <> show label <> ", the substitution " <> show sigma <> " is invalid."
+  debug "assertValidRuleVarSubst" {label: show label, sigma: pretty sigma, rule_parameters: show rule.parameters} \_ ->
+  bug $ "invalid substitution"
 
 -- build
 

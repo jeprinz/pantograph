@@ -4,6 +4,7 @@ import Prelude
 
 import Bug (bug)
 import Data.Array as Array
+import Data.Display (class Display, class DisplayS, Html, display, displayS)
 import Data.Foldable (class Foldable, and)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..))
@@ -23,6 +24,9 @@ import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
+import Halogen.Elements (punctuation)
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, class PrettyS, parens, pretty, prettyS, (<+>))
 import Text.Pretty as Pretty
@@ -351,4 +355,26 @@ instance PrettyTreeNode a => Pretty (Change a) where
   pretty (Shift (sign /\ tooth) kid) = pretty sign <> (Pretty.outer (prettyS tooth (Pretty.inner (pretty kid))))
   pretty (Replace old new) = parens (pretty old <+> "~~>" <+> pretty new)
   pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)
+
+class TreeNode a <= DisplayTreeNode a where
+  displayTreeNode :: a -> Array Html -> Html
+
+instance DisplayTreeNode a => Display (Tree a) where
+  display (Tree a kids) = displayTreeNode a (display <$> kids)
+
+instance DisplayTreeNode a => DisplayS (Tooth a) where
+  displayS (Tooth a (i /\ kids)) = \inner -> displayTreeNode a (fromJust $ Array.insertAt i inner (display <$> kids))
+
+instance DisplayTreeNode a => Display (Change a) where
+  display (Shift (sh /\ th) ch) = 
+    HH.div [HP.classes [HH.ClassName "Change", HH.ClassName "ShiftChange"]]
+      [punctuation $ pretty sh, displayS th $ HH.span [HP.classes [HH.ClassName "ShiftChangeInner"]] [display ch]]
+  display (Replace s1 s2) = 
+    HH.div [HP.classes [HH.ClassName "Change", HH.ClassName "ReplaceChange"]] 
+      [ HH.div [HP.classes [HH.ClassName "ReplaceChangeLeft"]] [display s1]
+      , punctuation " ~> "
+      , HH.div [HP.classes [HH.ClassName "ReplaceChangeRight"]] [display s2] ]
+  display (InjectChange a kids) = 
+    HH.div [HP.classes [HH.ClassName "Change", HH.ClassName "ChangeInjectChange"]] 
+      [displayTreeNode a (display <$> kids)]
 

@@ -46,12 +46,9 @@ getElementById (ElementId elemId) = do
 -- | add className: `updateClassName elemId className (Just true)`
 -- | remove className: `updateClassName elemId className (Just false)`
 updateClassName :: ElementId -> HH.ClassName -> Maybe Boolean -> Effect Unit
-updateClassName elemId (HH.ClassName className) mb_classValue = do
-  classList <- Element.classList =<< getElementById elemId
-  case mb_classValue of
-    Nothing -> void $ DOMTokenList.toggle classList className
-    Just true -> void $ DOMTokenList.add classList className
-    Just false -> void $ DOMTokenList.remove classList className
+updateClassName elemId clsName mb_classValue = do
+  elem <- getElementById elemId
+  updateElementClassName elem clsName mb_classValue
 
 setClassName :: ElementId -> HH.ClassName -> Effect Unit
 setClassName elemId (HH.ClassName className) = do
@@ -64,3 +61,15 @@ setClassNames elemId classNames = do
   Element.setClassName (classNames # map unwrap >>> Array.intercalate " ") elem
 
 foreign import fromInputEventToTargetValue :: Event -> Effect String
+
+-- | Update the className of an Element
+-- | toggle className: `updateClassName elem className Nothing`
+-- | add className: `updateClassName elem className (Just true)`
+-- | remove className: `updateClassName elem className (Just false)`
+updateElementClassName :: Element -> HH.ClassName -> Maybe Boolean -> Effect Unit
+updateElementClassName elem (HH.ClassName className) mb_classValue = do
+  classList <- Element.classList elem
+  case mb_classValue of
+    Nothing -> void $ DOMTokenList.toggle classList className
+    Just true -> void $ DOMTokenList.add classList className
+    Just false -> void $ DOMTokenList.remove classList className

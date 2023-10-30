@@ -1,7 +1,7 @@
 module Pantograph.Generic.Language.Common where
 
-import Prelude
 import Data.Tree
+import Prelude
 
 import Bug (bug)
 import Data.Array as Array
@@ -23,6 +23,9 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
+import Halogen.Elements as El
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
@@ -45,8 +48,6 @@ derive instance Eq sn => Eq (SortNode sn)
 instance Show sn => Show (SortNode sn) where show = genericShow
 derive instance Functor SortNode
 
--- type SortNodePattern sn = EqPattern (SortNode sn)
-
 instance TreeNode sn => TreeNode (SortNode sn) where
   kidsCount (SN node) = kidsCount node
   kidsCount (VarSN _) = 0
@@ -57,6 +58,14 @@ instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (SortNode sn) where
     case sn of
       SN node -> ass \kids -> prettyTreeNode node kids
       VarSN var -> ass \[] -> pretty var
+
+instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (SortNode sn) where
+  displayTreeNode sn =
+    let ass = assertValidTreeKids "displayTreeNode" sn in
+    case sn of
+      SN node -> ass \kids -> displayTreeNode node kids
+      -- VarSN var -> ass \[] -> HH.div [HP.classes [HH.ClassName "VarSN"]] [HH.text $ pretty var]
+      VarSN var -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [HH.text $ pretty var]
 
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)

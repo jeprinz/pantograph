@@ -5,6 +5,7 @@ import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
 import Prelude
 
+import Data.Display (Html, embedHtml)
 import Data.Foldable (length, null)
 import Data.List (List)
 import Data.List as List
@@ -101,7 +102,7 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
                 [HE.onClick \_ -> HK.modify_ counterStateId (1 + _)]
                 [HH.text "force update"]
             ,
-              HH.fromPlainHTML $
+              embedHtml (pure unit) $
               HH.div [HP.classes [HH.ClassName "TerminalItems"]]
                 (List.toUnfoldable items <#> \(TerminalItem item) -> do
                   HH.div
@@ -112,6 +113,6 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
         ]
     }
 
-renderTag :: TerminalItemTag -> HH.PlainHTML
+renderTag :: TerminalItemTag -> Html
 renderTag = case _ of
   DebugTerminalItemTag -> HH.div [HP.classes [HH.ClassName "TerminalItemTag DebugTerminalItemTag"]] [HH.span_ [HH.text "debug"]]

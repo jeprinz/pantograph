@@ -3,21 +3,28 @@ module Pantograph.Generic.Rendering.Common where
 import Pantograph.Generic.Language
 import Prelude
 
+import Bug (bug)
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, runStateT)
 import Data.Const (Const)
+import Data.Display (Html)
 import Data.Identity (Identity)
 import Data.Maybe (Maybe)
-import Data.Tree (Orientation)
+import Data.Newtype (unwrap)
+import Data.Tree (Change(..), Orientation, Tree(..))
+import Data.Tree.Common (class DisplayTreeNode)
+import Data.Tuple (snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant, inj)
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Pantograph.Generic.Rendering.Terminal.TerminalItems (TerminalItem)
-import Type.Proxy (Proxy)
+import Record as R
+import Type.Proxy (Proxy(..))
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
 class ToClassNames a where
@@ -83,21 +90,37 @@ type RenderM sn el ctx env = M (RenderCtx sn el ctx) (RenderEnv sn el env) Ident
 
 type RenderCtx sn el ctx =
   ( depth :: Int
-  , outputToken :: HK.OutputToken (BufferOutput sn el)
-  , slotToken :: HK.SlotToken (BufferSlots sn el)
-  , modifyExprGyro :: (ExprGyro sn el -> Maybe (ExprGyro sn el)) -> HK.HookM Aff Unit
-  , modifySyncedExprGyro :: (SyncExprGyro sn el () -> Maybe (SyncExprGyro sn el ())) -> HK.HookM Aff Unit
+  -- , outputToken :: HK.OutputToken (BufferOutput sn el)
+  -- , slotToken :: HK.SlotToken (BufferSlots sn el)
+  -- , modifyExprGyro :: (ExprGyro sn el -> Maybe (ExprGyro sn el)) -> HK.HookM Aff Unit
+  -- , modifySyncedExprGyro :: (SyncExprGyro sn el () -> Maybe (SyncExprGyro sn el ())) -> HK.HookM Aff Unit
   | ctx )
 
 type RenderEnv sn el env =
   ( holeCount :: Int
   | env )
 
+topRenderCtx :: forall sn el ctx env. Rendering sn el ctx env => Proxy sn /\ Record (RenderCtx sn el ctx)
+topRenderCtx =
+  (topCtx :: Proxy sn /\ _) <#> R.union
+    { depth: 0 }
+
+topRenderEnv :: forall sn el ctx env. Rendering sn el ctx env => Proxy sn /\ Record (RenderEnv sn el env)
+topRenderEnv = 
+  (topEnv :: Proxy sn /\ _) <#> R.union
+    { holeCount: 0 }
+
+runRenderM :: forall sn el ctx env a. Rendering sn el ctx env => Proxy sn /\ (RenderM sn el ctx env a -> (a /\ Record (RenderEnv sn el env)))
+runRenderM = (Proxy :: Proxy sn) /\ (unwrap <<< runM ctx env)
+  where
+  ctx = snd (topRenderCtx :: Proxy sn /\ _)
+  env = snd (topRenderEnv :: Proxy sn /\ _)
+
 -- | # Rendering
 -- |
 -- | TODO: description
 
-class Language sn el <= Rendering sn el ctx env | sn -> el ctx env, el -> sn ctx env where
+class (Language sn el, DisplayTreeNode sn) <= Rendering sn el ctx env | sn -> el ctx env, el -> sn ctx env where
   topCtx :: Proxy sn /\ Record ctx
   topEnv :: Proxy sn /\ Record env
   arrangeExpr :: forall er a.
@@ -116,7 +139,7 @@ newtype EditorOptions = EditorOptions
 
 data ArrangeKid sn el a
   = ArrangeKid a
-  | ArrangeHtml (Array (BufferHtml sn el))
+  | ArrangeHtml (Array Html)
 
 derive instance Functor (ArrangeKid sn el)
 
@@ -152,8 +175,15 @@ newtype BufferOutput sn el = BufferOutput (Variant
   ( "write terminal" :: TerminalItem ))
 data BufferSlotId
 
--- data BufferMode sn el
---   = 
+type BufferLocal sn el =
+  { tokens :: BufferLocalTokens sn el
+  , modifyExprGyro :: (ExprGyro sn el -> Maybe (ExprGyro sn el)) -> HK.HookM Aff Unit
+  , modifySyncedExprGyro :: (SyncExprGyro sn el () -> Maybe (SyncExprGyro sn el ())) -> HK.HookM Aff Unit
+  }
+
+type BufferLocalTokens sn el =
+  { slotToken :: HK.SlotToken (BufferSlots sn el)
+  , outputToken :: HK.OutputToken (BufferOutput sn el) }
 
 type BufferHtml sn el = HH.ComponentHTML (HK.HookM Aff Unit) (BufferSlots sn el) Aff
 type BufferSlots sn el = 

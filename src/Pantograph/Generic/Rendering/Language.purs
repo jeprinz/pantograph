@@ -8,10 +8,12 @@ import Pantograph.Generic.Rendering.Keyboard
 import Prelude
 import Util
 
+import Bug (bug)
 import Control.Monad.Reader (ask, local)
 import Control.Monad.State (get)
 import DOM.HTML.Indexed as HPI
 import Data.Array as Array
+import Data.Display (embedHtml)
 import Data.Foldable (foldMap, null)
 import Data.Identity (Identity(..))
 import Data.List (List(..))
@@ -69,10 +71,10 @@ renderAnnExprHelper :: forall sn el er ctx env. Rendering sn el ctx env =>
 renderAnnExprHelper outside expr makeAnnExprProps arrangedKids = do
   props <- makeAnnExprProps outside expr
   let htmls = arrangedKids # foldMap case _ of
-        ArrangeKid html -> html
+        ArrangeKid htmls' -> htmls'
         ArrangeHtml htmls' ->
           [ HH.div [HP.classes [HH.ClassName "ArrangeHtml"]]
-              htmls' ]
+              (embedHtml (pure unit) <$> htmls') ]
   pure $ [HH.div props htmls]
 
 renderAnnExpr :: forall sn el er ctx env. Rendering sn el ctx env =>
@@ -180,8 +182,8 @@ renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr
 
 -- makeSyncExprProps
 
-makeSyncExprProps :: forall sn el er ctx env. Rendering sn el ctx env => MakeSyncExprProps sn el er ctx env
-makeSyncExprProps outside inside@(Tree (EN _ _ {elemId}) _) = do
+makeSyncExprProps :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> MakeSyncExprProps sn el er ctx env
+makeSyncExprProps local outside inside@(Tree (EN _ _ {elemId}) _) = do
   ctx <- ask
   env <- get
   pure 
@@ -190,7 +192,7 @@ makeSyncExprProps outside inside@(Tree (EN _ _ {elemId}) _) = do
     , HE.onClick \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
 
-        HK.raise ctx.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ terminalItem.debug $ HH.div_
+        HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ terminalItem.debug $ HH.div_
           [ HH.text "SyncExpr/onClick"
           , HH.ul_
               [ HH.li_ [HH.text $ "outside: " <> pretty (shrinkAnnExprPath outside :: ExprPath sn el)]
@@ -201,10 +203,10 @@ makeSyncExprProps outside inside@(Tree (EN _ _ {elemId}) _) = do
         let isModifyExprGyro = true
         if isModifyExprGyro then do
           -- NOTE: `modifyExprGyro` modifies the state, which causes a re-render
-          ctx.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside, orientation: Outside}
+          local.modifyExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside, orientation: Outside}
         else do
           -- NOTE: `modifySyncedExprGyro` only modifies a ref, which doesn not cause a re-render
-          ctx.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside, orientation: Outside}
+          local.modifySyncedExprGyro $ const $ Just $ CursorGyro $ Cursor {outside: shrinkAnnExprPath outside, inside: shrinkAnnExpr inside, orientation: Outside}
 
     , HE.onMouseOver \mouseEvent -> do
         liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
@@ -214,5 +216,5 @@ makeSyncExprProps outside inside@(Tree (EN _ _ {elemId}) _) = do
         liftEffect $ HU.updateClassName elemId (HH.ClassName "hover") (Just false)
     ]
 
-renderSyncExpr outside inside = renderAnnExpr outside inside makeSyncExprProps
-renderSyncExprPath outside middle inside = renderAnnExprPath outside middle inside makeSyncExprProps
+renderSyncExpr local outside inside = renderAnnExpr outside inside (makeSyncExprProps local)
+renderSyncExprPath local outside middle inside = renderAnnExprPath outside middle inside (makeSyncExprProps local)

@@ -30,6 +30,8 @@
   --hover-background-color: rgb(250, 238, 255);
   --hover-border-color: rgb(179, 0, 255);
 
+  --boundary-color: rgb(178, 0, 0);
+
   --it: 0.6em;
 }
 
@@ -250,12 +252,18 @@ body {
   content: "*";
 }
 
-.Expr>.ArrangeHtml {
+.ArrangeHtml {
   display: inline;
 }
 
-.Expr>.ArrangeHtml>.Whitespace {
+.Punctuation {
+  display: inline;
+  white-space: pre;
+}
+
+.Whitespace {
   color: rgba(0, 0, 0, 0);
+  white-space: pre;
 }
 
 .Expr:hover>.ArrangeHtml>.Whitespace,
@@ -328,7 +336,7 @@ body {
 }
 
 .EditHole {
-  display: inline-block;
+  display: inline;
   min-width: calc(2*var(--it));
   box-shadow: 0 0 0 1px var(--color2) inset;
   background-color: rgb(225, 225, 225);
@@ -337,7 +345,7 @@ body {
 .ToolboxExpr {}
 
 .AdjacentEditClasp {
-  display: inline-block;
+  display: inline;
   background-color: rgb(225, 225, 225);
 }
 
@@ -363,6 +371,87 @@ body {
 
 .PreviewLeftPaste+.Expr {
   background-color: rgb(255, 165, 165);
+}
+
+/* Sort */
+
+.Sort {
+  display: inline;
+}
+
+.Sort:hover {
+  box-shadow: 0 0 0 4px var(--hover-border-color);
+}
+
+.SortVar {
+  display: inline;
+}
+
+.SortTooth {
+  display: inline;
+}
+
+.SortChange {
+  display: inline;
+}
+
+.ShiftChange {
+  display: inline;
+  background-color: rgb(169, 110, 0);
+  padding: 0 calc(0.5*var(--it))
+}
+
+.ShiftChangeInner {
+  display: inline;
+  background-color: white;
+  padding: 0 calc(0.5*var(--it))
+}
+
+.ReplaceChange {
+  display: inline;
+}
+
+.InjectChange {
+  display: inline;
+}
+
+
+/* StepExpr */
+
+.StepExpr {}
+
+.StepExprBoundaryInfo {
+  display: inline;
+  box-shadow: 0 0 0 4px var(--boundary-color);
+}
+
+.StepExprBoundary {
+  display: inline;
+  box-shadow: 0 0 0 4px var(--boundary-color);
+  padding: 0 calc(0.5*var(--it));
+}
+
+.StepExprBoundaryDirection {
+  display: inline;
+  padding: 0 calc(0.5*var(--it));
+  background-color: black;
+  color: white;
+}
+
+.StepExprBoundaryChange {
+  display: inline;
+  padding: 0 var(--it);
+}
+
+.StepExprMarker {
+  display: inline;
+  box-shadow: 0 0 0 4px var(--cursor-border-color);
+}
+
+.StepExprBoundaryInfo:hover,
+.StepExprBoundaryInfo:hover+.StepExpr,
+.StepExpr:hover {
+  box-shadow: 0 0 0 4px var(--hover-border-color);
 }
 
 /* Html */

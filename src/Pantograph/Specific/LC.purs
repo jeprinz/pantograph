@@ -20,6 +20,7 @@ import Data.String as String
 import Data.StringQuery as StringQuery
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\), type (/\))
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.Language as PL
@@ -55,8 +56,13 @@ instance TreeNode SN where
 
 instance PrettyTreeNode SN where
   prettyTreeNode sn = case sn of
-    StringSort -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[str] -> quotes2 str
+    StringSort -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[] -> "String"
     TermSort -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[] -> "Term"
+
+instance DisplayTreeNode SN where
+  displayTreeNode sn = case sn of
+    StringSort -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[] -> El.inline [El.punctuation $ "String"]
+    TermSort -> assertValidTreeKids "(PrettyTreeNode SN).prettyTreeNode" sn \[] -> El.inline [El.punctuation $ "Term"]
 
 -- EL
 
@@ -233,8 +239,8 @@ instance PR.Rendering SN EL CTX ENV where
 
   arrangeExpr =
     let punc str = PR.ArrangeHtml [HH.span_ [HH.text str]] in
-    let indent i = PR.ArrangeHtml (Array.replicate i (PH.whitespace "⇥ ")) in
-    let newline i = PR.ArrangeHtml ([PH.whitespace " ↪", HH.br_] <> Array.replicate i (PH.whitespace "⇥ ")) in
+    let indent i = PR.ArrangeHtml (Array.replicate i (El.whitespace "⇥ ")) in
+    let newline i = PR.ArrangeHtml ([El.whitespace " ↪", HH.br_] <> Array.replicate i (El.whitespace "⇥ ")) in
     \node@(PL.EN label _ _) ->
       let ass = assertValidTreeKids "arrangeExpr" (PL.shrinkAnnExprNode node :: PL.ExprNode SN EL) in
       case label of

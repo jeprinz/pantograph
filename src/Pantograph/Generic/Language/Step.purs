@@ -20,9 +20,15 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Tree.Change (lub')
 import Debug as Debug
+import Halogen.Elements as El
+import Halogen.HTML as HH
+import Pantograph.Generic.Rendering.Common (class Rendering)
+import Pantograph.Generic.Rendering.Step (renderStepExpr, runRenderStepExpr)
+import Pantograph.Generic.Rendering.Terminal.TerminalItems as TI
 import Pantograph.Generic.Rendering.Terminal.TerminalItems as TerminalItems
 import Text.Pretty (pretty, (<+>))
 import Todo (todo)
+import Type.Proxy (Proxy(..))
 
 -- utilities
 
@@ -77,18 +83,18 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 --       Just (i /\ Cursor cursor) -> Left $ Cursor {outside: consPath cursor.outside (Tooth node i kids), inside: cursor.inside, orientation: cursor.orientation}
 --       Nothing -> Right $ Tree node kids
 
-fromStepExpr :: forall sn el. Language sn el => StepExpr sn el -> ExprCursor sn el \/ Expr sn el
+fromStepExpr :: forall sn el ctx env. Rendering sn el ctx env => StepExpr sn el -> ExprCursor sn el \/ Expr sn el
 fromStepExpr e0 = case go e0 of
     Left {tooths, inside, orientation} -> Left (Cursor {outside: Path (List.reverse tooths), inside, orientation})
     Right expr -> Right expr
   where
   goExpr :: StepExpr sn el -> Expr sn el
-  goExpr (Boundary _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
-  goExpr (Marker _) = bug $ "encountered multiple `Marker`s during `fromStepExpr`: " <> pretty e0
+  goExpr (Boundary _ _) = TI.bug $ El.ℓ [El.Classes [El.Inline]] $ [HH.text "encountered a `Boundary` during `goExpr`: "] <> runRenderStepExpr e0
+  goExpr (Marker _) = TI.bug $ El.ℓ [El.Classes [El.Inline]] $ [HH.text "encountered multiple `Marker`s during `goExpr`: "] <> runRenderStepExpr e0
   goExpr (StepExpr node kids) = Tree node (kids <#> goExpr)
 
   go :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
-  go (Boundary _ _) = bug $ "encountered a `Boundary` during `fromStepExpr`: " <> pretty e0
+  go (Boundary _ _) = TI.bug $ HH.span_ $ [HH.text "encountered a `Boundary` during `fromStepExpr`: "] <> runRenderStepExpr e0
   go (Marker e) = Left $ {tooths: mempty, inside: goExpr e, orientation: Outside}
   go (StepExpr node kids) =
     let
@@ -97,7 +103,7 @@ fromStepExpr e0 = case go e0 of
           i /\ Left cursor -> Just (i /\ cursor) /\ kids'
           _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
         Just i_cursor /\ kids' -> case _ of
-          _ /\ Left _cursor -> bug $ "encountered multiple cursors during `fromStepExpr`: " <> pretty e0
+          _ /\ Left _cursor -> TI.bug $ HH.span_ $ [HH.text "encountered multiple `Marker`s during `goExpr`: "] <> runRenderStepExpr e0
           _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
       maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ go <$> kids
     in
@@ -121,6 +127,11 @@ marker e = Marker e
 boundary :: forall sn el. Direction -> Change (SortNode sn) -> StepExpr sn el -> StepExpr sn el
 boundary dir ch kid = Boundary (dir /\ ch) kid
 
+getStepExprNode :: forall sn el. StepExpr sn el -> ExprNode sn el
+getStepExprNode (StepExpr node _) = node
+getStepExprNode (Boundary _ kid) = getStepExprNode kid
+getStepExprNode (Marker kid) = getStepExprNode kid
+
 -- setup SteExpr
 
 setupEdit :: forall sn el. ExprCursor sn el -> Edit sn el -> StepExpr sn el
@@ -140,16 +151,15 @@ runStepM :: forall sn el a. Language sn el =>
   Array (SteppingRule sn el) -> StepM sn el a -> a
 runStepM rules = flip runReaderT (builtinRules <> rules) >>> unwrap 
 
-runStepExpr :: forall sn el. Language sn el =>
+runStepExpr :: forall sn el ctx env. Rendering sn el ctx env =>
   StepExpr sn el ->
   Maybe (ExprGyro sn el)
-runStepExpr stepExpr =
-  -- Debug.trace ("[step]" <+> pretty stepExpr) \_ ->
-  TerminalItems.add (todo"") \_ ->
-  let stepExpr' = runStepM steppingRules $ stepFixpoint stepExpr in
-  case fromStepExpr stepExpr' of
+runStepExpr expr =
+  TerminalItems.add (HH.span_ (runRenderStepExpr expr)) \_ ->
+  let expr' = runStepM steppingRules $ stepFixpoint expr in
+  case fromStepExpr expr' of
     Left cursor -> Just $ CursorGyro cursor
-    Right expr -> Just $ RootGyro expr
+    Right expr' -> Just $ RootGyro expr'
 
 -- | Attempts a single step.
 step :: forall sn el. Language sn el => StepExpr sn el -> StepM sn el (Maybe (StepExpr sn el))
