@@ -75,4 +75,4 @@ newToothFromRule r kidIx = do
   let path1 = Expr.Path (List.singleton tooth)
   let sub = fromJust' "path didn't typecheck in newPathFromRule" $ inferPath (freshMetaVarSort "pathInside") path1
   let toothSubbed = subDerivTooth sub tooth
-  tooth /\ Expr.subMetaExprPartially sub  hypSort
+  toothSubbed /\ Expr.subMetaExprPartially sub  hypSort

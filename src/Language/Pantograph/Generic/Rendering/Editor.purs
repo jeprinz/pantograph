@@ -735,7 +735,6 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- when the buffer is active.
             -- I need to go in the git history and bring back renderHoleExterior.
             HoleyDerivZipper _ true ->
-              trace ("the cursor state is an inner hole. To reiterate, cursor is: " <> show cursor.hdzipper) \_ ->
               [ renderPath locs dzipper
                     (renderHoleInterior locs true dzipper)
                   (defaultRenderingContext unit)
