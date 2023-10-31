@@ -5,9 +5,10 @@ import Prelude
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.List (List(..), (:))
 import Language.Pantograph.Generic.Grammar as Grammar
+import Language.Pantograph.Generic.Grammar
 import Data.Expr
 import Data.Expr as Expr
-import Data.Expr ((%))
+import Language.Pantograph.Generic.ChangeAlgebra
 import Language.Pantograph.Generic.Smallstep
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Data.Array as Array
@@ -25,35 +26,80 @@ import Data.Traversable (sequence)
 import Data.Foldable (foldl)
 import Hole (hole)
 import Bug as Bug
+import Language.Pantograph.Generic.Rendering.Base as Base
+
+greyRuleSigmaLabel :: String
+greyRuleSigmaLabel = "grey-anything"
+
+--type SplitChangeType l = SortChange l -> {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
 
 createGreyedDownRules :: forall l r. Grammar.IsRuleLabel l r =>
     Int -- what'th child will be effectively the value of this rule
     -> r -- label for the regular construct
-    -> r -- what rule label to use for the greyed construct
-    -> Grammar.LanguageChanges l r
+    -> Maybe r -- what rule label to use for the greyed construct
+    -> Base.EditorSpec l r
     -> Array (Smallstep.StepRule l r)
-createGreyedDownRules index regularRuleLabel greyRuleLabel languageChanges =
-        let (Grammar.Rule _vars _children _conclusion) = TotalMap.lookup regularRuleLabel Grammar.language in
-        let Grammar.ChangeRule vars crustyKidChanges = TotalMap.lookup regularRuleLabel languageChanges in
-        let crustyKidChange = map MInj $ Util.fromJust' "cgdr1" (Array.index crustyKidChanges index) in
+createGreyedDownRules index regularRuleLabel maybeGreyRuleLabel spec =
+        let (Grammar.Rule _vars children _conclusion) = TotalMap.lookup regularRuleLabel Grammar.language in
+        let Grammar.ChangeRule vars kidChanges = TotalMap.lookup regularRuleLabel spec.languageChanges in
+        let kidChange = Util.fromJust' "cgdr1" (Array.index kidChanges index) in
+        let otherKidChanges = map Smallstep.metaInject $ Util.fromJust (Array.deleteAt index children) in
+--        let otherKidSorts = Util.fromJust (Array.deleteAt index children) in
+        let {downChange, upChange, cursorSort: _} = spec.splitChange kidChange in
+        let metadDownChange = map MInj downChange in
+        let metadUpChange = map MInj upChange in
         [
-        -- replace greyed with regular rule
-            case _ of
---                ((Smallstep.Boundary Smallstep.Down c) % [
---                    (Inject (Grammar.DerivLabel l _sigma)) % kids
---                ]) | l == regularRuleLabel -> ?h
-                _ -> Bug.bug "TODO"
-                _ -> Nothing
-        -- insert regular rule
-            -- if sub = unify c crustyKidChange down{t}_{c} ~~> (rule sub) % down{t}_{sub kidSort at index in rule}
         -- delete regular rule / replace with greyed if any other children are non-default derivations
-            --
+            case _ of
+                ((Smallstep.Boundary Smallstep.Down c) % [
+                    (SSInj (Grammar.DerivLabel l sub)) % kids
+                ]) | l == regularRuleLabel -> do
+                    chSub /\ chBackUp <- doOperation c metadUpChange --
+                    let subFull = map (map Expr.CInj) sub
+                    let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
+                    let kid = Util.fromJust $ (Array.index kids index)
+                    let wrapGrey = case maybeGreyRuleLabel of -- If there is a greyed version of the rule, then wrap it around the result
+                            Just greyRuleLabel ->
+                                let kidGSorts' = map (Expr.subMetaExpr sub') otherKidChanges in
+                                let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids in
+                                let x = Expr.RuleMetaVar greyRuleSigmaLabel in
+                                let xSort = Expr.fromMetaVar x in
+                                let sigma' = Map.insert x xSort (map rEndpoint sub') in
+                                \kid' -> SSInj (DerivLabel greyRuleLabel sigma') % Util.fromJust (Array.insertAt index kid' kidsWithBoundaries)
+                            _ -> \x -> x
+                    pure $ wrapBoundary Up chBackUp (wrapGrey (wrapBoundary Down (subMetaExpr sub' metadDownChange) kid))
+                _ -> Nothing
         ]
+        <> case maybeGreyRuleLabel of -- These two rules only exist if we have a greyed constructor
+            Just greyRuleLabel -> [
+            -- replace greyed with regular rule
+            -- removed greyed rule if all other children are default
+    --                    let otherKidsAreDefault = Array.all (\dterm ->
+    --                            case Grammar.defaultDerivTerm dterm of
+    --                                Just default | not (termToSSTerm default == dterm) -> true
+    --                                Nothing -> false) otherKids
+            ]
+            Nothing -> []
+        <> [
+--            -- insert regular rule
+--            case _ of
+--                ((Smallstep.Boundary Smallstep.Down c) % [
+--                    asdfasdf
+--                ]) -> do
+--                    chSub /\ chBackUp <- doOperation (invert c) metadUpChange --
+--                    -- Need to 1) refactor tooth part out of newPathFromRule 2) call that part here 3) that gives me sub?
+--
+--                    let subFull = map (map Expr.CInj) ?sub
+--                    let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
+--                    ?h
+--                _ -> Nothing
+        ]
+
 
 createGreyedConstruct :: forall l r.
     Grammar.Rule l -> Int -> Grammar.Rule l
 createGreyedConstruct (Grammar.Rule vars children conclusion) index =
-    let x = Expr.RuleMetaVar "anything" in
+    let x = Expr.RuleMetaVar greyRuleSigmaLabel in
     let xSort = Expr.fromMetaVar x in
     Grammar.Rule
         (Set.insert x vars) -- technically, this maybe should remove any vars that are now unused...

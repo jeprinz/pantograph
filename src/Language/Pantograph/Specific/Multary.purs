@@ -729,7 +729,7 @@ nonlocalBecomesLocal = Smallstep.makeDownRule
 --                      , (Expr.MV _ % _) <- x
 --                        -> pure (csor NeutralSort % [gamma, Expr.replaceChange b x])
 --                    _ -> Nothing
---        let sigma' = Map.insert (Expr.RuleMetaVar "anything") (Smallstep.ssTermSort inside) sigma -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
+--        let sigma' = Map.insert (Expr.RuleMetaVar "GreyedRules.greyRuleSigmaLabel") (Smallstep.ssTermSort inside) sigma -- The "GreyedRules.greyRuleSigmaLabel" refers to whats in createGreyedConstruct in GreyedRules.purs
 --        pure $ Smallstep.wrapBoundary Smallstep.Up restOfCh $
 --            (Smallstep.CInj (Grammar.DerivLabel GreyedApp sigma')) % [
 --                inside
@@ -753,7 +753,7 @@ nonlocalBecomesLocal = Smallstep.makeDownRule
 --    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
 --    =
 --        if not (a == (Util.lookup' (Expr.RuleMetaVar "a") sigma)) then Nothing else pure $
---        let sigma' = Map.delete (Expr.RuleMetaVar "anything") sigma in -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
+--        let sigma' = Map.delete (Expr.RuleMetaVar "GreyedRules.greyRuleSigmaLabel") sigma in -- The "GreyedRules.greyRuleSigmaLabel" refers to whats in createGreyedConstruct in GreyedRules.purs
 --            Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
 --                (Smallstep.CInj (Grammar.DerivLabel App sigma')) % [
 --                    inside

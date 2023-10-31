@@ -166,10 +166,11 @@ fillDefaultsDerivTerm inp@(Expr.Expr label kids) =
         Nothing -> Expr.Expr label (map fillDefaultsDerivTerm kids)
 
 fillDefaultsDerivPath :: forall l r dir. IsRuleLabel l r => DerivPath dir l r -> DerivPath dir l r
-fillDefaultsDerivPath (Expr.Path teeth) = Expr.Path $
-    map ( \ (Expr.Tooth label (ZipList.Path {left, right})) ->
-        Expr.Tooth label (ZipList.Path {left: map fillDefaultsDerivTerm left, right: map fillDefaultsDerivTerm right})
-    ) teeth
+fillDefaultsDerivPath (Expr.Path teeth) = Expr.Path $ map fillDefaultsDerivTooth teeth
+
+fillDefaultsDerivTooth :: forall l r. IsRuleLabel l r => DerivTooth l r -> DerivTooth l r
+fillDefaultsDerivTooth (Expr.Tooth label (ZipList.Path {left, right})) =
+    Expr.Tooth label (ZipList.Path {left: map fillDefaultsDerivTerm left, right: map fillDefaultsDerivTerm right})
 
 fillDefaultsDerivZipper :: forall l r. IsRuleLabel l r => DerivZipper l r -> DerivZipper l r
 fillDefaultsDerivZipper (Expr.Zipper path term) = Expr.Zipper (fillDefaultsDerivPath path) (fillDefaultsDerivTerm term)
@@ -182,6 +183,9 @@ subDerivPath sub = map (subDerivLabel sub) >>> fillDefaultsDerivPath
 
 subDerivZipper :: forall l r. IsRuleLabel l r => SortSub l -> DerivZipper l r -> DerivZipper l r
 subDerivZipper sub = map (subDerivLabel sub) >>> fillDefaultsDerivZipper
+
+subDerivTooth :: forall l r. IsRuleLabel l r => SortSub l -> DerivTooth l r -> DerivTooth l r
+subDerivTooth sub = map (subDerivLabel sub) >>> fillDefaultsDerivTooth
 
 
 --------------------------------------------------------------------------------

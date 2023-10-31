@@ -373,7 +373,7 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (SSInj (Grammar.D
  do
      chSub /\ chBackUp <- doOperation ch parentGSort
      let subFull = map (map Expr.CInj) sub
-     let sub' = Map.union chSub subFull
+     let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
      let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
      let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
      pure $ wrapBoundary Up chBackUp $ Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
