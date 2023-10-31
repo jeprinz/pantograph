@@ -600,7 +600,7 @@ passThroughArrow :: StepRule
 passThroughArrow dterm =
     case dterm of
     ((Smallstep.Boundary Smallstep.Down ch) % [
-        (Inject (Grammar.DerivLabel ArrowRule _sigma)) % [da, db]
+        (SSInj (Grammar.DerivLabel ArrowRule _sigma)) % [da, db]
     ])
     | Just ([] /\ [ca, cb]) <- matchChange ch (TypeSort %+- [Arrow %+- [{-ca-}cSlot, {-cb-}cSlot]])
     -> pure (dTERM ArrowRule ["a" /\ rEndpoint ca, "b" /\ rEndpoint cb]
@@ -638,7 +638,7 @@ wrapLambda = Smallstep.makeDownRule
 -- down{Lam x : A. t}_(Term G (- A -> B)) ~~> down{t}_(Term (-x : A, G) B)
 unWrapLambda :: StepRule
 unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
-        Expr (Inject (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
+        Expr (SSInj (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
     ])
     = do
         let varName = Util.lookup' (RuleMetaVar "x") sigma

@@ -276,14 +276,14 @@ renderSSTerm :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   EditorHTML l r
 renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm") case _ of
-  Inject (DerivLabel rule sort) % [] | isHoleRule rule ->
+  SSInj (DerivLabel rule sort) % [] | isHoleRule rule ->
     HH.div
       [classNames ["node", "smallstep", "hole"]]
       [ interrogativeElem
       , colonElem
       , HH.text $ pretty sort
       ]
-  Inject (DerivString str) % [] -> 
+  SSInj (DerivString str) % [] ->
     HH.div
       [classNames ["node", "smallstep", "string"]]
       [ lparenElem
@@ -292,7 +292,7 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
       , HH.text $ "String " <> show str
       , rparenElem
       ]
-  Inject (DerivLabel rule sigma) % kids | not (isHoleRule rule) ->
+  SSInj (DerivLabel rule sigma) % kids | not (isHoleRule rule) ->
     HH.div
       [classNames ["node", "smallstep"]]
       let kidElems = renderSSTerm locs <$> kids in

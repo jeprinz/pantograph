@@ -59,12 +59,12 @@ instance Pretty Direction where
     pretty Up = "↑"
     pretty Down = "↓"
 
-data StepExprLabel l r = Inject (Grammar.DerivLabel l r) | {-Marks e.g. where the cursor is, the Int is the number of kids-} Marker Int
+data StepExprLabel l r = SSInj (Grammar.DerivLabel l r) | {-Marks e.g. where the cursor is, the Int is the number of kids-} Marker Int
     | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
 
 ssTermSort :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.Sort l
-ssTermSort (Inject dl % _) = Grammar.derivLabelSort dl
+ssTermSort (SSInj dl % _) = Grammar.derivLabelSort dl
 ssTermSort (Boundary Up ch % _) = lEndpoint ch
 ssTermSort (Boundary Down ch % _) = rEndpoint ch
 ssTermSort (Marker 1 % [kid]) = ssTermSort kid
@@ -72,7 +72,7 @@ ssTermSort t@(Marker _ % _) = Bug.bug ("Couldn't find sort of SSTerm " <> show t
 
 --makeLabel :: forall l r. IsRuleLabel l r => r -> Array (String /\ Sort l) -> Array (String /\ Sort l) -> DerivLabel l r
 dTERM :: forall l r. IsRuleLabel l r => r -> Array (String /\ Grammar.Sort l) -> Array (SSTerm l r) -> SSTerm l r
-dTERM ruleLabel values kids = (Inject (Grammar.makeLabel ruleLabel values)) % kids
+dTERM ruleLabel values kids = (SSInj (Grammar.makeLabel ruleLabel values)) % kids
 
 type StepRule l r = SSTerm l r -> Maybe (SSTerm l r)
 
@@ -81,16 +81,16 @@ instance (Show l, Show r) => Show (StepExprLabel l r) where show x = genericShow
 instance (Eq l, Eq r) => Eq (StepExprLabel l r) where eq x y = genericEq x y
 instance (Ord l, Ord r) => Ord (StepExprLabel l r) where compare x y = genericCompare x y
 instance (IsExprLabel l, Pretty r) => Pretty (StepExprLabel l r) where
-    pretty (Inject dl) = pretty dl
+    pretty (SSInj dl) = pretty dl
     pretty (Marker _) = "⌶"
     pretty (Boundary dir sortCh) = pretty dir <> brackets (pretty sortCh)
 
 instance IsRuleLabel l r => Expr.IsExprLabel (StepExprLabel l r) where
-    prettyExprF'_unsafe (Inject dl /\ kids) = Expr.prettyExprF'_unsafe (dl /\ kids)
+    prettyExprF'_unsafe (SSInj dl /\ kids) = Expr.prettyExprF'_unsafe (dl /\ kids)
     prettyExprF'_unsafe (sel@(Marker _) /\ kids) = pretty sel <> braces (intercalate "," kids) -- TODO: how should this print?[
     prettyExprF'_unsafe (sel@(Boundary _ _) /\ [kid]) = pretty sel <> braces kid
 
-    expectedKidsCount (Inject dl) = Expr.expectedKidsCount dl
+    expectedKidsCount (SSInj dl) = Expr.expectedKidsCount dl
     expectedKidsCount (Marker numKids) = numKids
     expectedKidsCount (Boundary _ _) = 1
 
@@ -98,18 +98,18 @@ instance IsRuleLabel l r => Expr.IsExprLabel (StepExprLabel l r) where
 
 addToothToTerm :: forall l r. Expr.Tooth (Grammar.DerivLabel l r) -> SSTerm l r -> SSTerm l r
 addToothToTerm (Expr.Tooth l (ZipList.Path {left, right})) t =
- Expr.Expr (Inject l) $
-     Array.fromFoldable (map (map Inject) (Rev.unreverse left)) <>
+ Expr.Expr (SSInj l) $
+     Array.fromFoldable (map (map SSInj) (Rev.unreverse left)) <>
      [t] <>
-     Array.fromFoldable (map (map Inject) right)
+     Array.fromFoldable (map (map SSInj) right)
 
 -- !TODO use Expr.Zipper
 zipperToTerm :: forall l r. Expr.Path Dir.Up (Grammar.DerivLabel l r) -> Grammar.DerivTerm l r -> SSTerm l r
-zipperToTerm (Expr.Path Nil) exp = Expr.Expr (Marker 1) [map Inject exp]
+zipperToTerm (Expr.Path Nil) exp = Expr.Expr (Marker 1) [map SSInj exp]
 zipperToTerm (Expr.Path (th : path)) exp = addToothToTerm th (zipperToTerm (Expr.Path path) exp)
 
 termToSSTerm :: forall l r. Grammar.DerivTerm l r -> SSTerm l r
-termToSSTerm = map Inject
+termToSSTerm = map SSInj
 
 wrapCursor :: forall l r. SSTerm l r -> SSTerm l r
 wrapCursor t = Expr.Expr (Marker 1) [t]
@@ -137,7 +137,7 @@ setupSSTermFromReplaceAction topPath ch newTerm =
     wrapPath topPath $ wrapBoundary Up ch $ wrapCursor $ termToSSTerm newTerm
 
 assertJustExpr :: forall l r. IsExprLabel l => IsRuleLabel l r => SSTerm l r -> Grammar.DerivTerm l r
-assertJustExpr (Expr.Expr (Inject l) kids) = Expr.Expr l (map assertJustExpr kids)
+assertJustExpr (Expr.Expr (SSInj l) kids) = Expr.Expr l (map assertJustExpr kids)
 assertJustExpr t = Bug.bug ("Error: assertJustExpr assertion failed. Term was: \n" <> pretty t)
 
 assertNoneOfList :: forall t b. List t -> (t -> Maybe b) -> List b
@@ -168,7 +168,7 @@ oneOrNone (x : xs) f = case f x of
 --     SSTerm l r ->
 --     (Grammar.DerivPath Dir.Up l r /\ SSTerm l r) \/ -- DerivPath to an SSTerm
 --     Grammar.DerivTerm l r -- just a DerivTerm
--- unwrapSSTerm' (Expr.Path ths) e@(Expr.Expr (Inject l) kids) =
+-- unwrapSSTerm' (Expr.Path ths) e@(Expr.Expr (SSInj l) kids) =
 --     -- let kids'' = mapWithIndex (\i -> unwrapSSTerm' (Expr.Path (fromJust Expr.tooth ?a ?a : ths))) kids in
 --     let kids' = Expr.tooths e <#> \(th /\ e') -> unwrapSSTerm' (Expr.Path (?th : ths)) e' in
 --     ?a
@@ -180,7 +180,7 @@ unwrapSSTerm' :: forall l r. IsRuleLabel l r =>
     SSTerm l r -> 
     (Grammar.DerivPath Dir.Down l r /\ SSTerm l r) \/ -- DerivPath to an SSTerm
     Grammar.DerivTerm l r -- just a DerivTerm
-unwrapSSTerm' t@(Expr.Expr (Inject l) kids) =
+unwrapSSTerm' t@(Expr.Expr (SSInj l) kids) =
  let kids' = (List.fromFoldable $ map unwrapSSTerm' kids) in
 -- trace ("t is " <> pretty t <> " and kids' is: " <> pretty kids') \_ ->
  case oneOrNone kids' identity of
@@ -199,7 +199,7 @@ unwrapSSTerm = unwrapSSTerm' >>> case _ of
     Right dt -> Right dt
 
 removeMarkers :: forall l r. IsRuleLabel l r => SSTerm l r -> SSTerm l r
-removeMarkers (Expr.Expr (Inject l) kids) = Expr.Expr (Inject l) (map removeMarkers kids)
+removeMarkers (Expr.Expr (SSInj l) kids) = Expr.Expr (SSInj l) (map removeMarkers kids)
 removeMarkers (Expr.Expr (Marker 1) [kid]) = removeMarkers kid
 removeMarkers t = Bug.bug ("shouldn't happen in removeMarkers: t was " <> pretty t)
 
@@ -229,8 +229,8 @@ ssTermToPath term =
 -- TODO: maybe can simplify this function if I instead make a function called getSSTermSort and use that?
 ssTermStripTopChange :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.SortChange l /\ SSTerm l r
 ssTermStripTopChange (Expr.Expr (Boundary Up c) [t]) = c /\ t
-ssTermStripTopChange t@(Expr.Expr (Inject l) _) = inject (Grammar.derivLabelSort l) /\ t
-ssTermStripTopChange t@(Expr.Expr (Marker 1) [Expr.Expr (Inject l) _]) = inject (Grammar.derivLabelSort l) /\ t
+ssTermStripTopChange t@(Expr.Expr (SSInj l) _) = inject (Grammar.derivLabelSort l) /\ t
+ssTermStripTopChange t@(Expr.Expr (Marker 1) [Expr.Expr (SSInj l) _]) = inject (Grammar.derivLabelSort l) /\ t
 ssTermStripTopChange _ = Bug.bug "invalid input ssTerStripTopChange"
 
 -- returns term and how it changed
@@ -365,7 +365,7 @@ stepUpThroughCursor _ = Nothing
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
 defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
-defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids]) =
+defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids]) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let sort = Grammar.getSortFromSub ruleLabel sub in
  if not ((fst (endpoints ch)) == sort)
@@ -376,11 +376,11 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Inject (Grammar.
      let sub' = Map.union chSub subFull
      let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
      let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
-     pure $ wrapBoundary Up chBackUp $ Expr.Expr (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
+     pure $ wrapBoundary Up chBackUp $ Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
 defaultDown _ _ = Nothing
 
 isRule :: forall l r. IsRuleLabel l r => r -> SSTerm l r -> Boolean
-isRule r (Expr.Expr (Inject (Grammar.DerivLabel r' _)) _) | r == r' = true
+isRule r (Expr.Expr (SSInj (Grammar.DerivLabel r' _)) _) | r == r' = true
 isRule _ _ = false
 
 unless :: forall l r. (SSTerm l r -> Boolean) -> StepRule l r -> StepRule l r
@@ -388,7 +388,7 @@ unless f r t =
     if f t then Nothing else r t
 
 defaultUp :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
-defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
+defaultUp lang (Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let findUpBoundary = case _ of
          Expr.Expr (Boundary Up ch) [kid] /\ sort1 -> Just (ch /\ kid /\ sort1)
@@ -406,7 +406,7 @@ defaultUp lang (Expr.Expr (Inject (Grammar.DerivLabel ruleLabel sub)) kids) =
      let parentBoundary node = wrapBoundary Up (Expr.subMetaExpr sub' parentGSort) node
      pure $ parentBoundary
          (Expr.Expr
-             (Inject (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub')))
+             (SSInj (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub')))
              (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
 defaultUp _ _ = Nothing
 
@@ -459,7 +459,7 @@ type SSMatchTerm l r = Expr.Expr (Expr.MatchLabel r)
 type SSMatchPath l r = Expr.Path Dir.Up (Expr.MatchLabel (StepExprLabel l r))
 
 compareMatchLabel :: forall l r. IsRuleLabel l r => StepExprLabel l r -> r -> Boolean
-compareMatchLabel (Inject (Grammar.DerivLabel r1 _)) r2 = r1 == r2
+compareMatchLabel (SSInj (Grammar.DerivLabel r1 _)) r2 = r1 == r2
 compareMatchLabel _ _ = false
 
 injectSSMatchTerm :: forall l r. IsRuleLabel l r => r -> Array (SSMatchTerm l r) -> SSMatchTerm l r

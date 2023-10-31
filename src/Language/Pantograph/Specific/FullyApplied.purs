@@ -634,7 +634,7 @@ passThroughArrow :: StepRule
 passThroughArrow dterm =
     case dterm of
     ((Smallstep.Boundary Smallstep.Down ch) % [
-        (Inject (Grammar.DerivLabel ArrowRule _sigma)) % [da, db]
+        (SSInj (Grammar.DerivLabel ArrowRule _sigma)) % [da, db]
     ])
     | Just ([] /\ [ca, cb]) <- Expr.matchChange ch (TypeSort %+- [Arrow %+- [{-ca-}cSlot, {-cb-}cSlot]])
     -> pure (dTERM ArrowRule ["a" /\ rEndpoint ca, "b" /\ rEndpoint cb]
@@ -672,7 +672,7 @@ wrapLambda = Smallstep.makeDownRule
 -- down{Lam x : A. t}_(Term G (- A -> B)) ~~> down{t}_(Term (-x : A, G) B)
 unWrapLambda :: StepRule
 unWrapLambda (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
-        Expr.Expr (Inject (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
+        Expr.Expr (SSInj (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
     ])
     = do
         let varName = Util.lookup' (Expr.RuleMetaVar "x") sigma
@@ -713,7 +713,7 @@ unWrapApp = Smallstep.makeUpRule
             inside))
 
 makeAppGreyed :: StepRule
-makeAppGreyed ((Inject (Grammar.DerivLabel App sigma)) % [
+makeAppGreyed ((SSInj (Grammar.DerivLabel App sigma)) % [
         (Smallstep.Boundary Smallstep.Up ch) % [inside]
         , arg
     ])
@@ -729,22 +729,22 @@ makeAppGreyed ((Inject (Grammar.DerivLabel App sigma)) % [
                     _ -> Nothing
         let sigma' = Map.insert (Expr.RuleMetaVar "anything") (Smallstep.ssTermSort inside) sigma -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
         pure $ Smallstep.wrapBoundary Smallstep.Up restOfCh $
-            (Smallstep.Inject (Grammar.DerivLabel GreyedApp sigma')) % [
+            (Smallstep.SSInj (Grammar.DerivLabel GreyedApp sigma')) % [
                 inside
                 , arg
             ]
 makeAppGreyed _ = Nothing
 
 removeGreyedHoleArg :: StepRule
-removeGreyedHoleArg ((Inject (Grammar.DerivLabel GreyedApp _)) % [
+removeGreyedHoleArg ((SSInj (Grammar.DerivLabel GreyedApp _)) % [
         inside
-        , (Inject (Grammar.DerivLabel TermHole _) % _)
+        , (SSInj (Grammar.DerivLabel TermHole _) % _)
     ])
     = pure inside
 removeGreyedHoleArg _ = Nothing
 
 rehydrateApp :: StepRule
-rehydrateApp ((Inject (Grammar.DerivLabel GreyedApp sigma)) % [
+rehydrateApp ((SSInj (Grammar.DerivLabel GreyedApp sigma)) % [
         (Smallstep.Boundary Smallstep.Up ch) % [inside]
         , arg
     ])
@@ -753,7 +753,7 @@ rehydrateApp ((Inject (Grammar.DerivLabel GreyedApp sigma)) % [
         if not (a == (Util.lookup' (Expr.RuleMetaVar "a") sigma)) then Nothing else pure $
         let sigma' = Map.delete (Expr.RuleMetaVar "anything") sigma in -- The "anything" refers to whats in createGreyedConstruct in GreyedRules.purs
             Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
-                (Smallstep.Inject (Grammar.DerivLabel App sigma')) % [
+                (Smallstep.SSInj (Grammar.DerivLabel App sigma')) % [
                     inside
                     , arg
                 ]
@@ -769,7 +769,7 @@ replaceCallWithError = Smallstep.makeUpRule
                 [inside]))
 
 replaceErrorWithCall :: StepRule
-replaceErrorWithCall (Expr.Expr (Inject (Grammar.DerivLabel ErrorCall sigma)) [t])
+replaceErrorWithCall (Expr.Expr (SSInj (Grammar.DerivLabel ErrorCall sigma)) [t])
     =
     let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
     let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
@@ -783,7 +783,7 @@ replaceErrorWithCall _ = Nothing
 -- The second is Error which wraps a term
 
 wrapCallInErrorUp :: StepRule
-wrapCallInErrorUp ((Inject (Grammar.DerivLabel FunctionCall sigma)) % [
+wrapCallInErrorUp ((SSInj (Grammar.DerivLabel FunctionCall sigma)) % [
         (Smallstep.Boundary Smallstep.Up ch) % [inside]
     ])
     | Just ([] /\ [gamma, ty]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
@@ -822,7 +822,7 @@ wrapCallInErrorUp _ = Nothing
 --                            [dTERM FunctionCall ["gamma" /\ rEndpoint gamma, "type" /\ rEndpoint ty] [inside]]))
 wrapCallInErrorDown :: StepRule
 wrapCallInErrorDown ((Smallstep.Boundary Smallstep.Down ch) % [
-        (Inject (Grammar.DerivLabel FunctionCall sigma)) % [inside]
+        (SSInj (Grammar.DerivLabel FunctionCall sigma)) % [inside]
     ])
     | Just ([] /\ [gamma, ty]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, {-ty-}cSlot])
     =
@@ -848,7 +848,7 @@ wrapCallInErrorDown _ = Nothing
 --                ]])
 
 removeError :: StepRule
-removeError (Expr.Expr (Inject (Grammar.DerivLabel ErrorBoundary sigma)) [t])
+removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
     let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
     let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
@@ -860,8 +860,8 @@ removeError (Expr.Expr (Inject (Grammar.DerivLabel ErrorBoundary sigma)) [t])
 removeError _ = Nothing
 
 mergeErrors :: StepRule
-mergeErrors (Expr.Expr (Inject (Grammar.DerivLabel ErrorBoundary sigma1)) [
-        Expr.Expr (Inject (Grammar.DerivLabel ErrorBoundary sigma2)) [t]
+mergeErrors (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma1)) [
+        Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma2)) [t]
     ])
     =
     let insideInside = Util.lookup' (Expr.RuleMetaVar "insideType") sigma2 in
@@ -875,7 +875,7 @@ This is necessary because the wrapApp rule conflicts with the defaultUp, and the
 because defaultUp happens on a term higher up in the tree.
 -}
 isUpInCall :: SSTerm -> Boolean
-isUpInCall (Expr.Expr (Inject (Grammar.DerivLabel FunctionCall _)) [
+isUpInCall (Expr.Expr (SSInj (Grammar.DerivLabel FunctionCall _)) [
         Expr.Expr (Smallstep.Boundary Smallstep.Up ch) [_]
     ])
     | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
