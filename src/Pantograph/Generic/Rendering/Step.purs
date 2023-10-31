@@ -35,8 +35,9 @@ renderStepExpr e@(StepExpr node kids) = do
   let htmls = arrangedKids # foldMap case _ of
         ArrangeKid htmls' -> htmls'
         ArrangeHtml htmls' ->
-          [ El.ℓ [El.Classes [El.ArrangeHtml]]
-              htmls' ]
+          -- [ El.ℓ [El.Classes [El.ArrangeHtml]]
+          --     htmls' ]
+          htmls'
   pure $ [El.ℓ (propsStepExpr e) htmls]
 renderStepExpr e@(Boundary (dir /\ ch) kid) = do
   htmls <- renderStepExpr kid
@@ -49,12 +50,13 @@ renderStepExpr e@(Marker kid) = do
   htmls <- renderStepExpr kid
   pure $ [El.ℓ (propsStepExpr e) htmls]
 
-propsStepExpr :: forall sn el i. StepExpr sn el -> El.Props i
+propsStepExpr :: forall sn el. StepExpr sn el -> El.Props Unit
 propsStepExpr e = 
   [ El.Classes case e of
       StepExpr _ _ -> [El.StepExpr] 
-      Boundary _ _ -> [El.Boundary]
-      Marker _ -> [El.Marker]
+      Boundary _ _ -> [El.StepExprBoundary]
+      Marker _ -> [El.StepExprMarker]
+  , El.StrictHover (const unit)
   ]
 
 getStepExprNode :: forall sn el. StepExpr sn el -> ExprNode sn el

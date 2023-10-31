@@ -74,8 +74,9 @@ renderAnnExprHelper outside expr makeAnnExprProps arrangedKids = do
   let htmls = arrangedKids # foldMap case _ of
         ArrangeKid htmls' -> htmls'
         ArrangeHtml htmls' ->
-          [ El.ℓ [El.Classes [El.ArrangeHtml]] $
-              embedHtml (pure unit) <$> htmls' ]
+          -- [ El.ℓ [El.Classes [El.ArrangeHtml]] $
+          --     embedHtml (pure unit) <$> htmls' ]
+          embedHtml (pure unit) <$> htmls'
   pure $ [El.ℓ props htmls]
 
 renderAnnExpr :: forall sn el er ctx env. Rendering sn el ctx env =>

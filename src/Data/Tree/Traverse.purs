@@ -16,7 +16,7 @@ traverseTree :: forall a m b. Monad m => F a m b -> F a m (Tree b)
 traverseTree f z = Tree <$> f z <*> traverseTree f `traverse` (tooths z.inside <#> \(th /\ inside') -> z {middle = z.middle `consPath` th, inside = inside'})
 
 traversePath :: forall a m b. Monad m => F a m b -> F a m (Path b)
-traversePath f z = debug "traverseTooth" {} \_ -> case unconsPath z.middle of
+traversePath f z = case unconsPath z.middle of
   Nothing -> pure mempty
   Just {outer: middle', inner: th@(Tooth _ (i /\ _))} -> 
     let inside' = th `unTooth` z.inside in

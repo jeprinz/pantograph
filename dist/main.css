@@ -84,12 +84,12 @@ body {
   display: inline-block;
 } */
 
-.PanelHeaderInfo>.title {
+.PanelHeaderInfo>.Title {
   color: var(--color1);
   font-weight: bold;
 }
 
-.PanelHeaderInfo>.subtitle {
+.PanelHeaderInfo>.Subtitle {
   color: var(--color2);
   font-weight: bold;
 }
@@ -98,22 +98,6 @@ body {
   display: flex;
   flex-direction: row;
   gap: var(--it);
-}
-
-.PanelHeaderControl>.button {
-  padding: 0 calc(0.5*var(--it));
-  user-select: none;
-  cursor: pointer;
-
-  color: var(--color2);
-  box-shadow: 0 0 0 1px var(--color2);
-  background-color: black;
-}
-
-.PanelHeaderControl>.button:hover {
-  color: black;
-  box-shadow: 0 0 0 1px black;
-  background-color: var(--color2);
 }
 
 .PanelContent {}
@@ -156,7 +140,7 @@ body {
 
 .BufferPanel>.PanelContent>.PanelContentInterior {}
 
-.BufferPanel>.PanelContent>.PanelContentInterior>.program {
+.BufferPanel>.PanelContent>.PanelContentInterior>.Program {
   padding: var(--it);
   line-height: 1.1em;
 }
@@ -171,8 +155,6 @@ body {
   width: 100vw;
   overflow: scroll;
 }
-
-.TerminalContent {}
 
 .TerminalContent.closed {
   display: none;
@@ -239,7 +221,7 @@ body {
   user-select: none;
 }
 
-.Expr.hover {
+.Expr.Hover {
   background-color: var(--hover-background-color);
   box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
 }
@@ -278,13 +260,13 @@ body {
 }
 
 .Expr.OutsideCursor,
-.Expr.OutsideCursor.hover {
+.Expr.OutsideCursor.Hover {
   background-color: var(--cursor-background-color);
   box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
 
 .Expr.InsideCursor,
-.Expr.InsideCursor.hover {
+.Expr.InsideCursor.Hover {
   border-radius: calc(0.5 * var(--it));
   background-color: var(--cursor-background-color);
   box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
@@ -383,7 +365,7 @@ body {
   box-shadow: 0 0 0 4px var(--hover-border-color);
 }
 
-.SortVar {
+.VarSN {
   display: inline;
 }
 
@@ -395,8 +377,11 @@ body {
   display: inline;
 }
 
-.ShiftChange {
+.Change {
   display: inline;
+}
+
+.ShiftChange {
   background-color: rgb(169, 110, 0);
   padding: 0 calc(0.5*var(--it))
 }
@@ -407,51 +392,59 @@ body {
   padding: 0 calc(0.5*var(--it))
 }
 
-.ReplaceChange {
-  display: inline;
-}
+.ReplaceChange {}
 
-.InjectChange {
-  display: inline;
-}
+.InjectChange {}
 
 
 /* StepExpr */
 
-.StepExpr {}
+.StepExpr {
+  /* display: inline; */
+  display: inline-block;
+}
 
 .StepExprBoundaryInfo {
-  display: inline;
-  box-shadow: 0 0 0 4px var(--boundary-color);
+  /* display: inline; */
+  display: inline-block;
+  /* box-shadow: 0 0 0 4px var(--boundary-color); */
+  border: var(--it) solid var(--boundary-color);
 }
 
 .StepExprBoundary {
-  display: inline;
-  box-shadow: 0 0 0 4px var(--boundary-color);
+  /* display: inline; */
+  display: inline-block;
+  /* box-shadow: 0 0 0 4px var(--boundary-color); */
+  border: var(--it) solid var(--boundary-color);
   padding: 0 calc(0.5*var(--it));
 }
 
 .StepExprBoundaryDirection {
-  display: inline;
+  /* display: inline; */
+  display: inline-block;
   padding: 0 calc(0.5*var(--it));
   background-color: black;
   color: white;
 }
 
 .StepExprBoundaryChange {
-  display: inline;
+  /* display: inline; */
+  display: inline-block;
   padding: 0 var(--it);
 }
 
 .StepExprMarker {
-  display: inline;
-  box-shadow: 0 0 0 4px var(--cursor-border-color);
+  /* display: inline; */
+  display: inline-block;
+  /* box-shadow: 0 0 0 4px var(--cursor-border-color); */
+  border: var(--it) solid var(--cursor-border-color);
 }
 
 .StepExprBoundaryInfo:hover,
-.StepExprBoundaryInfo:hover+.StepExpr,
+.StepExprBoundaryInfo:hover+.StepExprBoundary,
 .StepExpr:hover {
-  box-shadow: 0 0 0 4px var(--hover-border-color);
+  /* box-shadow: 0 0 0 4px var(--hover-border-color); */
+  border: var(--it) solid var(--hover-border-color);
 }
 
 /* Html */
@@ -459,4 +452,25 @@ body {
 .Hole {
   color: gray;
   padding: 0 calc(0.5*var(--it));
+}
+
+.Inline {
+  display: inline;
+}
+
+.Button {
+  display: inline-block;
+  padding: 0 calc(0.5*var(--it));
+  user-select: none;
+  cursor: pointer;
+
+  color: var(--color2);
+  box-shadow: 0 0 0 1px var(--color2);
+  background-color: black;
+}
+
+.Button:hover {
+  color: black;
+  box-shadow: 0 0 0 1px black;
+  background-color: var(--color2);
 }

@@ -6,13 +6,16 @@ import Bug (bug)
 import DOM.HTML.Indexed as HTML
 import Data.Array as Array
 import Data.Generic.Rep (class Generic)
+import Data.List as List
+import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Subtype (class Subtype)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\), type (/\))
+import Debug as Debug
 import Effect (Effect)
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen as H
@@ -47,7 +50,7 @@ compileProps props = Array.foldMap compileProp props
 compileProp :: forall i. Prop i -> Array (HP.IProp HTML.HTMLdiv i)
 compileProp (Id elemId) = [ HU.id elemId ]
 compileProp (Ref refLabel) = [ HP.ref refLabel ]
-compileProp (Classes classNames) = [ HP.classes $ HH.ClassName <<< show <$> classNames ]
+compileProp (Classes classNames) = [HP.classes $ Array.foldMap compileClassName classNames]
 compileProp (OnMouseDown k) = 
   [ HE.onMouseDown \mouseEvent -> unsafePerformEffect do
       let event = MouseEvent.toEvent mouseEvent
@@ -62,6 +65,7 @@ compileProp (OnMouseUp k) =
   ]
 compileProp (StrictHover k) = do
   [ HE.onMouseOver \mouseEvent -> unsafePerformEffect do
+      -- Debug.traceM "[StringHover] onMouseOver"
       let event = MouseEvent.toEvent mouseEvent
       Event.stopPropagation event
       let target = case Event.target event >>= Element.fromEventTarget of
@@ -70,6 +74,7 @@ compileProp (StrictHover k) = do
       updateElementClassName target Hover (Just true)
       pure $ k mouseEvent
   , HE.onMouseOut \mouseEvent -> unsafePerformEffect do
+      -- Debug.traceM "[StringHover] onMouseOut"
       let event = MouseEvent.toEvent mouseEvent
       Event.stopPropagation event
       let target = case Event.target event >>= Element.fromEventTarget of
@@ -108,7 +113,7 @@ data ClassName
   -- Language
   | VarSN | Expr | Hole | ArrangeHtml
   -- StepExpr
-  | StepExpr | Boundary | Marker
+  | StepExpr | StepExprBoundary | StepExprMarker
   | StepExprBoundaryInfo | StepExprBoundaryDirection | StepExprBoundaryChange
   -- Preview
   | PreviewExpr | Preview 
@@ -143,56 +148,62 @@ instance Subtype ClassName HH.ClassName where
   inject = HH.ClassName <<< show
   project = Just <<< ClassName <<< unwrap
 
-ancestorClassNames :: ClassName -> Array ClassName
-ancestorClassNames = \cn -> 
-  case Map.lookup cn m of
-    Nothing -> []
-    Just cns -> cns
-  where
-  rels :: Array (ClassName /\ Array ClassName)
-  rels =
-    [ Expr /\ [PreviewExpr, ToolboxExpr]
-    , ToolboxExpr /\ [AdjacentEditClasp]
-    , Cursor /\ [OutsideCursor, InsideCursor]
-    , Select /\ [OutsideSelect, InsideSelect]
-    , Change /\ [ShiftChange, ReplaceChange, InjectChange]
-    , Panel /\ [EditorPanel, BufferPanel, TerminalPanel]
-    , Preview /\ [PreviewLeft, PreviewRight]
-    , PreviewLeft /\ [PreviewLeftInsert, PreviewLeftPaste]
-    , PreviewRight /\ [PreviewRightInsert, PreviewRightPaste]
-    , EditRow /\ [SelectedEditRow]
-    ]
+ancestorClassNamesRelations :: Array (ClassName /\ Array ClassName)
+ancestorClassNamesRelations =
+  [ Expr /\ [PreviewExpr, ToolboxExpr, StepExpr]
+  , ToolboxExpr /\ [AdjacentEditClasp]
+  , Cursor /\ [OutsideCursor, InsideCursor]
+  , Select /\ [OutsideSelect, InsideSelect]
+  , Change /\ [ShiftChange, ReplaceChange, InjectChange]
+  , Panel /\ [EditorPanel, BufferPanel, TerminalPanel]
+  , Preview /\ [PreviewLeft, PreviewRight]
+  , PreviewLeft /\ [PreviewLeftInsert, PreviewLeftPaste]
+  , PreviewRight /\ [PreviewRightInsert, PreviewRightPaste]
+  , EditRow /\ [SelectedEditRow]
+  ]
 
-  relClosure cn = rels # Array.foldMap \(cnParent /\ cnKids) -> if Array.elem cn cnKids then [cnParent] <> ancestorClassNames cnParent else []
-  m = Map.fromFoldableWith (\cns1 cns2 -> Array.nub $ cns1 <> cns2) $
-        rels # Array.foldMap \(cnParent /\ cnKids) -> cnKids <#> \cnKid -> cnKid /\ relClosure cnParent
+ancestorClassNamesRelationsClosure :: ClassName -> Array ClassName
+ancestorClassNamesRelationsClosure = Array.fromFoldable <<< go mempty
+  where
+  go cns cn = ancestorClassNamesRelations # Array.foldMap \(cnParent /\ cnKids) -> 
+    if Array.elem cn cnKids && not (List.elem cnParent cns) 
+      then go (cnParent List.: cns) cnParent 
+      else cns
+
+ancestorClassNamesRelationsMap :: Map ClassName (Array ClassName)
+ancestorClassNamesRelationsMap =
+  Map.fromFoldableWith (\cns1 cns2 -> Array.nub $ cns1 <> cns2) $
+    ancestorClassNamesRelations # Array.foldMap \(cnParent /\ cnKids) -> cnKids <#> \cnKid -> cnKid /\ ([cnParent] <> ancestorClassNamesRelationsClosure cnParent)
+
+ancestorClassNames :: ClassName -> Array ClassName
+ancestorClassNames cn = fromMaybe [] $ Map.lookup cn ancestorClassNamesRelationsMap
 
 compileClassName :: ClassName -> Array HH.ClassName
 compileClassName className = 
   [HH.ClassName (show className)] <>
-  (Array.foldMap compileClassName $ ancestorClassNames className)
+  (Array.foldMap compileClassName (ancestorClassNames className))
 
 -- building elements    
 
 element :: forall w i. Props i -> Array (HH.HTML w i) -> HH.HTML w i
 element props = HH.div (compileProps props)
 
-ℓ = element
+ℓ kids = element kids
 
 whitespace string = ℓ [Classes [Whitespace]] [HH.text string]
-ε = whitespace
+ε string = whitespace string
 
 punctuation string = ℓ [Classes [Punctuation]] [HH.text string]
-π = punctuation
+π string = punctuation string
 
-inline = ℓ [Classes [Inline]]
-ι = inline
+inline kids = ℓ [Classes [Inline]] kids
+ι kids = inline kids
 
-block = ℓ [Classes [Block]]
-β = block
+block kids = ℓ [Classes [Block]] kids
+β kids = block kids
 
-text = HH.text
-τ = text
+text string = HH.text string
+τ string = text string
 
 br = HH.br_
 

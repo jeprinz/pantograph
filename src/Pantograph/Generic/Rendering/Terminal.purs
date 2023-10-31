@@ -53,7 +53,8 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
   HK.useQuery queryToken \(TerminalQuery query) -> (query # _) $ case_
     # on (Proxy :: Proxy "write") (\(item /\ a) -> do
         -- HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
-        modifyTerminalItems (List.take maximumTerminalItems <<< List.Cons item) \_ ->
+        modifyTerminalItems (List.take maximumTerminalItems <<< List.Cons item) \_ -> do
+          HK.modify_ counterStateId (1 + _)
           pure (Just a)
       )
     # on (Proxy :: Proxy "toggle isOpen") (\(mb_isOpen /\ a) -> do
