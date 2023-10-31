@@ -203,24 +203,16 @@ Also, c3 should be orthogonal to c1. If this doesn't exist, it outputs Nothing.
 
 doOperation :: forall l. IsExprLabel l => Change l -> Expr (Meta (ChangeLabel l)) -> Maybe (Map MetaVar (Change l) /\ Change l)
 doOperation c1 c2 =
---    trace ("doOperation called with c1 = " <> pretty c1 <> " and c2 = " <> pretty c2) \_ ->
     do
     matches <- getMatches c2 c1
---    traceM ("matches is: " <> pretty matches)
     -- TODO: could this be written better
     let sub = map (foldNonempty (\c1 c2 -> do x <- c1
                                               y <- c2
---                                              traceM ("calling lub, c1 is " <> pretty c1 <> " and c2 is " <> pretty c2 <> " result is " <> pretty (lub x y))
                                               lub x y))
                 (map (Set.map Just) matches)
---    traceM ("sub is: " <> pretty sub)
     sub2 <- sequence sub
---    traceM ("sub2 is: " <> pretty sub2)
     let subc2 = subMetaExpr sub2 c2
---    traceM ("subc2 is: " <> pretty subc2)
---    traceM ("invert c1 is" <> pretty (invert c1))
     let result = (sub2 /\ compose (invert c1) subc2)
---    traceM ("final result is " <> pretty result)
     pure $ result
 
 {-

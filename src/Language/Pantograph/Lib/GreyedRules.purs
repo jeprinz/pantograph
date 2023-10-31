@@ -5,9 +5,11 @@ import Prelude
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.List (List(..), (:))
 import Language.Pantograph.Generic.Grammar as Grammar
+import Data.Expr
 import Data.Expr as Expr
 import Data.Expr ((%))
-import Language.Pantograph.Generic.Smallstep as SmallStep
+import Language.Pantograph.Generic.Smallstep
+import Language.Pantograph.Generic.Smallstep as Smallstep
 import Data.Array as Array
 import Data.Map as Map
 import Data.Set as Set
@@ -22,20 +24,26 @@ import Data.Maybe (Maybe(..))
 import Data.Traversable (sequence)
 import Data.Foldable (foldl)
 import Hole (hole)
+import Bug as Bug
 
 createGreyedDownRules :: forall l r. Grammar.IsRuleLabel l r =>
     Int -- what'th child will be effectively the value of this rule
     -> r -- label for the regular construct
     -> r -- what rule label to use for the greyed construct
     -> Grammar.LanguageChanges l r
-    -> Array (SmallStep.StepRule l r)
+    -> Array (Smallstep.StepRule l r)
 createGreyedDownRules index regularRuleLabel greyRuleLabel languageChanges =
         let (Grammar.Rule _vars _children _conclusion) = TotalMap.lookup regularRuleLabel Grammar.language in
         let Grammar.ChangeRule vars crustyKidChanges = TotalMap.lookup regularRuleLabel languageChanges in
-        let crustyKidChange = Util.fromJust' "cgdr1" (Array.index crustyKidChanges index) in
+        let crustyKidChange = map MInj $ Util.fromJust' "cgdr1" (Array.index crustyKidChanges index) in
         [
         -- replace greyed with regular rule
-            --
+            case _ of
+--                ((Smallstep.Boundary Smallstep.Down c) % [
+--                    (Inject (Grammar.DerivLabel l _sigma)) % kids
+--                ]) | l == regularRuleLabel -> ?h
+                _ -> Bug.bug "TODO"
+                _ -> Nothing
         -- insert regular rule
             -- if sub = unify c crustyKidChange down{t}_{c} ~~> (rule sub) % down{t}_{sub kidSort at index in rule}
         -- delete regular rule / replace with greyed if any other children are non-default derivations
