@@ -249,7 +249,7 @@ nameSort name = Expr.MInj (StringSortLabel name) % []
 
 -- This is used as part of a DSL for building up sort changes
 csor :: forall l. l -> Expr.ChangeLabel (Expr.Meta (SortLabel l))
-csor l = Expr.Inject (Expr.MInj (SInj l))
+csor l = Expr.CInj (Expr.MInj (SInj l))
 
 -- assert that a label is a name and return the string
 matchNameLabel :: forall l. Sort l -> String

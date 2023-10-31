@@ -334,7 +334,7 @@ data SSChangeRule l = SSChangeRule (Set.Set Expr.MetaVar) (Array (SSChangeSort l
 type SSChLanguage l r = TotalMap r (SSChangeRule l)
 
 metaInject :: forall l. Expr.MetaExpr l -> Expr.MetaExpr (Expr.ChangeLabel (Expr.Meta l))
-metaInject e = map (map (Expr.Inject <<< Expr.MInj)) e
+metaInject e = map (map (Expr.CInj <<< Expr.MInj)) e
 
 langToChLang :: forall l r. IsRuleLabel l r => Grammar.Language l r -> SSChLanguage l r
 langToChLang lang = map (\(Grammar.Rule vars kids parent)
@@ -372,7 +372,7 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (SSInj (Grammar.D
     then Bug.bug ("assertion failed: ch boundary didn't match sort in defaultDown. sort was: " <> pretty sort <> " and ch was " <> pretty ch <> " also sub is " <> pretty sub) else
  do
      chSub /\ chBackUp <- doOperation ch parentGSort
-     let subFull = map (map Expr.Inject) sub
+     let subFull = map (map Expr.CInj) sub
      let sub' = Map.union chSub subFull
      let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
      let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
@@ -398,7 +398,7 @@ defaultUp lang (Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids) =
      (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
          <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
      chSub /\ chBackDown <- doOperation ch gSort
-     let subFull = map (map Expr.Inject) sub
+     let subFull = map (map Expr.CInj) sub
      let sub' = Map.union chSub subFull
      let wrapKid (kid1 /\ gSort1) = wrapBoundary Down (Expr.subMetaExpr sub' gSort1) kid1
      let leftKids = map wrapKid leftKidsAndSorts
@@ -452,7 +452,7 @@ type MatchSortChange l = Expr.Expr (Expr.ChangeLabel (Expr.MatchLabel (Expr.Meta
 type MatchSort l = Expr.Expr (Expr.MatchLabel (Expr.Meta (Grammar.SortLabel l)))
 
 cSlot :: forall l. MatchSortChange l
-cSlot = Expr.Inject Expr.Match % []
+cSlot = Expr.CInj Expr.Match % []
 
 --type SSMatchTerm l r = Expr.Expr (Expr.MatchLabel (StepExprLabel l r))
 type SSMatchTerm l r = Expr.Expr (Expr.MatchLabel r)
@@ -509,7 +509,7 @@ makeUpRule changeMatch derivMatch output term = do
 --makeUpRule = Hole.hole "makeUpRule"
 
 injectChangeMatchExpr :: forall l. l -> Array (MatchSortChange l) -> MatchSortChange l
-injectChangeMatchExpr l kids = (Expr.Inject (Expr.InjectMatchLabel (Expr.MInj (Grammar.SInj l)))) % kids
+injectChangeMatchExpr l kids = (Expr.CInj (Expr.InjectMatchLabel (Expr.MInj (Grammar.SInj l)))) % kids
 
 infixl 7 injectChangeMatchExpr as %+-
 

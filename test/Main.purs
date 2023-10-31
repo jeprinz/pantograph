@@ -53,4 +53,4 @@ main = do
   -- log $ foldMapPath "PathEnd" (\th -> ((pretty th <> "  -  ") <> _)) pathDown
 
   log $ pretty $ 
-    Expr (Inject (Wrap "A")) [Expr (Plus (Tooth (Wrap "B") mempty)) [Expr (Inject Base) []]]
+    Expr (CInj (Wrap "A")) [Expr (Plus (Tooth (Wrap "B") mempty)) [Expr (CInj Base) []]]

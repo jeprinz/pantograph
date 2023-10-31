@@ -540,7 +540,7 @@ splitChange c =
         c | Maybe.Just ([] /\ [_gamma, _ty]) <- Expr.matchChange c (NeutralSort %+- [cSlot, cSlot])
         -> {upChange: ChangeAlgebra.inject (rEndpoint c), cursorSort: rEndpoint c, downChange: c}
         -- TODO: maybe could just generalize this to when c is the identity?
-        ((Expr.Inject (Expr.MV _)) % []) ->
+        ((Expr.CInj (Expr.MV _)) % []) ->
             {upChange: c, cursorSort: rEndpoint c, downChange: c}
         c -> bug ("splitChange - got c = " <> pretty c)
 
@@ -917,7 +917,7 @@ onDelete cursorSort
     | Maybe.Just [ty] <- Expr.matchExprImpl cursorSort (sor TypeSort %$ [slot])
     = csor TypeSort % [Expr.replaceChange ty (Expr.fromMetaVar (Expr.freshMetaVar "deleted"))]
 onDelete (Expr.MInj Grammar.NameSortLabel % [s])
-    = Expr.Inject (Expr.MInj Grammar.NameSortLabel) %
+    = Expr.CInj (Expr.MInj Grammar.NameSortLabel) %
         [Expr.replaceChange s (Expr.MInj (Grammar.StringSortLabel "") % [])]
 onDelete cursorSort = ChangeAlgebra.inject cursorSort
 

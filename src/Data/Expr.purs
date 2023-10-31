@@ -523,7 +523,7 @@ type Change l = Expr (ChangeLabel l)
 data ChangeLabel l
   = Plus (Tooth l) {-one kid - whatever fits inside the tooth-}
   | Minus (Tooth l) {-one kid - whatever fits inside the tooth-}
-  | Inject l {-same number of kids that l has-}
+  | CInj l {-same number of kids that l has-}
   | Replace (Expr l) (Expr l) {-zero kids?-}
 
 derive instance Generic (ChangeLabel l) _
@@ -534,7 +534,7 @@ instance Show l => Show (ChangeLabel l) where show x = genericShow x
 instance IsExprLabel l => Pretty (ChangeLabel l) where
   pretty (Plus th) = "(+ " <> prettyTooth th "⌶" <> ")"
   pretty (Minus th) = "(- " <> prettyTooth  th "⌶" <> ")"
-  pretty (Inject l) = pretty l
+  pretty (CInj l) = pretty l
   pretty (Replace e1 e2) = "(" <> pretty e1 <> ") ~~> (" <> pretty e2 <> ")"
 
 derive instance Functor ChangeLabel
@@ -545,36 +545,36 @@ derive instance Traversable ChangeLabel
 --   foldMap f = case _ of
 --     Plus th -> foldMapTooth f th
 --     Minus th -> foldMapTooth f th
---     Inject l -> f l
+--     CInj l -> f l
 --     Replace e1 e2 -> foldMap f e1 <> foldMap f e2
 --   foldl f b = case _ of
 --     Plus th -> foldlTooth f b th
 --     Minus th -> foldlTooth f b th
---     Inject l -> f b l
+--     CInj l -> f b l
 --     Replace e1 e2 -> foldl f (foldl f b e1) e2
 --   foldr f b = case _ of 
 --     Plus th -> foldrTooth f b th
 --     Minus th -> foldrTooth f b th
---     Inject l -> f l b
+--     CInj l -> f l b
 --     Replace e1 e2 -> foldr f (foldr f b e2) e1
 
 -- instance Traversable ChangeLabel where
 --   traverse f = case _ of
 --     Plus th -> Plus <$> traverseTooth f th
 --     Minus th -> Minus <$> traverseTooth f th
---     Inject l -> Inject <$> f l
+--     CInj l -> CInj <$> f l
 --     Replace e1 e2 -> Replace <$> traverse f e1 <*> traverse f e2
 --   sequence fa = sequenceDefault fa
 
 instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
   prettyExprF'_unsafe (Plus th /\ [kid]) = P.parens $ "+" <> prettyTooth th kid
   prettyExprF'_unsafe (Minus th /\ [kid]) = P.parens $ "-" <> prettyTooth th kid
-  prettyExprF'_unsafe (Inject l /\ kids) = prettyExprF (l /\ kids)
+  prettyExprF'_unsafe (CInj l /\ kids) = prettyExprF (l /\ kids)
   prettyExprF'_unsafe (Replace e1 e2 /\ []) = P.parens (pretty e1) <> " ~~> " <> P.parens (pretty e2)
 
   expectedKidsCount (Plus _) = 1
   expectedKidsCount (Minus _) = 1
-  expectedKidsCount (Inject l) = expectedKidsCount l
+  expectedKidsCount (CInj l) = expectedKidsCount l
   expectedKidsCount (Replace _ _) = 0
 
 type MetaChange l = Change (Meta l)
@@ -590,10 +590,10 @@ minusChange l leftKids inside rightKids =
         % [inside]
 
 injectChange :: forall l. l -> Array (Change l) -> Change l
-injectChange l chs = Inject l % chs
+injectChange l chs = CInj l % chs
 
 injectExprChange :: forall l. Expr l -> Change l
-injectExprChange (l % kids) = Inject l % (injectExprChange <$> kids)
+injectExprChange (l % kids) = CInj l % (injectExprChange <$> kids)
 
 replaceChange :: forall l. Expr l -> Expr l -> Change l
 replaceChange e1 e2 = Replace e1 e2 % []
@@ -637,7 +637,7 @@ subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially"
     MInj l % kids -> (MInj l) % (go <$> kids)
 
 --    Minus [kid] -> ?h
---    Inject kids -> ?h
+--    CInj kids -> ?h
 --    Replace t1 t2 -> ?h
 --subMetaChangePartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially") go
 --  where
@@ -713,8 +713,8 @@ matchChange :: forall l. IsExprLabel l =>
     Change l -> Expr (ChangeLabel (MatchLabel l))
     -- Two kinds out outputs: expressions and changes
     -> Maybe (Array (Expr l) /\ Array (Change l))
-matchChange c (Inject Match % []) = Just ([] /\ [c])
-matchChange (Inject l1 % kids1) (Inject (InjectMatchLabel l2) % kids2) | l1 == l2 =
+matchChange c (CInj Match % []) = Just ([] /\ [c])
+matchChange (CInj l1 % kids1) (CInj (InjectMatchLabel l2) % kids2) | l1 == l2 =
     foldl (\(a/\b) (c/\d) -> (a <> c) /\ (b <> d)) ([] /\ []) <$> sequence (Array.zipWith matchChange kids1 kids2)
 matchChange (Plus th1 % [kid1]) ((Plus th2) % [kid2]) = do
     toothMatches <- matchTeeth th1 th2
@@ -748,8 +748,8 @@ matchChange _ _ = Nothing
 --    Change l -> Expr (ChangeLabel (Meta l))
 --    -- Two kinds out outputs: expressions and changes
 --    -> Maybe (Array (MetaVar /\ Expr l) /\ Array (MetaVar /\ Change l))
---matchChange2Impl c (Inject (Meta (Left mv)) % []) = Just ([] /\ [mv /\ c])
---matchChange2Impl (Inject l1 % kids1) (Inject (Meta (Right l2)) % kids2) | l1 == l2 =
+--matchChange2Impl c (CInj (Meta (Left mv)) % []) = Just ([] /\ [mv /\ c])
+--matchChange2Impl (CInj l1 % kids1) (CInj (Meta (Right l2)) % kids2) | l1 == l2 =
 --    foldl (\(a/\b) (c/\d) -> (a <> c) /\ (b <> d)) ([] /\ []) <$> sequence (Array.zipWith matchChange2Impl kids1 kids2)
 --matchChange2Impl (Plus th1 % [kid1]) ((Plus th2) % [kid2]) = do
 --    toothMatches <- matchTeeth th1 th2

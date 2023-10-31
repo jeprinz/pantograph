@@ -72,13 +72,13 @@ subSomeChangeLabel sub =
   case _ of
       Expr.Plus (Expr.Tooth dir (ZipList.Path {left, right})) -> Expr.Plus (Expr.Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))
       Expr.Minus (Expr.Tooth dir (ZipList.Path {left, right})) -> Expr.Minus (Expr.Tooth dir (ZipList.Path {left: map subExpr left, right: map subExpr right}))
-      Expr.Inject l -> Expr.Inject l -- NOTE: if l was a metavar, we wouldn't get here because subSomeMetaChange would have dealt with it.
+      Expr.CInj l -> Expr.CInj l -- NOTE: if l was a metavar, we wouldn't get here because subSomeMetaChange would have dealt with it.
       Expr.Replace e1 e2 -> Expr.Replace (subExpr e1) (subExpr e2)
 
 subSomeMetaChange :: forall l. Expr.IsExprLabel l => ChSub l -> Expr.MetaChange l -> Expr.MetaChange l
 subSomeMetaChange sub (Expr.Expr l kids) =
     case l of
-        Expr.Inject (Expr.MV x) | Just s <- Map.lookup x sub
+        Expr.CInj (Expr.MV x) | Just s <- Map.lookup x sub
             -> s
         _ -> Expr.Expr (subSomeChangeLabel sub l) (map (subSomeMetaChange sub) kids)
 
@@ -100,9 +100,9 @@ addToChSub sub x c =
 --unifyChanges :: forall l. Expr.IsExprLabel l =>
 --    Expr.MetaChange l -> Expr.MetaChange l
 --    -> Maybe (ChSub l)
---unifyChanges (Expr.Inject (Expr.Meta (Left x)) % []) c = Just (Map.singleton x c)
---unifyChanges c (Expr.Inject (Expr.Meta (Left x)) % []) = Just (Map.singleton x c)
---unifyChanges (Expr.Inject (Expr.Meta (Right l1)) % kids1) (Expr.Inject (Expr.Meta (Right l2)) % kids2) | l1 == l2 =
+--unifyChanges (Expr.CInj (Expr.Meta (Left x)) % []) c = Just (Map.singleton x c)
+--unifyChanges c (Expr.CInj (Expr.Meta (Left x)) % []) = Just (Map.singleton x c)
+--unifyChanges (Expr.CInj (Expr.Meta (Right l1)) % kids1) (Expr.CInj (Expr.Meta (Right l2)) % kids2) | l1 == l2 =
 --    let a = (foldl (composeC) Map.empty) <$> sequence (Array.zipWith unifyChanges kids1 kids2) in
 ----    let a = foldl ?h ?h <$> sequence (Array.zipWith unifyChanges kids1 kids2) in
 --    ?h
