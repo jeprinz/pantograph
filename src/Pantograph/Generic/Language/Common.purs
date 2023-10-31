@@ -291,7 +291,8 @@ newtype Edit sn el = Edit
   { outerChange :: Maybe (SortChange sn)
   , middle :: Maybe (ExprNonEmptyPath sn el)
   , innerChange :: Maybe (SortChange sn)
-  , inside :: Maybe (Expr sn el) }
+  , inside :: Maybe (Expr sn el)
+  , sigma :: Maybe (SortVarSubst sn) }
 
 derive instance Newtype (Edit sn el) _
 derive newtype instance (Show sn, Show el) => Show (Edit sn el)

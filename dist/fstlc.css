@@ -5,6 +5,11 @@
   box-shadow: 0 0 0 2px white inset, 0 0 0 3px black inset;
 }
 
+.HoleTyImage {
+  display: inline-block;
+  height: 8pt;
+}
+
 .HoleTm {
   color: gray;
 }

@@ -221,6 +221,11 @@ body {
   user-select: none;
 }
 
+.Expr>* {
+  vertical-align: middle;
+  line-height: normal;
+}
+
 .Expr.Hover {
   background-color: var(--hover-background-color);
   box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
@@ -383,13 +388,14 @@ body {
 
 .ShiftChange {
   background-color: rgb(169, 110, 0);
-  padding: 0 calc(0.5*var(--it))
+  /* padding: 0 calc(0.5*var(--it)); */
+  padding: calc(0.5*var(--it)) calc(0.5*var(--it));
 }
 
 .ShiftChangeInner {
   display: inline;
   background-color: white;
-  padding: 0 calc(0.5*var(--it))
+  padding: 0 calc(0.5*var(--it));
 }
 
 .ReplaceChange {}

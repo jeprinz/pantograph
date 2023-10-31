@@ -16,7 +16,7 @@ import Data.Either (Either(..))
 import Data.Identity (Identity)
 import Data.List (List)
 import Data.List as List
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.Tree.Change (lub')
 import Debug as Debug
@@ -134,14 +134,14 @@ getStepExprNode (Marker kid) = getStepExprNode kid
 
 -- setup SteExpr
 
-setupEdit :: forall sn el. ExprCursor sn el -> Edit sn el -> StepExpr sn el
+setupEdit :: forall sn el. Language sn el => ExprCursor sn el -> Edit sn el -> StepExpr sn el
 setupEdit (Cursor cursor) (Edit edit) =
-  wrapExprPath cursor.outside $
+  wrapExprPath (maybe identity applySortVarSubst edit.sigma cursor.outside) $
   edit.outerChange # maybe identity (boundary Up) $
   edit.middle # maybe identity (wrapExprPath <<< toPath)  $
   edit.innerChange # maybe identity (boundary Down)  $
   marker $
-  toStepExpr (edit.inside # maybe cursor.inside identity)
+  toStepExpr (edit.inside # maybe' (\_ -> maybe identity applySortVarSubst edit.sigma cursor.inside) identity)
 
 -- stepping engine
 

@@ -30,6 +30,8 @@ import Type.Proxy (Proxy(..))
 import Type.Row.Homogeneous (class Homogeneous)
 import Unsafe.Coerce (unsafeCoerce)
 
+foreign import showObject :: forall a. a -> String
+
 debug :: forall r a. Homogeneous r String => String -> Record r -> (Unit -> a) -> a
 debug title r = 
   let keysAndValues = fromHomogenousRecordToTupleArray r in
@@ -38,7 +40,10 @@ debug title r =
     if Array.null keysAndValues then "" else
     Array.foldMap (\(k /\ v) -> "\n" <> k <> " = " <> v) keysAndValues
 
-foreign import showObject :: forall a. a -> String
+debugM :: forall m r. Monad m => Homogeneous r String => String -> Record r -> m Unit
+debugM title r = do
+  pure unit
+  debug title r \_ -> pure unit
 
 unwrapApply nt f = f (unwrap nt)
 infixl 1 unwrapApply as >.

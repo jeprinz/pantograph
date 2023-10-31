@@ -16,8 +16,9 @@ import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
+import Data.Int as Int
 import Data.List (List(..))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.String (CodePoint)
@@ -26,9 +27,11 @@ import Data.StringQuery as StringQuery
 import Data.Supertype (inject)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), fst, snd)
+import Data.UUID as UUID
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Javascript as Javascript
 import Pantograph.Generic.Language ((%.), (%.|))
 import Pantograph.Generic.Language as PL
 import Pantograph.Generic.Rendering as PR
@@ -157,7 +160,7 @@ instance DisplayTreeNode SN where
 
 -- DataTy
 
-data DataTy = BoolDataTy
+data DataTy = UnitDataTy | BoolDataTy
 
 derive instance Generic DataTy _
 instance Show DataTy where show = genericShow
@@ -165,6 +168,7 @@ instance Eq DataTy where eq = genericEq
 instance Ord DataTy where compare = genericCompare
 instance Pretty DataTy where
   pretty = case _ of
+    UnitDataTy -> "unit"
     BoolDataTy -> "bool"
 
 -- EL
@@ -278,7 +282,7 @@ instance PL.Language SN EL where
   validGyro gyro = validGyro gyro
 
 topSort :: Sort
-topSort = sr_jg_tm sr_ctx_nil (sr_freshVar "top")
+topSort = sr_jg_tm sr_ctx_nil (PL.SN (DataTySN UnitDataTy) % [])
 
 getDefaultExpr :: Sort -> Maybe Expr
 getDefaultExpr (PL.SN Str % [strInner]) = Just $ PL.buildExpr StrEL {x: strInner} []
@@ -594,19 +598,19 @@ getEditsAtSort (Tree (PL.SN Str) []) Outside = PL.Edits $ StringQuery.fuzzy
           LibEdit.makeInsideChangeEdit $ ex_str (sr_strInner string) ]
   }
 getEditsAtSort (Tree (PL.SN VarJg) []) Outside = PL.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort (Tree (PL.SN TmJg) [γ0, α0]) Outside = PL.Edits $ StringQuery.fuzzy
+getEditsAtSort sort@(Tree (PL.SN TmJg) [γ0, α0]) Outside = PL.Edits $ StringQuery.fuzzy
   { toString: fst, maxPenalty
-  , getItems: const
+  , getItems: const $ Array.foldMap (maybe [] Array.singleton)
       [ -- (b :: Tm γ β) ~~> (λ (x="" : ?α) (b :: Tm (x : ?α , γ) β) :: Tm γ (?α -> β))
-        Tuple "lambda" do
-        let γ = γ0
-        let β = α0
-        let α = sr_freshVar "α"
-        let x = sr_strInner ""
-        let xEx = ex_str x
-        let αEx = fromTypeSortToTypeExpr α
-        NonEmptyArray.singleton $ LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} $ PL.singletonExprNonEmptyPath $
-          PL.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
+        map (Tuple "lambda") $ map NonEmptyArray.singleton $ do
+          let γ = γ0
+          let β = α0
+          let α = sr_freshVar "α"
+          let x = sr_strInner ""
+          let xEx = ex_str x
+          let αEx = fromTypeSortToTypeExpr α
+          LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ PL.singletonExprNonEmptyPath $
+              PL.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
     ]
   }
 getEditsAtSort (Tree (PL.SN NeJg) []) Outside = PL.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
@@ -667,8 +671,9 @@ arrangeExpr node@(PL.EN ErrorCallTm _ _) [ne] | _ % _ <- PL.getExprNodeSort node
   pure $ Array.fromFoldable $ "ErrorCall " ⊕ ne ˜⊕ Nil
 arrangeExpr node@(PL.EN HoleTm _ _) [α] | _ % _ <- PL.getExprNodeSort node = do
   α /\ _ <- α
-  countHoleTm <- modify (R.modify (Proxy :: Proxy "countHoleTm") (_ + 1)) <#> (_.countHoleTm >>> (_ - 1))
-  pure $ Array.fromFoldable $ "(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "□", HH.sub_ [HH.text $ show countHoleTm]] :: Html] ⊕ " : " ⊕ α ˜⊕ ")" ⊕ Nil
+  _countHoleTm <- modify (R.modify (Proxy :: Proxy "countHoleTm") (_ + 1)) <#> (_.countHoleTm >>> (_ - 1))
+  -- pure $ Array.fromFoldable $ "(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "□", HH.sub_ [HH.text $ show countHoleTm]] :: Html] ⊕ " : " ⊕ α ˜⊕ ")" ⊕ Nil
+  pure $ Array.fromFoldable $ "(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "?"] :: Html] ⊕ " : " ⊕ α ˜⊕ ")" ⊕ Nil
 arrangeExpr node@(PL.EN ErrorBoundaryTm _ _) [a] | _ % _ <- PL.getExprNodeSort node = do
   a /\ _ <- a
   pure $ Array.fromFoldable $ "ErrorBoundary " ⊕ a ˜⊕ Nil
@@ -690,11 +695,38 @@ arrangeExpr node@(PL.EN GrayAppNe _ _) [f, a] | _ % _ <- PL.getExprNodeSort node
   f /\ _ <- f
   a /\ _ <- a
   pure $ Array.fromFoldable $ f ˜⊕ " " ⊕ "{" ⊕ a ˜⊕ "}" ⊕ Nil
-arrangeExpr node@(PL.EN HoleTy _ _) [] | PL.SN TyJg % [PL.VarSN x % []] <- PL.getExprNodeSort node = do
-  countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-  pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
+
+-- arrangeExpr node@(PL.EN HoleTy _ _) [] | PL.SN TyJg % [PL.VarSN x % []] <- PL.getExprNodeSort node = do
+--   countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+--   pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
+
+arrangeExpr node@(PL.EN HoleTy _ _) [] | PL.SN TyJg % [PL.VarSN x@(PL.SortVar {uuid}) % []] <- PL.getExprNodeSort node = do
+  _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+  -- let src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+  -- let src = "data:image/png;base64," <> String.replaceAll (String.Pattern "-") (String.Replacement "/") (UUID.toString uuid)
+  -- let src = "data:image/png;base64," <> Javascript.fromStringToBase64String (UUID.toString uuid)
+  -- let src = Javascript.fromByteArrayToImageSrc ?a 1
+  
+  -- TODO: I need 4 numbers in [0, 256)
+
+  -- uuidString = "eab5a42c-da69-42a1-900f-5778d27f15a3"
+  -- let uuidString = UUID.toString uuid
+  -- debugM "arrangeExpr HoleTy" {uuidString}
+
+  let bytes =
+        let 
+          cps = Array.take 8 $ String.toCodePointArray $ UUID.toString uuid
+          byteStrings = map String.fromCodePointArray $ map (cps # _) $ [Array.slice 0 2, Array.slice 2 4, Array.slice 4 6, Array.slice 6 8]
+        in
+        byteStrings <#> Int.fromStringAs Int.hexadecimal >>> fromJust
+  
+  -- let src = Javascript.exampleImageSrc unit
+  let src = Javascript.fromByteArrayToImageSrc bytes 32
+  pure $ Array.fromFoldable $ [HH.img [HP.classes [HH.ClassName "HoleTyImage"], HP.src src] :: Html] ⊕ Nil
+
 arrangeExpr node@(PL.EN HoleTy _ _) [] | PL.SN TyJg % [α] <- PL.getExprNodeSort node = do
-  pure $ Array.fromFoldable $ ("? = " <> pretty α) ⊕ Nil
+  _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+  pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ pretty α] :: Html] ⊕ Nil
 arrangeExpr node@(PL.EN (DataTyEL dt) _ _) [] | _ % _ <- PL.getExprNodeSort node = do
   pure $ Array.fromFoldable $ pretty dt ⊕ Nil
 arrangeExpr node@(PL.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- PL.getExprNodeSort node = do
