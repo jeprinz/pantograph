@@ -8,6 +8,7 @@ import Data.Set (Set)
 import Data.Maybe (Maybe(..))
 import Util as Util
 import Data.Foldable
+import Data.Traversable (sequence)
 
 type MultiMap k v = Map k (Set v)
 
@@ -24,3 +25,18 @@ union m1 m2 = Util.threeCaseUnion (\s -> s) (\s -> s) Set.union m1 m2
 
 unions :: forall f v k. Ord k => Ord v => Foldable f => f (MultiMap k v) -> MultiMap k v
 unions f = foldr union empty f
+
+-- returns Just if all things happen to map to exactly one element
+toMap :: forall k v. MultiMap k v -> Maybe (Map k v)
+toMap mm =
+--    all (map ?h mm)
+    let mm' = map (\x ->
+        let elems :: Array _
+            elems = Set.toUnfoldable x in
+        assertSingleton elems
+        ) mm in
+    sequence mm'
+
+assertSingleton :: forall t. Array t -> Maybe t
+assertSingleton [x] = Just x
+assertSingleton _ = Nothing

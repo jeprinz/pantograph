@@ -66,9 +66,10 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange language
                 ]) | l == regularRuleLabel -> do
                     -- TODO: I'm not sure that this works. If c = -A1 -> B1, and metadUpChange is +A2 -> B2, how will A1 get unified with A2?
                     traceM ("GOT HERE. c is: " <> pretty c <> " and metadUpChange is: " <> pretty metadUpChange)
-                    chSub /\ chBackUp <- doOperation (invert c) metadUpChange --
+--                    chSub /\ chBackUp <- doOperation (invert c) metadUpChange --
+                    _sortSub /\ chSub1 <- getChangeMatches c (invert upChange)
+                    chSub <- MultiMap.toMap chSub1
                     traceM "BUT NOT HERE"
-                    let _ = if isId chBackUp then unit else Bug.bug "I didn't think this would happen"
                     let subFull = map (map Expr.CInj) sub
                     let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
                     let kid = Util.fromJust $ (Array.index kids index)
@@ -81,7 +82,7 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange language
                                 let sigma' = Map.insert x xSort (map rEndpoint sub') in
                                 \kid' -> SSInj (DerivLabel greyRuleLabel sigma') % Util.fromJust (Array.insertAt index kid' kidsWithBoundaries)
                             _ -> \x -> x
-                    pure $ wrapBoundary Up chBackUp (wrapGrey (wrapBoundary Down (subMetaExpr sub' metadDownChange) kid))
+                    pure $ wrapGrey (wrapBoundary Down (subSomeMetaChange sub' downChange) kid)
                 _ -> Nothing
         ]
         <> case maybeGreyRuleLabel of -- These two rules only exist if we have a greyed constructor

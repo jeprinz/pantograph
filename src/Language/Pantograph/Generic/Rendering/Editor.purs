@@ -203,7 +203,7 @@ editorComponent = HK.component \tokens spec -> HK.do
     doSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
     doSmallstep ssterm = do
         -- NOTE: set to true to make it step one-by-one through smallstep
-        if false then
+        if true then
             setState $ SmallStepState {ssterm}
         else do
             let final = SmallStep.stepRepeatedly ssterm spec.stepRules
@@ -734,6 +734,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- When I fix this and make it render the hole exterior, I will need to also not have it render that
             -- when the buffer is active.
             -- I need to go in the git history and bring back renderHoleExterior.
+            -- OR: maybe I can instead make renderPath use zipUp, which will deal correctly with going from inner hole to outer and then up the tree.
             HoleyDerivZipper _ true ->
               [ renderPath locs dzipper
                     (renderHoleInterior locs true dzipper)

@@ -275,14 +275,14 @@ renderSSTerm :: forall l r. IsRuleLabel l r =>
   SSTerm l r ->
   RenderingContext ->
   EditorHTML l r
-renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm") case _ of
-  SSInj (DerivLabel rule sort) % [] | isHoleRule rule ->
-    HH.div
-      [classNames ["node", "smallstep", "hole"]]
-      [ interrogativeElem
-      , colonElem
-      , HH.text $ pretty sort
-      ]
+renderSSTerm locs term renCtx = case term of
+--  SSInj (DerivLabel rule sort) % [] | isHoleRule rule ->
+--    HH.div
+--      [classNames ["node", "smallstep", "hole"]]
+--      [ interrogativeElem
+--      , colonElem
+--      , HH.text $ pretty sort
+--      ]
   SSInj (DerivString str) % [] ->
     HH.div
       [classNames ["node", "smallstep", "string"]]
@@ -292,11 +292,11 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
       , HH.text $ "String " <> show str
       , rparenElem
       ]
-  SSInj (DerivLabel rule sigma) % kids | not (isHoleRule rule) ->
+  SSInj (DerivLabel rule sigma) % kids ->
     HH.div
       [classNames ["node", "smallstep"]]
-      let kidElems = renderSSTerm locs <$> kids in
-      (Array.concat $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma} <#> case _ of
+      let kidElems = (if isHoleRule rule then [\_ -> HH.div_ [interrogativeElem, colonElem]] else []) <> (renderSSTerm locs <$> kids) in
+      (Array.concat $ unsafePartial $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma} <#> case _ of
         Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [applyCssClasses renCtx'.cssClasses (kid renCtx')]
         Right elems -> elems)
   -- TODO for Henry from Jacob: make this work with any number of kids n, instead of just 0 and 1. Or maybe it doesn't matter.
@@ -319,4 +319,5 @@ renderSSTerm locs = flip \renCtx -> assertInput_ (wellformedExpr "renderSSTerm")
       , renderSSTerm locs kid renCtx
       , rbraceElem
       ]
+  other -> bug ("failed pattern matchin in renderSSTerm: " <> pretty other)
 
