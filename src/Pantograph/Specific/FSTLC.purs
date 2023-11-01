@@ -422,7 +422,12 @@ getSortingRule =
       ( a )
 
 getChangingRule :: EL -> ChangingRule
-getChangingRule el = getDiffChangingRule {getSortingRule} el
+getChangingRule el = case el of
+  HoleTm -> P.buildChangingRule ["γ", "α"] \[γ, α] ->
+    [ injectTreeIntoChange $ rs_jg_ty α ]
+    /\
+    ( injectTreeIntoChange $ rs_jg_tm γ α )
+  _ -> getDiffChangingRule {getSortingRule} el
 
 steppingRules :: Array SteppingRule
 steppingRules =

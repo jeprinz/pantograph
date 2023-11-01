@@ -109,7 +109,7 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
                 , El.OnMouseDown \_ -> HK.modify_ counterStateId (1 + _) ]
                 [ El.text "force update" ]
             ,
-              embedHtml (pure unit) $
+              embedHtml mempty $
               El.ℓ [El.Classes [El.TerminalItems]]
                 (List.toUnfoldable items <#> \(TI.TerminalItem item) -> do
                   El.ℓ [El.Classes [El.TerminalItem]]

@@ -179,7 +179,8 @@ body {
 
 .TerminalItems {
   display: flex;
-  flex-direction: column;
+  /* flex-direction: column; */
+  flex-direction: column-reverse;
   gap: var(--it);
   width: calc(100% - 2*var(--it));
   padding: var(--it);
@@ -211,6 +212,16 @@ body {
   width: 100%;
 }
 
+.TerminalItemDebugRecordKey {
+  display: inline-block;
+  margin-right: var(--it);
+  background-color: rgb(204, 204, 204);
+  color: black;
+  padding: 0 var(--it);
+  font-size: 80%;
+  font-style: italic;
+  font-weight: bold;
+}
 
 /* Expr */
 
@@ -371,6 +382,10 @@ body {
 }
 
 .VarSN {
+  display: inline;
+}
+
+.VarRuleSortNode {
   display: inline;
 }
 

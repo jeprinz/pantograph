@@ -1,16 +1,19 @@
 module Pantograph.Library.Step where
 
 import Data.Tuple.Nested
+import Pantograph.Generic.Dynamics
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering
-import Pantograph.Generic.Dynamics
 import Prelude
 
 import Bug (bug)
 import Data.Array as Array
+import Data.Display (display)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tree (epL, epR)
 import Data.Tree.Common (injectTreeIntoChange)
+import Halogen.Elements as El
+import Pantograph.Generic.Rendering.TerminalItems as TI
 import Text.Pretty (pretty)
 import Todo (todo)
 import Util (debug, debugM, findIndexMap, indexDeleteAt, splitAt, splitAtFindMap)
@@ -31,6 +34,16 @@ makeDefaultDownSteppingRule {getChangingRule} = SteppingRule "defaultDown" case 
     debugM "makeDefaultDownSteppingRule" {sort: pretty sort, changeSigma: pretty changeSigma', chBackUp: pretty chBackUp, changeSigma': pretty changeSigma'}
     let kidSorts = applyRuleSortVarSubst changeSigma' <$> rule.kids
     let kidsWithBoundaries = Array.zipWith (\ch' kid -> Down /\ ch' %.| kid) kidSorts kids
+    TI.debugM (El.τ "defaultDown") 
+      { ch: display ch
+      , sort: display sort
+      , changeSigma: display changeSigma
+      , changeSigma': display changeSigma'
+      , chBackUp: display chBackUp
+      , ruleKidSorts: display $ rule.kids
+      , kidSorts: display kidSorts
+      , kidsWithBoundaries: display kidsWithBoundaries
+      }
     Just $ Up /\ chBackUp %.| (EN label (epR <$> changeSigma') {} %. kidsWithBoundaries)
   _ -> Nothing
 

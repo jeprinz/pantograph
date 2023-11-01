@@ -87,7 +87,7 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
                 Nothing -> El.ℓ [El.Classes classNames] []
                 Just middle -> El.ℓ [El.Classes classNames] (middleHtml middle)
 
-makePreviewExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env
+makePreviewExprProps :: forall sn el er ctx env. MakeAnnExprProps sn el er ctx env (HK.HookM Aff Unit)
 makePreviewExprProps outside expr = do
   pure
     [ El.Classes [El.PreviewExpr] ]

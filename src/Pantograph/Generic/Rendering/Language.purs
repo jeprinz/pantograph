@@ -8,35 +8,35 @@ import Pantograph.Generic.Rendering.Keyboard
 import Prelude
 import Util
 
-import Bug (bug)
+import Control.Monad.Identity.Trans (runIdentityT)
 import Control.Monad.Reader (ask, local)
 import Control.Monad.State (get)
-import DOM.HTML.Indexed as HPI
+import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Data.Array as Array
-import Data.Display (embedHtml)
+import Data.Bifunctor (rmap)
+import Data.Display (Html, embedHtml)
 import Data.Foldable (foldMap, null)
 import Data.Identity (Identity(..))
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Tree.Traverse (traverseGyro)
+import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\))
+import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (inj)
 import Effect.Aff (Aff)
-import Halogen (liftEffect)
 import Halogen.Elements as El
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Pantograph.Generic.Rendering.TerminalItems (terminalItem)
 import Record as R
 import Text.Pretty (pretty)
-import Todo (todo)
 import Type.Proxy (Proxy(..))
-import Web.Event.Event as Event
-import Web.UIEvent.MouseEvent as MouseEvent
+
+displayAnnExpr :: forall sn el ctx env er. Rendering sn el ctx env => AnnExpr sn el er -> Html
+displayAnnExpr e = rmap runIdentityT $ El.ι $ fst $ snd (runRenderM :: Proxy sn /\ _) $ renderAnnExpr mempty e mempty
 
 -- sync
 
@@ -55,35 +55,33 @@ syncExprGyro = unwrap <<< traverseGyro \{outside, middle, inside: inside@(EN lab
 
 -- render
 
-type MakeAnnExprProps sn el er ctx env =
+type MakeAnnExprProps sn el er ctx env i =
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
-  -- RenderM sn el ctx env (Array (HH.IProp HPI.HTMLdiv (HK.HookM Aff Unit)))
-  RenderM sn el ctx env (El.Props (HK.HookM Aff Unit))
+  RenderM sn el ctx env (El.Props i)
 
-type MakeSyncExprProps sn el er ctx env = MakeAnnExprProps sn el (SyncExprRow sn el er) ctx env
+type MakeSyncExprProps sn el er ctx env i = MakeAnnExprProps sn el (SyncExprRow sn el er) ctx env i
 
-renderAnnExprHelper :: forall sn el er ctx env. Rendering sn el ctx env =>
+renderAnnExprHelper :: forall sn el er ctx env w t.
+  Rendering sn el ctx env => MonadTrans t =>
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
-  MakeAnnExprProps sn el er ctx env ->
-  Array (ArrangeKid sn el (Array (BufferHtml sn el))) ->
-  RenderM sn el ctx env (Array (BufferHtml sn el))
+  MakeAnnExprProps sn el er ctx env (t Aff Unit) ->
+  Array (ArrangeKid sn el (Array (HH.HTML w (t Aff Unit)))) ->
+  RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit)))
 renderAnnExprHelper outside expr makeAnnExprProps arrangedKids = do
   props <- makeAnnExprProps outside expr
   let htmls = arrangedKids # foldMap case _ of
         ArrangeKid htmls' -> htmls'
-        ArrangeHtml htmls' ->
-          -- [ El.ℓ [El.Classes [El.ArrangeHtml]] $
-          --     embedHtml (pure unit) <$> htmls' ]
-          embedHtml (pure unit) <$> htmls'
+        ArrangeHtml htmls' -> embedHtml lift <$> htmls'
   pure $ [El.ℓ props htmls]
 
-renderAnnExpr :: forall sn el er ctx env. Rendering sn el ctx env =>
+renderAnnExpr :: forall sn el er ctx env w t.
+  Rendering sn el ctx env => MonadTrans t =>
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
-  MakeAnnExprProps sn el er ctx env ->
-  RenderM sn el ctx env (Array (BufferHtml sn el))
+  MakeAnnExprProps sn el er ctx env (t Aff Unit) ->
+  RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit)))
 renderAnnExpr outside expr@(Tree node _) makeAnnExprProps = do
   arrangedKids <- arrangeExpr node $
     tooths expr <#> \(tooth /\ kid@(Tree kidNode _)) -> do
@@ -92,12 +90,13 @@ renderAnnExpr outside expr@(Tree node _) makeAnnExprProps = do
         $ renderAnnExpr (consPath outside tooth) kid makeAnnExprProps <#> (_ /\ kidNode)
   renderAnnExprHelper outside expr makeAnnExprProps arrangedKids
 
-renderAnnExprPath :: forall sn el er ctx env. Rendering sn el ctx env =>
+renderAnnExprPath :: forall sn el er ctx env w t.
+  Rendering sn el ctx env => MonadTrans t =>
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
-  MakeAnnExprProps sn el er ctx env ->
-  RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
+  MakeAnnExprProps sn el er ctx env (t Aff Unit) ->
+  RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit))) -> RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit)))
 renderAnnExprPath _ (Path Nil) _ _ renderInside = renderInside
 renderAnnExprPath outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr makeAnnExprProps renderInside = do
   let path' = Path ts
@@ -126,12 +125,13 @@ dropWhile1 cond arr =
   let {init, rest} = Array.span cond arr in
   Array.takeEnd 1 init <> rest
 
-renderAnnExprPathLeft :: forall sn el er ctx env. Rendering sn el ctx env =>
+renderAnnExprPathLeft :: forall sn el er ctx env w t.
+  Rendering sn el ctx env => MonadTrans t =>
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
-  MakeAnnExprProps sn el er ctx env ->
-  RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
+  MakeAnnExprProps sn el er ctx env (t Aff Unit) ->
+  RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit))) -> RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit)))
 renderAnnExprPathLeft _ (Path Nil) _ _ renderInside = renderInside
 renderAnnExprPathLeft outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr makeAnnExprProps renderInside = do
   let path' = Path ts
@@ -154,12 +154,13 @@ renderAnnExprPathLeft outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr 
             $ renderAnnExpr (consPath interiorOutside tooth') kid makeAnnExprProps <#> (\item -> {item, keep} /\ kidNode)
     renderAnnExprHelper interiorOutside expr' makeAnnExprProps arrangedKids
 
-renderAnnExprPathRight :: forall sn el er ctx env. Rendering sn el ctx env =>
+renderAnnExprPathRight :: forall sn el er ctx env w t.
+  Rendering sn el ctx env => MonadTrans t =>
   AnnExprPath sn el er ->
   AnnExprPath sn el er ->
   AnnExpr sn el er ->
-  MakeAnnExprProps sn el er ctx env ->
-  RenderM sn el ctx env (Array (BufferHtml sn el)) -> RenderM sn el ctx env (Array (BufferHtml sn el))
+  MakeAnnExprProps sn el er ctx env (t Aff Unit) ->
+  RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit))) -> RenderM sn el ctx env (Array (HH.HTML w (t Aff Unit)))
 renderAnnExprPathRight _ (Path Nil) _ _ renderInside = renderInside
 renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr makeAnnExprProps renderInside = do
   let path' = Path ts
@@ -184,14 +185,14 @@ renderAnnExprPathRight outside (Path (Cons tooth@(Tooth node (i /\ _)) ts)) expr
 
 -- makeSyncExprProps
 
-makeSyncExprProps :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> MakeSyncExprProps sn el er ctx env
+makeSyncExprProps :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> MakeSyncExprProps sn el er ctx env (HK.HookM Aff Unit)
 makeSyncExprProps local outside inside@(Tree (EN _ _ {elemId}) _) = do
   ctx <- ask
   env <- get
   pure
     [ El.Id elemId
     , El.Classes [El.Expr]
-    , El.StrictHover (const (pure unit))
+    , El.StrictHover mempty
     , El.OnMouseDown \mouseEvent -> do
         HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ terminalItem.debug $ HH.div_
           [ HH.text "SyncExpr/onClick"

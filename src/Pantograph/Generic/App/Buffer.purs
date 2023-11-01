@@ -4,12 +4,13 @@ import Data.Either.Nested
 import Data.Tree
 import Data.Tree.Move
 import Data.Tuple.Nested
-import Pantograph.Generic.Dynamics
-import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering
+import Pantograph.Generic.App.Common
 import Pantograph.Generic.App.Common
 import Pantograph.Generic.App.Preview
 import Pantograph.Generic.App.Toolbox
+import Pantograph.Generic.Dynamics
+import Pantograph.Generic.Language
+import Pantograph.Generic.Rendering
 import Prelude
 import Util
 
@@ -40,14 +41,12 @@ import Halogen (defer, liftAff, liftEffect)
 import Halogen as H
 import Halogen.Elements as El
 import Halogen.Elements as El
-import Pantograph.Generic.App.Common
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-
 import Prim.Row (class Lacks, class Union)
 import Prim.RowList (class RowToList)
 import Record as R
@@ -275,6 +274,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     , control:
         [ El.ℓ [El.Classes [El.Button]] [El.text "×"] ]
     , content:
+        Debug.trace ("initialSyncedExprGyro: " <> pretty initialSyncedExprGyro) \_ ->
         [ El.ℓ [El.Classes [El.Program]] gyroHtmls ]
     }
 

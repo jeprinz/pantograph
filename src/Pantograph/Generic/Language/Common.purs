@@ -6,6 +6,7 @@ import Prelude
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Display (class Display, display)
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
@@ -102,6 +103,13 @@ instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (RuleSortNode sn) where
       InjectRuleSortNode node -> ass \kids -> prettyTreeNode node kids
       VarRuleSortNode x -> ass \[] -> pretty x
 
+instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (RuleSortNode sn) where
+  displayTreeNode sn =
+    let ass = assertValidTreeKids "displayTreeNode" sn in
+    case sn of
+      InjectRuleSortNode node -> ass \kids -> displayTreeNode node kids
+      VarRuleSortNode var -> ass \[] -> El.ℓ [El.Classes [El.VarRuleSortNode]] [El.text $ pretty var]
+
 makeVarRuleSort :: forall sn. RuleSortVar -> Tree (RuleSortNode sn)
 makeVarRuleSort x = Tree (VarRuleSortNode x) []
 
@@ -150,7 +158,10 @@ instance TreeNode el => TreeNode (AnnExprNode sn el er) where
   kidsCount (EN label _ _) = kidsCount label
 
 instance PrettyTreeNode el => PrettyTreeNode (AnnExprNode sn el er) where
-  prettyTreeNode (EN label _ _) prettiedKids = prettyTreeNode label prettiedKids
+  prettyTreeNode (EN label _ _) = prettyTreeNode label
+
+-- instance DisplayTreeNode el => DisplayTreeNode (AnnExprNode sn el er) where
+--   displayTreeNode (EN label _ _) = displayTreeNode label
 
 type AnnExpr sn el er = Tree (AnnExprNode sn el er)
 type AnnExprTooth sn el er = Tooth (AnnExprNode sn el er)
@@ -277,8 +288,13 @@ emptyRuleSortVarSubst = RuleSortVarSubst Map.empty
 singletonRuleSortVarSubst :: forall a. RuleSortVar -> a -> RuleSortVarSubst a
 singletonRuleSortVarSubst k v = RuleSortVarSubst $ Map.singleton k v
 
-instance (Pretty v) => Pretty (RuleSortVarSubst v) where
+instance Pretty v => Pretty (RuleSortVarSubst v) where
   pretty (RuleSortVarSubst m) = "{" <> Array.intercalate ", " (items <#> \(x /\ s) -> pretty x <+> ":=" <+> pretty s) <> "}"
+    where
+    items = Map.toUnfoldable m :: Array _
+
+instance Display v => Display (RuleSortVarSubst v) where
+  display (RuleSortVarSubst m) = El.ι $ [El.π "{"] <> Array.intercalate [El.π ", "] (items <#> \(x /\ s) -> [El.ι [El.τ $ pretty x, El.π " := ", display s]]) <> [El.π "}"]
     where
     items = Map.toUnfoldable m :: Array _
 

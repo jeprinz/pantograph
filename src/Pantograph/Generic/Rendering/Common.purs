@@ -1,6 +1,7 @@
 module Pantograph.Generic.Rendering.Common where
 
 import Pantograph.Generic.Language
+import Data.Tree
 import Prelude
 
 import Bug (bug)
@@ -11,8 +12,6 @@ import Data.Display (Html)
 import Data.Identity (Identity)
 import Data.Maybe (Maybe)
 import Data.Newtype (unwrap)
-import Data.Tree (Change(..), Orientation, Tree(..))
-import Data.Tree.Common (class DisplayTreeNode)
 import Data.Tuple (snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (Variant, inj)

@@ -2,7 +2,9 @@ module Pantograph.Generic.Rendering.TerminalItems where
 
 import Prelude hiding (add)
 
+import Data.Tuple.Nested ((/\))
 import Bug as Bug
+import Data.Array as Array
 import Data.Display (Html)
 import Data.List (List(..))
 import Effect.Ref (Ref)
@@ -10,6 +12,8 @@ import Effect.Ref as Ref
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
 import Halogen.HTML as HH
+import Type.Row.Homogeneous (class Homogeneous)
+import Util (fromHomogenousRecordToTupleArray)
 
 data TerminalItemTag = DebugTerminalItemTag
 newtype TerminalItem = TerminalItem {tag :: TerminalItemTag, html :: Html}
@@ -38,3 +42,17 @@ addM html = do
 
 bug :: forall a. Html -> a
 bug html = add html (\_ -> Bug.bug "bug info printed to terminal")
+
+debug :: forall r a. Homogeneous r Html => Html -> Record r -> (Unit -> a) -> a
+debug title r = 
+  let keysAndValues = fromHomogenousRecordToTupleArray r in
+  add $
+    El.ι $ 
+      [title] <>
+      if Array.null keysAndValues then [] else
+      Array.foldMap (\(k /\ v) -> [El.β [El.ι [El.ℓ [El.Classes [El.TerminalItemDebugRecordKey]] [El.τ k], v]]]) keysAndValues
+
+debugM :: forall m r. Monad m => Homogeneous r Html => Html -> Record r -> m Unit
+debugM title r = do
+  pure unit
+  debug title r \_ -> pure unit

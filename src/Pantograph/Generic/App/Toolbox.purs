@@ -173,7 +173,7 @@ type RenderEditLocals sn el =
   , modifySelect :: (ToolboxSelect -> ToolboxSelect) -> HK.HookM Aff Unit
   }
 
-makeToolboxExprProps :: forall sn el er ctx env. Dynamics sn el ctx env => RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env
+makeToolboxExprProps :: forall sn el er ctx env. Dynamics sn el ctx env => RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env (HK.HookM Aff Unit)
 makeToolboxExprProps {adjacentIndexedEdits, modifySelect, outside: toolboxOutside} outside _inside =
   case adjacentIndexedEdits # Array.find \{edit: Edit edit} -> edit.middle # maybe false \middle -> prefixExprPathSkeleton (toolboxOutside <> toPath middle) (shrinkAnnExprPath outside) of
     Nothing -> 

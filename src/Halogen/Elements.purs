@@ -111,7 +111,7 @@ data ClassName
   -- Plain
   | Inline | Block
   -- Language
-  | VarSN | Expr | Hole | ArrangeHtml
+  | VarSN | Expr | Hole | ArrangeHtml | VarRuleSortNode
   -- StepExpr
   | StepExpr | StepExprBoundary | StepExprMarker
   | StepExprBoundaryInfo | StepExprBoundaryDirection | StepExprBoundaryChange
@@ -132,6 +132,7 @@ data ClassName
   | ReplaceChangeRight | InjectChange
   -- Terminal
   | TerminalContent | TerminalItemTag | DebugTerminalItemTag | TerminalItems | TerminalItem | TerminalItemContent
+  | TerminalItemDebugRecordKey
   -- Hover
   | Hover
   -- Misc
@@ -204,6 +205,9 @@ block kids = ℓ [Classes [Block]] kids
 
 text string = HH.text string
 τ string = text string
+
+matrix rows = β (ι <$> rows)
+μ rows = matrix rows
 
 br = HH.br_
 
