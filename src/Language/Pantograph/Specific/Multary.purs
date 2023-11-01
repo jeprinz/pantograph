@@ -54,6 +54,7 @@ import Util (fromJust)
 import Util as Util
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Language.Pantograph.Lib.GreyedRules as GreyedRules
+import Partial.Unsafe (unsafePartial)
 
 data DataType
     = Bool
@@ -78,6 +79,7 @@ data PreSortLabel
   = VarSort {-Ctx-} {-String-} {-Type-} {-Local or NonLocal-}
   | TermSort {-Ctx-} {-Type-}
   | ArgListSort {-Ctx-} {-TypeList-}
+  | VarListSort {-Ctx-} {-Ctx-} {-TypeList-}
   | TypeSort {-Type-}
   | TypeListSort
   -- Contexts
@@ -105,6 +107,7 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (VarSort /\ [gamma, x, ty, locality]) = "Var" <+> parens gamma <+> x <+> ty <+> "(" <> show locality <> ")"
   prettyExprF'_unsafe (TermSort /\ [gamma, ty]) = "Term" <+> parens gamma <+> ty
   prettyExprF'_unsafe (ArgListSort /\ [gamma, typeList]) = "ArgList" <+> parens gamma <+> typeList
+  prettyExprF'_unsafe (VarListSort /\ [gammaIn, gammaOut, typeList]) = "VarList" <+> parens gammaIn <+> parens gammaOut <+> typeList
   prettyExprF'_unsafe (TypeListSort  /\ [ts]) = "TypeList" <+> parens ts
   prettyExprF'_unsafe (TypeSort /\ [t]) = "Type" <+> parens t
   prettyExprF'_unsafe (CtxConsSort /\ [x, ty, "∅"]) = x <> ":" <> ty
@@ -121,6 +124,7 @@ instance IsExprLabel PreSortLabel where
   expectedKidsCount VarSort = 4
   expectedKidsCount TermSort = 2
   expectedKidsCount ArgListSort = 2
+  expectedKidsCount VarListSort = 3
   expectedKidsCount TypeSort = 1
   expectedKidsCount TypeListSort = 1
   expectedKidsCount CtxConsSort = 3
@@ -172,6 +176,8 @@ data RuleLabel
   = Zero
   | Suc
   | Lam
+  | VarListNil
+  | VarListCons
   | Let
   | ArgListNil
   | ArgListCons
@@ -183,6 +189,8 @@ data RuleLabel
   | TypeHole
   | DataTypeRule DataType
   | ArrowRule
+  | TypeListNilRule
+  | TypeListConsRule
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
   -- TODO: how exactly do I want errors to work here with n-ary functions?
@@ -213,16 +221,36 @@ sortToType :: Sort -> DerivTerm
 sortToType (Expr (MInj (SInj (DataType dt))) []) =
     makeLabel (DataTypeRule dt) [] % []
 sortToType (Expr (MInj (SInj Arrow)) [a, b]) =
-    makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
+    makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToTypeList a, sortToType b]
 sortToType ty =
     makeLabel TypeHole ["type" /\ ty] % []
 
 sortToArgList :: {-Ctx-}Sort -> {-TyList-}Sort -> DerivTerm
-sortToArgList gamma (MInj (SInj TypeListNil) % [])
+sortToArgList gamma ts
+    | Just _ <- unify ts (MInj (SInj TypeListNil) % [])
     = makeLabel ArgListNil ["gamma" /\ gamma] % []
 sortToArgList gamma (MInj (SInj TypeListCons) % [t, ts])
-    = makeLabel ArgListCons [] % [sortToType t, sortToArgList gamma ts]
+    = makeLabel ArgListCons ["gamma" /\ gamma, "t" /\ t, "ts" /\ ts] % [sortToType t, sortToArgList gamma ts]
 sortToArgList _ _ = bug "invalid input to sortToArgList"
+
+sortToVarList :: {-Ctx-}Sort -> {-Ctx-}Sort -> {-TyList-}Sort -> DerivTerm
+sortToVarList gammaLess gammaMore ts
+    | Just _ <- unify gammaLess gammaMore
+    , Just _ <- unify ts (MInj (SInj TypeListNil) % [])
+    = makeLabel VarListNil ["gamma" /\ gammaLess] % []
+sortToVarList gammaLess (MInj (SInj CtxConsSort) % [t', gammaMore]) (MInj (SInj TypeListCons) % [t, ts])
+    =
+        makeLabel VarListCons ["name" /\ StringSortLabel "" %* [], "gammaLess" /\ gammaLess
+        , "gammaMore" /\ gammaMore, "t" /\ t, "ts" /\ ts] % [sortToType t, sortToVarList gammaLess gammaMore ts]
+sortToVarList gammaLess gammaMore ts = bug ("invalid input to sortToVarList: " <> pretty gammaLess <> " " <> pretty gammaMore <> " " <> pretty ts <> " " <> pretty (unify gammaLess gammaMore))
+
+sortToTypeList :: {-TyList-}Sort -> DerivTerm
+sortToTypeList ts
+    | Just _ <- unify ts (MInj (SInj TypeListNil) % [])
+    = makeLabel TypeListNilRule [] % []
+sortToTypeList (MInj (SInj TypeListCons) % [t, ts])
+    = makeLabel TypeListConsRule ["t" /\ t, "ts" /\ ts] % [sortToType t, sortToTypeList ts]
+sortToTypeList _ = bug "invalid input to sortToTypeList"
 
 instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
@@ -233,6 +261,10 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
   prettyExprF'_unsafe_RuleLabel (ArgListNil /\ []) = "[]"
   prettyExprF'_unsafe_RuleLabel (ArgListCons /\ [arg, rest]) = arg <+> ":" <+> rest
+  prettyExprF'_unsafe_RuleLabel (VarListNil /\ []) = "[]"
+  prettyExprF'_unsafe_RuleLabel (VarListCons /\ [name, rest]) = name <+> ":" <+> rest
+  prettyExprF'_unsafe_RuleLabel (TypeListNilRule /\ []) = "[]"
+  prettyExprF'_unsafe_RuleLabel (TypeListConsRule /\ [t, ts]) = t <+> ":" <+> ts
   prettyExprF'_unsafe_RuleLabel (GreyedArgListCons /\ [arg, rest]) = arg <+> ":" <+> rest
   prettyExprF'_unsafe_RuleLabel (LocalVar /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ [ty]) = "(? : " <> ty <> ")"
@@ -257,6 +289,8 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   defaultDerivTerm' (MInj (SInj TypeSort) % [ty]) =
     pure $ sortToType ty
   defaultDerivTerm' (MInj (SInj ArgListSort) % [gamma, ts]) = pure $ sortToArgList gamma ts
+  defaultDerivTerm' (MInj (SInj VarListSort) % [gammaLess, gammaMore, ts]) = pure $ sortToVarList gammaLess gammaMore ts
+  defaultDerivTerm' (MInj (SInj TypeListSort) % [ts]) = pure $ sortToTypeList ts
   -- TODO: This case should probably be in Generic.
   defaultDerivTerm' (MInj (NameSortLabel) % [_]) = pure $ DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
@@ -293,13 +327,23 @@ language = TotalMap.makeTotalMap case _ of
     /\ -------
     ( TermSort %|-* [gamma, outRes] )
 
-  Lam -> Grammar.makeRule ["x", "a", "b", "gamma"] \[x, a, b, gamma] ->
-    [ Grammar.NameSortLabel %* [x]
-    , TypeListSort %|-* [a]
+  Lam -> Grammar.makeRule ["a", "b", "gammaInside", "gammaOutside"] \[a, b, gammaInside, gammaOutside] ->
+    [ VarListSort %|-* [gammaOutside, gammaInside, a]
     -- TODO: This isn't right. It needs to actually add each individual variable to the context...
-    , TermSort %|-* [CtxConsSort %|-* [x, a, gamma], b] ]
+    , TermSort %|-* [gammaInside, b] ]
     /\ --------
-    ( TermSort %|-* [gamma, Arrow %|-* [a, b]])
+    ( TermSort %|-* [gammaOutside, Arrow %|-* [a, b]])
+
+  VarListNil -> Grammar.makeRule ["gamma"] \[gamma] ->
+    []
+    /\ -------
+    ( VarListSort %|-* [gamma, gamma, TypeListNil %|-* []] )
+
+  VarListCons -> Grammar.makeRule ["name", "gammaLess", "gammaMore", "t", "ts"] \[name, gammaLess, gammaMore, t, ts] ->
+    [ Grammar.NameSortLabel %* [name]
+    , VarListSort %|-* [gammaLess, gammaMore, ts] ]
+    /\ -------
+    ( VarListSort %|-* [gammaLess, CtxConsSort %|-* [name, t, gammaMore] , TypeListCons %|-* [t, ts]] )
 
   ArgListNil -> Grammar.makeRule ["gamma"] \[gamma] ->
     []
@@ -361,6 +405,16 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TypeSort %|-* [Arrow %|-* [a, b]] )
 
+  TypeListNilRule -> Grammar.makeRule [] \[] ->
+    []
+    /\ --------
+    ( TypeListSort %|-* [TypeListNil %|-* []] )
+
+  TypeListConsRule -> Grammar.makeRule ["t", "ts"] \[t, ts] ->
+    [TypeSort %|-* [t], TypeListSort %|-* [ts]]
+    /\ --------
+    ( TypeListSort %|-* [TypeListCons %|-* [t, ts]] )
+
   If -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
       [ TermSort %|-* [gamma, DataType Bool %|-* []]
       , TermSort %|-* [gamma, ty]
@@ -397,7 +451,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
     [Left (renCtx /\ 0)]
   Lam /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
+    [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [mapstoElem], Left (renCtx' /\ 1), pure [Rendering.rparenElem]]
   Let /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
@@ -406,6 +460,16 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
   ArgListNil /\ _ ->
     [pure [HH.text "[]"]]
   ArgListCons /\ _ ->
+    let renCtx' = Base.incremementIndentationLevel renCtx in
+    [Left (renCtx /\ 0), pure [Rendering.commaElem], Left (renCtx' /\ 1)]
+  VarListNil /\ _ ->
+    [pure [HH.text "[]"]]
+  VarListCons /\ _ ->
+    let renCtx' = Base.incremementIndentationLevel renCtx in
+    [Left (renCtx /\ 0), pure [Rendering.commaElem], Left (renCtx' /\ 1)]
+  TypeListNilRule /\ _ ->
+    [pure [HH.text "[]"]]
+  TypeListConsRule /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [Left (renCtx /\ 0), pure [Rendering.commaElem], Left (renCtx' /\ 1)]
   GreyedArgListCons /\ _ ->
@@ -553,6 +617,14 @@ splitChange c =
             {upChange: csor ArgListSort % [ChangeAlgebra.inject ctx2, ts]
             , cursorSort: sor ArgListSort % [ctx2, ts1]
             , downChange: csor ArgListSort % [ctx, ChangeAlgebra.inject ts1]}
+        c | Maybe.Just ([] /\ [gammaLess, gammaMore, ts]) <- matchChange c (VarListSort %+- [cSlot, cSlot, cSlot])
+        ->
+            let _gammaLess1 /\ gammaLess2 = ChangeAlgebra.endpoints gammaLess in
+            let gammaMore1 /\ _gammaMore2 = ChangeAlgebra.endpoints gammaMore in
+            let ts1 /\ _ts2 = ChangeAlgebra.endpoints ts in
+            {upChange: csor ArgListSort % [ChangeAlgebra.inject gammaLess2, gammaMore, ts]
+            , cursorSort: sor ArgListSort % [gammaLess2, gammaMore1, ts1]
+            , downChange: csor ArgListSort % [gammaLess, ChangeAlgebra.inject gammaMore1, ChangeAlgebra.inject ts1]}
         c | Maybe.Just ([] /\ [_ty]) <- matchChange c (TypeSort %+- [cSlot])
         -> {upChange: c, cursorSort: lEndpoint c, downChange: ChangeAlgebra.inject (lEndpoint c)}
         -- TODO: maybe could just generalize this to when c is the identity?
@@ -572,14 +644,10 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
 
 editsAtCursor cursorSort = Array.mapMaybe identity
     [
-    makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
+    makeEditFromPath (newPathFromRule Lam 1) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
     , makeEditFromPath (newPathFromRule FunctionCall 0) "app" cursorSort
---    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
-
---    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
---    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
     , makeEditFromPath (newPathFromRule Newline 0 )"newline" cursorSort
     ]
 
@@ -646,120 +714,12 @@ nonlocalBecomesLocal = Smallstep.makeDownRule
             , Expr.replaceChange (sor NonLocal % []) (sor Local % [])])
             (dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a, "type" /\ ty] []))
 
---passThroughArrow :: StepRule
---passThroughArrow dterm =
---    case dterm of
---    ((Smallstep.Boundary Smallstep.Down ch) % [
---        (CInj (Grammar.DerivLabel ArrowRule _sigma)) % [da, db]
---    ])
---    | Just ([] /\ [ca, cb]) <- Expr.matchChange ch (TypeSort %+- [Arrow %+- [{-ca-}cSlot, {-cb-}cSlot]])
---    -> pure (dTERM ArrowRule ["a" /\ rEndpoint ca, "b" /\ rEndpoint cb]
---            [Smallstep.wrapBoundary Smallstep.Down (csor TypeSort % [ca]) da
---            , Smallstep.wrapBoundary Smallstep.Down (csor TypeSort % [cb]) db])
---    _ -> Nothing
-
----- down{t}_(Term G (+ A -> B)) ~~> Lam ~ : A. down{t}_(Term (+ ~:A, G) B)
---wrapLambda :: StepRule
---wrapLambda = Smallstep.makeDownRule
---    (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
---    {-t-}slot
---    (\[a] [gamma, b] [t] ->
---        let varName = (Expr.MInj (Grammar.StringSortLabel "") % []) in
---        pure $
---            dTERM Lam ["x" /\ varName, "a" /\ a, "b" /\ rEndpoint b, "gamma" /\ rEndpoint gamma] [
---                    Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
---                    , dTERM TypeHole ["type" /\ a] []
---                    , Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.plusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
---                        t
---                ])
-
----- down{Lam x : A. t}_(Term G (- A -> B)) ~~> down{t}_(Term (-x : A, G) B)
---unWrapLambda :: StepRule
---unWrapLambda (Expr.Expr (Smallstep.Boundary Smallstep.Down ch) [
---        Expr.Expr (CInj (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
---    ])
---    = do
---        let varName = Util.lookup' (Expr.RuleMetaVar "x") sigma
---        restOfCh <- case unit of
---                    _ | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
---                        -> pure (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [] , b])
---                    -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
---                    _ | Just ([a, b, x] /\ [gamma]) <- Expr.matchChange ch
---                            (TermSort %+- [{-gamma-}cSlot, Expr.replaceChange ((Expr.InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
---                      , (Expr.MV _ % _) <- x
---                        -> pure (csor TermSort % [Expr.minusChange (sor CtxConsSort) [varName, a] gamma [], Expr.replaceChange b x])
---                    _ -> Nothing
---        pure $
---            Smallstep.wrapBoundary Smallstep.Down restOfCh $
---                body
-
---unWrapLambda _ = Nothing
-
----- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
---wrapApp :: StepRule
---wrapApp = Smallstep.makeUpRule
---    (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
---    {-t-}slot
---    (\[t] -> t /\ (\[a] [gamma, b] inside -> pure $
---        Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
---            dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
---                [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
-
----- App up{t1}_(Term G (- A -> B)) t2 ~~> up{t1}_(Term G B)
---unWrapApp :: StepRule
---unWrapApp = Smallstep.makeUpRule
---    (NeutralSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
---    (App %# [{-t1-}slot, {-t2-}slot])
---    (\[t1, _t2] -> t1 /\ (\[_a] [gamma, b] inside -> pure $
---        Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
---            inside))
-
---makeAppGreyed :: StepRule
---makeAppGreyed ((CInj (Grammar.DerivLabel App sigma)) % [
---        (Smallstep.Boundary Smallstep.Up ch) % [inside]
---        , arg
---    ])
---    = do
---        restOfCh <- case unit of
---                    _ | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
---                        -> pure (csor NeutralSort % [gamma, b])
---                    -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
---                    _ | Just ([a, b, x] /\ [gamma]) <- Expr.matchChange ch
---                            (NeutralSort %+- [{-gamma-}cSlot, Expr.replaceChange ((Expr.InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
---                      , (Expr.MV _ % _) <- x
---                        -> pure (csor NeutralSort % [gamma, Expr.replaceChange b x])
---                    _ -> Nothing
---        let sigma' = Map.insert (Expr.RuleMetaVar "GreyedRules.greyRuleSigmaLabel") (Smallstep.ssTermSort inside) sigma -- The "GreyedRules.greyRuleSigmaLabel" refers to whats in createGreyedConstruct in GreyedRules.purs
---        pure $ Smallstep.wrapBoundary Smallstep.Up restOfCh $
---            (Smallstep.CInj (Grammar.DerivLabel GreyedApp sigma')) % [
---                inside
---                , arg
---            ]
---makeAppGreyed _ = Nothing
-
---removeGreyedHoleArg :: StepRule
---removeGreyedHoleArg ((CInj (Grammar.DerivLabel GreyedApp _)) % [
---        inside
---        , (CInj (Grammar.DerivLabel TermHole _) % _)
---    ])
---    = pure inside
---removeGreyedHoleArg _ = Nothing
-
---rehydrateApp :: StepRule
---rehydrateApp ((CInj (Grammar.DerivLabel GreyedApp sigma)) % [
---        (Smallstep.Boundary Smallstep.Up ch) % [inside]
---        , arg
---    ])
---    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
---    =
---        if not (a == (Util.lookup' (Expr.RuleMetaVar "a") sigma)) then Nothing else pure $
---        let sigma' = Map.delete (Expr.RuleMetaVar "GreyedRules.greyRuleSigmaLabel") sigma in -- The "GreyedRules.greyRuleSigmaLabel" refers to whats in createGreyedConstruct in GreyedRules.purs
---            Smallstep.wrapBoundary Smallstep.Up (csor NeutralSort % [gamma, b]) $
---                (Smallstep.CInj (Grammar.DerivLabel App sigma')) % [
---                    inside
---                    , arg
---                ]
---rehydrateApp _ = Nothing
+-- PROBLEM WITH THIS: it deletes the cursor if its inside the type. This happens on let ?0 -> ?0 = lam x . x, insert Int into first hole.
+typeBecomeRhsOfChange :: StepRule
+typeBecomeRhsOfChange = Smallstep.makeDownRule
+    (TypeSort %+- [{-c-}cSlot])
+    {-t-}slot
+    (\[] [c] [_t] -> pure (Smallstep.termToSSTerm (sortToType (rEndpoint c))))
 
 ---- Two kinds of boundaries that I am thinking of. The first is ErrorCall which replaces FunctionCall:
 --replaceCallWithError :: StepRule
@@ -851,17 +811,16 @@ because defaultUp happens on a term higher up in the tree.
 ----    = ChangeAlgebra.isMerelyASubstitution ty
 --isUpInCall _ = false
 
---stepRules :: List StepRule
---stepRules = do
---  let chLang = Smallstep.langToChLang language
---  List.fromFoldable
---    [
---    localBecomesNonlocal
---    , nonlocalBecomesLocal
---    , insertSucRule
---    , removeSucRule
+stepRules :: List StepRule
+stepRules = do
+  let chLang = Smallstep.langToChLang language
+  List.fromFoldable (
+    [
+    localBecomesNonlocal
+    , nonlocalBecomesLocal
+    , insertSucRule
+    , removeSucRule
 --    , passThroughArrow
---    , typeBecomeRhsOfChange
 --    , wrapLambda
 --    , unWrapLambda
 --    , rehydrateApp
@@ -871,7 +830,104 @@ because defaultUp happens on a term higher up in the tree.
 --    , wrapCallInErrorDown
 --    , removeError
 --    , mergeErrors
---    , Smallstep.defaultDown chLang
---    , Smallstep.unless isUpInCall (Smallstep.defaultUp chLang)
---    , removeGreyedHoleArg
---    ]
+    ]
+    <>
+--    GreyedRules.createGreyedRules 2 Lam Nothing splitChange languageChanges
+--    <>
+--    GreyedRules.createGreyedRules 1 ArrowRule Nothing splitChange languageChanges
+--    <>
+    [
+    typeBecomeRhsOfChange
+    , Smallstep.defaultDown chLang
+    , Smallstep.defaultUp chLang
+    ])
+
+--createGreyedRules :: forall l r. Grammar.IsRuleLabel l r =>
+--    Int -- what'th child will be effectively the value of this rule
+--    -> r -- label for the regular construct
+--    -> Maybe r -- what rule label to use for the greyed construct
+--    -> Base.SplitChangeType l
+--    -> LanguageChanges l r
+--    -> Array (Smallstep.StepRule l r)
+
+onDelete :: Sort -> SortChange
+onDelete cursorSort
+    | Maybe.Just [ty] <- Expr.matchExprImpl cursorSort (sor TypeSort %$ [slot])
+    = csor TypeSort % [Expr.replaceChange ty (Expr.fromMetaVar (Expr.freshMetaVar "deleted"))]
+onDelete (Expr.MInj Grammar.NameSortLabel % [s]) -- TODO: this should really be in generic
+    = Expr.CInj (Expr.MInj Grammar.NameSortLabel) %
+        [Expr.replaceChange s (Expr.MInj (Grammar.StringSortLabel "") % [])]
+onDelete cursorSort = ChangeAlgebra.inject cursorSort
+
+generalizeDerivation :: Sort -> SortChange
+generalizeDerivation sort
+    | Maybe.Just [ctx, ty] <- Expr.matchExprImpl sort (sor TermSort %$ [slot, slot])
+    = csor TermSort % [ChangeAlgebra.diff ctx startCtx, ChangeAlgebra.inject ty]
+generalizeDerivation other = ChangeAlgebra.inject other
+
+specializeDerivation :: Sort -> Sort -> SortChange
+specializeDerivation clipboard cursor
+    | Maybe.Just [clipCtx, clipTy] <- Expr.matchExprImpl clipboard (sor TermSort %$ [slot, slot])
+    , Maybe.Just [cursorCtx, _cursorTy] <- Expr.matchExprImpl cursor (sor TermSort %$ [slot, slot])
+    = csor TermSort % [ChangeAlgebra.diff clipCtx cursorCtx, ChangeAlgebra.inject clipTy]
+specializeDerivation clipboard _cursor = ChangeAlgebra.inject clipboard
+
+forgetSorts :: DerivLabel -> Maybe DerivLabel
+forgetSorts r@(Grammar.DerivLabel FreeVar sigma) = pure r
+forgetSorts _ = Maybe.Nothing
+
+clipboardSort :: Sort -> Sort
+clipboardSort s
+    | Maybe.Just [gamma, ty] <- Expr.matchExprImpl s (sor TermSort %$ [slot , slot])
+    = sor TermSort % [startCtx, Expr.fromMetaVar (Expr.freshMetaVar "anyType")]
+clipboardSort s
+    | Maybe.Just [gammaLess, gammaMore, ts] <- Expr.matchExprImpl s (sor VarListSort %$ [slot, slot, slot])
+    = sor VarListSort % [startCtx, Expr.fromMetaVar (Expr.freshMetaVar "anyCtx"), Expr.fromMetaVar (freshMetaVar "anyTypes")]
+clipboardSort _other = Expr.fromMetaVar (Expr.freshMetaVar "anySort")
+
+isValidCursorSort :: Sort -> Boolean
+isValidCursorSort (Expr.MInj (Grammar.SInj VarSort) % _) = false
+isValidCursorSort _ = true
+
+isValidSelectionSorts :: {bottom :: Sort, top :: Sort} -> Boolean
+isValidSelectionSorts {
+        bottom: (Expr.MInj (Grammar.SInj TermSort) % _)
+        , top: (Expr.MInj (Grammar.SInj TermSort) % _)
+    } = true
+isValidSelectionSorts {
+        bottom: (Expr.MInj (Grammar.SInj TypeSort) % _)
+        , top: (Expr.MInj (Grammar.SInj TypeSort) % _)
+    } = true
+isValidSelectionSorts {
+        bottom: (Expr.MInj (Grammar.SInj TypeListSort) % _)
+        , top: (Expr.MInj (Grammar.SInj TypeListSort) % _)
+    } = true
+isValidSelectionSorts {
+        bottom: (Expr.MInj (Grammar.SInj VarListSort) % _)
+        , top: (Expr.MInj (Grammar.SInj VarListSort) % _)
+    } = true
+isValidSelectionSorts _ = false
+
+--------------------------------------------------------------------------------
+-- EditorSpec
+--------------------------------------------------------------------------------
+
+editorSpec :: EditorSpec PreSortLabel RuleLabel
+editorSpec =
+  { dterm: assertI $ just "SULC dterm" $
+      Grammar.defaultDerivTerm (TermSort %|-* [startCtx, Expr.fromMetaVar (Expr.freshMetaVar "tyhole")])
+  , splitChange
+  , editsAtCursor
+  , editsAtHoleInterior
+  , arrangeDerivTermSubs
+  , stepRules
+  , isValidCursorSort
+  , isValidSelectionSorts
+  , languageChanges
+  , onDelete
+  , generalizeDerivation
+  , specializeDerivation
+  , forgetSorts
+  , clipboardSort
+  }
+
