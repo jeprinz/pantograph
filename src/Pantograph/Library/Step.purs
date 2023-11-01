@@ -1,7 +1,9 @@
-module Pantograph.Library.Language.Step where
+module Pantograph.Library.Step where
 
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
+import Pantograph.Generic.Rendering
+import Pantograph.Generic.Dynamics
 import Prelude
 
 import Bug (bug)
@@ -9,7 +11,6 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tree (epL, epR)
 import Data.Tree.Common (injectTreeIntoChange)
-import Pantograph.Generic.Language.Step (getStepExprSort)
 import Text.Pretty (pretty)
 import Todo (todo)
 import Util (debug, debugM, findIndexMap, indexDeleteAt, splitAt, splitAtFindMap)

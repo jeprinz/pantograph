@@ -1,25 +1,21 @@
 module Main where
 
-import Data.Tree
-import Data.Tuple.Nested
 import Prelude
 
-import Bug (bug)
-import Data.List as List
-import Data.Tree.Traverse (traverseCursor)
 import Effect (Effect)
 import Effect.Class.Console as Console
 import Halogen.Aff as HA
-import Pantograph.Generic.Rendering as PR
+import Pantograph.Generic.App as App
+import Pantograph.Generic.Rendering as P
 import Pantograph.Specific.FSTLC as FSTLC
-import Pantograph.Specific.LC as LC
-import Text.Pretty (pretty)
-import Util (debug)
+import Type.Proxy (Proxy(..))
 
 main :: Effect Unit
 main = HA.runHalogenAff do
   Console.log "[main]"
-  FSTLC.runEditor (PR.EditorOptions {verbosity: 0})
+  App.runEditor
+    (Proxy :: Proxy FSTLC.SN)
+    (P.EditorOptions {verbosity: 0})
 
 -- main :: Effect Unit
 -- main = do

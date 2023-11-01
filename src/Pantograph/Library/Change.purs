@@ -1,4 +1,4 @@
-module Pantograph.Library.Language.Change where
+module Pantograph.Library.Change where
 
 import Pantograph.Generic.Language
 import Prelude

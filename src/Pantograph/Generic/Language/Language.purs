@@ -77,12 +77,6 @@ buildExprTooth label sigma_ leftKids rightKids =
   (leftKids <> rightKids) # assertValidToothKids "makeExpr" node i \kids ->
     Tooth node (i /\ kids)
 
-buildStepExpr :: forall r sn el. Homogeneous r (Sort sn) => Language sn el => el -> Record r -> Array (StepExpr sn el) -> StepExpr sn el
-buildStepExpr label sigma_ = 
-  let node = buildExprNode label sigma_ in
-  assertValidTreeKids "makeStepExpr" node \kids -> 
-    StepExpr node kids
-
 -- make
 
 makeInjectRuleSortNode :: forall sn. sn -> RuleSortNode sn
@@ -108,12 +102,6 @@ makeExprTooth label sigma_ i =
   let node = makeExprNode label sigma_ in
   assertValidToothKids "makeExprTooth" node i \kids ->
     Tooth node (i /\ kids)
-
-makeStepExpr :: forall sn el. Language sn el => el -> Array (String /\ (Tree (SortNode sn))) -> Array (StepExpr sn el) -> StepExpr sn el
-makeStepExpr label sigma_ = 
-  let node = makeExprNode label sigma_ in
-  assertValidTreeKids "makeStepExpr" node \kids -> 
-    StepExpr node kids
 
 makeExprNonEmptyPath :: forall sn el. Array (ExprTooth sn el) -> ExprNonEmptyPath sn el
 makeExprNonEmptyPath ths = NonEmptyPath $ fromJust' "makeExprNonEmptyPath" $ NonEmptyList.fromFoldable ths

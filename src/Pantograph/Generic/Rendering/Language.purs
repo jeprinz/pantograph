@@ -30,7 +30,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Pantograph.Generic.Rendering.Terminal.TerminalItems (terminalItem)
+import Pantograph.Generic.Rendering.TerminalItems (terminalItem)
 import Record as R
 import Text.Pretty (pretty)
 import Todo (todo)

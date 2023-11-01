@@ -1,10 +1,11 @@
-module Pantograph.Generic.Rendering.Preview where
+module Pantograph.Generic.App.Preview (previewComponent) where
 
 import Data.Tree
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering.Common
-import Pantograph.Generic.Rendering.Language
+import Pantograph.Generic.App.Common
+import Pantograph.Generic.Rendering
+import Pantograph.Generic.Dynamics
 import Prelude
 
 import Bug (bug)
@@ -18,7 +19,7 @@ import Halogen.Elements as El
 import Halogen.Hooks as HK
 import Type.Proxy (Proxy(..))
 
-previewComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
+previewComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
 previewComponent = HK.component \{queryToken} (PreviewInput input) -> HK.do
 
   maybeEdit /\ maybeEditStateId <- HK.useState input.maybeEdit

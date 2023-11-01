@@ -25,9 +25,9 @@ module Pantograph.Specific.LC where
 -- import Halogen.HTML.Properties as HP
 -- import Pantograph.Generic.Language as PL
 -- import Pantograph.Generic.Rendering as PR
--- import Pantograph.Generic.Rendering.Html as PH
--- import Pantograph.Library.Language.Edit as LibEdit
--- import Pantograph.Library.Language.Step as LibStep
+-- import Pantograph.Generic.App.Common as PH
+-- import Pantograph.Library.Edit as LibEdit
+-- import Pantograph.Library.Step as LibStep
 -- import Record as R
 -- import Text.Pretty (quotes2, (<+>))
 -- import Text.Pretty as Pretty

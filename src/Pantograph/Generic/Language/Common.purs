@@ -26,17 +26,27 @@ import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Pantograph.Generic.Rendering.Terminal.TerminalItems as TI
+import Pantograph.Generic.Rendering.TerminalItems as TI
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 import Util (debug, debugM, fromJust, fromJust')
 
--- infixes
+-- Language
 
-infix 5 StepExpr as %.
-infix 5 Boundary as %.|
+class 
+    (Eq sn, Show sn, PrettyTreeNode sn, Eq el, Show el, PrettyTreeNode el) <=
+    Language sn el | sn -> el, el -> sn
+  where
+  getSortingRule :: el -> SortingRule sn
+  -- TODO: maybe move Change stuff to Dynamics?
+  getChangingRule :: el -> ChangingRule sn
+  topSort :: Sort sn
+  getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
+  validGyro :: forall er. AnnExprGyro sn el er -> Boolean
+  getEditsAtSort :: Sort sn -> Orientation -> Edits sn el
+  specialEdits :: SpecialEdits sn el
 
 -- Sort
 
@@ -181,82 +191,6 @@ shrinkAnnExprGyro = unsafeCoerce
 shrinkAnnExprGyro' :: forall sn el er er_ er'. Union er_ er' er => Proxy er_ -> AnnExprGyro sn el er -> AnnExprGyro sn el er'
 shrinkAnnExprGyro' _ = unsafeCoerce
 
--- StepExpr
-
-data StepExpr sn el
-  = StepExpr (ExprNode sn el) (Array (StepExpr sn el))
-  | Boundary (Direction /\ SortChange sn) (StepExpr sn el)
-  | Marker (StepExpr sn el)
-
-derive instance Generic (StepExpr sn el) _
-instance (Show sn, Show el) => Show (StepExpr sn el) where show x = genericShow x
-instance (Eq sn, Eq el) => Eq (StepExpr sn el) where eq x y = genericEq x y
-
-instance (Show sn, PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn el) where
-  pretty = case _ of
-    StepExpr node kids -> prettyTreeNode node (pretty <$> kids)
-    Boundary (dir /\ ch) e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
-    Marker kid -> braces2 $ pretty kid
-
-instance Supertype (AnnExpr sn el ()) (StepExpr sn el) where
-  inject (Tree node kids) = StepExpr node (inject <$> kids)
-  project (StepExpr node kids) = Tree node <$> project `traverse` kids
-  project _ = Nothing
-
--- | Erases markers in `StepExpr`
-fromStepExprToExpr :: forall sn el. StepExpr sn el -> Expr sn el
-fromStepExprToExpr (StepExpr node kids) = Tree node (fromStepExprToExpr <$> kids)
-fromStepExprToExpr (Boundary _ e) = fromStepExprToExpr e
-fromStepExprToExpr (Marker e) = fromStepExprToExpr e
-
--- Direction
-
-data Direction = Up | Down
-
-derive instance Generic Direction _
-instance Show Direction where show = genericShow
-instance Eq Direction where eq x y = genericEq x y
-instance Ord Direction where compare x y = genericCompare x y
-instance Pretty Direction where
-  pretty Up = "↑"
-  pretty Down = "↓"
-
--- Language
-
-class 
-    (Eq sn, Show sn, PrettyTreeNode sn, Eq el, Show el, PrettyTreeNode el) <=
-    Language sn el | sn -> el, el -> sn
-  where
-  getSortingRule :: el -> SortingRule sn
-  getChangingRule :: el -> ChangingRule sn
-  topSort :: Sort sn
-  getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
-
-  steppingRules :: Array (SteppingRule sn el)
-
-  getEditsAtSort :: Sort sn -> Orientation -> Edits sn el
-  specialEdits :: SpecialEdits sn el
-
-  validGyro :: forall er. AnnExprGyro sn el er -> Boolean
-
--- | A collection of (optional) special edits that are applied in different
--- | situations.
-type SpecialEdits sn el =
-  { -- delete an expr (this is applied to the cursor in order to delete)
-    deleteExpr :: Sort sn -> Maybe (Edit sn el)
-    -- copy an expr (this is applied to the expr in the clipboard)
-  , copyExpr :: Sort sn -> Maybe (Edit sn el)
-    -- delete a path (this is applied to the select in order to delete)
-  , deleteExprPath :: SortChange sn -> Maybe (Edit sn el)
-    -- copy a path (this is applied to the path in the clipboard)
-  , copyExprPath :: SortChange sn -> Maybe (Edit sn el)
-  -- 'enter' key
-  , enter :: Unit -> Maybe (Edit sn el)
-  -- 'tab' key
-  , tab :: Unit -> Maybe (Edit sn el) }
-
-newtype Edits sn el = Edits (StringQuery (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance)
-
 -- | A `SortingRule` specifies the relationship between the sorts of the parent
 -- | an kids of a production.
 newtype SortingRule sn = SortingRule
@@ -278,17 +212,6 @@ newtype ChangingRule sn = ChangingRule
 
 derive instance Newtype (ChangingRule sn) _
 
-data SteppingRule sn el 
-  = SteppingRule String (Language sn el => StepExpr sn el -> Maybe (StepExpr sn el))
-
-applySteppingRule :: forall sn el. Language sn el => SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
-applySteppingRule (SteppingRule name f) e = do
-  e' <- f e
-  debugM ("[applySteppingRule] " <> name) {expr: pretty e}
-  -- TODO: can't use renderStepExpr since cyclic module dependencies
-  -- TI.addM $ El.ι [El.π ("[applySteppingRule:" <> name <> "]"), renderStepExpr e]
-  TI.addM $ El.ι [El.π ("[applySteppingRule:" <> name <> "]"), El.π $ pretty e]
-  pure e'
 
 -- Edit
 
@@ -304,6 +227,26 @@ newtype Edit sn el = Edit
 derive instance Newtype (Edit sn el) _
 derive newtype instance (Show sn, Show el) => Show (Edit sn el)
 derive newtype instance (Eq sn, Eq el) => Eq (Edit sn el)
+
+-- Edits
+
+newtype Edits sn el = Edits (StringQuery (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance)
+
+-- | A collection of (optional) special edits that are applied in different
+-- | situations.
+type SpecialEdits sn el =
+  { -- delete an expr (this is applied to the cursor in order to delete)
+    deleteExpr :: Sort sn -> Maybe (Edit sn el)
+    -- copy an expr (this is applied to the expr in the clipboard)
+  , copyExpr :: Sort sn -> Maybe (Edit sn el)
+    -- delete a path (this is applied to the select in order to delete)
+  , deleteExprPath :: SortChange sn -> Maybe (Edit sn el)
+    -- copy a path (this is applied to the path in the clipboard)
+  , copyExprPath :: SortChange sn -> Maybe (Edit sn el)
+  -- 'enter' key
+  , enter :: Unit -> Maybe (Edit sn el)
+  -- 'tab' key
+  , tab :: Unit -> Maybe (Edit sn el) }
 
 -- RuleSortVar
 

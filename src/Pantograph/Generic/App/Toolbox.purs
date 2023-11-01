@@ -1,43 +1,36 @@
-module Pantograph.Generic.Rendering.Toolbox where
+module Pantograph.Generic.App.Toolbox (toolboxComponent) where
 
-import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering.Common
 import Prelude
+import Pantograph.Generic.Language
+import Pantograph.Generic.Rendering
+import Pantograph.Generic.Dynamics
 
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Maybe (Maybe(..), fromMaybe', maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
-import Data.SearchableArray as SearchableArray
 import Data.StringQuery as StringQuery
-import Data.Tree (class PrettyTreeNode, toPath)
-import Data.Tuple (Tuple(..), fst, snd)
-import Data.Tuple.Nested ((/\), type (/\))
+import Data.Tree (toPath)
+import Data.Tuple (fst, snd)
+import Data.Tuple.Nested ((/\))
 import Data.Variant (case_, inj, on)
-import Debug as Debug
 import Effect.Aff (Aff)
-import Effect.Class.Console as Console
 import Halogen (liftEffect)
 import Halogen as H
-import Halogen.Elements as El
 import Halogen.HTML as HH
+import Halogen.Elements as El
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
-import Pantograph.Generic.Language.Language (prefixExprPathSkeleton)
-import Pantograph.Generic.Rendering.Language (MakeAnnExprProps, renderAnnExpr, renderAnnExprPath)
-import Text.Pretty (pretty)
-import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Util (fromJust, fromJust')
 import Web.Event.Event as Event
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as HTMLInputElement
-import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.MouseEvent as MouseEvent
 
-toolboxComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
+toolboxComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
 toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
   let queryRefLabel = H.RefLabel "ToolboxInput"
   let getQueryElem = HK.getHTMLElementRef queryRefLabel
@@ -180,7 +173,7 @@ type RenderEditLocals sn el =
   , modifySelect :: (ToolboxSelect -> ToolboxSelect) -> HK.HookM Aff Unit
   }
 
-makeToolboxExprProps :: forall sn el er ctx env. Rendering sn el ctx env => RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env
+makeToolboxExprProps :: forall sn el er ctx env. Dynamics sn el ctx env => RenderEditLocals sn el -> MakeAnnExprProps sn el er ctx env
 makeToolboxExprProps {adjacentIndexedEdits, modifySelect, outside: toolboxOutside} outside _inside =
   case adjacentIndexedEdits # Array.find \{edit: Edit edit} -> edit.middle # maybe false \middle -> prefixExprPathSkeleton (toolboxOutside <> toPath middle) (shrinkAnnExprPath outside) of
     Nothing -> 
@@ -194,7 +187,7 @@ makeToolboxExprProps {adjacentIndexedEdits, modifySelect, outside: toolboxOutsid
             modifySelect $ const select  ]
 
 
-renderEdit :: forall sn el ctx env. Rendering sn el ctx env =>
+renderEdit :: forall sn el ctx env. Dynamics sn el ctx env =>
   RenderEditLocals sn el ->
   ExprPath sn el ->
   Expr sn el ->

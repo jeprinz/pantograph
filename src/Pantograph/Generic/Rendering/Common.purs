@@ -23,7 +23,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Pantograph.Generic.Rendering.Terminal.TerminalItems (TerminalItem)
+import Pantograph.Generic.Rendering.TerminalItems (TerminalItem)
 import Record as R
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
@@ -155,7 +155,9 @@ isArrangeKidSuchThat cond = case _ of
 
 type EditorComponent sn el ctx env = H.Component EditorQuery (EditorInput sn el ctx env) EditorOutput Aff
 type EditorSlot = H.Slot EditorQuery EditorOutput EditorSlotId
-newtype EditorInput sn el ctx env = EditorInput {}
+newtype EditorInput sn el ctx env = EditorInput 
+  { proxy_sn :: Proxy sn
+  }
 type EditorQuery :: Type -> Type
 type EditorQuery = Const Void
 type EditorOutput = Void

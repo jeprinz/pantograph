@@ -1,4 +1,4 @@
-module Pantograph.Generic.Rendering.Terminal.TerminalItems where
+module Pantograph.Generic.Rendering.TerminalItems where
 
 import Prelude hiding (add)
 

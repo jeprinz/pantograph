@@ -1,42 +1,25 @@
-module Pantograph.Generic.Rendering.Editor where
+module Pantograph.Generic.App.Editor (editorComponent) where
 
-import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering.Common
 import Prelude
+import Pantograph.Generic.Language
+import Pantograph.Generic.App.Common
+import Pantograph.Generic.Rendering
+import Pantograph.Generic.Dynamics
+import Pantograph.Generic.App.Buffer
+import Pantograph.Generic.App.Terminal
 import Util
 
-import Data.Const (Const)
 import Data.Maybe (Maybe(..))
 import Data.Variant (case_, on)
-import Effect.Aff (Aff)
 import Halogen (liftEffect)
-import Halogen as H
-import Halogen.Aff as HA
 import Halogen.Elements as El
-import Halogen.HTML (ClassName(..), div, slot, text) as HH
-import Halogen.HTML.Properties as HP
+import Halogen.HTML (slot) as HH
 import Halogen.Hooks as HK
-import Halogen.VDom.Driver as VDomDriver
-import Pantograph.Generic.Rendering.Buffer (bufferComponent)
-import Pantograph.Generic.Rendering.Html (panel) as HH
-import Pantograph.Generic.Rendering.Keyboard (getKeyInfo, useKeyboardEffect)
-import Pantograph.Generic.Rendering.Terminal (terminalComponent)
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
-runEditor :: forall sn el ctx env.
-  Rendering sn el ctx env =>
-  Proxy sn ->
-  EditorOptions -> 
-  Aff (H.HalogenIO (Const Void) Void Aff)
-runEditor _ (EditorOptions {}) = VDomDriver.runUI cmp input =<< HA.awaitBody
-  where
-  cmp = editorComponent :: EditorComponent sn el ctx env
-  input = EditorInput {}
-
-
-editorComponent :: forall sn el ctx env. Rendering sn el ctx env => EditorComponent sn el ctx env
+editorComponent :: forall sn el ctx env. Dynamics sn el ctx env => EditorComponent sn el ctx env
 editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   -- keyboard
@@ -76,7 +59,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
 
   -- render
 
-  HK.pure $ HH.panel
+  HK.pure $ makePanel
     { className: El.EditorPanel
     , info:
         [ El.ℓ [El.Classes [El.Title]] [El.text "Pantograph"] ]

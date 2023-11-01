@@ -1,13 +1,15 @@
-module Pantograph.Generic.Rendering.Buffer where
+module Pantograph.Generic.App.Buffer (bufferComponent) where
 
 import Data.Either.Nested
 import Data.Tree
 import Data.Tree.Move
 import Data.Tuple.Nested
+import Pantograph.Generic.Dynamics
 import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering.Common
-import Pantograph.Generic.Rendering.Keyboard
-import Pantograph.Generic.Rendering.Language
+import Pantograph.Generic.Rendering
+import Pantograph.Generic.App.Common
+import Pantograph.Generic.App.Preview
+import Pantograph.Generic.App.Toolbox
 import Prelude
 import Util
 
@@ -38,17 +40,14 @@ import Halogen (defer, liftAff, liftEffect)
 import Halogen as H
 import Halogen.Elements as El
 import Halogen.Elements as El
+import Pantograph.Generic.App.Common
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Pantograph.Generic.Language.Common (annExprAnn, annExprNodeAnn)
-import Pantograph.Generic.Language.Edit (applyEdit)
-import Pantograph.Generic.Rendering.Html as HH
-import Pantograph.Generic.Rendering.Preview (previewComponent)
-import Pantograph.Generic.Rendering.Toolbox (toolboxComponent)
+
 import Prim.Row (class Lacks, class Union)
 import Prim.RowList (class RowToList)
 import Record as R
@@ -63,7 +62,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
-bufferComponent :: forall sn el ctx env. Rendering sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
+bufferComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
 bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
   let 
     tokens :: BufferLocalTokens sn el
@@ -268,7 +267,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       )
 
   -- render
-  HK.pure $ HH.panel
+  HK.pure $ makePanel
     { className: El.BufferPanel
     , info:
         [ El.ℓ [El.Classes [El.Subtitle]] [El.text input.name] 
@@ -282,7 +281,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 -- hydrate
 
 -- | Flush the `HydrateExprGyro`'s status to the DOM.
-flushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
+flushHydrateExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
 flushHydrateExprGyro = case _ of
   (RootGyro _expr) ->
     pure unit
@@ -293,7 +292,7 @@ flushHydrateExprGyro = case _ of
     liftEffect $ El.updateClassName (select.inside # annExprAnn # _.elemId) El.InsideSelect (Just true)
 
 -- | Unflush the `HydrateExprGyro`'s status from the DOM.
-unflushHydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
+unflushHydrateExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
 unflushHydrateExprGyro = case _ of
   (RootGyro _expr) ->
     pure unit
@@ -304,13 +303,13 @@ unflushHydrateExprGyro = case _ of
     liftEffect $ El.updateClassName (select.inside # annExprAnn # _.elemId) El.InsideSelect (Just false)
 
 -- | The initial hydration (per render) initializes all the hydrate data and updates styles accordingly.
-hydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
+hydrateExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => SyncExprGyro sn el er -> HK.HookM Aff (HydrateExprGyro sn el er)
 hydrateExprGyro syncExprGyro = syncExprGyro # traverseGyro \{inside: EN label sigma ann % _} -> pure $ EN label sigma $ ann # R.union {hydrated: unit}
 
 -- | The subsequent hydrations (per render) only updates styles (doesn't modify
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
-rehydrateExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocalTokens sn el -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
+rehydrateExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => BufferLocalTokens sn el -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
 rehydrateExprGyro {slotToken} m_hydExprGyro m_hydExprGyro' = do
   when (isJust m_hydExprGyro || isJust m_hydExprGyro') do
     tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
@@ -323,19 +322,19 @@ rehydrateExprGyro {slotToken} m_hydExprGyro m_hydExprGyro' = do
 
 -- render
 
-renderSyncExprGyro :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => BufferLocal sn el -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprGyro local (RootGyro expr) = renderSyncExpr local (Path Nil) expr
 renderSyncExprGyro local (CursorGyro cursor) = renderSyncExprCursor local cursor
 renderSyncExprGyro local (SelectGyro select) = renderSyncExprSelect local select
 
-renderSyncExprSelect :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprSelect :: forall sn el er ctx env. Dynamics sn el ctx env => BufferLocal sn el -> SyncExprSelect sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprSelect local (Select {outside, middle, inside, orientation}) = do
   let outside_middle = outside <> (toPath middle)
   renderSyncExprPath local mempty outside (unPath outside_middle inside) $
     renderSyncExprPath local outside (toPath middle) inside $
       renderSyncExpr local outside_middle inside
 
-renderSyncExprCursor :: forall sn el er ctx env. Rendering sn el ctx env => BufferLocal sn el -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
+renderSyncExprCursor :: forall sn el er ctx env. Dynamics sn el ctx env => BufferLocal sn el -> SyncExprCursor sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
 renderSyncExprCursor local cursor@(Cursor {outside, inside, orientation}) = do
   ctx <- ask
   env <- get

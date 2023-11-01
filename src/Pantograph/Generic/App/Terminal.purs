@@ -1,8 +1,10 @@
-module Pantograph.Generic.Rendering.Terminal where
+module Pantograph.Generic.App.Terminal (terminalComponent) where
 
 import Data.Tuple.Nested
 import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering.Common
+import Pantograph.Generic.Rendering
+import Pantograph.Generic.App.Common
+import Pantograph.Generic.Dynamics
 import Prelude
 
 import Data.Display (Html, embedHtml)
@@ -17,14 +19,15 @@ import Effect.Ref as Ref
 import Halogen (RefLabel(..), liftEffect)
 import Halogen as H
 import Halogen.Elements as El
-import Halogen.HTML as HH
+import Pantograph.Generic.App.Common
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities (freshElementId)
 import Halogen.Utilities as HU
-import Pantograph.Generic.Rendering.Html as HH
-import Pantograph.Generic.Rendering.Terminal.TerminalItems (TerminalItem(..), TerminalItemTag(..), getTerminalItems, modifyTerminalItems)
+import Pantograph.Generic.Rendering.TerminalItems (TerminalItemTag)
+import Pantograph.Generic.Rendering.TerminalItems as TI
+import Pantograph.Generic.App.Common as HH
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
@@ -37,7 +40,7 @@ terminalComponent :: H.Component TerminalQuery TerminalInput TerminalOutput Aff
 terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
   let terminalInputRefLabel = RefLabel "TerminalInput"
 
-  let items = getTerminalItems unit
+  let items = TI.getTerminalItems unit
 
   -- state
   _ /\ counterStateId <- HK.useState 0
@@ -53,7 +56,7 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
   HK.useQuery queryToken \(TerminalQuery query) -> (query # _) $ case_
     # on (Proxy :: Proxy "write") (\(item /\ a) -> do
         -- HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
-        modifyTerminalItems (List.take maximumTerminalItems <<< List.Cons item) \_ -> do
+        TI.modifyTerminalItems (List.take maximumTerminalItems <<< List.Cons item) \_ -> do
           HK.modify_ counterStateId (1 + _)
           pure (Just a)
       )
@@ -67,7 +70,7 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
       )
 
   -- render
-  HK.pure $ HH.panel
+  HK.pure $ makePanel
     { className: El.TerminalPanel
     , info:
         [ El.ℓ [El.Classes [El.Subtitle]] [El.text $ "Terminal"] ]
@@ -108,7 +111,7 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
             ,
               embedHtml (pure unit) $
               El.ℓ [El.Classes [El.TerminalItems]]
-                (List.toUnfoldable items <#> \(TerminalItem item) -> do
+                (List.toUnfoldable items <#> \(TI.TerminalItem item) -> do
                   El.ℓ [El.Classes [El.TerminalItem]]
                     [ renderTag item.tag
                     , El.ℓ [El.Classes [El.TerminalItemContent]] [item.html] ])
@@ -118,4 +121,4 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
 
 renderTag :: TerminalItemTag -> Html
 renderTag = case _ of
-  DebugTerminalItemTag -> El.ℓ [El.Classes [El.TerminalItemTag, El.DebugTerminalItemTag]] [El.text "debug"]
+  TI.DebugTerminalItemTag -> El.ℓ [El.Classes [El.TerminalItemTag, El.DebugTerminalItemTag]] [El.text "debug"]

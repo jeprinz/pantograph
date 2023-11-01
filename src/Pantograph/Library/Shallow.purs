@@ -1,4 +1,4 @@
-module Pantograph.Library.Language.Shallow where
+module Pantograph.Library.Shallow where
 
 import Pantograph.Generic.Language
 import Prelude
