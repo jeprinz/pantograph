@@ -53,29 +53,25 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange language
         let Grammar.ChangeRule vars kidChanges = TotalMap.lookup regularRuleLabel languageChanges in
         let kidChange = Util.fromJust' "cgdr1" (Array.index kidChanges index) in
         let otherRuleChildren = Util.fromJust (Array.deleteAt index ruleChildren) in
-        let otherKidChanges = map Smallstep.metaInject $ otherRuleChildren in
+--        let otherKidChanges = map Smallstep.metaInject $ otherRuleChildren in
 --        let otherKidSorts = Util.fromJust (Array.deleteAt index ruleChildren) in
         let {downChange, upChange, cursorSort: _} = splitChange kidChange in
-        let metadDownChange = map MInj downChange in
-        let metadUpChange = map MInj upChange in
+--        let metadDownChange = map MInj downChange in
+--        let metadUpChange = map MInj upChange in
         [
         -- delete regular rule / replace with greyed if any other children are non-default derivations
             case _ of
                 ((Smallstep.Boundary Smallstep.Down c) % [
                     (SSInj (Grammar.DerivLabel l sub)) % kids
                 ]) | l == regularRuleLabel -> do
-                    -- TODO: I'm not sure that this works. If c = -A1 -> B1, and metadUpChange is +A2 -> B2, how will A1 get unified with A2?
-                    traceM ("GOT HERE. c is: " <> pretty c <> " and metadUpChange is: " <> pretty metadUpChange)
---                    chSub /\ chBackUp <- doOperation (invert c) metadUpChange --
                     _sortSub /\ chSub1 <- getChangeMatches c (invert upChange)
                     chSub <- MultiMap.toMap chSub1
-                    traceM "BUT NOT HERE"
                     let subFull = map (map Expr.CInj) sub
                     let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
                     let kid = Util.fromJust $ (Array.index kids index)
                     let wrapGrey = case maybeGreyRuleLabel of -- If there is a greyed version of the rule, then wrap it around the result
                             Just greyRuleLabel ->
-                                let kidGSorts' = map (Expr.subMetaExpr sub') otherKidChanges in
+                                let kidGSorts' = map (subSomeMetaChange sub' <<< inject) otherRuleChildren in
                                 let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids in
                                 let x = Expr.RuleMetaVar greyRuleSigmaLabel in
                                 let xSort = Expr.fromMetaVar x in
@@ -96,29 +92,27 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange language
             ]
             Nothing -> []
         <> [
---            -- insert regular rule
---            case _ of
---                ((Smallstep.Boundary Smallstep.Down c) % [
---                    kid
---                ]) -> do
---                    chSub /\ chBackUp <- doOperation c metadUpChange --
---                    let _ = if isId chBackUp then unit else Bug.bug "I didn't think this would happen"
---                    -- Need to 1) refactor tooth part out of newPathFromRule 2) call that part here 3) that gives me sub?
---                    let newParentSort = rEndpoint chBackUp
+            -- insert regular rule
+            \sterm -> case sterm of
+                ((Smallstep.Boundary Smallstep.Down c) % [
+                    kid
+                ]) -> do
+                    sortSub1 /\ chSub1 <- getChangeMatches c upChange
+                    let (Tooth dl _) /\ _ = Edit.newToothFromRule regularRuleLabel index
+                    let freshSub = Util.fromJust (derivLabelSub dl)
+                    chSub <- MultiMap.toMap chSub1
+                    sortSub <- MultiMap.toMap sortSub1
+                    let sub = Map.union (Util.union' sortSub (map rEndpoint chSub)) freshSub -- Any vars that aren't determined get set to fresh ones
+                    let subFull = map (map Expr.CInj) sub
+                    let chSubFull = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
 --
-----                    _ <- Unification.unify (subMetaExprPartially sub (Util.fromJust (Array.index ruleChildren index))) newParentSort
-----                    _ <- Unification.unify sort newParentSort
---                    let sub = freshenRuleMetaVars ruleVars
---
---                    let subFull = map (map Expr.CInj) sub
---                    let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
---
---                    let otherChildren = Util.fromJust <<< defaultDerivTerm <<< subMetaExpr sub' <$> otherKidChanges :: Array (DerivTerm l r)
-----                    let tooth = ?h
---                    let kidChange = invert (subMetaExpr sub' metadDownChange)
---                    pure $ wrapBoundary Up chBackUp (?h (wrapBoundary Down kidChange kid))
---                _ -> Bug.bug "no"
---                _ -> Nothing
+                    let otherChildren = (termToSSTerm <<< Util.fromJust <<< defaultDerivTerm <<< subMetaExprPartially sub)
+                            <$> otherRuleChildren
+--                    let tooth = \kid -> Array.insertAt index kid otherChildren
+                    let kidDownChange = (subSomeMetaChange chSubFull (invert downChange))
+                    pure $ (SSInj (DerivLabel regularRuleLabel sub))
+                        % (Util.fromJust (Array.insertAt index (wrapBoundary Down kidDownChange kid) otherChildren))
+                _ -> Nothing
         ]
 
 

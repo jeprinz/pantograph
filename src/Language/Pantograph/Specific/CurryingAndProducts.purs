@@ -681,7 +681,7 @@ or use projections...
 stepRules :: List StepRule
 stepRules = do
   let chLang = Smallstep.langToChLang language
-  List.fromFoldable
+  List.fromFoldable (
     [
     localBecomesNonlocal
     , nonlocalBecomesLocal
@@ -689,13 +689,15 @@ stepRules = do
     , removeSucRule
     , passThroughArrow
     , typeBecomeRhsOfChange
-    , wrapLambda
+--    , wrapLambda
 --    , unWrapLambda
-    , Smallstep.defaultDown chLang
-    , Smallstep.defaultUp chLang
     ]
     <>
-    (List.fromFoldable (GreyedRules.createGreyedRules 2 Lam Nothing splitChange languageChanges))
+    (GreyedRules.createGreyedRules 2 Lam Nothing splitChange languageChanges)
+    <> [
+    Smallstep.defaultDown chLang
+    , Smallstep.defaultUp chLang
+    ])
 
 onDelete :: Sort -> SortChange
 onDelete cursorSort

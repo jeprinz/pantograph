@@ -120,6 +120,10 @@ derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRule (DerivLabel r _) = Just r
 derivLabelRule (DerivString _) = Nothing
 
+derivLabelSub :: forall l r. DerivLabel l r -> Maybe (SortSub l)
+derivLabelSub (DerivLabel _ s) = Just s
+derivLabelSub (DerivString _) = Nothing
+
 derivLabelSort :: forall l r. IsRuleLabel l r => DerivLabel l r -> Sort l
 derivLabelSort (DerivLabel r sub) = getSortFromSub r sub
 derivLabelSort (DerivString str) = NameSortLabel %* [StringSortLabel str %* []]
