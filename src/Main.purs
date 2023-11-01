@@ -19,11 +19,11 @@ import Language.Pantograph.Generic.Grammar as Grammar
 -- Maybe in the future we can make a better way, but for now you can switch which thing gets run by uncommenting the correct main function
 
 -- Some different languages
-main :: Effect Unit
-main = runEditorForLang FullyApplied.editorSpec
-
 --main :: Effect Unit
---main = runEditorForLang CurryingAndProducts.editorSpec
+--main = runEditorForLang FullyApplied.editorSpec
+
+main :: Effect Unit
+main = runEditorForLang CurryingAndProducts.editorSpec
 
 -- Tutorial test
 --main :: Effect Unit

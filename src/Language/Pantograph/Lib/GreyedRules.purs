@@ -27,25 +27,35 @@ import Data.Foldable (foldl)
 import Hole (hole)
 import Bug as Bug
 import Language.Pantograph.Generic.Rendering.Base as Base
+import Language.Pantograph.Generic.Edit as Edit
+import Debug (trace, traceM)
+import Text.Pretty (pretty)
+import Data.MultiMap (MultiMap)
+import Data.MultiMap as MultiMap
+import Data.Expr as Expr
+import Data.List.Rev as RevList
+import Control.Apply (lift2)
 
 greyRuleSigmaLabel :: String
 greyRuleSigmaLabel = "grey-anything"
 
 --type SplitChangeType l = SortChange l -> {downChange :: SortChange l, upChange :: SortChange l, cursorSort :: Sort l}
 
-createGreyedDownRules :: forall l r. Grammar.IsRuleLabel l r =>
+createGreyedRules :: forall l r. Grammar.IsRuleLabel l r =>
     Int -- what'th child will be effectively the value of this rule
     -> r -- label for the regular construct
     -> Maybe r -- what rule label to use for the greyed construct
-    -> Base.EditorSpec l r
+    -> Base.SplitChangeType l
+    -> LanguageChanges l r
     -> Array (Smallstep.StepRule l r)
-createGreyedDownRules index regularRuleLabel maybeGreyRuleLabel spec =
-        let (Grammar.Rule _vars children _conclusion) = TotalMap.lookup regularRuleLabel Grammar.language in
-        let Grammar.ChangeRule vars kidChanges = TotalMap.lookup regularRuleLabel spec.languageChanges in
+createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange languageChanges =
+        let (Grammar.Rule ruleVars ruleChildren _conclusion) = TotalMap.lookup regularRuleLabel Grammar.language in
+        let Grammar.ChangeRule vars kidChanges = TotalMap.lookup regularRuleLabel languageChanges in
         let kidChange = Util.fromJust' "cgdr1" (Array.index kidChanges index) in
-        let otherKidChanges = map Smallstep.metaInject $ Util.fromJust (Array.deleteAt index children) in
---        let otherKidSorts = Util.fromJust (Array.deleteAt index children) in
-        let {downChange, upChange, cursorSort: _} = spec.splitChange kidChange in
+        let otherRuleChildren = Util.fromJust (Array.deleteAt index ruleChildren) in
+        let otherKidChanges = map Smallstep.metaInject $ otherRuleChildren in
+--        let otherKidSorts = Util.fromJust (Array.deleteAt index ruleChildren) in
+        let {downChange, upChange, cursorSort: _} = splitChange kidChange in
         let metadDownChange = map MInj downChange in
         let metadUpChange = map MInj upChange in
         [
@@ -54,7 +64,11 @@ createGreyedDownRules index regularRuleLabel maybeGreyRuleLabel spec =
                 ((Smallstep.Boundary Smallstep.Down c) % [
                     (SSInj (Grammar.DerivLabel l sub)) % kids
                 ]) | l == regularRuleLabel -> do
-                    chSub /\ chBackUp <- doOperation c metadUpChange --
+                    -- TODO: I'm not sure that this works. If c = -A1 -> B1, and metadUpChange is +A2 -> B2, how will A1 get unified with A2?
+                    traceM ("GOT HERE. c is: " <> pretty c <> " and metadUpChange is: " <> pretty metadUpChange)
+                    chSub /\ chBackUp <- doOperation (invert c) metadUpChange --
+                    traceM "BUT NOT HERE"
+                    let _ = if isId chBackUp then unit else Bug.bug "I didn't think this would happen"
                     let subFull = map (map Expr.CInj) sub
                     let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
                     let kid = Util.fromJust $ (Array.index kids index)
@@ -84,14 +98,25 @@ createGreyedDownRules index regularRuleLabel maybeGreyRuleLabel spec =
 --            -- insert regular rule
 --            case _ of
 --                ((Smallstep.Boundary Smallstep.Down c) % [
---                    asdfasdf
+--                    kid
 --                ]) -> do
---                    chSub /\ chBackUp <- doOperation (invert c) metadUpChange --
+--                    chSub /\ chBackUp <- doOperation c metadUpChange --
+--                    let _ = if isId chBackUp then unit else Bug.bug "I didn't think this would happen"
 --                    -- Need to 1) refactor tooth part out of newPathFromRule 2) call that part here 3) that gives me sub?
+--                    let newParentSort = rEndpoint chBackUp
 --
---                    let subFull = map (map Expr.CInj) ?sub
+----                    _ <- Unification.unify (subMetaExprPartially sub (Util.fromJust (Array.index ruleChildren index))) newParentSort
+----                    _ <- Unification.unify sort newParentSort
+--                    let sub = freshenRuleMetaVars ruleVars
+--
+--                    let subFull = map (map Expr.CInj) sub
 --                    let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
---                    ?h
+--
+--                    let otherChildren = Util.fromJust <<< defaultDerivTerm <<< subMetaExpr sub' <$> otherKidChanges :: Array (DerivTerm l r)
+----                    let tooth = ?h
+--                    let kidChange = invert (subMetaExpr sub' metadDownChange)
+--                    pure $ wrapBoundary Up chBackUp (?h (wrapBoundary Down kidChange kid))
+--                _ -> Bug.bug "no"
 --                _ -> Nothing
         ]
 
@@ -159,6 +184,68 @@ addToChSub sub x c =
 --unifyChanges _ _ = Nothing
 
 
+-- Really what I want is more of a one-sided unification.
 
 
 --
+
+---- Find substitution of variables in left argument to values in right argument
+--getChangeMatches :: forall l. Expr.IsExprLabel l => MetaChange l -> Expr.MetaChange l
+--    -> Maybe (MultiMap MetaVar (MetaExpr l) /\ MultiMap MetaVar (Expr.MetaChange l))
+--getChangeMatches c1 c2 =
+----    case l1 of
+----        Expr.MV x -> Just $ MultiMap.insert x e2 (MultiMap.empty)
+----        Expr.MInj l | l == l2 -> ?h -- foldl (lift2 MultiMap.union) (Just MultiMap.empty) (Array.zipWith getMatches kids1 kids2)
+----        _ ->
+----            Nothing
+--    case c1 /\ c2 of
+--        (Expr (Plus (Tooth l1 (ZipList.Path {left, right}))) [c1])
+--            /\ (Expr (Plus (Tooth l2 (ZipList.Path {left: left2, right: right2}))) [c2]) | l1 == l2 -> do
+--            subs1 /\ csubs1 <- getChangeMatches c1 c2
+--            ?h
+--        (Expr (Minus l1) [c1]) /\ (Expr (Minus l2) [c2]) -> ?h
+--        (Expr (CInj l1) kids1) /\ (Expr (CInj l2) kids2) -> ?h
+--        (Replace a1 b1 % [] /\ Replace a2 b2 % []) -> ?h
+--        _ -> Nothing
+
+-- These will return a substitution of variables in the second argument for corresponding
+-- values in the first argument.
+getSortMatches :: forall l. IsExprLabel l => MetaExpr l -> MetaExpr l -> Maybe (MultiMap MetaVar (MetaExpr l))
+getSortMatches (l1 % kids1) (l2 % kids2) | l1 == l2 =
+    MultiMap.unions <$> sequence (Array.zipWith getSortMatches kids1 kids2)
+getSortMatches e2 (MV mv % []) = Just (MultiMap.insert mv e2 MultiMap.empty)
+getSortMatches _ _ = Nothing
+
+-- helper function for getChangeMatches
+getToothMatches :: forall l. IsExprLabel l =>
+    Tooth (Meta l) -> Tooth (Meta l)
+    -> Maybe (MultiMap MetaVar (MetaExpr l))
+getToothMatches (Tooth l1 (ZipList.Path {left: left1, right: right1}))
+           (Tooth l2 (ZipList.Path {left: left2, right: right2})) =
+    if not (l1 == l2 && List.length right1 == List.length right2) then Nothing else do
+    leftMatches <- sequence $ List.zipWith getSortMatches (RevList.unreverse left1) (RevList.unreverse left2)
+    rightMatches <- sequence $ List.zipWith getSortMatches right1 right2
+    pure $ MultiMap.union (MultiMap.unions leftMatches) (MultiMap.unions rightMatches)
+
+getChangeMatches :: forall l. IsExprLabel l =>
+    -- Two kinds of slots: those in change positions, and those in expression postions
+    MetaChange l -> MetaChange l
+    -- Two kinds out outputs: expressions and changes
+    -> Maybe ((MultiMap MetaVar (MetaExpr l)) /\ (MultiMap MetaVar (MetaChange l)))
+getChangeMatches c (CInj (MV mv) % []) = Just (MultiMap.empty /\ MultiMap.insert mv c MultiMap.empty)
+getChangeMatches (l1 % kids1) (l2 % kids2) | l1 == l2 =
+    foldl (\(a/\b) (c/\d) -> MultiMap.union a c /\ MultiMap.union b d) (MultiMap.empty /\ MultiMap.empty)
+        <$> sequence (Array.zipWith getChangeMatches kids1 kids2)
+getChangeMatches (Plus th1 % [kid1]) (Plus th2 % [kid2]) = do
+    toothMatches <- getToothMatches th1 th2
+    es /\ cs <- getChangeMatches kid1 kid2
+    pure $ (MultiMap.union toothMatches es) /\ cs
+getChangeMatches (Minus th1 % [kid1]) (Minus th2 % [kid2]) = do
+    toothMatches <- getToothMatches th1 th2
+    es /\ cs <- getChangeMatches kid1 kid2
+    pure $ (MultiMap.union toothMatches es) /\ cs
+getChangeMatches (Replace a1 b1 % []) (Replace a2 b2 % []) = do
+    matches1 <- getSortMatches a1 a2
+    matches2 <- getSortMatches b1 b2
+    pure $ (MultiMap.union matches1 matches2) /\ MultiMap.empty
+getChangeMatches _ _ = Nothing

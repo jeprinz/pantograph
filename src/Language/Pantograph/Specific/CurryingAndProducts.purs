@@ -659,6 +659,25 @@ unWrapLambda _ = Nothing
 --    = case term of
 --      (Expr (Boundary Down inputCh) [inputDeriv]) -> do
 
+
+-- rules for products:  ({_,[_]} is grey left product)
+-- down{t}_(+ A x [B]) ~~> (?, down{T}_B)
+-- down{t}_(+ [A] x B) ~~> (down{T}_B, ?)
+-- down{(a, b)}_(- A x [B]) ~~> {?, [down{T}_B]}
+-- down{(a, b)}_(- [A] x B) ~~> {[down{T}_B], ?}
+-- down{{a, [b]}}_(+ A x [B]) ~~> (a, down{T}_B)
+-- down{{[a], b}}_(+ [A] x B) ~~> (down{T}_B, b)
+
+{-
+I think the problem with this plan is that I can't actually write
+f : A x B -> C
+f (a, b) = ...
+because I won't be able to pattern match on the products like that.
+At best I would have
+f p = case p of ...
+or use projections...
+-}
+
 stepRules :: List StepRule
 stepRules = do
   let chLang = Smallstep.langToChLang language
@@ -671,10 +690,12 @@ stepRules = do
     , passThroughArrow
     , typeBecomeRhsOfChange
     , wrapLambda
-    , unWrapLambda
+--    , unWrapLambda
     , Smallstep.defaultDown chLang
     , Smallstep.defaultUp chLang
     ]
+    <>
+    (List.fromFoldable (GreyedRules.createGreyedRules 2 Lam Nothing splitChange languageChanges))
 
 onDelete :: Sort -> SortChange
 onDelete cursorSort
