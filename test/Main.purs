@@ -1,5 +1,8 @@
 module Test.Main where
 
 import Prelude
+import Tests.TreeTraverse as TestTreeTraverse
 
-main = pure unit
+main = do
+  TestTreeTraverse.main
+  

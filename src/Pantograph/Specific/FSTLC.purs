@@ -132,19 +132,21 @@ instance Show SN where show = genericShow
 instance Eq SN where eq = genericEq
 instance Ord SN where compare = genericCompare
 instance TreeNode SN where
-  kidsCount = case _ of
-    StrInner _ -> 0
-    Str -> 1
-    VarJg -> 4
-    TmJg -> 2
-    NeJg -> 2
-    TyJg -> 1
-    NilCtx -> 0
-    ConsCtx -> 3
-    DataTySN _ -> 0
-    ArrowTySN -> 2
-    LocalLoc -> 0
-    NonlocalLoc -> 0
+  validKidsCount sn = (go sn == _)
+    where
+    go = case _ of
+      StrInner _ -> 0
+      Str -> 1
+      VarJg -> 4
+      TmJg -> 2
+      NeJg -> 2
+      TyJg -> 1
+      NilCtx -> 0
+      ConsCtx -> 3
+      DataTySN _ -> 0
+      ArrowTySN -> 2
+      LocalLoc -> 0
+      NonlocalLoc -> 0
 instance PrettyTreeNode SN where
   prettyTreeNode sn = 
     let ass = assertValidTreeKids "prettyTreeNode" sn in
@@ -225,25 +227,27 @@ instance Show EL where show = genericShow
 instance Eq EL where eq = genericEq
 instance Ord EL where compare = genericCompare
 instance TreeNode EL where
-  kidsCount = case _ of
-    StrEL -> 0
-    ZeroVar -> 0
-    SucVar -> 1
-    FreeVar -> 0
-    LamTm -> 3
-    LetTm -> 4
-    VarNe -> 1
-    IfTm -> 3
-    CallTm -> 1
-    ErrorCallTm -> 1
-    HoleTm -> 1
-    ErrorBoundaryTm -> 1
-    AppNe -> 2
-    GrayAppNe -> 2
-    HoleTy -> 0
-    DataTyEL _ -> 0
-    ArrowTyEL -> 2
-    Format _ -> 1
+  validKidsCount el = (go el == _)
+    where
+    go = case _ of
+      StrEL -> 0
+      ZeroVar -> 0
+      SucVar -> 1
+      FreeVar -> 0
+      LamTm -> 3
+      LetTm -> 4
+      VarNe -> 1
+      IfTm -> 3
+      CallTm -> 1
+      ErrorCallTm -> 1
+      HoleTm -> 1
+      ErrorBoundaryTm -> 1
+      AppNe -> 2
+      GrayAppNe -> 2
+      HoleTy -> 0
+      DataTyEL _ -> 0
+      ArrowTyEL -> 2
+      Format _ -> 1
 instance PrettyTreeNode EL where
   prettyTreeNode el =
     let ass = assertValidTreeKids "prettyTreeNode" el in

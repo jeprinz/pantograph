@@ -61,8 +61,9 @@ instance Show sn => Show (SortNode sn) where show = genericShow
 derive instance Functor SortNode
 
 instance TreeNode sn => TreeNode (SortNode sn) where
-  kidsCount (SN node) = kidsCount node
-  kidsCount (VarSN _) = 0
+  validKidsCount (SN node) = validKidsCount node
+  validKidsCount (VarSN _) = (0 == _)
+
 
 instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (SortNode sn) where
   prettyTreeNode sn =
@@ -93,8 +94,8 @@ instance Show sn => Show (RuleSortNode sn) where show = genericShow
 instance Eq sn => Eq (RuleSortNode sn) where eq = genericEq
 
 instance TreeNode sn => TreeNode (RuleSortNode sn) where
-  kidsCount (InjectRuleSortNode node) = kidsCount node
-  kidsCount (VarRuleSortNode _) = 0
+  validKidsCount (InjectRuleSortNode node) = validKidsCount node
+  validKidsCount (VarRuleSortNode _) = (0 == _)
 
 instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (RuleSortNode sn) where
   prettyTreeNode rsn =
@@ -155,7 +156,7 @@ annExprNodeAnn :: forall sn el er. AnnExprNode sn el er -> Record er
 annExprNodeAnn (EN _ _ er) = er
 
 instance TreeNode el => TreeNode (AnnExprNode sn el er) where
-  kidsCount (EN label _ _) = kidsCount label
+  validKidsCount (EN label _ _) = validKidsCount label
 
 instance PrettyTreeNode el => PrettyTreeNode (AnnExprNode sn el er) where
   prettyTreeNode (EN label _ _) = prettyTreeNode label

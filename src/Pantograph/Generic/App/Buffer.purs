@@ -15,54 +15,32 @@ import Prelude
 import Util
 
 import Bug (bug)
-import Control.Monad.Reader (Reader, ReaderT, ask, asks, local, runReaderT)
-import Control.Monad.State (StateT, get)
+import Control.Monad.Reader (ask)
+import Control.Monad.State (get)
 import Data.Array as Array
 import Data.CodePoint.Unicode as CodePoint
-import Data.Either (Either(..))
-import Data.Foldable (elem, foldM, foldMap, null)
-import Data.FunctorWithIndex (mapWithIndex)
 import Data.List (List(..))
-import Data.List as List
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
-import Data.Newtype (unwrap)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String as String
-import Data.String.Regex as Regex
-import Data.Traversable (traverse, traverse_)
-import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tree.Traverse (traverseGyro)
-import Data.Tuple (Tuple(..), fst, snd)
-import Data.Variant (case_, inj, on)
-import Debug as Debug
+import Data.Tuple (snd)
+import Data.Variant (case_, on)
 import Effect.Aff (Aff)
-import Effect.Class.Console as Console
 import Effect.Ref as Ref
-import Halogen (defer, liftAff, liftEffect)
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Elements as El
-import Halogen.Elements as El
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
-import Halogen.Hooks (HookF(..))
 import Halogen.Hooks as HK
-import Halogen.Utilities as HU
-import Prim.Row (class Lacks, class Union)
-import Prim.RowList (class RowToList)
 import Record as R
-import Text.Pretty (pretty)
-import Text.Pretty as Pretty
-import Todo (todo)
 import Type.Proxy (Proxy(..))
-import Unsafe.Coerce (unsafeCoerce)
 import Web.Event.Event as Event
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
-import Web.UIEvent.MouseEvent as MouseEvent
 
 -- component
 
 bufferComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
-bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> Debug.trace "[render:buffer]" \_ -> HK.do
+bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> debug "[render:buffer]" {} \_ -> HK.do
   let
     tokens :: BufferLocalTokens sn el
     tokens = {slotToken, outputToken}
@@ -131,7 +109,6 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       , modifySyncedExprGyro }
 
   let
-    -- runRenderM = unwrap <<< runM renderCtx renderEnv
     gyroHtmls /\ _ = snd (runRenderM :: Proxy sn /\ _) $ renderSyncExprGyro local initialSyncedExprGyro
 
   -- runs after each render
@@ -274,7 +251,6 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     , control:
         [ El.ℓ [El.Classes [El.Button]] [El.text "×"] ]
     , content:
-        Debug.trace ("initialSyncedExprGyro: " <> pretty initialSyncedExprGyro) \_ ->
         [ El.ℓ [El.Classes [El.Program]] gyroHtmls ]
     }
 

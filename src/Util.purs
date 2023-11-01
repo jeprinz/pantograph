@@ -19,6 +19,7 @@ import Data.Maybe (maybe)
 import Data.Newtype (unwrap)
 import Data.Set as Set
 import Data.Symbol (class IsSymbol, reflectSymbol)
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), snd)
 import Data.UUID (UUID)
 import Data.UUID as UUID
@@ -29,6 +30,8 @@ import Record.Builder as R
 import Type.Proxy (Proxy(..))
 import Type.Row.Homogeneous (class Homogeneous)
 import Unsafe.Coerce (unsafeCoerce)
+
+infixl 4 traverse as <$>>
 
 foreign import showObject :: forall a. a -> String
 
