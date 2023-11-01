@@ -442,18 +442,18 @@ steppingRules =
   , removeError
   , mergeErrors
   , LibStep.makeDefaultDownSteppingRule {getChangingRule}
-  , LibStep.unless isUpInCall $ LibStep.makeDefaultUpSteppingRule {getChangingRule}
+  , LibStep.unless "isUpInCall" isUpInCall $ LibStep.makeDefaultUpSteppingRule {getChangingRule}
   ]
   where
   -- {e}↓{Var (+ <{ y : β, {> γ <}}>) x α loc}  ~~>  Suc {e}↓{Var γ x α loc}
-  insertSuc = PL.SteppingRule case _ of
+  insertSuc = PL.SteppingRule "insertSuc" case _ of
     PL.Boundary (PL.Down /\ (PL.SN VarJg %! [Shift (Plus /\ (PL.SN ConsCtx %- 2 /\ [y, β])) γ, x, α, loc])) e -> Just $
       se_var_suc (epR γ) (epR x) (epR α) y β (epR loc) $
         PL.Boundary (PL.Down /\ InjectChange (PL.SN VarJg) [γ, x, α, loc]) e
     _ -> Nothing
 
   -- {Zero}↓{Var (- <{ x : α, {> γ <}}>) x α Local} ~~> {Free}↑{Var id x α (Local ~> Nonlocal)}
-  localBecomesNonlocal = PL.SteppingRule case _ of
+  localBecomesNonlocal = PL.SteppingRule "localBecomesNonlocal" case _ of
     PL.Down /\ (PL.SN VarJg %! [Minus /\ (PL.SN ConsCtx %- 2 /\ [x, α]) %!/ γ, x', α', PL.SN LocalLoc %! []]) %.|
     (PL.EN ZeroVar _ _ %. [])
     | true -> Just $
@@ -463,19 +463,19 @@ steppingRules =
     _ -> Nothing
 
   -- {Var (- <{ y : β , {> γ <}}>) x α loc}↓{Suc pred} ~~> {Var γ x α loc}↓{pred}
-  removeSuc = PL.SteppingRule case _ of
+  removeSuc = PL.SteppingRule "removeSuc" case _ of
     (PL.Down /\ (PL.SN VarJg %! [Minus /\ (PL.SN ConsCtx %- 1 /\ [_y, _β]) %!/ γ, x, α, loc])) %.| (PL.EN SucVar _sigma _ %. [pred]) -> Just $
       PL.Down /\ (PL.SN VarJg %! [γ, x, α, loc]) %.| pred
     _ -> Nothing
 
   -- {Var (+ <{ x : α , {> γ< } }>) x α Nonlocal}↓{_} ~~> Z
-  nonlocalBecomesLocal = PL.SteppingRule case _ of
+  nonlocalBecomesLocal = PL.SteppingRule "nonlocalBecomesLocal" case _ of
     (PL.Down /\ (Plus /\ (PL.SN ConsCtx %- 2 /\ [x, α]) %!/ γ)) %.| _ -> Just $
       se_var_zero (epR γ) x α
     _ -> Nothing
 
   -- {α! -> β!}↓{α -> β} ~~> {α}↓{α!} -> {β}↓{β!}
-  passThroughArrow = PL.SteppingRule case _ of
+  passThroughArrow = PL.SteppingRule "passThroughArrow" case _ of
     (PL.Down /\ (PL.SN ArrowTySN %! [α, β])) %.| (PL.EN ArrowTyEL sigma _ %. [αCh, βCh]) -> Just $
       PL.EN ArrowTyEL sigma {} %. 
         [ PL.Down /\ α %.| αCh
@@ -483,19 +483,19 @@ steppingRules =
     _ -> Nothing
 
   -- {_ : Type α!}↓{_} ~~> α
-  typeBecomesRhsOfChange = PL.SteppingRule case _ of
+  typeBecomesRhsOfChange = PL.SteppingRule "typeBecomesRhsOfChange" case _ of
     (PL.Down /\ (PL.SN TyJg %! [α])) %.| _ -> Just $ inject (fromTypeSortToTypeExpr (epR α))
     _ -> Nothing
 
   -- {Term γ (+ <{α -> {> β<}}>)}↓{b} ~~> lam ~ : α . {Term (+ <{ ~ : α, {> γ <}}>) β}↓{b}
-  wrapLambda = PL.SteppingRule case _ of
+  wrapLambda = PL.SteppingRule "wrapLambda" case _ of
     (PL.Down /\ (PL.SN TmJg %! [γ, Plus /\ (PL.SN TmJg %- 1 /\ [α]) %!/ β])) %.| b -> Just $
       let x = sr_strInner "" in
       se_tm_lam x α (epR β) (epR γ) (se_str x) (inject (fromTypeSortToTypeExpr α)) b
     _ -> Nothing
 
   -- {Term γ (- <{α -> {> β <}}>)}↓{lam x : α . b} ~~> {Term (- x : α, γ) β}↓{b}
-  unWrapLambda = PL.SteppingRule case _ of
+  unWrapLambda = PL.SteppingRule "unWrapLambda" case _ of
     PL.Down /\ ch %.| (PL.EN LamTm _sigma {} %. [xExpr, _αExpr, b]) -> do
       let x = PL.getExprSort (PL.fromStepExprToExpr xExpr)
       ch' <- case ch of
@@ -509,20 +509,20 @@ steppingRules =
     _ -> Nothing
 
   -- {Term γ (+ α -> β)}↑{f} ~~> {Term γ β}↑{App f (? : α)}
-  wrapApp = PL.SteppingRule case _ of
+  wrapApp = PL.SteppingRule "wrapApp" case _ of
     PL.Up /\ (PL.SN TmJg %! [γ, Plus /\ (PL.SN ArrowTySN %- (1 /\ [α])) %!/ β]) %.| f -> Just $ 
       PL.Up /\ (PL.SN TmJg %! [γ, β]) %.| (PL.buildStepExpr AppNe {γ: epL γ, α, β: epL β} [f, se_tm_hole (epR γ) α (inject (fromTypeSortToTypeExpr α))])
     _ -> Nothing
 
   -- App {Term γ (- α -> β)}↑{b} a ~~> {Term γ β}↑{b}
-  unWrapApp = PL.SteppingRule case _ of
+  unWrapApp = PL.SteppingRule "unWrapApp" case _ of
     PL.EN AppNe _ _ %. [PL.Up /\ (PL.SN TmJg %! [γ, Minus /\ (PL.SN ArrowTySN %- 1 /\ [_α]) %!/ β]) %.| b, _a] -> Just $ 
       PL.Up /\ (PL.SN TmJg %! [γ, β]) %.| b
     _ -> Nothing 
 
   -- App {Ne γ (α -> β)}↑{f} a ~~> {Ne γ β}↑{GrayApp f a}
   -- App {Ne γ ((α -> β) ~> ?delta)}↑{f} a ~~> {Ne γ {β ~> ?delta}}↑{GrayApp f a}
-  makeAppGray = PL.SteppingRule case _ of
+  makeAppGray = PL.SteppingRule "makeAppGray" case _ of
     PL.EN AppNe _ _ %. [PL.Up /\ (PL.SN NeJg %! [γ, PL.SN ArrowTySN %! [α, β]]) %.| f, a] -> Just $
       PL.Up /\ (PL.SN NeJg %! [γ, β]) %.| PL.buildStepExpr GrayAppNe {γ: epR γ, α: epR α, β: epR β} [f, a]
     -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
@@ -531,25 +531,25 @@ steppingRules =
     _ -> Nothing 
 
   -- GrayApp f (? : α) ~~> f
-  removeGrayHoleArg = PL.SteppingRule case _ of
+  removeGrayHoleArg = PL.SteppingRule "removeGrayHoleArg" case _ of
     PL.EN GrayAppNe _ _ %. [f, PL.EN HoleTm _ _ %. [_α]] -> Just $ 
       f
     _ -> Nothing
 
   -- GrayApp {Ne γ (α -> β)}↑{f} a ~~> {Ne γ β}↑{App f a}
-  rehydrateApp = PL.SteppingRule case _ of
+  rehydrateApp = PL.SteppingRule "rehydrateApp" case _ of
     PL.EN GrayAppNe _ _ %. [PL.Up /\ (PL.SN NeJg %! [γ, PL.SN ArrowTySN %! [α, β]]) %.| f, a] -> Just $
       PL.Up /\ (PL.SN NeJg %! [γ, β]) %.| PL.buildStepExpr AppNe {γ: epR γ, α: epR α, β: epR β} [f, a]
     _ -> Nothing
 
   -- {Ne γ! α!}↑{Call n} ~~> {γ, αL, αR}ErrorCall{n}
-  replaceCallWithError = PL.SteppingRule case _ of
+  replaceCallWithError = PL.SteppingRule "replaceCallWithError" case _ of
     PL.Up /\ (PL.SN NeJg %! [γ, α]) %.| (PL.EN CallTm _ _ %. [n]) -> Just $
       PL.buildStepExpr ErrorCallTm {γ: epR γ, α: epL α, β: epR α} [n]
     _ -> Nothing
 
   -- {γ, α, α}ErrorCall{n} ~~> Call n
-  replaceErrorWithCall = PL.SteppingRule case _ of
+  replaceErrorWithCall = PL.SteppingRule "replaceErrorWithCall" case _ of
     PL.EN ErrorCallTm sigma _ %. [n]
       | γ <- PL.applyRuleSortVarSubst sigma "γ"
       , α <- PL.applyRuleSortVarSubst sigma "α"
@@ -559,19 +559,19 @@ steppingRules =
     _ -> Nothing
 
   -- Call ({Ne γ (α -> β)}↑{n}) ~~> {Term γ β}↑{{α -> β, β}ErrorBoundary{Call n}}
-  wrapCallInErrorUp = PL.SteppingRule case _ of
+  wrapCallInErrorUp = PL.SteppingRule "wrapCallInErrorUp" case _ of
     PL.EN CallTm _ _ %. [PL.Up /\ (PL.SN NeJg %! [γ, PL.SN ArrowTySN %! [α, β]]) %.| n] -> Just $
       PL.Up /\ (PL.SN TmJg %! [γ, β]) %.| (PL.buildStepExpr ErrorBoundaryTm {γ: epL γ, α: PL.SN ArrowTySN % [epL α, epL β], β: epR β} [PL.buildStepExpr CallTm {γ: epL γ, α: epL α} [n]])
     _ -> Nothing
 
   -- {Tm γ! α!}↓{Call n : Tm γL αL} ~~> {γR, αL, αR}ErrorBoundary{Call n : }
-  wrapCallInErrorDown = PL.SteppingRule case _ of
+  wrapCallInErrorDown = PL.SteppingRule "wrapCallInErrorDown" case _ of
     PL.Down /\ (PL.SN TmJg %! [γ, α]) %.| (PL.EN CallTm _ _ %. [n]) -> Just $
       PL.buildStepExpr ErrorBoundaryTm {γ: epR γ, α: epL α, β: epR α} [PL.buildStepExpr CallTm {γ: epL γ, α: epL α} [n]]
     _ -> Nothing
 
   -- {γ, α, α}ErrorBoundary{a : Tm γ α} ~~> a
-  removeError = PL.SteppingRule case _ of
+  removeError = PL.SteppingRule "removeError" case _ of
     PL.EN ErrorBoundaryTm sigma _ %. [a] 
       | γ <- PL.applyRuleSortVarSubst sigma "γ" 
       , α <- PL.applyRuleSortVarSubst sigma "α" 
@@ -581,7 +581,7 @@ steppingRules =
     _ -> Nothing
 
   -- {γ, β, delta}ErrorBoundary{{γ, α, β}ErrorBoundary{a : Tm γ α}} ~~> {γ, α, delta}ErrorBoundary{a : Tm γ α}
-  mergeErrors = PL.SteppingRule case _ of
+  mergeErrors = PL.SteppingRule "mergeErrors" case _ of
     PL.EN ErrorBoundaryTm sigma1 _ %. [PL.EN ErrorBoundaryTm sigma2 _ %. [a]] -> Just $
       let γ = PL.applyRuleSortVarSubst sigma1 "γ" in
       let α = PL.applyRuleSortVarSubst sigma1 "α" in
@@ -601,7 +601,7 @@ getEditsAtSort (Tree (PL.SN VarJg) []) Outside = PL.Edits $ StringQuery.fuzzy { 
 getEditsAtSort sort@(Tree (PL.SN TmJg) [γ0, α0]) Outside = PL.Edits $ StringQuery.fuzzy
   { toString: fst, maxPenalty
   , getItems: const $ Array.foldMap (maybe [] Array.singleton)
-      [ -- (b :: Tm γ β) ~~> (λ (x="" : ?α) (b :: Tm (x : ?α , γ) β) :: Tm γ (?α -> β))
+      [ -- (b :: Tm γ β) ~~> (λ ('' : ?α) (b' :: Tm ('' : ?α , γ) β) :: Tm γ (?α -> β))
         map (Tuple "lambda") $ map NonEmptyArray.singleton $ do
           let γ = γ0
           let β = α0
@@ -611,6 +611,17 @@ getEditsAtSort sort@(Tree (PL.SN TmJg) [γ0, α0]) Outside = PL.Edits $ StringQu
           let αEx = fromTypeSortToTypeExpr α
           LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ PL.singletonExprNonEmptyPath $
               PL.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
+      , -- (a :: Tm γ α) ~~> (let '' : ?α = (? :: Tm ('' : ?a, γ) ?β) in (a' :: Tm ('' : ?α, γ) α))
+        map (Tuple "let") $ map NonEmptyArray.singleton $ do
+          let γ = γ0
+          let α = α0
+          let β = sr_freshVar "β"
+          let x = sr_strInner ""
+          let xEx = ex_str x
+          let αEx = fromTypeSortToTypeExpr α
+          let a = ex_tm_hole (PL.SN ConsCtx % [x, α, γ]) α αEx
+          LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ PL.singletonExprNonEmptyPath $
+            PL.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, a] []
     ]
   }
 getEditsAtSort (Tree (PL.SN NeJg) []) Outside = PL.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
@@ -789,15 +800,15 @@ splitExprPathChanges :: SplitChange
 splitExprPathChanges (PL.SN TmJg %! [γ, α]) = 
 -- | type change goes up/out, context change goes down/in
   { outerChange: PL.SN TmJg %! [injectTreeIntoChange $ epR γ, α]
-  , innerChange: PL.SN TmJg %! [γ, injectTreeIntoChange $ epL α] }
+  , innerChange: invert $ PL.SN TmJg %! [γ, injectTreeIntoChange $ epL α] }
 -- | type change goes up/out, context change goes down/in
 splitExprPathChanges (PL.SN NeJg %! [γ, α]) =
   { outerChange: PL.SN NeJg %! [injectTreeIntoChange $ epR γ, α]
-  , innerChange: PL.SN NeJg %! [γ, injectTreeIntoChange $ epL α] }
+  , innerChange: invert $ PL.SN NeJg %! [γ, injectTreeIntoChange $ epL α] }
 -- | type change goes up/out
 splitExprPathChanges ch@(PL.SN TyJg %! [_α]) =
   { outerChange: ch
-  , innerChange: injectTreeIntoChange $ epL ch }
+  , innerChange: invert $ injectTreeIntoChange $ epL ch }
 -- | meta var change goes up/out and down/in
 splitExprPathChanges ch@(PL.VarSN _ %! []) =
   { outerChange: ch 

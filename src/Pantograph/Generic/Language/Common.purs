@@ -26,11 +26,12 @@ import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Pantograph.Generic.Rendering.Terminal.TerminalItems as TI
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
-import Util (fromJust, fromJust')
+import Util (debug, debugM, fromJust, fromJust')
 
 -- infixes
 
@@ -277,11 +278,17 @@ newtype ChangingRule sn = ChangingRule
 
 derive instance Newtype (ChangingRule sn) _
 
-newtype SteppingRule sn el = SteppingRule
-  (Language sn el => StepExpr sn el -> Maybe (StepExpr sn el))
+data SteppingRule sn el 
+  = SteppingRule String (Language sn el => StepExpr sn el -> Maybe (StepExpr sn el))
 
 applySteppingRule :: forall sn el. Language sn el => SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
-applySteppingRule (SteppingRule f) = f
+applySteppingRule (SteppingRule name f) e = do
+  e' <- f e
+  debugM ("[applySteppingRule] " <> name) {expr: pretty e}
+  -- TODO: can't use renderStepExpr since cyclic module dependencies
+  -- TI.addM $ El.ι [El.π ("[applySteppingRule:" <> name <> "]"), renderStepExpr e]
+  TI.addM $ El.ι [El.π ("[applySteppingRule:" <> name <> "]"), El.π $ pretty e]
+  pure e'
 
 -- Edit
 
@@ -360,8 +367,9 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSo
   applyRuleSortVarSubst _ _ = bug "invalid"
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) where
-  applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (fromJust <<< project <$> tooth)) (applyRuleSortVarSubst sigma kid)
-  applyRuleSortVarSubst _ (Replace old new) = Replace (fromJust $ project old) (fromJust $ project new)
+  -- can't have changes in other parts of tooth
+  applyRuleSortVarSubst sigma (Shift (sign /\ (Tooth (InjectRuleSortNode n) (i /\ kids))) kid) = Shift (sign /\ Tooth n (i /\ (kids <#> \kid' -> fromJust' ("sigma = " <> pretty sigma <> "; kid' = " <> pretty kid') $ projectTreeIntoChange $ applyRuleSortVarSubst sigma $ injectTreeIntoChange kid'))) (applyRuleSortVarSubst sigma kid)
+  applyRuleSortVarSubst sigma (Replace old new) = Replace (epL $ applyRuleSortVarSubst sigma $ injectTreeIntoChange old) (epR $ applyRuleSortVarSubst sigma $ injectTreeIntoChange new)
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = applyRuleSortVarSubst sigma x
   applyRuleSortVarSubst _ _ = bug "invalid"
@@ -389,7 +397,7 @@ derive instance Functor SortVarSubst
 
 -- | `SortVarSubst` forms a `Semigroup` via composition.
 instance Language sn el => Semigroup (SortVarSubst sn) where
-  append (SortVarSubst m1) sigma2@(SortVarSubst m2) = SortVarSubst (Map.union m1 (m2 <#> applySortVarSubst sigma2))
+  append sigma1@(SortVarSubst m1) sigma2@(SortVarSubst m2) = SortVarSubst (Map.union m1 (m2 <#> applySortVarSubst sigma2))
 
 instance Language sn el => Monoid (SortVarSubst sn) where
   mempty = SortVarSubst Map.empty
@@ -403,18 +411,24 @@ class ApplySortVarSubst sn a b | a -> b where
   applySortVarSubst :: SortVarSubst sn -> a -> b
 
 instance Language sn el => ApplySortVarSubst sn SortVar (Sort sn) where
-  applySortVarSubst (SortVarSubst m) x = case Map.lookup x m of
-    Nothing -> makeVarSort x
+  applySortVarSubst sigma@(SortVarSubst m) x = case Map.lookup x m of
+    Nothing -> debug "[ApplySortVarSubst sn SortVar (Sort sn)/applySortVarSubst] couldn't find `x` in `sigma`" {x: pretty x, sigma: pretty sigma} \_ -> makeVarSort x
     Just s -> s
 
 instance Language sn el => ApplySortVarSubst sn (Sort sn) (Sort sn) where
   applySortVarSubst sigma (Tree sn@(SN _) kids) = Tree sn (applySortVarSubst sigma <$> kids)
   applySortVarSubst sigma (Tree (VarSN x) _) = applySortVarSubst sigma x
 
+instance Language sn el => ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) where
+  applySortVarSubst sigma (Tooth sn@(SN _) (i /\ kids)) = Tooth sn (i /\ (applySortVarSubst sigma <$> kids))
+  applySortVarSubst _ (Tooth (VarSN _) _) = bug "invalid"
+
 instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) where
-  applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ tooth) (applySortVarSubst sigma kid)
+  applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ applySortVarSubst sigma tooth) (applySortVarSubst sigma kid)
   applySortVarSubst sigma (Replace old new) = Replace (applySortVarSubst sigma old) (applySortVarSubst sigma new)
-  applySortVarSubst sigma (InjectChange node kids) = InjectChange node (applySortVarSubst sigma <$> kids)
+  applySortVarSubst sigma (InjectChange sn@(SN _) kids) = InjectChange sn (applySortVarSubst sigma <$> kids)
+  applySortVarSubst sigma (InjectChange (VarSN x) []) = injectTreeIntoChange $ applySortVarSubst sigma x
+  applySortVarSubst _ (InjectChange (VarSN x) _) = bug "invalid"
 
 instance Language sn el => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where
   applySortVarSubst = append

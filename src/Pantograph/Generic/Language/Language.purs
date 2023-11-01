@@ -221,6 +221,8 @@ doOperation :: forall sn.
   SortChange sn -> RuleSortChange sn -> 
   Maybe (RuleSortVarSubst (SortChange sn) /\ SortChange sn)
 doOperation c1 c2 = do
+  debugM "doOperation" {c1: pretty c1, c2: pretty c2}
   sigma <- matchRuleSortChangeWithSortChange c2 c1
   let c2' = applyRuleSortVarSubst sigma c2
+  debugM "doOperation" {c1: pretty c1, c2: pretty c2, sigma: pretty sigma, c2': pretty c2'}
   Just $ sigma /\ (invert c1 <> c2')

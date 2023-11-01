@@ -398,7 +398,13 @@ body {
   padding: 0 calc(0.5*var(--it));
 }
 
-.ReplaceChange {}
+.ReplaceChangeLeft {
+  display: inline;
+}
+
+.ReplaceChangeRight {
+  display: inline;
+}
 
 .InjectChange {}
 

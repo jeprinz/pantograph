@@ -64,6 +64,8 @@ lub' c1 c2 = case lub c1 c2 of
   Nothing -> bug $ "lub doesn't exist for changes: c1 = " <> ticks (pretty c1) <> "; c2 = " <> ticks (pretty c2)
   Just c -> c
 
+-- TODO: The change should always be from the kid to the parent. is this true?
+
 -- | Implementing a real tree diff algorithm is hard, so instead I have one that
 -- | makes some assumptions about the inputs. Its also dubious if the notion of
 -- | "shortest edit sequence" is really what we want anyway. Would that really

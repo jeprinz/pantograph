@@ -28,6 +28,13 @@ getTerminalItems _ = unsafePerformEffect $ Ref.read terminalItemsRef
 modifyTerminalItems :: forall a. (List TerminalItem -> List TerminalItem) -> (Unit -> a) -> a
 modifyTerminalItems f k = k (unsafePerformEffect $ Ref.modify_ f terminalItemsRef)
 
+add :: forall a. Html -> (Unit -> a) -> a
 add = modifyTerminalItems <<< Cons <<< terminalItem.debug
 
+addM :: forall m. Monad m => Html -> m Unit
+addM html = do
+  pure unit
+  add html \_ -> pure unit
+
+bug :: forall a. Html -> a
 bug html = add html (\_ -> Bug.bug "bug info printed to terminal")

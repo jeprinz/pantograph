@@ -136,6 +136,7 @@ getStepExprNode (Marker kid) = getStepExprNode kid
 
 setupEdit :: forall sn el. Language sn el => ExprCursor sn el -> Edit sn el -> StepExpr sn el
 setupEdit (Cursor cursor) (Edit edit) =
+  debug "setupEdit" {cursor_outside: pretty cursor.outside, cursor_inside: pretty cursor.inside, edit_outerChange: pretty edit.outerChange, edit_middle: pretty edit.middle, edit_innerChange: pretty edit.innerChange, edit_sigma: pretty edit.sigma} \_ ->
   wrapExprPath (maybe identity applySortVarSubst edit.sigma cursor.outside) $
   edit.outerChange # maybe identity (boundary Up) $
   edit.middle # maybe identity (wrapExprPath <<< toPath)  $
@@ -193,10 +194,14 @@ builtinRules :: forall sn el. Eq sn => Show sn => PrettyTreeNode sn => Array (St
 builtinRules =
   [ passThroughRule
   , combineUpRule
-  , combineDownRule ]
+  , combineDownRule
+  , idRule
+  , threadUpBoundaryThroughMarker
+  , threadDownBoundaryThroughMarker
+  ]
 
 passThroughRule :: forall el sn. Eq sn => Show sn => PrettyTreeNode sn => SteppingRule sn el
-passThroughRule = SteppingRule case _ of
+passThroughRule = SteppingRule "passThroughRule" case _ of
   Boundary (Down /\ down) (Boundary (Up /\ up) kid) -> Just
     let hypotenuse = lub' down up in
     let up' = invert down <> hypotenuse in
@@ -204,14 +209,29 @@ passThroughRule = SteppingRule case _ of
     Boundary (Up /\ up') (Boundary (Down /\ down') kid)
   _ -> Nothing
 
+threadUpBoundaryThroughMarker :: forall el sn. SteppingRule sn el
+threadUpBoundaryThroughMarker = SteppingRule "threadUpBoundaryThroughMarker" case _ of
+  Marker (Boundary (Up /\ ch) e) -> Just $ Boundary (Up /\ ch) (Marker e)
+  _ -> Nothing
+
+threadDownBoundaryThroughMarker :: forall el sn. SteppingRule sn el
+threadDownBoundaryThroughMarker = SteppingRule "threadUpBoundaryThroughMarker" case _ of
+  Boundary (Down /\ ch) (Marker e) -> Just $ Marker (Boundary (Down /\ ch) e)
+  _ -> Nothing
+
 combineDownRule :: forall sn el. Eq sn => SteppingRule sn el
-combineDownRule = SteppingRule case _ of
+combineDownRule = SteppingRule "combineDownRule" case _ of
   Boundary (Down /\ down1) (Boundary (Down /\ down2) kid) -> Just $
     Boundary (Down /\ (down1 <> down2)) kid
   _ -> Nothing
 
 combineUpRule :: forall sn el. Eq sn => SteppingRule sn el
-combineUpRule = SteppingRule case _ of
+combineUpRule = SteppingRule "combineUpRule" case _ of
   Boundary (Up /\ up1) (Boundary (Up /\ up2) kid) -> Just $
     Boundary (Up /\ (up1 <> up2)) kid
+  _ -> Nothing
+
+idRule :: forall sn el. Eq sn => SteppingRule sn el
+idRule = SteppingRule "idRule" case _ of
+  Boundary (_ /\ ch) e | isIdentity ch -> Just e
   _ -> Nothing

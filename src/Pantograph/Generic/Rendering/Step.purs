@@ -13,7 +13,7 @@ import Data.Tuple (fst, snd)
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Pantograph.Generic.Language (StepExpr(..), ExprNode)
+import Pantograph.Generic.Language.Common (StepExpr(..), ExprNode)
 import Text.Pretty (pretty)
 import Todo (todo)
 import Type.Proxy (Proxy)
@@ -34,10 +34,7 @@ renderStepExpr e@(StepExpr node kids) = do
       renderStepExpr kid <#> (_ /\ getStepExprNode kid))
   let htmls = arrangedKids # foldMap case _ of
         ArrangeKid htmls' -> htmls'
-        ArrangeHtml htmls' ->
-          -- [ El.ℓ [El.Classes [El.ArrangeHtml]]
-          --     htmls' ]
-          htmls'
+        ArrangeHtml htmls' -> htmls'
   pure $ [El.ℓ (propsStepExpr e) htmls]
 renderStepExpr e@(Boundary (dir /\ ch) kid) = do
   htmls <- renderStepExpr kid

@@ -246,8 +246,8 @@ grabSelectRight :: forall a. PrettyTreeNode a => Select a -> Maybe (Gyro a)
 grabSelectRight (Select {outside, middle, inside, orientation}) =
   case orientation of
     Outside -> case unsnocNonEmptyPath middle of
-      {outer: tooth, inner: Nothing} -> Debug.trace "here1" \_ -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside, orientation: Outside}
-      {outer: tooth, inner: Just middle'} -> Debug.trace "here2" \_ -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
+      {outer: tooth, inner: Nothing} -> Just $ CursorGyro $ Cursor {outside: consPath outside tooth, inside, orientation: Outside}
+      {outer: tooth, inner: Just middle'} -> Just $ SelectGyro $ Select {outside: consPath outside tooth, middle: middle', inside, orientation}
     Inside -> do
       Cursor {outside: middle', inside: inside'} <- moveCursorRight (Cursor {outside: toPath middle, inside, orientation: Inside})
       Just $ SelectGyro $ Select {outside, middle: fromPath "grabSelectRight" middle', inside: inside', orientation}
