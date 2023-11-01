@@ -371,7 +371,7 @@ class ApplySortVarSubst sn a b | a -> b where
 
 instance Language sn el => ApplySortVarSubst sn SortVar (Sort sn) where
   applySortVarSubst sigma@(SortVarSubst m) x = case Map.lookup x m of
-    Nothing -> debug "[ApplySortVarSubst sn SortVar (Sort sn)/applySortVarSubst] couldn't find `x` in `sigma`" {x: pretty x, sigma: pretty sigma} \_ -> makeVarSort x
+    Nothing -> makeVarSort x
     Just s -> s
 
 instance Language sn el => ApplySortVarSubst sn (Sort sn) (Sort sn) where

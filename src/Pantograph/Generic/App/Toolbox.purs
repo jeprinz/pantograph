@@ -1,9 +1,9 @@
 module Pantograph.Generic.App.Toolbox (toolboxComponent) where
 
-import Prelude
+import Pantograph.Generic.Dynamics
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering
-import Pantograph.Generic.Dynamics
+import Prelude
 
 import Bug (bug)
 import Data.Array as Array
@@ -15,11 +15,12 @@ import Data.Tree (toPath)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\))
 import Data.Variant (case_, inj, on)
+import Debug as Debug
 import Effect.Aff (Aff)
 import Halogen (liftEffect)
 import Halogen as H
-import Halogen.HTML as HH
 import Halogen.Elements as El
+import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
@@ -31,7 +32,7 @@ import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.UIEvent.MouseEvent as MouseEvent
 
 toolboxComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Component (ToolboxQuery sn el) (ToolboxInput sn el ctx env) (ToolboxOutput sn el) Aff
-toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> HK.do
+toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) -> Debug.trace "[render:toolbox]" \_ -> HK.do
   let queryRefLabel = H.RefLabel "ToolboxInput"
   let getQueryElem = HK.getHTMLElementRef queryRefLabel
 

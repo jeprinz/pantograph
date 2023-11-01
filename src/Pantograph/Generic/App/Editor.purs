@@ -1,16 +1,17 @@
 module Pantograph.Generic.App.Editor (editorComponent) where
 
-import Prelude
-import Pantograph.Generic.Language
-import Pantograph.Generic.App.Common
-import Pantograph.Generic.Rendering
-import Pantograph.Generic.Dynamics
 import Pantograph.Generic.App.Buffer
+import Pantograph.Generic.App.Common
 import Pantograph.Generic.App.Terminal
+import Pantograph.Generic.Dynamics
+import Pantograph.Generic.Language
+import Pantograph.Generic.Rendering
+import Prelude
 import Util
 
 import Data.Maybe (Maybe(..))
 import Data.Variant (case_, on)
+import Debug as Debug
 import Halogen (liftEffect)
 import Halogen.Elements as El
 import Halogen.HTML (slot) as HH
@@ -20,7 +21,7 @@ import Web.Event.Event as Event
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 
 editorComponent :: forall sn el ctx env. Dynamics sn el ctx env => EditorComponent sn el ctx env
-editorComponent = HK.component \{slotToken} (EditorInput input) -> HK.do
+editorComponent = HK.component \{slotToken} (EditorInput input) -> Debug.trace "[render:editor]" \_ -> HK.do
 
   -- keyboard
 

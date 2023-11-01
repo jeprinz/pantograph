@@ -62,8 +62,8 @@ import Web.UIEvent.MouseEvent as MouseEvent
 -- component
 
 bufferComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Component (BufferQuery sn el) (BufferInput sn el ctx env) (BufferOutput sn el) Aff
-bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> HK.do
-  let 
+bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInput input) -> Debug.trace "[render:buffer]" \_ -> HK.do
+  let
     tokens :: BufferLocalTokens sn el
     tokens = {slotToken, outputToken}
 

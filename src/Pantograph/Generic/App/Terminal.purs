@@ -1,10 +1,11 @@
 module Pantograph.Generic.App.Terminal (terminalComponent) where
 
 import Data.Tuple.Nested
-import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering
+import Pantograph.Generic.App.Common
 import Pantograph.Generic.App.Common
 import Pantograph.Generic.Dynamics
+import Pantograph.Generic.Language
+import Pantograph.Generic.Rendering
 import Prelude
 
 import Data.Display (Html, embedHtml)
@@ -13,21 +14,21 @@ import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Variant (case_, on)
+import Debug as Debug
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Halogen (RefLabel(..), liftEffect)
 import Halogen as H
 import Halogen.Elements as El
-import Pantograph.Generic.App.Common
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities (freshElementId)
 import Halogen.Utilities as HU
+import Pantograph.Generic.App.Common as HH
 import Pantograph.Generic.Rendering.TerminalItems (TerminalItemTag)
 import Pantograph.Generic.Rendering.TerminalItems as TI
-import Pantograph.Generic.App.Common as HH
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
@@ -37,7 +38,7 @@ import Web.UIEvent.MouseEvent as MouseEvent
 maximumTerminalItems = 20
 
 terminalComponent :: H.Component TerminalQuery TerminalInput TerminalOutput Aff
-terminalComponent = HK.component \{queryToken} (TerminalInput input) -> HK.do
+terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.trace "[render:terminal]" \_ -> HK.do
   let terminalInputRefLabel = RefLabel "TerminalInput"
 
   let items = TI.getTerminalItems unit

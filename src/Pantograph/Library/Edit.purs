@@ -34,12 +34,10 @@ buildEditFromExprNonEmptyPath :: forall sn el.
 buildEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
   let ch = getExprNonEmptyPathSortChange middle
   let {outerChange, innerChange} = splitExprPathChanges ch
-  debugM "[buildEditFromExprNonEmptyPath] unifySort3 sort (epR outerChange) (epL innerChange)" {sort: pretty sort, middle: pretty middle, ch: pretty ch, outerChange: pretty outerChange, innerChange: pretty innerChange, epL_outerChange: pretty $ epL outerChange, epR_outerChange: pretty $ epR outerChange, epL_innerChange: pretty $ epL innerChange, epR_innerChange: pretty $ epR innerChange}
   _ /\ sigma <- unifySort3 sort (epL innerChange) (epR outerChange)
   let outerChange' = applySortVarSubst sigma outerChange
   let middle' = applySortVarSubst sigma middle
   let innerChange' = applySortVarSubst sigma innerChange
-  debugM "[buildEditFromExprNonEmptyPath]" {sigma: pretty sigma, outerChange: pretty outerChange, outerChange': pretty outerChange', middle: pretty middle, middle': pretty middle', innerChange: pretty innerChange, innerChange': pretty innerChange'}
   Just $ Edit
     { outerChange: Just outerChange'
     , middle: Just middle'

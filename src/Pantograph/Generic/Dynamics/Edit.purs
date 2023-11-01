@@ -17,7 +17,6 @@ applyEdit edit (CursorGyro cursor) = runStepExpr $ setupEdit cursor edit
 
 setupEdit :: forall sn el. Language sn el => ExprCursor sn el -> Edit sn el -> StepExpr sn el
 setupEdit (Cursor cursor) (Edit edit) =
-  debug "setupEdit" {cursor_outside: pretty cursor.outside, cursor_inside: pretty cursor.inside, edit_outerChange: pretty edit.outerChange, edit_middle: pretty edit.middle, edit_innerChange: pretty edit.innerChange, edit_sigma: pretty edit.sigma} \_ ->
   wrapExprPath (maybe identity applySortVarSubst edit.sigma cursor.outside) $
   edit.outerChange # maybe identity (boundary Up) $
   edit.middle # maybe identity (wrapExprPath <<< toPath)  $
