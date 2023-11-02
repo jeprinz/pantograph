@@ -139,7 +139,7 @@ instance Swivel (EitherF PathPath PathTree) where
   swivelUp = overM swivelUp swivelUp
   swivelDownAt i = overM (swivelDownAt i) (swivelDownAt i)
 
--- Swivel Select
+-- Swivel SelectOrCursor
 
 type SelectOrCursor = EitherF Select Cursor
 
@@ -151,6 +151,29 @@ instance Swivel SelectOrCursor where
 
   swivelUp esc = (fromSelectOrCursor >>> swivelUp) esc <#> toSelectOrCursor esc
   swivelDownAt i esc = (fromSelectOrCursor >>> swivelDownAt i) esc <#> toSelectOrCursor esc
+
+-- Swivel SelectOrCursorOrTree
+
+type SelectOrCursorOrTree = EitherF (EitherF Select Cursor) Tree
+
+instance Swivel SelectOrCursorOrTree where
+  getLeftIndex = eitherF getLeftIndex (const Nothing)
+  getRightIndex = eitherF getRightIndex (const Nothing)
+  getDownLeftmostIndex = eitherF getDownLeftmostIndex (const (Just 0))
+  getDownRightmostIndex = eitherF getDownRightmostIndex (const (Just 0))
+
+  swivelUp = eitherF (swivelUp >>> map LeftF) (const Nothing)
+  swivelDownAt i = eitherF (swivelDownAt i >>> map LeftF) (\tree -> pure (LeftF (RightF (fromTreeToCursor tree))))
+
+fromGyroToSelectOrCursorOrTree :: Gyro ~> SelectOrCursorOrTree
+fromGyroToSelectOrCursorOrTree (RootGyro tree) = RightF tree
+fromGyroToSelectOrCursorOrTree (CursorGyro cursor) = LeftF (RightF cursor)
+fromGyroToSelectOrCursorOrTree (SelectGyro select) = LeftF (LeftF select)
+
+fromSelectOrCursorOrTreeToGyro :: SelectOrCursorOrTree ~> Gyro
+fromSelectOrCursorOrTreeToGyro (RightF tree) = RootGyro tree
+fromSelectOrCursorOrTreeToGyro (LeftF (RightF cursor)) = CursorGyro cursor
+fromSelectOrCursorOrTreeToGyro (LeftF (LeftF select)) = SelectGyro select
 
 -- Swivel Gyro
 
@@ -178,12 +201,6 @@ instance Swivel Gyro where
   swivelDownAt _ (RootGyro tree) = Just (CursorGyro (fromTreeToCursor tree))
   swivelDownAt i (CursorGyro cursor) = CursorGyro <$> swivelDownAt i cursor
   swivelDownAt i (SelectGyro select) = fromSelectOrCursorToGyro <$> swivelDownAt i (fromSelectToSelectOrCursor select)
-
-swivelGyroNextSuchThatNode :: forall a. (a -> Boolean) -> F Gyro a
-swivelGyroNextSuchThatNode cond = repeatApply1UntilNothingOrFail (gyroNode >>> cond) swivelNext
-
-swivelGyroPrevSuchThatNode :: forall a. (a -> Boolean) -> F Gyro a
-swivelGyroPrevSuchThatNode cond = repeatApply1UntilNothingOrFail (gyroNode >>> cond) swivelPrev
 
 -- EitherF
 

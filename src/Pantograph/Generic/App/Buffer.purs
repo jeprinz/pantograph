@@ -2,7 +2,6 @@ module Pantograph.Generic.App.Buffer (bufferComponent) where
 
 import Data.Either.Nested
 import Data.Tree
-import Data.Tree.Move
 import Data.Tuple.Nested
 import Pantograph.Generic.App.Common
 import Pantograph.Generic.App.Common
@@ -22,7 +21,7 @@ import Data.CodePoint.Unicode as CodePoint
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String as String
-import Data.Tree.Swivel (swivelGyroNextSuchThatNode, swivelGyroPrevSuchThatNode, swivelNext, swivelPrev, swivelPrevSuchThat)
+import Data.Tree.Swivel (EitherF(..), eitherF, fromGyroToSelectOrCursorOrTree, fromSelectOrCursorOrTreeToGyro, fromSelectOrCursorToGyro, fromTreeToCursor, swivelNext, swivelNextSuchThat, swivelPrev, swivelPrevSuchThat)
 import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple (snd)
 import Data.Variant (case_, on)
@@ -34,6 +33,7 @@ import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
 import Record as R
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
@@ -125,12 +125,32 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         pure $ Just a
       )
     # on (Proxy :: Proxy "keyboard") (\(keyboardEvent /\ a) -> do
-        let event = KeyboardEvent.toEvent keyboardEvent
-        let ki = getKeyInfo keyboardEvent
+        let
+          event = KeyboardEvent.toEvent keyboardEvent
+          ki = getKeyInfo keyboardEvent
 
         maybeEnabledToolbox <- request slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "get enabled")
-        let enabledToolbox = maybeEnabledToolbox == Just true
-        let isExistingToolbox = isJust maybeEnabledToolbox 
+        let 
+          enabledToolbox = maybeEnabledToolbox == Just true
+          isExistingToolbox = isJust maybeEnabledToolbox 
+
+        let 
+          gyroIsValidCursor :: forall er. SyncExprGyro sn el er -> Boolean
+          gyroIsValidCursor = gyroNode >>> \(EN _ _ {validCursor}) -> validCursor Outside
+          gyroIsValidCursorAndBeginsLine :: forall er. SyncExprGyro sn el er -> Boolean
+          gyroIsValidCursorAndBeginsLine = gyroNode >>> \(EN _ _ {validCursor, beginsLine}) -> validCursor Outside && beginsLine Outside
+        let
+          gyroIsValidSelect :: forall er. SyncExprGyro sn el er -> Boolean
+          gyroIsValidSelect = gyroNode >>> \(EN _ _ {validSelect}) -> validSelect
+          gyroIsValidSelectAndBeginsLine :: forall er. SyncExprGyro sn el er -> Boolean
+          gyroIsValidSelectAndBeginsLine = gyroNode >>> \(EN _ _ {validSelect, beginsLine}) -> validSelect && beginsLine Outside
+        let
+          selectToCursor :: forall er. SyncExprGyro sn el er -> SyncExprGyro sn el er
+          selectToCursor (RootGyro expr) = RootGyro expr
+          selectToCursor (CursorGyro cursor) = CursorGyro cursor
+          selectToCursor (SelectGyro select) = CursorGyro (escapeSelect select)
+
+          -- fromGyroToSelectOrCursor
 
         -- if the Toolbox is currently ENABLED
         if enabledToolbox then do
@@ -180,35 +200,30 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           -- Shift+Arrow(Left|Right|Up|Down): grab Gyro
           else if ki.key == "ArrowLeft" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroLeftUntil \(EN _ _ {validSelect}) _ -> validSelect
+            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelPrevSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelect))
           else if ki.key == "ArrowRight" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroRightUntil \(EN _ _ {validSelect}) _ -> validSelect
+            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelNextSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelect))
           else if ki.key == "ArrowUp" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroLeftUntil \(EN _ _ {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
+            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelPrevSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelectAndBeginsLine))
           else if ki.key == "ArrowDown" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ grabGyroRightUntil \(EN _ _ {beginsLine, validSelect}) orientation -> beginsLine orientation && validSelect
+            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelNextSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelectAndBeginsLine))
 
           -- Arrow(Left|Right|Up|Down): move Gyro
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
-            -- modifyHydratedExprGyro $ moveGyroLeftUntil \(EN _ _ {validCursor}) -> validCursor
-            -- modifyHydratedExprGyro $ swivelGyroPrevSuchThatNode \(EN _ _ {validCursor}) -> validCursor Outside
-            modifyHydratedExprGyro swivelPrev
+            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelPrevSuchThat gyroIsValidCursor
           else if ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
-            -- modifyHydratedExprGyro $ moveGyroRightUntil \(EN _ _ {validCursor}) -> validCursor
-            -- modifyHydratedExprGyro $ swivelGyroNextSuchThatNode \(EN _ _ {validCursor}) -> validCursor Outside
-            modifyHydratedExprGyro swivelNext
+            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelNextSuchThat gyroIsValidCursor
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroLeftUntil \(EN _ _ {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
+            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelPrevSuchThat gyroIsValidCursorAndBeginsLine
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroRightUntil \(EN _ _ {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation
-
+            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelNextSuchThat gyroIsValidCursorAndBeginsLine
           -- Spacebar: open Toolbox (no initial query)
           else if ki.key == " " then do
             liftEffect $ Event.preventDefault event

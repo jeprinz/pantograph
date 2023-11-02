@@ -321,6 +321,8 @@ specialEdits =
 validGyro :: forall er. AnnExprGyro er -> Boolean
 validGyro (RootGyro e) | P.SN TmJg % [γ, α] <- P.getExprSort e = true
 validGyro (CursorGyro (Cursor cursor)) | P.SN TmJg % [γ, α] <- P.getExprSort cursor.inside = true
+validGyro (CursorGyro (Cursor cursor)) | P.SN TyJg % [α] <- P.getExprSort cursor.inside = true
+validGyro (CursorGyro (Cursor cursor)) | P.SN Str % [s] <- P.getExprSort cursor.inside = true
 validGyro (SelectGyro (Select select)) | P.SN TmJg % [γ, α] <- P.getExprSort select.inside = true
 validGyro _ = false
 
@@ -653,7 +655,9 @@ topEnv = {countHoleTm: 0, countHoleTy: 0}
 
 arrangeExpr :: forall er a. AnnExprNode er -> Array (RenderM (a /\ AnnExprNode er)) -> RenderM (Array (ArrangeKid a))
 arrangeExpr node@(P.EN StrEL _ _) [] | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprNodeSort node = do
-  pure $ Array.fromFoldable $ string ⊕ Nil
+  if String.null string 
+    then pure $ Array.fromFoldable $ π."~" ⊕ Nil
+    else pure $ Array.fromFoldable $ string ⊕ Nil
 arrangeExpr node@(P.EN ZeroVar _ _) [] | _ % _ <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ π."Z" ⊕ Nil
 arrangeExpr node@(P.EN SucVar _ _) [x] | _ % _ <- P.getExprNodeSort node = do
@@ -818,6 +822,7 @@ infixr 6 consConstArrangable as ⊕
   , "->":   (El.ClassName <$> ["keysymbol", "rarrow"])        /\ "→"
   , "?":    (El.ClassName <$> ["keysymbol", "interrogative"]) /\ "?"
   , "λ":    (El.ClassName <$> ["keysymbol", "lambda"])        /\ "λ"
+  , "~":    (El.ClassName <$> ["keysymbol", "tilde"])         /\ "~"
   , "let":  (El.ClassName <$> ["keysymbol", "let"])           /\ "let"
   , "in":   (El.ClassName <$> ["keysymbol", "in"])            /\ "in"
   , "Z":    (El.ClassName <$> ["keysymbol", "zero"])          /\ "Z"

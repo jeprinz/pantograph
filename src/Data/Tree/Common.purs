@@ -220,6 +220,27 @@ gyroNode (CursorGyro (Cursor {inside: Tree a _})) = a
 gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _} <- unconsNonEmptyPath middle = a
 gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 
+-- If `ensureGyroIsCursor gyro == Nothing` then then `gyro` is already a
+-- `Cursor`.
+ensureGyroIsCursor :: forall a. PrettyTreeNode a => Gyro a -> Maybe (Gyro a)
+ensureGyroIsCursor (CursorGyro _) = Nothing
+ensureGyroIsCursor (RootGyro expr) = Just $ CursorGyro (Cursor {outside: mempty, inside: expr, orientation: Outside})
+ensureGyroIsCursor (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
+
+escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
+escapeGyro (RootGyro _) = Nothing
+escapeGyro (CursorGyro (Cursor {outside, inside})) = Just $ RootGyro (unPath outside inside)
+escapeGyro (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
+
+escapeCursor :: forall a. Cursor a -> Tree a
+escapeCursor (Cursor {outside, inside}) = unPath outside inside
+
+escapeSelect :: forall a. Select a -> Cursor a
+escapeSelect (Select {outside, middle, inside, orientation}) =
+  case orientation of
+    Outside -> Cursor {outside, inside: unPath (toPath middle) inside, orientation: Outside}
+    Inside -> Cursor {outside: outside <> toPath middle, inside, orientation: Inside}
+
 -- Change
 
 data Change a
