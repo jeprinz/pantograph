@@ -17,6 +17,7 @@ import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Identity (Identity(..))
 import Data.Int as Int
+import Data.Lazy (Lazy, defer, force)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Ord.Generic (genericCompare)
@@ -669,13 +670,14 @@ arrangeExpr node@(P.EN LetTm _ _) [x, alpha, a, b] | _ % _ <- P.getExprNodeSort 
   α /\ _ <- alpha
   a /\ aNode <- a
   b /\ _ <- b
-  let parensYes _ = pure $ Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ "(" ⊕ a ˜⊕ ")" ⊕ " in " ⊕ b ˜⊕ Nil
-  let parensNo _ = pure $ Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ a ˜⊕ " in " ⊕ b ˜⊕ Nil
-  case aNode of
-    P.EN LetTm _ _ -> parensYes unit
-    P.EN CallTm _ _ -> parensYes unit
-    P.EN ErrorCallTm _ _ -> parensNo unit
-    _ -> parensNo unit
+  let
+    parensYes = defer \_ -> Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ "(" ⊕ a ˜⊕ ")" ⊕ " in " ⊕ b ˜⊕ Nil
+    parensNo = defer \_ -> Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ a ˜⊕ " in " ⊕ b ˜⊕ Nil
+  pure <<< force $ case aNode of
+    P.EN LetTm _ _ -> parensYes
+    P.EN CallTm _ _ -> parensYes
+    P.EN ErrorCallTm _ _ -> parensYes
+    _ -> parensNo
 arrangeExpr node@(P.EN IfTm _ _) [a, b, c] | _ % _ <- P.getExprNodeSort node = do
   a /\ _ <- a
   b /\ _ <- b

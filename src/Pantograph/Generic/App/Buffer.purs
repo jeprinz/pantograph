@@ -292,12 +292,10 @@ rehydrateExprGyro {slotToken} m_hydExprGyro m_hydExprGyro' = do
     tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
   case m_hydExprGyro of
     Nothing -> pure unit
-    Just hydExprGyro -> debug "rehydrateExprGyro/unflush" {} \_ ->
-      unflushHydrateExprGyro hydExprGyro
+    Just hydExprGyro -> unflushHydrateExprGyro hydExprGyro
   case m_hydExprGyro' of
     Nothing -> pure unit
-    Just hydExprGyro -> debug "rehydrateExprGyro/flush" {} \_ ->
-      flushHydrateExprGyro hydExprGyro
+    Just hydExprGyro -> flushHydrateExprGyro hydExprGyro
 
 -- render
 
