@@ -184,8 +184,8 @@ stripSuffix (List.Pattern suf) xs0 = go List.Nil xs0
 asStateT :: forall m s1 s2 a. Monad m => (s2 -> s1 -> s2) -> (s2 -> s1) -> StateT s1 m a -> StateT s2 m a
 asStateT f1 f2 (StateT k) = StateT \s2 -> map (map (f1 s2)) $ k (f2 s2)
 
-indexDeleteAt :: forall a. Int -> Array a -> Maybe (Tuple (Array a) a)
-indexDeleteAt i xs = Tuple <$> Array.deleteAt i xs <*> Array.index xs i
+extractAt :: forall a. Int -> Array a -> Maybe (Tuple (Array a) a)
+extractAt i xs = Tuple <$> Array.deleteAt i xs <*> Array.index xs i
 
 splitAt :: forall a. Int -> Array a -> Maybe (Array a /\ a /\ Array a)
 splitAt i xs = do

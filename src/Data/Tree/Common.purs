@@ -31,7 +31,7 @@ import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, class PrettyS, parens, pretty, prettyS, (<+>))
 import Text.Pretty as Pretty
 import Todo (todo)
-import Util (fromJust, fromJust', indexDeleteAt)
+import Util (fromJust, fromJust', extractAt)
 
 -- infixes
 
@@ -77,6 +77,12 @@ instance Supertype a b => Supertype (Tooth a) (Tooth b) where
 
 toothNode :: forall a. Tooth a -> a
 toothNode (Tooth a _) = a
+
+toothIndex :: forall a. Tooth a -> Int
+toothIndex (Tooth _ (i /\ _)) = i
+
+toothKids :: forall a. Tooth a -> Array (Tree a)
+toothKids (Tooth _ (_ /\ kids)) = kids
 
 buildTooth :: forall a. a -> Array (Tree a) -> Array (Tree a) -> Tooth a
 buildTooth a leftKids rightKids = Tooth a (Array.length leftKids /\ (leftKids <> rightKids))
@@ -238,12 +244,12 @@ instance Eq a => Semigroup (Change a) where
   append (Shift (Minus /\ th) c) c' = Shift (Minus /\ th) (c <> c')
   append (Shift (Plus /\ th@(Tooth a (i /\ ts))) c) (InjectChange a' _cs')
     | a == a'
-    , cs' /\ c' <- fromJust $ indexDeleteAt i _cs'
+    , cs' /\ c' <- fromJust $ extractAt i _cs'
     , and $ map (uncurry eq) $ Array.zip (injectTreeIntoChange <$> ts) cs'
     = Shift (Plus /\ th) (c <> c')
   append (InjectChange a _cs) (Shift (Minus /\ th@(Tooth a' (i' /\ ts'))) c')
     | a == a'
-    , cs /\ c <- fromJust $ indexDeleteAt i' _cs
+    , cs /\ c <- fromJust $ extractAt i' _cs
     , and $ map (uncurry eq) $ Array.zip cs (injectTreeIntoChange <$> ts')
     = Shift (Plus /\ th) (c <> c')
   append (InjectChange a cs) (InjectChange a' cs') | a == a' = InjectChange a (Array.zipWith append cs cs')

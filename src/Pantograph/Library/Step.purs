@@ -16,7 +16,7 @@ import Halogen.Elements as El
 import Pantograph.Generic.Rendering.TerminalItems as TI
 import Text.Pretty (pretty)
 import Todo (todo)
-import Util (debug, debugM, findIndexMap, indexDeleteAt, splitAt, splitAtFindMap)
+import Util (debug, debugM, findIndexMap, extractAt, splitAt, splitAtFindMap)
 
 matchDirection :: Maybe Direction -> Direction -> Boolean
 matchDirection mbDir dir = maybe true (_ == dir) mbDir

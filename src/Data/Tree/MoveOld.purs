@@ -1,17 +1,4 @@
-module Data.Tree.Move where
-
-import Data.Either.Nested (type (\/))
-import Data.Tree.Common
-import Prelude
-
-import Data.Tuple.Nested
-import Data.Array as Array
-import Data.Either (Either(..))
-import Data.List (List(..))
-import Data.Maybe (Maybe(..), fromMaybe)
-import Debug as Debug
-import Text.Pretty (class Pretty, pretty, (<+>))
-import Util (fromJust')
+module Data.Tree.MoveOld where
 
 import Data.Either.Nested (type (\/))
 import Data.Tree.Common
