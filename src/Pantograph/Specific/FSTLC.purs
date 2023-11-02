@@ -326,30 +326,25 @@ getSortingRule :: EL -> SortingRule
 getSortingRule =
   case _ of
     StrEL -> P.buildSortingRule (Proxy :: Proxy (x::StrInnerR)) \{x} ->
-      []
-      /\
+      [] /\
       ( rs_str x )
 
     ZeroVar -> P.buildSortingRule (Proxy :: Proxy (γ::CtxR, x::StrInnerR, α::TyR)) \{γ, x, α} ->
-      []
-      /\
+      [] /\
       ( rs_jg_var γ x α rs_loc_local )
 
     SucVar -> P.buildSortingRule (Proxy :: Proxy (γ::CtxR, x::StrInnerR, α::TyR, y::CtxR, β::TyR, loc::LocR)) \{γ, x, α, y, β, loc} ->
-      [ rs_jg_var γ x α loc ]
-      /\
+      [ rs_jg_var γ x α loc ] /\
       ( rs_jg_var (rs_ctx_cons y β γ) x α loc )
 
     FreeVar -> P.buildSortingRuleFromStrings ["x", "α"] \[x, α] ->
-      []
-      /\
+      [] /\
       ( rs_jg_var rs_ctx_nil x α rs_loc_nonlocal )
 
     LamTm -> P.buildSortingRuleFromStrings ["x", "α", "β", "γ"] \[x, α, β, γ] ->
       [ rs_str x
       , rs_jg_ty α
-      , rs_jg_tm (rs_ctx_cons x α γ) β ]
-      /\
+      , rs_jg_tm (rs_ctx_cons x α γ) β ] /\
       ( rs_jg_tm γ (rs_ty_arrow α β) )
 
     LetTm -> P.buildSortingRuleFromStrings ["x", "α", "β", "γ"] \[x, α, β, γ] ->
@@ -357,77 +352,65 @@ getSortingRule =
       , rs_jg_ty α
       , rs_jg_tm (rs_ctx_cons x α γ) α
       , rs_jg_tm (rs_ctx_cons x α γ) β
-      ]
-      /\
+      ] /\
       ( rs_jg_tm γ β )
 
     VarNe -> P.buildSortingRuleFromStrings ["γ", "x", "α", "loc"] \[γ, x, α, loc] ->
-      [ rs_jg_var γ x α loc ]
-      /\
+      [ rs_jg_var γ x α loc ] /\
       ( rs_jg_ne γ α )
 
     IfTm -> P.buildSortingRuleFromStrings ["γ", "α"] \[γ, α] ->
       [ rs_jg_tm γ rs_ty_bool
-      , rs_jg_tm γ α ]
-      /\
+      , rs_jg_tm γ α ] /\
       ( rs_jg_tm γ α )
 
     CallTm -> P.buildSortingRuleFromStrings ["γ", "α"] \[γ, α] ->
-      [ rs_jg_ne γ α ]
-      /\
+      [ rs_jg_ne γ α ] /\
       ( rs_jg_tm γ α )
 
     ErrorCallTm -> P.buildSortingRuleFromStrings ["γ", "α", "β"] \[γ, α, β] ->
-      [ rs_jg_ne γ α ]
-      /\
+      [ rs_jg_ne γ α ] /\
       ( rs_jg_tm γ β )
 
     HoleTm -> P.buildSortingRuleFromStrings ["γ", "α"] \[γ, α] ->
-      [ rs_jg_ty α ]
-      /\
+      [ rs_jg_ty α ] /\
       ( rs_jg_tm γ α )
 
     ErrorBoundaryTm -> P.buildSortingRuleFromStrings ["γ", "α", "β"] \[γ, α, β] ->
-      [ rs_jg_tm γ α ]
-      /\
+      [ rs_jg_tm γ α ] /\
       ( rs_jg_tm γ β )
 
     AppNe -> P.buildSortingRuleFromStrings ["γ", "α", "β"] \[γ, α, β] ->
       [ rs_jg_ne γ (rs_ty_arrow α β)
-      , rs_jg_tm γ α ]
-      /\
+      , rs_jg_tm γ α ] /\
       ( rs_jg_ne γ β )
 
     GrayAppNe -> P.buildSortingRuleFromStrings ["γ", "α", "β"] \[γ, α, β] ->
       [ rs_jg_ne γ β
-      , rs_jg_tm γ α ]
-      /\
+      , rs_jg_tm γ α ] /\
       ( rs_jg_ne γ β )
 
     HoleTy -> P.buildSortingRuleFromStrings ["α"] \[α] ->
-      [] 
-      /\
+      [] /\
       ( rs_jg_ty α )
 
     DataTyEL dt -> P.buildSortingRuleFromStrings [] \[] ->
-      []
-      /\
+      [] /\
       ( rs_jg_ty (rs_ty_dt dt) )
 
     ArrowTyEL -> P.buildSortingRuleFromStrings ["α", "β"] \[α, β] ->
       [ rs_jg_ty α
-      , rs_jg_ty β ]
-      /\
+      , rs_jg_ty β ] /\
       ( rs_jg_ty (rs_ty_arrow α β) )
 
     Format _ -> P.buildSortingRuleFromStrings ["a"] \[a] -> 
-      []
-      /\
+      [] /\
       ( a )
 
 getChangingRule :: EL -> ChangingRule
 getChangingRule el = case el of
   HoleTm -> P.buildChangingRule ["γ", "α"] \[γ, α] ->
+    -- [ Plus /\ (P.InjectRuleSortNode (P.SN TmJg) %- 1 /\ [γ]) %!/ injectTreeIntoChange (rs_jg_ty α) ] /\
     [ injectTreeIntoChange $ rs_jg_ty α ]
     /\
     ( injectTreeIntoChange $ rs_jg_tm γ α )

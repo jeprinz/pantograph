@@ -21,6 +21,7 @@
   --color3: #eed69b;
 
   --debug-color: rgb(0, 196, 0);
+  --error-color: rgb(255, 47, 47);
 
   --cursor-background-color: rgb(240, 240, 255);
   --cursor-border-color: rgb(0, 0, 255);
@@ -202,6 +203,11 @@ body {
 
 .DebugTerminalItemTag {
   color: var(--debug-color);
+  /* box-shadow: 0 0 0 1px var(--debug-color); */
+}
+
+.ErrorTerminalItemTag {
+  color: var(--error-color);
   /* box-shadow: 0 0 0 1px var(--debug-color); */
 }
 
@@ -500,4 +506,12 @@ body {
   color: black;
   box-shadow: 0 0 0 1px black;
   background-color: var(--color2);
+}
+
+.Bug {
+  background-color: var(--error-color);
+  color: white;
+  display: inline;
+  padding: 0 var(--it);
+  margin-right: var(--it);
 }

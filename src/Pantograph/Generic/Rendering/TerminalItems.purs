@@ -15,7 +15,7 @@ import Halogen.HTML as HH
 import Type.Row.Homogeneous (class Homogeneous)
 import Util (fromHomogenousRecordToTupleArray)
 
-data TerminalItemTag = DebugTerminalItemTag
+data TerminalItemTag = DebugTerminalItemTag | ErrorTerminalItemTag
 newtype TerminalItem = TerminalItem {tag :: TerminalItemTag, html :: Html}
 
 terminalItem = {debug, debugString}
@@ -41,7 +41,18 @@ addM html = do
   add html \_ -> pure unit
 
 bug :: forall a. Html -> a
-bug html = add html (\_ -> Bug.bug "bug info printed to terminal")
+bug html = 
+  modifyTerminalItems (Cons (TerminalItem {tag: ErrorTerminalItemTag, html})) \_ -> 
+    Bug.bug "bug info printed to terminal"
+
+bugR :: forall r a. Homogeneous r Html => Html -> Record r -> a
+bugR title r = 
+  let keysAndValues = fromHomogenousRecordToTupleArray r 
+      html = El.ι $ [title] <> if Array.null keysAndValues then [] else
+              Array.foldMap (\(k /\ v) -> [El.β [El.ι [El.ℓ [El.Classes [El.TerminalItemDebugRecordKey]] [El.τ k], v]]]) keysAndValues 
+  in
+  modifyTerminalItems (Cons (TerminalItem {tag: ErrorTerminalItemTag, html})) \_ -> 
+    Bug.bug "bug info printed to terminal"
 
 debug :: forall r a. Homogeneous r Html => Html -> Record r -> (Unit -> a) -> a
 debug title r = 

@@ -28,22 +28,43 @@ makeDefaultDownSteppingRule {getChangingRule} = SteppingRule "defaultDown" case 
   Down /\ ch %.| a@(EN label sortSigma _ %. kids) -> do
     let ChangingRule rule = getChangingRule label
     let sort = getStepExprSort a
-    let _ = if epL ch == sort then unit else bug $ "boundary's change's left endpoint didn't match sort of internal expr" <> "; ch = " <> pretty ch <> "; epL ch = " <> pretty (epL ch) <> "; sort " <> pretty sort
+    let _ = if epL ch == sort then unit else
+            TI.bugR (El.τ "boundary's change's left endpoint didn't match sort of internal expr")
+              { "epL ch == sort": display $ epL ch == sort
+              , ch: display ch
+              , "epL ch": display $ epL ch
+              , "epR ch": display $ epR ch
+              , sort: display $ sort
+              , "show (epL ch)": display <<< show $ epL ch
+              , "show sort": display <<< show $ sort
+              }
     changeSigma /\ chBackUp <- doOperation ch rule.parent
     let changeSigma' = changeSigma <> (injectTreeIntoChange <$> sortSigma)
-    debugM "makeDefaultDownSteppingRule" {sort: pretty sort, changeSigma: pretty changeSigma', chBackUp: pretty chBackUp, changeSigma': pretty changeSigma'}
-    let kidSorts = applyRuleSortVarSubst changeSigma' <$> rule.kids
-    let kidsWithBoundaries = Array.zipWith (\ch' kid -> Down /\ ch' %.| kid) kidSorts kids
-    TI.debugM (El.τ "defaultDown") 
-      { ch: display ch
-      , sort: display sort
+
+    TI.debugM (El.τ "makeDefaultDownSteppingRule")
+      { sort: display sort
       , changeSigma: display changeSigma
-      , changeSigma': display changeSigma'
       , chBackUp: display chBackUp
-      , ruleKidSorts: display $ rule.kids
-      , kidSorts: display kidSorts
-      , kidsWithBoundaries: display kidsWithBoundaries
+      , changeSigma': display changeSigma'
+      , rule_kids: display rule.kids
       }
+
+    -- TODO: bug is here
+    let kidSorts = applyRuleSortVarSubst changeSigma' <$> rule.kids
+
+    let kidsWithBoundaries = Array.zipWith (\ch' kid -> Down /\ ch' %.| kid) kidSorts kids
+
+    -- TI.debugM (El.τ "defaultDown") 
+    --   { ch: display ch
+    --   , sort: display sort
+    --   , changeSigma: display changeSigma
+    --   , changeSigma': display changeSigma'
+    --   , chBackUp: display chBackUp
+    --   , ruleKidSorts: display $ rule.kids
+    --   , kidSorts: display kidSorts
+    --   , kidsWithBoundaries: display kidsWithBoundaries
+    --   }
+
     Just $ Up /\ chBackUp %.| (EN label (epR <$> changeSigma') {} %. kidsWithBoundaries)
   _ -> Nothing
 

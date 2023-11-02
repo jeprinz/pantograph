@@ -131,12 +131,14 @@ data ClassName
   | Change | ShiftChange | ShiftChangeInner | ReplaceChange | ReplaceChangeLeft 
   | ReplaceChangeRight | InjectChange
   -- Terminal
-  | TerminalContent | TerminalItemTag | DebugTerminalItemTag | TerminalItems | TerminalItem | TerminalItemContent
+  | TerminalContent
+  | TerminalItemTag | DebugTerminalItemTag | ErrorTerminalItemTag
+  | TerminalItems | TerminalItem | TerminalItemContent
   | TerminalItemDebugRecordKey
   -- Hover
   | Hover
   -- Misc
-  | Closed
+  | Closed | Bug
 
 derive instance Generic ClassName _
 derive instance Eq ClassName
@@ -161,6 +163,7 @@ ancestorClassNamesRelations =
   , PreviewLeft /\ [PreviewLeftInsert, PreviewLeftPaste]
   , PreviewRight /\ [PreviewRightInsert, PreviewRightPaste]
   , EditRow /\ [SelectedEditRow]
+  , TerminalItemTag /\ [DebugTerminalItemTag, ErrorTerminalItemTag]
   ]
 
 ancestorClassNamesRelationsClosure :: ClassName -> Array ClassName

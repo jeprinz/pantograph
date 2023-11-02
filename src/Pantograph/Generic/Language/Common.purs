@@ -224,7 +224,6 @@ newtype ChangingRule sn = ChangingRule
 
 derive instance Newtype (ChangingRule sn) _
 
-
 -- Edit
 
 -- | An `Edit` is described by the changes, inserted path, and replacing expr
@@ -327,8 +326,8 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSo
   applyRuleSortVarSubst _ _ = bug "invalid"
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) where
-  -- can't have changes in other parts of tooth
-  applyRuleSortVarSubst sigma (Shift (sign /\ (Tooth (InjectRuleSortNode n) (i /\ kids))) kid) = Shift (sign /\ Tooth n (i /\ (kids <#> \kid' -> fromJust' ("sigma = " <> pretty sigma <> "; kid' = " <> pretty kid') $ projectTreeIntoChange $ applyRuleSortVarSubst sigma $ injectTreeIntoChange kid'))) (applyRuleSortVarSubst sigma kid)
+  -- take the right endpoints of any changes applied to adjacent kids in the tooth of the shift
+  applyRuleSortVarSubst sigma (Shift (sign /\ (Tooth (InjectRuleSortNode n) (i /\ kids))) kid) = Shift (sign /\ Tooth n (i /\ (kids <#> \kid' -> epR $ applyRuleSortVarSubst sigma $ injectTreeIntoChange kid'))) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (epL $ applyRuleSortVarSubst sigma $ injectTreeIntoChange old) (epR $ applyRuleSortVarSubst sigma $ injectTreeIntoChange new)
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = applyRuleSortVarSubst sigma x

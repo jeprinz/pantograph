@@ -122,4 +122,5 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
 
 renderTag :: TerminalItemTag -> Html
 renderTag = case _ of
-  TI.DebugTerminalItemTag -> El.ℓ [El.Classes [El.TerminalItemTag, El.DebugTerminalItemTag]] [El.text "debug"]
+  TI.DebugTerminalItemTag -> El.ℓ [El.Classes [El.DebugTerminalItemTag]] [El.text "debug"]
+  TI.ErrorTerminalItemTag -> El.ℓ [El.Classes [El.ErrorTerminalItemTag]] [El.text "error"]

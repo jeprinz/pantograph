@@ -114,6 +114,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
   -- runs after each render
   HK.captures {} HK.useTickEffect do
     hydExprGyro <- hydrateExprGyro initialSyncedExprGyro
+    rehydrateExprGyro tokens Nothing (Just hydExprGyro)
     liftEffect $ Ref.write (Just hydExprGyro) hydExprGyroRef
     pure Nothing
 
@@ -291,10 +292,12 @@ rehydrateExprGyro {slotToken} m_hydExprGyro m_hydExprGyro' = do
     tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
   case m_hydExprGyro of
     Nothing -> pure unit
-    Just hydExprGyro -> unflushHydrateExprGyro hydExprGyro
+    Just hydExprGyro -> debug "rehydrateExprGyro/unflush" {} \_ ->
+      unflushHydrateExprGyro hydExprGyro
   case m_hydExprGyro' of
     Nothing -> pure unit
-    Just hydExprGyro -> flushHydrateExprGyro hydExprGyro
+    Just hydExprGyro -> debug "rehydrateExprGyro/flush" {} \_ ->
+      flushHydrateExprGyro hydExprGyro
 
 -- render
 
