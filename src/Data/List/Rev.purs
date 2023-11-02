@@ -12,6 +12,7 @@ module Data.List.Rev
   , unreversed
   , length
   , null
+  , unzip
   ) where
 
 import Prelude
@@ -20,6 +21,7 @@ import Data.Array as Array
 import Data.Foldable (class Foldable, foldMap, foldl, foldr)
 import Data.List as List
 import Data.Traversable (class Traversable, sequence, traverse)
+import Data.Bifunctor
 
 newtype RevList a = Rev (List.List a)
 
@@ -82,3 +84,5 @@ singleton = reverse <<< List.singleton
 length = unwrap >>> List.length
 
 null = unwrap >>> List.null
+
+unzip = (bimap wrap wrap) <<< List.unzip <<< unwrap

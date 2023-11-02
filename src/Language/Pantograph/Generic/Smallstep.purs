@@ -445,6 +445,21 @@ getPathChange lang (Expr.Path ((Expr.Tooth (Grammar.DerivLabel r sub) (ZipList.P
     let restOfPathChange = (getPathChange lang (Expr.Path path) (snd (endpoints kidChange'))) in
     compose kidChange' restOfPathChange
 
+-- Assumption: input path is nonempty
+getPathChange2 :: forall l r. Ord r => Grammar.IsRuleLabel l r => Grammar.DerivPath Dir.Up l r
+    -> (Grammar.DerivLabel l r -> Maybe (Grammar.DerivLabel l r)) -> Grammar.SortChange l
+getPathChange2 forgetSorts path =
+    -- Forget all derivlabels, except remember a mapping from the newly created variables to the values they had originally
+    let path' /\ subs = Grammar.forgetCollectDerivPath path forgetSorts in
+    -- infer
+    let sortSub = fromJust' "gpc2" $ Grammar.inferPath (Grammar.nonemptyPathInnerSort path') path' in
+    let inferredPath = Grammar.subDerivPath sortSub path' in
+    let innerGeneralSort = Grammar.nonemptyPathInnerSort inferredPath in
+    -- get a change with diff
+    let generalChange = diff innerGeneralSort (Grammar.derivPathSort inferredPath innerGeneralSort) in
+    -- substitute the substitution from step 1 back into that change
+    subSomeMetaChange subs generalChange
+
 
 ------------------------------------- Functions for creating custom smallstep rules -----------------------------------
 

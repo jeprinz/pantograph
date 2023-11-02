@@ -41,6 +41,7 @@ import Text.Pretty (class Pretty, bullets, pretty)
 import Type.Direction (_down, _up)
 import Type.Direction as Dir
 import Util as Util
+import Data.Foldable as Foldable
 
 --------------------------------------------------------------------------------
 -- RuleLabel
@@ -480,3 +481,48 @@ forgetDerivLabelSorts f label =
             Nothing -> case derivLabelRule label of
                 Just r -> makeFreshLabel r
                 Nothing -> label
+
+--------------------------------------------------------------------------------
+{-
+These functions help with getting the change across a path. My original idea of LanguageChanges didn't work,
+so hopefully this can deal with the other case.
+-}
+
+{-
+Takes a derivlabel, returns a new one with a freshened sub where the Rule MetaVars map to fresh MetaVars,
+and also returns a mapping of those metavar names to the original things that they mapped to.
+-}
+forgetCollectDerivLabel :: forall l r. IsRuleLabel l r =>
+    (DerivLabel l r -> Maybe (DerivLabel l r)) -> DerivLabel l r -> DerivLabel l r /\ SortSub l
+forgetCollectDerivLabel forgetSorts label =
+    case (forgetSorts label) /\ label of
+        Just label' /\ (DerivLabel r sigma) ->
+            let (Rule vars _children _conclusion) = TotalMap.lookup r language in
+            let freshVars = Map.fromFoldable (Set.map (\mv -> mv /\ (Expr.freshMetaVar (Expr.metaVarName mv))) vars) in
+            let newSigma = map Expr.fromMetaVar freshVars :: SortSub l in
+            let collectedMap = Map.fromFoldable (Set.map (\mv -> (Util.lookup' mv freshVars) /\ Util.lookup' mv newSigma) vars) :: SortSub l in
+            (DerivLabel r newSigma) /\ collectedMap
+        _ -> label /\ Map.empty -- TODO: is this going to work as a fallback case?
+
+forgetCollectDerivTerm :: forall l r. IsRuleLabel l r =>
+    (DerivLabel l r -> Maybe (DerivLabel l r)) -> DerivTerm l r -> DerivTerm l r /\ SortSub l
+forgetCollectDerivTerm forgetSorts (label % kids) =
+    let label' /\ sub1 = forgetCollectDerivLabel forgetSorts label in
+    let kids' /\ subs2 = Array.unzip (map (forgetCollectDerivTerm forgetSorts) kids) in
+    let sub = Map.union sub1 (Map.unions subs2) in
+    (label' % kids') /\ sub
+
+forgetCollectDerivTooth :: forall l r. IsRuleLabel l r =>
+    (DerivLabel l r -> Maybe (DerivLabel l r)) -> DerivTooth l r -> DerivTooth l r /\ SortSub l
+forgetCollectDerivTooth forgetSorts (Expr.Tooth label (ZipList.Path {left, right})) =
+    let label' /\ sub1 = forgetCollectDerivLabel forgetSorts label in
+    let left' /\ subs2 = RevList.unzip (map (forgetCollectDerivTerm forgetSorts) left) in
+    let right' /\ subs3 = List.unzip (map (forgetCollectDerivTerm forgetSorts) right) in
+    let sub = Map.union sub1 (Map.union (Map.unions subs2) (Map.unions subs3)) in
+    (Expr.Tooth label' (ZipList.Path {left: left', right: right'})) /\ sub
+
+forgetCollectDerivPath :: forall l r. IsRuleLabel l r =>
+    (DerivLabel l r -> Maybe (DerivLabel l r)) -> DerivPath Dir.Up l r -> DerivPath Dir.Up l r /\ SortSub l
+forgetCollectDerivPath forgetSorts (Expr.Path teeth) =
+    let teeth' /\ subs2 = List.unzip (map (forgetCollectDerivTooth forgetSorts) teeth) in
+    Expr.Path teeth' /\ Map.unions subs2
