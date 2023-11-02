@@ -105,17 +105,18 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
               --         , HE.onFocusOut \_ -> liftEffect $ Ref.write false terminalInputIsFocusedRef ]
               --     ]
               -- , 
-              El.ℓ 
-                [ El.Classes [El.Button]
-                , El.OnMouseDown \_ -> HK.modify_ counterStateId (1 + _) ]
-                [ El.text "force update" ]
-            ,
               embedHtml mempty $
               El.ℓ [El.Classes [El.TerminalItems]]
                 (List.toUnfoldable items <#> \(TI.TerminalItem item) -> do
                   El.ℓ [El.Classes [El.TerminalItem]]
                     [ renderTag item.tag
                     , El.ℓ [El.Classes [El.TerminalItemContent]] [item.html] ])
+            ,
+              El.ℓ 
+                [ El.Classes [El.Button]
+                , El.OnMouseDown \_ -> HK.modify_ counterStateId (1 + _) ]
+                [ El.text "force update" ]
+
             ]
         ]
     }

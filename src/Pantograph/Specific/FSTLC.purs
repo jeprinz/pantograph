@@ -667,9 +667,15 @@ arrangeExpr node@(P.EN LamTm _ _) [x, α, b] | _ % _ <- P.getExprNodeSort node =
 arrangeExpr node@(P.EN LetTm _ _) [x, alpha, a, b] | _ % _ <- P.getExprNodeSort node = do
   x /\ _ <- x
   α /\ _ <- alpha
-  a /\ _ <- a
+  a /\ aNode <- a
   b /\ _ <- b
-  pure $ Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ a ˜⊕ " in " ⊕ b ˜⊕ Nil
+  let parensYes _ = pure $ Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ "(" ⊕ a ˜⊕ ")" ⊕ " in " ⊕ b ˜⊕ Nil
+  let parensNo _ = pure $ Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ a ˜⊕ " in " ⊕ b ˜⊕ Nil
+  case aNode of
+    P.EN LetTm _ _ -> parensYes unit
+    P.EN CallTm _ _ -> parensYes unit
+    P.EN ErrorCallTm _ _ -> parensNo unit
+    _ -> parensNo unit
 arrangeExpr node@(P.EN IfTm _ _) [a, b, c] | _ % _ <- P.getExprNodeSort node = do
   a /\ _ <- a
   b /\ _ <- b
