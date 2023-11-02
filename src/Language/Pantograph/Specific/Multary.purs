@@ -119,6 +119,7 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (Arrow  /\ [a, b]) = "(" <> a <> ") -> " <> b
   prettyExprF'_unsafe (TypeListNil  /\ []) = "[]"
   prettyExprF'_unsafe (TypeListCons  /\ [ty, tylist]) = ty <> " : " <> tylist
+  prettyExprF'_unsafe sort = bug ("prettySort: pattern match failed " <> pretty sort)
 
 
   expectedKidsCount VarSort = 4
@@ -255,7 +256,7 @@ sortToTypeList _ = bug "invalid input to sortToTypeList"
 instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
   prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = pretty Suc <> x
-  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "↦" <+> b
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [ts, b]) = P.parens $ "λ" <+> ts <+> "↦" <+> b
   prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
   prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
@@ -617,6 +618,12 @@ splitChange c =
             {upChange: csor ArgListSort % [ChangeAlgebra.inject ctx2, ts]
             , cursorSort: sor ArgListSort % [ctx2, ts1]
             , downChange: csor ArgListSort % [ctx, ChangeAlgebra.inject ts1]}
+        c | Maybe.Just ([] /\ [ts]) <- matchChange c (TypeListSort %+- [cSlot, cSlot])
+        ->
+            let ts1 /\ _ts2 = ChangeAlgebra.endpoints ts in
+            {upChange: csor TypeListSort % [ts]
+            , cursorSort: sor TypeListSort % [ts1]
+            , downChange: csor TypeListSort % [ChangeAlgebra.inject ts1]}
         c | Maybe.Just ([] /\ [gammaLess, gammaMore, ts]) <- matchChange c (VarListSort %+- [cSlot, cSlot, cSlot])
         ->
             let _gammaLess1 /\ gammaLess2 = ChangeAlgebra.endpoints gammaLess in
@@ -646,6 +653,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity
     [
     makeEditFromPath (newPathFromRule Lam 1) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
+    , makeEditFromPath (newPathFromRule TypeListConsRule 1) "cons" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
     , makeEditFromPath (newPathFromRule FunctionCall 0) "app" cursorSort
     , makeEditFromPath (newPathFromRule Newline 0 )"newline" cursorSort
@@ -832,8 +840,8 @@ stepRules = do
 --    , mergeErrors
     ]
     <>
---    GreyedRules.createGreyedRules 2 Lam Nothing splitChange languageChanges
---    <>
+    GreyedRules.createGreyedRules 1 Lam Nothing splitChange languageChanges
+    <>
 --    GreyedRules.createGreyedRules 1 ArrowRule Nothing splitChange languageChanges
 --    <>
     [

@@ -26,6 +26,8 @@ union m1 m2 = Util.threeCaseUnion (\s -> s) (\s -> s) Set.union m1 m2
 unions :: forall f v k. Ord k => Ord v => Foldable f => f (MultiMap k v) -> MultiMap k v
 unions f = foldr union empty f
 
+-- NOTE: there is a quirk here that if you put two of the same value into multimap then it only goes in the set once...
+
 -- returns Just if all things happen to map to exactly one element
 toMap :: forall k v. MultiMap k v -> Maybe (Map k v)
 toMap mm =

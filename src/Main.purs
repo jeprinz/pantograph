@@ -23,11 +23,11 @@ import Language.Pantograph.Generic.Grammar as Grammar
 --main :: Effect Unit
 --main = runEditorForLang FullyApplied.editorSpec
 
---main :: Effect Unit
---main = runEditorForLang CurryingAndProducts.editorSpec
-
 main :: Effect Unit
-main = runEditorForLang Multary.editorSpec
+main = runEditorForLang CurryingAndProducts.editorSpec
+
+--main :: Effect Unit
+--main = runEditorForLang Multary.editorSpec
 
 -- Tutorial test
 --main :: Effect Unit
