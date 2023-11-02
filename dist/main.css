@@ -340,16 +340,16 @@ body {
 }
 
 .EditHole {
-  display: inline;
-  min-width: calc(2*var(--it));
-  box-shadow: 0 0 0 1px var(--color2) inset;
+  display: inline-block;
+  box-shadow: 0 0 0 2px var(--cursor-border-color) inset;
   background-color: rgb(225, 225, 225);
+  min-width: calc(2*var(--it));
 }
 
 .ToolboxExpr {}
 
 .AdjacentEditClasp {
-  display: inline;
+  display: inline-block;
   background-color: rgb(225, 225, 225);
 }
 

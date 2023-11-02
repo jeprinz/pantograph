@@ -594,8 +594,10 @@ getEditsAtSort (Tree (P.SN VarJg) []) Outside = P.Edits $ StringQuery.fuzzy { to
 getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuzzy
   { toString: fst, maxPenalty
   , getItems: const $ Array.foldMap (maybe [] Array.singleton)
-      [ -- (b :: Tm γ β) ~~> (λ ('' : ?α) (b' :: Tm ('' : ?α , γ) β) :: Tm γ (?α -> β))
-        map (Tuple "lambda") $ map NonEmptyArray.singleton $ do
+      [ 
+        map (Tuple "lambda") $ 
+        -- (b :: Tm γ β) ~~> (λ ('' : ?α) (b' :: Tm ('' : ?α , γ) β) :: Tm γ (?α -> β))
+        map NonEmptyArray.singleton $ do
           let γ = γ0
           let β = α0
           let α = sr_freshVar "α"
@@ -604,17 +606,30 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
           let αEx = fromTypeSortToTypeExpr α
           LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
               P.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
-      , -- (a :: Tm γ α) ~~> (let '' : ?α = (? :: Tm ('' : ?a, γ) ?β) in (a' :: Tm ('' : ?α, γ) α))
-        map (Tuple "let") $ map NonEmptyArray.singleton $ do
-          let γ = γ0
-          let α = α0
-          let β = sr_freshVar "β"
-          let x = sr_strInner ""
-          let xEx = ex_str x
-          let αEx = fromTypeSortToTypeExpr α
-          let a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
-          LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
-            P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, a] []
+      , 
+        map (Tuple "let") $ join $ map NonEmptyArray.fromArray $ Array.fold $ map (map Array.singleton) $
+          [ -- (a :: Tm γ α) ~~> (let '' : ?β = (?b :: Tm ('' : ?β, γ) ?β) in (a' :: Tm ('' : ?α, γ) α))
+            do
+              let γ = γ0
+              let α = α0
+              let β = sr_freshVar "β"
+              let x = sr_strInner ""
+              let xEx = ex_str x
+              let αEx = fromTypeSortToTypeExpr α
+              let ha = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+              LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
+                P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, ha] []
+          , -- (a :: Tm γ α) ~~> (let '' : α = a in (?a :: Tm ('' : α, γ) α)
+            do
+              let γ = γ0
+              let α = α0
+              let x = sr_strInner ""
+              let xEx = ex_str x
+              let αEx = fromTypeSortToTypeExpr α
+              let ha = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+              LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
+                P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [ha]
+          ]
     ]
   }
 getEditsAtSort (Tree (P.SN NeJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
