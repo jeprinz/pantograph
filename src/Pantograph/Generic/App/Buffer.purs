@@ -22,6 +22,7 @@ import Data.CodePoint.Unicode as CodePoint
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String as String
+import Data.Tree.Swivel (swivelGyroNextSuchThatNode, swivelGyroPrevSuchThatNode, swivelNext, swivelPrev, swivelPrevSuchThat)
 import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple (snd)
 import Data.Variant (case_, on)
@@ -193,10 +194,14 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           -- Arrow(Left|Right|Up|Down): move Gyro
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroLeftUntil \(EN _ _ {validCursor}) -> validCursor
+            -- modifyHydratedExprGyro $ moveGyroLeftUntil \(EN _ _ {validCursor}) -> validCursor
+            -- modifyHydratedExprGyro $ swivelGyroPrevSuchThatNode \(EN _ _ {validCursor}) -> validCursor Outside
+            modifyHydratedExprGyro swivelPrev
           else if ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroRightUntil \(EN _ _ {validCursor}) -> validCursor
+            -- modifyHydratedExprGyro $ moveGyroRightUntil \(EN _ _ {validCursor}) -> validCursor
+            -- modifyHydratedExprGyro $ swivelGyroNextSuchThatNode \(EN _ _ {validCursor}) -> validCursor Outside
+            modifyHydratedExprGyro swivelNext
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ moveGyroLeftUntil \(EN _ _ {beginsLine, validCursor}) orientation -> beginsLine orientation && validCursor orientation

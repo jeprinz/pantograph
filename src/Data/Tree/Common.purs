@@ -112,6 +112,9 @@ instance Supertype a b => Supertype (Path a) (Path b) where
 consPath :: forall a. Path a -> Tooth a -> Path a
 consPath (Path as) a = Path (Cons a as)
 
+snocPath :: forall a. Tooth a -> Path a -> Path a
+snocPath a (Path as) = Path (List.snoc as a)
+
 unPath :: forall a. Path a -> Tree a -> Tree a
 unPath (Path Nil) tree = tree
 unPath (Path (Cons t ts)) tree = unPath (Path ts) (unTooth t tree)
