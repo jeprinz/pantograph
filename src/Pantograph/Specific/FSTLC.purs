@@ -45,6 +45,7 @@ import Record as R
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
 import Todo (todo)
 import Type.Proxy (Proxy(..))
+import Type.Row.Homogeneous (class Homogeneous)
 
 instance P.Language SN EL where
   getSortingRule el = getSortingRule el
@@ -167,7 +168,7 @@ instance PrettyTreeNode SN where
 instance DisplayTreeNode SN where
   displayTreeNode sn = 
     let ass = assertValidTreeKids "displayTreeNode" sn in
-    let punc = El.punctuation in
+    let punc = El.π in
     case sn of
       StrInner s -> ass \[] -> El.inline [punc (quotes s)]
       Str -> ass \[str] -> El.inline [punc "'", str, punc "'"]
@@ -654,25 +655,25 @@ arrangeExpr :: forall er a. AnnExprNode er -> Array (RenderM (a /\ AnnExprNode e
 arrangeExpr node@(P.EN StrEL _ _) [] | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ string ⊕ Nil
 arrangeExpr node@(P.EN ZeroVar _ _) [] | _ % _ <- P.getExprNodeSort node = do
-  pure $ Array.fromFoldable $ "Z" ⊕ Nil
+  pure $ Array.fromFoldable $ π."Z" ⊕ Nil
 arrangeExpr node@(P.EN SucVar _ _) [x] | _ % _ <- P.getExprNodeSort node = do
   x /\ _ <- x
-  pure $ Array.fromFoldable $ "S" ⊕ x ˜⊕ Nil
+  pure $ Array.fromFoldable $ π."S" ⊕ x ˜⊕ Nil
 arrangeExpr node@(P.EN FreeVar _ _) [] | _ % _ <- P.getExprNodeSort node =
-  pure $ Array.fromFoldable $ "F" ⊕ Nil
+  pure $ Array.fromFoldable $ π."F" ⊕ Nil
 arrangeExpr node@(P.EN LamTm _ _) [x, α, b] | _ % _ <- P.getExprNodeSort node = do
   x /\ _ <- x
   α /\ _ <- α
   b /\ _ <- b
-  pure $ Array.fromFoldable $ "λ " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " . " ⊕ b ˜⊕ Nil
+  pure $ Array.fromFoldable $ π."λ" ⊕ " " ⊕ x ˜⊕ π.":" ⊕ α ˜⊕ " " ⊕ π."." ⊕ " " ⊕ b ˜⊕ Nil
 arrangeExpr node@(P.EN LetTm _ _) [x, alpha, a, b] | _ % _ <- P.getExprNodeSort node = do
   x /\ _ <- x
   α /\ _ <- alpha
   a /\ aNode <- a
   b /\ _ <- b
   let
-    parensYes = defer \_ -> Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ "(" ⊕ a ˜⊕ ")" ⊕ " in " ⊕ b ˜⊕ Nil
-    parensNo = defer \_ -> Array.fromFoldable $ "let " ⊕ x ˜⊕ " : " ⊕ α ˜⊕ " = " ⊕ a ˜⊕ " in " ⊕ b ˜⊕ Nil
+    parensYes = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ π."(" ⊕ a ˜⊕ π.")" ⊕ " " ⊕ π."in" ⊕ " " ⊕ b ˜⊕ Nil
+    parensNo = defer \_ -> Array.fromFoldable $ "let " ⊕ x ˜⊕ " " ⊕ ":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ a ˜⊕ " in " ⊕ b ˜⊕ Nil
   pure <<< force $ case aNode of
     P.EN LetTm _ _ -> parensYes
     P.EN CallTm _ _ -> parensYes
@@ -682,7 +683,7 @@ arrangeExpr node@(P.EN IfTm _ _) [a, b, c] | _ % _ <- P.getExprNodeSort node = d
   a /\ _ <- a
   b /\ _ <- b
   c /\ _ <- c
-  pure $ Array.fromFoldable $ "if " ⊕ a ˜⊕ " then " ⊕ b ˜⊕ " else " ⊕ c ˜⊕ Nil
+  pure $ Array.fromFoldable $ π."if" ⊕ " " ⊕ a ˜⊕ " " ⊕ π."then" ⊕ " " ⊕ b ˜⊕ " " ⊕ π."else" ⊕ " " ⊕ c ˜⊕ Nil
 arrangeExpr node@(P.EN CallTm _ _) [ne] | _ % _ <- P.getExprNodeSort node = do
   ne /\ _ <- ne
   pure $ Array.fromFoldable $ ne ˜⊕ Nil
@@ -692,13 +693,13 @@ arrangeExpr node@(P.EN ErrorCallTm _ _) [ne] | _ % _ <- P.getExprNodeSort node =
 arrangeExpr node@(P.EN HoleTm _ _) [α] | _ % _ <- P.getExprNodeSort node = do
   α /\ _ <- α
   _countHoleTm <- modify (R.modify (Proxy :: Proxy "countHoleTm") (_ + 1)) <#> (_.countHoleTm >>> (_ - 1))
-  -- pure $ Array.fromFoldable $ "(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "□", HH.sub_ [HH.text $ show countHoleTm]] :: Html] ⊕ " : " ⊕ α ˜⊕ ")" ⊕ Nil
-  pure $ Array.fromFoldable $ "(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "?"] :: Html] ⊕ " : " ⊕ α ˜⊕ ")" ⊕ Nil
+  -- pure $ Array.fromFoldable $ π."(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "□", HH.sub_ [HH.text $ show countHoleTm]] :: Html] ⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ π.")" ⊕ Nil
+  pure $ Array.fromFoldable $ π."(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "?"] :: Html] ⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ π.")" ⊕ Nil
 arrangeExpr node@(P.EN ErrorBoundaryTm _ _) [a] | _ % _ <- P.getExprNodeSort node = do
   a /\ _ <- a
   pure $ Array.fromFoldable $ "ErrorBoundary " ⊕ a ˜⊕ Nil
 arrangeExpr node@(P.EN VarNe _ _) [_x] | P.SN VarJg % [γ, P.SN (StrInner string) % [], α, P.SN LocalLoc % []] <- P.getExprNodeSort node = 
-  pure $ Array.fromFoldable $ "#" ⊕ string ⊕ Nil
+  pure $ Array.fromFoldable $ π."#" ⊕ string ⊕ Nil
 arrangeExpr node@(P.EN VarNe _ _) [x] | P.SN VarJg % [γ, P.SN (StrInner string) % [], α, P.SN NonlocalLoc % []] <- P.getExprNodeSort node = 
   pure $ Array.fromFoldable $ "Nonlocal#" ⊕ string ⊕ Nil
 arrangeExpr node@(P.EN AppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node = do
@@ -706,7 +707,7 @@ arrangeExpr node@(P.EN AppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node = do
   a /\ aNode <- a
   pure $ Array.fromFoldable $
     if argRequiresParens aNode
-      then f ˜⊕ " " ⊕ "(" ⊕ a ˜⊕ ")" ⊕ Nil
+      then f ˜⊕ " " ⊕ π."(" ⊕ a ˜⊕ π.")" ⊕ Nil
       else f ˜⊕ " " ⊕ a ˜⊕ Nil
   where
   argRequiresParens :: AnnExprNode er -> Boolean
@@ -714,11 +715,11 @@ arrangeExpr node@(P.EN AppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node = do
 arrangeExpr node@(P.EN GrayAppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node = do
   f /\ _ <- f
   a /\ _ <- a
-  pure $ Array.fromFoldable $ f ˜⊕ " " ⊕ "{" ⊕ a ˜⊕ "}" ⊕ Nil
+  pure $ Array.fromFoldable $ f ˜⊕ " " ⊕ π."{" ⊕ a ˜⊕ π."}" ⊕ Nil
 
--- arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x % []] <- P.getExprNodeSort node = do
---   countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
---   pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
+arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x % []] <- P.getExprNodeSort node = do
+  countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+  pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
 
 arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x@(P.SortVar {uuid}) % []] <- P.getExprNodeSort node = do
   _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
@@ -754,8 +755,8 @@ arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort
   beta /\ _ <- beta
   pure $ Array.fromFoldable $
     if domainRequiresParens alphaNode
-      then "(" ⊕ alpha ˜⊕ ")" ⊕ " -> " ⊕ beta ˜⊕ Nil
-      else alpha ˜⊕ " -> " ⊕ beta ˜⊕ Nil
+      then π."(" ⊕ alpha ˜⊕ π.")" ⊕ " " ⊕ π."->" ⊕ " " ⊕ beta ˜⊕ Nil
+      else alpha ˜⊕ " " ⊕ π."->" ⊕ beta ˜⊕ Nil
   where
   domainRequiresParens :: AnnExprNode er -> Boolean
   domainRequiresParens (P.EN ArrowTyEL _ _) = true
@@ -782,7 +783,9 @@ class Arrangable f where
 instance Arrangable Identity where
   arrange (Identity a) = P.ArrangeKid a
 instance Arrangable (Const String) where
-  arrange (Const string) = P.ArrangeHtml [El.punctuation string]
+  arrange (Const string) = P.ArrangeHtml [El.π string]
+instance Arrangable (Const (Array El.ClassName /\ String)) where
+  arrange (Const (cns /\ t)) = P.ArrangeHtml [El.ℓ [El.Classes cns] [El.τ t]]
 instance Arrangable (Const Format) where 
   arrange (Const Newline) = P.ArrangeHtml [El.whitespace " ↪", El.br]
   arrange (Const Indent) = P.ArrangeHtml [El.whitespace "⇥ "]
@@ -802,6 +805,28 @@ consConstArrangable a = consArrangable (Const a)
 
 infixr 6 consIdentityArrangable as ˜⊕
 infixr 6 consConstArrangable as ⊕
+
+π =
+  { "=":    (El.ClassName <$> ["keysymbol", "equal"])         /\ "="
+  , ":":    (El.ClassName <$> ["keysymbol", "colon"])         /\ ":"
+  , ".":    (El.ClassName <$> ["keysymbol", "period"])        /\ "."
+  , "#":    (El.ClassName <$> ["keysymbol", "period"])        /\ "♯"
+  , "(":    (El.ClassName <$> ["keysymbol", "lparen"])        /\ "("
+  , ")":    (El.ClassName <$> ["keysymbol", "rparen"])        /\ ")"
+  , "{":    (El.ClassName <$> ["keysymbol", "lparen"])        /\ "{"
+  , "}":    (El.ClassName <$> ["keysymbol", "rparen"])        /\ "}"
+  , "->":   (El.ClassName <$> ["keysymbol", "rarrow"])        /\ "→"
+  , "?":    (El.ClassName <$> ["keysymbol", "interrogative"]) /\ "?"
+  , "λ":    (El.ClassName <$> ["keysymbol", "lambda"])        /\ "λ"
+  , "let":  (El.ClassName <$> ["keysymbol", "let"])           /\ "let"
+  , "in":   (El.ClassName <$> ["keysymbol", "in"])            /\ "in"
+  , "Z":    (El.ClassName <$> ["keysymbol", "zero"])          /\ "Z"
+  , "S":    (El.ClassName <$> ["keysymbol", "suc"])           /\ "S"
+  , "F":    (El.ClassName <$> ["keysymbol", "free"])          /\ "F"
+  , "if":   (El.ClassName <$> ["keysymbol", "if"])            /\ "if"
+  , "then": (El.ClassName <$> ["keysymbol", "then"])          /\ "then"
+  , "else": (El.ClassName <$> ["keysymbol", "else"])          /\ "else"
+  }
 
 -- utilities
 

@@ -25,4 +25,3 @@ main = HA.runHalogenAff do
   App.runEditor
     (Proxy :: Proxy FSTLC.SN)
     (P.EditorOptions {verbosity: 0})
-

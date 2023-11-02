@@ -11,5 +11,11 @@
 }
 
 .HoleTm {
-  color: gray;
+  color: rgb(179, 179, 179);
+  font-weight: bold;
+}
+
+.keysymbol {
+  display: inline;
+  font-weight: bold;
 }

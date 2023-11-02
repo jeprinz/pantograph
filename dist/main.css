@@ -239,8 +239,8 @@ body {
 }
 
 .Expr>* {
-  vertical-align: middle;
-  line-height: normal;
+  /* vertical-align: middle; */
+  /* line-height: normal; */
 }
 
 .Expr.Hover {
