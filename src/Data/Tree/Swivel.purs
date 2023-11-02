@@ -2,14 +2,14 @@ module Data.Tree.Swivel where
 
 import Data.Tree
 import Prelude
+import Util
 
-import Data.Tuple.Nested ((/\))
-import Data.Maybe (Maybe(..))
 import Control.Alternative (guard)
 import Data.Array as Array
+import Data.Maybe (Maybe(..))
 import Data.Tuple (fst)
+import Data.Tuple.Nested ((/\))
 import Todo (todo)
-import Util
 
 data PathTree a = PathTree (Path a) (Tree a)
 data PathPath a = PathPath (Path a) (Path a)
@@ -59,15 +59,15 @@ swivelLeft a = getLeftIndex a >>= \i -> swivelUp >=> swivelDownAt i $ a
 swivelRight :: forall f a. Swivel f => F f a
 swivelRight a = getRightIndex a >>= \i -> swivelUp >=> swivelDownAt i $ a
 
-swivelNext :: forall f a. Swivel f => F f a
-swivelNext a = case swivelDownLeftmost a of
-  Just a' -> pure a'
-  Nothing -> swivelUpUntilRight a
-
 swivelPrev :: forall f a. Swivel f => F f a
 swivelPrev a = case swivelLeft a of
   Just a' -> swivelLowestRightmost a'
   Nothing -> swivelUp a
+
+swivelNext :: forall f a. Swivel f => F f a
+swivelNext a = case swivelDownLeftmost a of
+  Just a' -> pure a'
+  Nothing -> swivelUpUntilRight a
 
 swivelNextSuchThat :: forall f a. Swivel f => (f a -> Boolean) -> F f a
 swivelNextSuchThat cond = repeatApply1UntilNothingOrFail cond swivelNext
@@ -87,8 +87,8 @@ repeatApply1UntilNothingOrFail cond f = go
 instance Swivel PathTree where
   getLeftIndex (PathTree outside _) = unconsPath outside <#> _.inner >>> toothIndex >>> (_ - 1)
   getRightIndex (PathTree outside _) = unconsPath outside <#> _.inner >>> toothIndex >>> (_ + 1)
-  getDownLeftmostIndex (PathTree _ inside) = Array.head (tooths inside) <#> fst >>> toothIndex
-  getDownRightmostIndex (PathTree _ inside) = Array.last (tooths inside) <#> fst >>> toothIndex
+  getDownLeftmostIndex (PathTree _ (Tree _ kids)) | l <- Array.length kids = guard (l > 0) >>= \_ -> Just 0
+  getDownRightmostIndex (PathTree _ (Tree _ kids)) | l <- Array.length kids = guard (l > 0) >>= \_ -> Just (l - 1)
 
   swivelUp (PathTree outside inside) = do
     debugM "Swivel PathTree/swivelUp" {}
@@ -96,7 +96,7 @@ instance Swivel PathTree where
     pure $ PathTree outside' (inner `unTooth` inside)
 
   swivelDownAt i (PathTree outside (Tree a kids)) = do
-    debugM "Swivel PathTree/swivelDownAt" {i: show i}
+    debugM ("Swivel PathTree/swivelDownAt " <> show i) {}
     kids' /\ kid <- extractAt i kids
     pure $ PathTree (outside `consPath` Tooth a (i /\ kids')) kid
 
@@ -121,9 +121,9 @@ instance Swivel PathPath where
 
 instance Swivel Cursor where
   getLeftIndex = fromCursorToPathTree >>> getLeftIndex
-  getRightIndex = fromCursorToPathTree >>> getLeftIndex
-  getDownLeftmostIndex = fromCursorToPathTree >>> getLeftIndex
-  getDownRightmostIndex = fromCursorToPathTree >>> getLeftIndex
+  getRightIndex = fromCursorToPathTree >>> getRightIndex
+  getDownLeftmostIndex = fromCursorToPathTree >>> getDownLeftmostIndex
+  getDownRightmostIndex = fromCursorToPathTree >>> getDownRightmostIndex
 
   swivelUp = (fromCursorToPathTree >>> swivelUp) <##> fromPathTreeToCursor
   swivelDownAt i = (fromCursorToPathTree >>> swivelDownAt i) <##> fromPathTreeToCursor
