@@ -426,13 +426,6 @@ language = TotalMap.makeTotalMap case _ of
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-languageChanges :: LanguageChanges
-languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
-  _ -> identity
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
 --------------------------------------------------------------------------------
 -- Rendering
 --------------------------------------------------------------------------------
@@ -639,7 +632,7 @@ splitChange c =
             {upChange: c, cursorSort: rEndpoint c, downChange: c}
         c -> bug ("splitChange - got c = " <> pretty c)
 
-makeEditFromPath = DefaultEdits.makeEditFromPath languageChanges splitChange
+makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity [
@@ -840,8 +833,6 @@ stepRules = do
 --    , mergeErrors
     ]
     <>
-    GreyedRules.createGreyedRules 1 Lam Nothing splitChange languageChanges
-    <>
 --    GreyedRules.createGreyedRules 1 ArrowRule Nothing splitChange languageChanges
 --    <>
     [
@@ -931,7 +922,6 @@ editorSpec =
   , stepRules
   , isValidCursorSort
   , isValidSelectionSorts
-  , languageChanges
   , onDelete
   , generalizeDerivation
   , specializeDerivation

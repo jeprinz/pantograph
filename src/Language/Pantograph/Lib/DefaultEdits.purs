@@ -35,10 +35,10 @@ import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit as Edit
 
 -- Makes an edit that inserts a path, and propagates the context change downwards and type change upwards
-makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => LanguageChanges l r -> Base.SplitChangeType l
+makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Maybe (DerivLabel l r)) -> Base.SplitChangeType l
     -> Grammar.DerivPath Up l r /\ Grammar.Sort l -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
-makeEditFromPath languageChanges splitChange (path /\ bottomOfPathSort) name cursorSort = do
-    let change = Smallstep.getPathChange languageChanges path bottomOfPathSort
+makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorSort = do
+    let change = Smallstep.getPathChange2 path forgetSorts
 --    let preTopChange /\ preCursorSort /\ preBotChange = splitTopBottomChange change
     let {upChange: preTopChange, cursorSort: preCursorSort, downChange: preBotChange} = splitChange change
 --    _ /\ sub <- unify cursorSort preCursorSort -- TODO: should these arguments to unify be flipped? Does it matter?

@@ -155,8 +155,6 @@ type EditorSpec l r =
 
   , stepRules :: List (StepRule l r)
 
-  , languageChanges :: LanguageChanges l r
-
   -- Input Sort is that of the term to be deleted, output Change is propagated upwards after deletion.
   -- use for:
   -- - deleting a type (needs to actually change type value to type metavar)

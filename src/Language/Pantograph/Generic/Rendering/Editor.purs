@@ -430,7 +430,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                         (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.wrapPath clipDPath (SmallStep.Marker 0 % []))) spec.stepRules)
                 -- call splitChange to get the expected sort that the path should unify with, and the changes that will be sent up and down
-                let pathChange = (SmallStep.getPathChange spec.languageChanges specializedClipDPath (nonemptyPathInnerSort specializedClipDPath))
+                let pathChange = (SmallStep.getPathChange2 specializedClipDPath spec.forgetSorts)
                 let {downChange, upChange, cursorSort} = spec.splitChange pathChange
                 -- Then, unify to make sure the types line up
                 case Unification.unify cursorSort (derivTermSort dterm) of
@@ -513,7 +513,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                       Right p -> p -- Expr.toUpPath p
                 let {downChange, upChange, cursorSort: _} =
                       spec.splitChange
-                        (SmallStep.getPathChange spec.languageChanges selection'' sort)
+                        (SmallStep.getPathChange2 selection'' spec.forgetSorts)
                 let ssterm = setupSSTermFromWrapAction
                       path
                       (ChangeAlgebra.invert upChange)
