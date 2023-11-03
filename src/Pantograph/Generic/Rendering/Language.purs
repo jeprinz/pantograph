@@ -30,7 +30,7 @@ import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Pantograph.Generic.Rendering.TerminalItems (terminalItem)
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Record as R
 import Text.Pretty (pretty)
 import Type.Proxy (Proxy(..))
@@ -194,7 +194,7 @@ makeSyncExprProps local outside inside@(Tree (EN _ _ {elemId}) _) = do
     , El.Classes [El.Expr]
     , El.StrictHover mempty
     , El.OnMouseDown \mouseEvent -> do
-        HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ terminalItem.debug $ HH.div_
+        HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ GMB.make GMB.InfoGlobalMessageTag $ HH.div_
           [ HH.text "SyncExpr/onClick"
           , HH.ul_
               [ HH.li_ [HH.text $ "outside: " <> pretty (shrinkAnnExprPath outside :: ExprPath sn el)]

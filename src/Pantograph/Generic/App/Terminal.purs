@@ -27,21 +27,20 @@ import Halogen.Hooks as HK
 import Halogen.Utilities (freshElementId)
 import Halogen.Utilities as HU
 import Pantograph.Generic.App.Common as HH
-import Pantograph.Generic.Rendering.TerminalItems (TerminalItemTag)
-import Pantograph.Generic.Rendering.TerminalItems as TI
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
 import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.UIEvent.MouseEvent as MouseEvent
 
-maximumTerminalItems = 20
+maximumGlobalMessages = 20
 
 terminalComponent :: H.Component TerminalQuery TerminalInput TerminalOutput Aff
 terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.trace "[render:terminal]" \_ -> HK.do
   let terminalInputRefLabel = RefLabel "TerminalInput"
 
-  let items = TI.getTerminalItems unit
+  let items = GMB.getGlobalMessages unit
 
   -- state
   _ /\ counterStateId <- HK.useState 0
@@ -56,8 +55,8 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
 
   HK.useQuery queryToken \(TerminalQuery query) -> (query # _) $ case_
     # on (Proxy :: Proxy "write") (\(item /\ a) -> do
-        -- HK.modify_ itemsStateId (List.take maximumTerminalItems <<< List.Cons item)
-        TI.modifyTerminalItems (List.take maximumTerminalItems <<< List.Cons item) \_ -> do
+        -- HK.modify_ itemsStateId (List.take maximumGlobalMessages <<< List.Cons item)
+        GMB.modifyGlobalMessages (List.take maximumGlobalMessages <<< List.Cons item) \_ -> do
           HK.modify_ counterStateId (1 + _)
           pure (Just a)
       )
@@ -106,11 +105,11 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
               --     ]
               -- , 
               embedHtml mempty $
-              El.ℓ [El.Classes [El.TerminalItems]]
-                (List.toUnfoldable items <#> \(TI.TerminalItem item) -> do
-                  El.ℓ [El.Classes [El.TerminalItem]]
+              El.ℓ [El.Classes [El.GlobalMessages]]
+                (List.toUnfoldable items <#> \(GMB.GlobalMessage item) -> do
+                  El.ℓ [El.Classes [El.GlobalMessage]]
                     [ renderTag item.tag
-                    , El.ℓ [El.Classes [El.TerminalItemContent]] [item.html] ])
+                    , El.ℓ [El.Classes [El.GlobalMessageContent]] [item.html] ])
             ,
               El.ℓ 
                 [ El.Classes [El.Button]
@@ -121,7 +120,8 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
         ]
     }
 
-renderTag :: TerminalItemTag -> Html
+renderTag :: GMB.GlobalMessageTag -> Html
 renderTag = case _ of
-  TI.DebugTerminalItemTag -> El.ℓ [El.Classes [El.DebugTerminalItemTag]] [El.text "debug"]
-  TI.ErrorTerminalItemTag -> El.ℓ [El.Classes [El.ErrorTerminalItemTag]] [El.text "error"]
+  GMB.DebugGlobalMessageTag -> El.ℓ [El.Classes [El.DebugGlobalMessageTag]] [El.text "debug"]
+  GMB.ErrorGlobalMessageTag -> El.ℓ [El.Classes [El.ErrorGlobalMessageTag]] [El.text "error"]
+  GMB.InfoGlobalMessageTag -> El.ℓ [El.Classes [El.InfoGlobalMessageTag]] [El.text "info"]

@@ -22,7 +22,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
-import Pantograph.Generic.Rendering.TerminalItems (TerminalItem)
+import Pantograph.Generic.GlobalMessageBoard (GlobalMessage)
 import Record as R
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
@@ -174,7 +174,7 @@ newtype BufferQuery sn el a = BufferQuery (Variant
   ( "set exprGyro" :: ExprGyro sn el /\ a
   , "keyboard" :: KeyboardEvent.KeyboardEvent /\ a ))
 newtype BufferOutput sn el = BufferOutput (Variant
-  ( "write terminal" :: TerminalItem ))
+  ( "write terminal" :: GlobalMessage ))
 data BufferSlotId
 
 type BufferLocal sn el =
@@ -257,7 +257,7 @@ data ClipboardSlotId sn el
 type TerminalSlot = H.Slot TerminalQuery TerminalOutput TerminalSlotId
 newtype TerminalInput = TerminalInput {}
 newtype TerminalQuery a = TerminalQuery (Variant
-  ( "write" :: TerminalItem /\ a
+  ( "write" :: GlobalMessage /\ a
   , "toggle isOpen" :: Maybe Boolean /\ a
   , "get inputIsFocused" :: Boolean -> a ))
 type TerminalOutput = Void

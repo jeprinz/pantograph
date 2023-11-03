@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tree (epL, epR)
 import Data.Tree.Common (injectTreeIntoChange)
 import Halogen.Elements as El
-import Pantograph.Generic.Rendering.TerminalItems as TI
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Text.Pretty (pretty)
 import Todo (todo)
 import Util (debug, debugM, findIndexMap, extractAt, splitAt, splitAtFindMap)
@@ -29,7 +29,7 @@ makeDefaultDownSteppingRule {getChangingRule} = SteppingRule "defaultDown" case 
     let ChangingRule rule = getChangingRule label
     let sort = getStepExprSort a
     let _ = if epL ch == sort then unit else
-            TI.bugR (El.τ "boundary's change's left endpoint didn't match sort of internal expr")
+            GMB.bugR (El.τ "boundary's change's left endpoint didn't match sort of internal expr")
               { "epL ch == sort": display $ epL ch == sort
               , ch: display ch
               , "epL ch": display $ epL ch
@@ -41,7 +41,7 @@ makeDefaultDownSteppingRule {getChangingRule} = SteppingRule "defaultDown" case 
     changeSigma /\ chBackUp <- doOperation ch rule.parent
     let changeSigma' = changeSigma <> (injectTreeIntoChange <$> sortSigma)
 
-    TI.debugM (El.τ "makeDefaultDownSteppingRule")
+    GMB.debugRM (El.τ "makeDefaultDownSteppingRule")
       { sort: display sort
       , changeSigma: display changeSigma
       , chBackUp: display chBackUp
@@ -54,7 +54,7 @@ makeDefaultDownSteppingRule {getChangingRule} = SteppingRule "defaultDown" case 
 
     let kidsWithBoundaries = Array.zipWith (\ch' kid -> Down /\ ch' %.| kid) kidSorts kids
 
-    -- TI.debugM (El.τ "defaultDown") 
+    -- GMB.debugM (El.τ "defaultDown") 
     --   { ch: display ch
     --   , sort: display sort
     --   , changeSigma: display changeSigma

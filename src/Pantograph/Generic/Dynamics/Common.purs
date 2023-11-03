@@ -24,7 +24,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Aff (Aff)
 import Halogen.Elements as El
-import Pantograph.Generic.Rendering.TerminalItems as TI
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Text.Pretty (class Pretty, braces2, pretty)
 import Type.Proxy (Proxy)
 import Type.Row.Homogeneous (class Homogeneous)
@@ -97,7 +97,7 @@ data SteppingRule sn el
 applySteppingRule :: forall sn el ctx env. Dynamics sn el ctx env => SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
 applySteppingRule (SteppingRule name f) e = do
   e' <- f e
-  TI.addM $ El.μ 
+  GMB.debugM $ El.μ 
     [ [El.β [display e]]
     , [El.π ("applySteppingRule: " <> name)]
     , [El.β [display e']] ]
@@ -170,15 +170,15 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 fromStepExprToExprCursor :: forall sn el ctx env. Rendering sn el ctx env => StepExpr sn el -> ExprCursor sn el
 fromStepExprToExprCursor e0 = case goCursorOrExpr e0 of
     Left {tooths, inside, orientation} -> Cursor {outside: Path (List.reverse tooths), inside, orientation}
-    Right e -> TI.bug $ El.ι [El.τ "no `Marker` found during `fromStepExprToExprCursor`: ", El.β [El.τ "e0: ", display e0], El.β [El.τ "e: ", displayAnnExpr e]]
+    Right e -> GMB.bug $ El.ι [El.τ "no `Marker` found during `fromStepExprToExprCursor`: ", El.β [El.τ "e0: ", display e0], El.β [El.τ "e: ", displayAnnExpr e]]
   where
   goExpr :: StepExpr sn el -> Expr sn el
-  goExpr (Boundary _ _) = TI.bug $ El.inline [El.text "encountered a `Boundary` during `goExpr`: ", display e0]
-  goExpr (Marker _) = TI.bug $ El.inline [El.text "encountered multiple `Marker`s during `goExpr`: ", display e0]
+  goExpr (Boundary _ _) = GMB.bug $ El.inline [El.text "encountered a `Boundary` during `goExpr`: ", display e0]
+  goExpr (Marker _) = GMB.bug $ El.inline [El.text "encountered multiple `Marker`s during `goExpr`: ", display e0]
   goExpr (StepExpr node kids) = Tree node (kids <#> goExpr)
 
   goCursorOrExpr :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
-  goCursorOrExpr (Boundary _ _) = TI.bug $ El.inline $ [El.text "encountered a `Boundary` during `fromStepExprToExprCursor`: ", display e0]
+  goCursorOrExpr (Boundary _ _) = GMB.bug $ El.inline $ [El.text "encountered a `Boundary` during `fromStepExprToExprCursor`: ", display e0]
   goCursorOrExpr (Marker e) = Left $ {tooths: mempty, inside: goExpr e, orientation: Outside}
   goCursorOrExpr (StepExpr node kids) =
     let
@@ -187,7 +187,7 @@ fromStepExprToExprCursor e0 = case goCursorOrExpr e0 of
           i /\ Left cursor -> Just (i /\ cursor) /\ kids'
           _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
         Just i_cursor /\ kids' -> case _ of
-          _ /\ Left _cursor -> TI.bug $ El.inline $ [El.text "encountered multiple `Marker`s during `goExpr`: ", display e0]
+          _ /\ Left _cursor -> GMB.bug $ El.inline $ [El.text "encountered multiple `Marker`s during `goExpr`: ", display e0]
           _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
       maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ goCursorOrExpr <$> kids
     in

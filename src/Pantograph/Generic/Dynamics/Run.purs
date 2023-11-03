@@ -17,7 +17,7 @@ import Data.Newtype (unwrap)
 import Data.Tuple.Nested ((/\))
 import Halogen.Elements as El
 import Pantograph.Generic.Dynamics.BuiltinSteppingRules (builtinSteppingRules)
-import Pantograph.Generic.Rendering.TerminalItems as TI
+import Pantograph.Generic.GlobalMessageBoard as GMB
 
 type StepM sn el = ReaderT (Array (SteppingRule sn el)) Identity
 
@@ -30,11 +30,11 @@ runStepExpr :: forall sn el ctx env.
   StepExpr sn el ->
   Maybe (ExprGyro sn el)
 runStepExpr e = do
-  TI.addM $ El.ι [El.π "runStepExpr input", El.β [display e]]
+  GMB.debugM $ El.ι [El.π "runStepExpr input", El.β [display e]]
   let e' = runStepM steppingRules $ stepFixpoint e
-  TI.addM $ El.ι [El.π "runStepExpr output", El.β [display e']]
+  GMB.debugM $ El.ι [El.π "runStepExpr output", El.β [display e']]
   let cursor = fromStepExprToExprCursor e'
-  TI.addM $ El.ι [El.π "runStepExpr output cursor", El.β [El.τ $ pretty cursor]]
+  GMB.debugM $ El.ι [El.π "runStepExpr output cursor", El.β [El.τ $ pretty cursor]]
   Just $ CursorGyro cursor
 
 -- | Attempts a single step.

@@ -132,9 +132,9 @@ data ClassName
   | ReplaceChangeRight | InjectChange
   -- Terminal
   | TerminalContent
-  | TerminalItemTag | DebugTerminalItemTag | ErrorTerminalItemTag
-  | TerminalItems | TerminalItem | TerminalItemContent
-  | TerminalItemDebugRecordKey
+  | GlobalMessageTag | DebugGlobalMessageTag | ErrorGlobalMessageTag | InfoGlobalMessageTag
+  | GlobalMessages | GlobalMessage | GlobalMessageContent
+  | GlobalMessageDebugRecordKey
   -- Hover
   | Hover
   -- Misc
@@ -163,7 +163,7 @@ ancestorClassNamesRelations =
   , PreviewLeft /\ [PreviewLeftInsert, PreviewLeftPaste]
   , PreviewRight /\ [PreviewRightInsert, PreviewRightPaste]
   , EditRow /\ [SelectedEditRow]
-  , TerminalItemTag /\ [DebugTerminalItemTag, ErrorTerminalItemTag]
+  , GlobalMessageTag /\ [DebugGlobalMessageTag, ErrorGlobalMessageTag, InfoGlobalMessageTag]
   ]
 
 ancestorClassNamesRelationsClosure :: ClassName -> Array ClassName

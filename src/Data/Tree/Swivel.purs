@@ -101,12 +101,12 @@ instance Swivel PathTree where
   getDownRightmostIndex (PathTree _ (Tree _ kids)) | l <- Array.length kids = guard (l > 0) >>= \_ -> Just (l - 1)
 
   swivelUp (PathTree outside inside) = do
-    debugM "Swivel PathTree/swivelUp" {}
+    -- debugM "Swivel PathTree/swivelUp" {}
     {outer: outside', inner} <- unconsPath outside
     pure $ PathTree outside' (inner `unTooth` inside)
 
   swivelDownAt i (PathTree outside (Tree a kids)) = do
-    debugM ("Swivel PathTree/swivelDownAt " <> show i) {}
+    -- debugM ("Swivel PathTree/swivelDownAt " <> show i) {}
     kids' /\ kid <- extractAt i kids
     pure $ PathTree (outside `consPath` Tooth a (i /\ kids')) kid
 

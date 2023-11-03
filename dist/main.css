@@ -22,6 +22,7 @@
 
   --debug-color: rgb(0, 196, 0);
   --error-color: rgb(255, 47, 47);
+  --info-color: rgb(84, 133, 255);
 
   --cursor-background-color: rgb(240, 240, 255);
   --cursor-border-color: rgb(0, 0, 255);
@@ -157,6 +158,10 @@ body {
   overflow: scroll;
 }
 
+.TerminalContent {
+  width: 100%;
+}
+
 .TerminalContent.closed {
   display: none;
 }
@@ -178,7 +183,9 @@ body {
   width: 100%;
 }
 
-.TerminalItems {
+/* GlobalMessage */
+
+.GlobalMessages {
   display: flex;
   /* flex-direction: column; */
   flex-direction: column-reverse;
@@ -187,13 +194,13 @@ body {
   padding: var(--it);
 }
 
-.TerminalItem {
+.GlobalMessage {
   display: flex;
   flex-direction: row;
   width: 100%;
 }
 
-.TerminalItemTag {
+.GlobalMessageTag {
   padding: 0 var(--it);
   height: fit-content;
   background-color: black;
@@ -201,24 +208,26 @@ body {
   /* font-weight: bold; */
 }
 
-.DebugTerminalItemTag {
+.DebugGlobalMessageTag {
   color: var(--debug-color);
-  /* box-shadow: 0 0 0 1px var(--debug-color); */
 }
 
-.ErrorTerminalItemTag {
+.ErrorGlobalMessageTag {
   color: var(--error-color);
-  /* box-shadow: 0 0 0 1px var(--debug-color); */
 }
 
-.TerminalItemContent {
+.InfoGlobalMessageTag {
+  color: var(--info-color);
+}
+
+.GlobalMessageContent {
   flex-grow: 1;
   padding: 0 var(--it);
   box-shadow: -1px 0 0 0 black;
   width: 100%;
 }
 
-.TerminalItemDebugRecordKey {
+.GlobalMessageDebugRecordKey {
   display: inline-block;
   margin-right: var(--it);
   background-color: rgb(204, 204, 204);
@@ -280,7 +289,7 @@ body {
 @keyframes HoleTmRainbow {
   0% { color: red; }
   13% { color: orange; }
-  30% { color: yellow; }
+  /* 30% { color: yellow; } */
   48% { color: green; }
   64% { color: blue; }
   80% { color: indigo; }

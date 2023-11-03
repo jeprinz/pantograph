@@ -27,7 +27,7 @@ import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Pantograph.Generic.Rendering.TerminalItems as TI
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
