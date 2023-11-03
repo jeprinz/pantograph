@@ -336,6 +336,9 @@ zipperExpr (Zipper _ e) = e
 exprLabel :: forall l. Expr l -> l
 exprLabel (Expr l _) = l
 
+zipperParent :: forall l. Zipper l -> Maybe (Tooth l)
+zipperParent (Zipper (Path path) _) = List.index path 0
+
 derive instance Generic (Zipper l) _
 derive instance Eq l => Eq (Zipper l)
 derive instance Ord l => Ord (Zipper l)

@@ -13,7 +13,9 @@ import Control.Plus (empty)
 import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
+import Data.List.Zip as ZipList
 import Data.Enum (class Enum)
+import Data.List.Rev as RevList
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
 import Data.Expr (class IsExprLabel, (%), (%*), slot, (%$))
@@ -177,7 +179,7 @@ data RuleLabel
   | Lam
   | Let
   | App
-  | LocalVar
+  | Var
   | FreeVar
   | TermHole
   | TypeHole
@@ -226,7 +228,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
   prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
-  prettyExprF'_unsafe_RuleLabel (LocalVar /\ [x]) = "@" <> x
+  prettyExprF'_unsafe_RuleLabel (Var /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ [ty]) = "(? : " <> ty <> ")"
   prettyExprF'_unsafe_RuleLabel (TypeHole /\ []) = "?<type>"
   prettyExprF'_unsafe_RuleLabel (Newline /\ [a]) = "<newline> " <> a
@@ -285,7 +287,7 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( VarSort %|-* [CtxNilSort %|-* [], name, ty, NonLocal %|-* []] )
 
-  LocalVar -> Grammar.makeRule ["gamma", "x", "type", "locality"] \[gamma, x, ty, locality] ->
+  Var -> Grammar.makeRule ["gamma", "x", "type", "locality"] \[gamma, x, ty, locality] ->
     [ VarSort %|-* [gamma, x, ty, locality] ]
     /\ --------
     ( TermSort %|-* [gamma, ty] )
@@ -344,7 +346,12 @@ language = TotalMap.makeTotalMap case _ of
 --------------------------------------------------------------------------------
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper} = case rule /\ sort of
+arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
+  let dotOrNot unit = case mb_parent of -- Used in Var and App cases
+          Just (Tooth (DerivLabel App _) (ZipList.Path {left, right})) | RevList.length left == 0
+            -> [HH.div [classNames ["app-circle"]] [appCircle]]
+          _ -> [] in
+  case rule /\ sort of
   _ /\ (MInj (Grammar.SInj VarSort) %
     [ _gamma
     , MInj (Grammar.StringSortLabel str) % []
@@ -354,8 +361,8 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper} = case rule /\ sort 
     let postfix = if locality == sor Local % [] then "" else "!" in
     [pure [nameElem (str <> postfix)]]
   -- term
-  LocalVar /\ _ ->
-    [Left (renCtx /\ 0)]
+  Var /\ _ ->
+    [Left (renCtx /\ 0), pure (dotOrNot unit)]
   Lam /\ _ ->
     trace ("dzipper is: " <> pretty dzipper) \_ ->
     let maybeMapsTo = case dzipper of
@@ -370,8 +377,12 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper} = case rule /\ sort 
         , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
         , Left (renCtx /\ 3)]
   App /\ _ ->
+    let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
+            Just (Tooth (DerivLabel App _) (ZipList.Path {left, right})) | RevList.length left == 0
+              -> [] /\ []
+            _ -> [Rendering.lparenElem] /\ [Rendering.rparenElem] in
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1)]
+    [pure leftParen, Left (renCtx' /\ 0), Left (renCtx' /\ 1), pure (dotOrNot unit), pure rightParen]
   -- types
   DataTypeRule dataType /\ _ ->
     [pure [dataTypeElem (pretty dataType)]]
@@ -427,6 +438,8 @@ dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
 
 tabElem = Rendering.makePuncElem "indent" "    "
 
+appCircle = Rendering.makePuncElem "circle" " ⬤ "
+
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
 --newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
 newlineIndentElem n = [Rendering.newlineElem] <> Array.replicate n tabElem
@@ -468,7 +481,7 @@ getVarEdits sort =
     matchExpr2 sort (sor TermSort %$ [slot, slot]) (\[ctx, ty] ->
             let wrapInRef index =
                  matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot, slot, slot]) \[gamma, x, ty, locality] ->
-                 Grammar.makeLabel LocalVar [ "gamma" /\ gamma , "x" /\ x, "type" /\ ty, "locality" /\ locality]
+                 Grammar.makeLabel Var [ "gamma" /\ gamma , "x" /\ x, "type" /\ ty, "locality" /\ locality]
                  % [index]
             in
             let indices = getIndices ctx in
@@ -704,7 +717,7 @@ mergeErrors _ = Nothing
 
 introErrorDownVar :: StepRule
 introErrorDownVar ((Smallstep.Boundary Down ch) % [
-        inside @((SSInj (DerivLabel LocalVar _)) % _)
+        inside @((SSInj (DerivLabel Var _)) % _)
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     , not (isId c)

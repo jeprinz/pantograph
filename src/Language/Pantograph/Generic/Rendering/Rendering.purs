@@ -61,7 +61,8 @@ arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx =
 --    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
   label@(DerivLabel rule sigma) % kids -> do
     let sort = getSortFromSub rule sigma
-    let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort, sigma, dzipper: Just dzipper}
+    let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit
+            {mb_parent: Expr.zipperParent dzipper, renCtx, rule, sort, sigma, dzipper: Just dzipper}
     let kidCtxElems' =
             if isHoleRule rule then
                 [renderHoleInterior locs false dzipper] <> kidCtxElems
@@ -241,7 +242,7 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
   let sort = getSortFromSub rule sigma
   let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sigma /\ kids)) \_ -> 
-        locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx: previewRenderingContext unit, rule, sort, sigma, dzipper: Just dzipper}
+        locs.spec.arrangeDerivTermSubs unit {mb_parent: Expr.zipperParent dzipper, renCtx: previewRenderingContext unit, rule, sort, sigma, dzipper: Just dzipper}
   let toothInteriorKidIx = ZipList.leftLength kidsPath
   let isToothInterior = case _ of
         Left (_renCtx' /\ i) -> i == toothInteriorKidIx

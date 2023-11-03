@@ -458,3 +458,11 @@ console
     cursor: pointer;
     border-radius: 0.5em 0.5em / 0.2em;
 }
+
+.app-circle {
+  display: inline;
+  cursor: pointer;
+  border-radius: 0.5em 0.5em / 0.2em;
+  color: lightgrey;
+  font-size: 10px;
+}
