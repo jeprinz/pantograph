@@ -208,14 +208,13 @@ fromOrientationToCursorClassName Inside = El.InsideCursor
 
 -- Gyro
 
-data Gyro a = RootGyro (Tree a) | CursorGyro (Cursor a) | SelectGyro (Select a)
+data Gyro a = CursorGyro (Cursor a) | SelectGyro (Select a)
 derive instance Generic (Gyro a) _
 instance Show a => Show (Gyro a) where show x = genericShow x
 derive instance Eq a => Eq (Gyro a)
 derive instance Functor Gyro
 
 gyroNode :: forall a. Gyro a -> a
-gyroNode (RootGyro (Tree a _)) = a
 gyroNode (CursorGyro (Cursor {inside: Tree a _})) = a
 gyroNode (SelectGyro (Select {middle, orientation: Outside})) | {inner: Tooth a _} <- unconsNonEmptyPath middle = a
 gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
@@ -224,12 +223,10 @@ gyroNode (SelectGyro (Select {inside: Tree a _, orientation: Inside})) = a
 -- `Cursor`.
 ensureGyroIsCursor :: forall a. PrettyTreeNode a => Gyro a -> Maybe (Gyro a)
 ensureGyroIsCursor (CursorGyro _) = Nothing
-ensureGyroIsCursor (RootGyro expr) = Just $ CursorGyro (Cursor {outside: mempty, inside: expr, orientation: Outside})
 ensureGyroIsCursor (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
 escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
-escapeGyro (RootGyro _) = Nothing
-escapeGyro (CursorGyro (Cursor {outside, inside})) = Just $ RootGyro (unPath outside inside)
+escapeGyro (CursorGyro cursor) = Nothing
 escapeGyro (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
 escapeCursor :: forall a. Cursor a -> Tree a
@@ -379,7 +376,6 @@ instance PrettyTreeNode a => Pretty (Select a) where
     prettyS outside $ Pretty.outer $ prettyS (toPath middle) $ Pretty.innerActive $ pretty inside
 
 instance PrettyTreeNode a => Pretty (Gyro a) where
-  pretty (RootGyro tree) = pretty tree
   pretty (CursorGyro cursor) = pretty cursor
   pretty (SelectGyro select) = pretty select
 
@@ -412,3 +408,20 @@ instance DisplayTreeNode a => Display (Change a) where
     El.ℓ [El.Classes [El.InjectChange]]
       [displayTreeNode a (display <$> kids)]
 
+-- | # Utilities
+
+fromSelectGyroToCursor :: Gyro ~> Cursor
+fromSelectGyroToCursor (CursorGyro cursor) = cursor
+fromSelectGyroToCursor (SelectGyro select) = escapeSelect select
+
+getPathInnerToothIndex :: forall a. Path a -> Maybe Int
+getPathInnerToothIndex = unconsPath >=> \{inner: Tooth _ (i /\ _)} -> pure i
+
+getTreeKidsLength :: forall a. Tree a -> Int
+getTreeKidsLength (Tree _ kids) = Array.length kids
+
+fromTreeToCursor :: Tree ~> Cursor
+fromTreeToCursor tree = Cursor {outside: mempty, inside: tree, orientation: Outside}
+
+fromTreeToGyro :: Tree ~> Gyro
+fromTreeToGyro = fromTreeToCursor >>> CursorGyro

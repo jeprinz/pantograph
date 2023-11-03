@@ -6,17 +6,35 @@ import Util
 
 import Control.Alternative (guard)
 import Data.Array as Array
+import Data.Either (Either(..), either)
+import Data.List (List(..))
 import Data.Maybe (Maybe(..))
-import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
-import Todo (todo)
+
+-- Move
+
+moveGyroNext :: forall a. F Gyro a
+moveGyroNext = map CursorGyro <<< swivelNext <<< fromSelectGyroToCursor
+
+moveGyroPrev :: forall a. F Gyro a
+moveGyroPrev = map CursorGyro <<< swivelPrev <<< fromSelectGyroToCursor
+
+-- Grab
+
+grabGyroNext :: forall a. F Gyro a
+grabGyroNext = fromGyroToPreselect Inside >>> swivelNext >>> map fromPreselectToGyro
+
+grabGyroPrev :: forall a. F Gyro a
+grabGyroPrev = fromGyroToPreselect Inside >>> swivelPrev >>> map fromPreselectToGyro
+
+-- | # Useful Types
 
 data PathTree a = PathTree (Path a) (Tree a)
 data PathPath a = PathPath (Path a) (Path a)
 
 type F f (a :: Type) = f a -> Maybe (f a)
 
--- Swivel
+-- | # Swivel
 
 -- | Swivel laws:
 -- | ```
@@ -69,18 +87,10 @@ swivelNext a = case swivelDownLeftmost a of
   Just a' -> pure a'
   Nothing -> swivelUpUntilRight a
 
-swivelNextSuchThat :: forall f a. Swivel f => (f a -> Boolean) -> F f a
-swivelNextSuchThat cond = repeatApply1UntilNothingOrFail cond swivelNext
-
-swivelPrevSuchThat :: forall f a. Swivel f => (f a -> Boolean) -> F f a
-swivelPrevSuchThat cond = repeatApply1UntilNothingOrFail cond swivelPrev
-
-repeatApply1UntilNothingOrFail :: forall f a. (f a -> Boolean) -> F f a -> F f a
-repeatApply1UntilNothingOrFail cond f = go
+until :: forall f a. F f a -> (f a -> Boolean) -> F f a
+until f cond = go
   where
-  go a = do
-    a' <- f a
-    if cond a' then pure a' else go a'
+  go a = f a >>= \a' -> if cond a' then pure a' else go a'
 
 -- Swivel PathTree
 
@@ -128,130 +138,46 @@ instance Swivel Cursor where
   swivelUp = (fromCursorToPathTree >>> swivelUp) <##> fromPathTreeToCursor
   swivelDownAt i = (fromCursorToPathTree >>> swivelDownAt i) <##> fromPathTreeToCursor
 
--- Swivel (EitherF PathPath PathTree)
+-- Swivel Preselect
 
-instance Swivel (EitherF PathPath PathTree) where
-  getLeftIndex = eitherF getLeftIndex getLeftIndex
-  getRightIndex = eitherF getRightIndex getRightIndex
-  getDownLeftmostIndex = eitherF getDownLeftmostIndex getDownLeftmostIndex
-  getDownRightmostIndex = eitherF getDownRightmostIndex getDownRightmostIndex
+data Preselect a = Preselect (Path a) (Path a) (Tree a) Orientation
 
-  swivelUp = overM swivelUp swivelUp
-  swivelDownAt i = overM (swivelDownAt i) (swivelDownAt i)
+fromGyroToPreselect :: Orientation -> Gyro ~> Preselect
+fromGyroToPreselect o (CursorGyro (Cursor {outside, inside})) = Preselect outside mempty inside o
+fromGyroToPreselect _ (SelectGyro (Select {outside, middle, inside, orientation})) = Preselect outside (toPath middle) inside orientation
 
--- Swivel SelectOrCursor
+fromPreselectToGyro :: Preselect ~> Gyro
+fromPreselectToGyro (Preselect outside middle_ inside orientation) = case fromPathMaybe middle_ of
+  Nothing -> CursorGyro (Cursor {outside, inside, orientation: Outside})
+  Just middle -> SelectGyro (Select {outside, middle, inside, orientation})
 
-type SelectOrCursor = EitherF Select Cursor
+fromPreselectToEitherPathPathOrPathTree :: forall a. Preselect a -> Either (PathPath a) (PathTree a)
+fromPreselectToEitherPathPathOrPathTree = case _ of
+  Preselect outside middle _ Outside -> Left (PathPath outside middle)
+  Preselect _ middle inside Inside -> Right (PathTree middle inside)
 
-instance Swivel SelectOrCursor where
-  getLeftIndex = fromSelectOrCursor >>> getLeftIndex
-  getRightIndex = fromSelectOrCursor >>> getRightIndex
-  getDownLeftmostIndex = fromSelectOrCursor >>> getDownLeftmostIndex
-  getDownRightmostIndex = fromSelectOrCursor >>> getDownRightmostIndex
+instance Swivel Preselect where
+  getLeftIndex = fromPreselectToEitherPathPathOrPathTree >>> either getLeftIndex getLeftIndex
+  getRightIndex = fromPreselectToEitherPathPathOrPathTree >>> either getRightIndex getRightIndex
+  getDownLeftmostIndex = fromPreselectToEitherPathPathOrPathTree >>> either getDownLeftmostIndex getDownLeftmostIndex
+  getDownRightmostIndex = fromPreselectToEitherPathPathOrPathTree >>> either getDownRightmostIndex getDownRightmostIndex
 
-  swivelUp esc = (fromSelectOrCursor >>> swivelUp) esc <#> toSelectOrCursor esc
-  swivelDownAt i esc = (fromSelectOrCursor >>> swivelDownAt i) esc <#> toSelectOrCursor esc
+  swivelUp = case _ of
+    Preselect outside middle inside Outside -> swivelUp (PathPath outside middle) <#> \(PathPath outside' middle') -> Preselect outside' middle' inside Outside
+    -- Outside -> Inside
+    Preselect outside (Path Nil) inside Inside -> swivelUp (PathPath outside (Path Nil)) <#> \(PathPath outside' middle') -> Preselect outside' middle' inside Outside
+    Preselect outside middle inside Inside -> swivelUp (PathTree middle inside) <#> \(PathTree middle' inside') -> Preselect outside middle' inside' Inside
 
--- Swivel SelectOrCursorOrTree
+  swivelDownAt i = case _ of
+    -- Inside -> Outside
+    Preselect outside (Path Nil) inside Outside -> swivelDownAt i (PathTree (Path Nil) inside) <#> \(PathTree middle' inside') -> Preselect outside middle' inside' Inside
+    Preselect outside middle inside Outside -> swivelDownAt i (PathPath outside middle) <#> \(PathPath outside' middle') -> Preselect outside' middle' inside Outside
+    Preselect outside middle inside Inside -> swivelDownAt i (PathTree middle inside) <#> \(PathTree middle' inside') -> Preselect outside middle' inside' Inside
 
-type SelectOrCursorOrTree = EitherF (EitherF Select Cursor) Tree
-
-instance Swivel SelectOrCursorOrTree where
-  getLeftIndex = eitherF getLeftIndex (const Nothing)
-  getRightIndex = eitherF getRightIndex (const Nothing)
-  getDownLeftmostIndex = eitherF getDownLeftmostIndex (const (Just 0))
-  getDownRightmostIndex = eitherF getDownRightmostIndex (const (Just 0))
-
-  swivelUp = eitherF (swivelUp >>> map LeftF) (const Nothing)
-  swivelDownAt i = eitherF (swivelDownAt i >>> map LeftF) (\tree -> pure (LeftF (RightF (fromTreeToCursor tree))))
-
-fromGyroToSelectOrCursorOrTree :: Gyro ~> SelectOrCursorOrTree
-fromGyroToSelectOrCursorOrTree (RootGyro tree) = RightF tree
-fromGyroToSelectOrCursorOrTree (CursorGyro cursor) = LeftF (RightF cursor)
-fromGyroToSelectOrCursorOrTree (SelectGyro select) = LeftF (LeftF select)
-
-fromSelectOrCursorOrTreeToGyro :: SelectOrCursorOrTree ~> Gyro
-fromSelectOrCursorOrTreeToGyro (RightF tree) = RootGyro tree
-fromSelectOrCursorOrTreeToGyro (LeftF (RightF cursor)) = CursorGyro cursor
-fromSelectOrCursorOrTreeToGyro (LeftF (LeftF select)) = SelectGyro select
-
--- Swivel Gyro
-
-instance Swivel Gyro where
-  getLeftIndex (RootGyro _) = Just 0
-  getLeftIndex (CursorGyro cursor) = getLeftIndex cursor
-  getLeftIndex (SelectGyro select) = getLeftIndex (fromSelectToSelectOrCursor select)
-
-  getRightIndex (RootGyro _) = Just 0
-  getRightIndex (CursorGyro cursor) = getRightIndex cursor
-  getRightIndex (SelectGyro select) = getRightIndex (fromSelectToSelectOrCursor select)
-
-  getDownLeftmostIndex (RootGyro _) = Just 0
-  getDownLeftmostIndex (CursorGyro cursor) = getDownLeftmostIndex cursor
-  getDownLeftmostIndex (SelectGyro select) = getDownLeftmostIndex (fromSelectToSelectOrCursor select)
-
-  getDownRightmostIndex (RootGyro _) = Just 0
-  getDownRightmostIndex (CursorGyro cursor) = getDownRightmostIndex cursor
-  getDownRightmostIndex (SelectGyro select) = getDownRightmostIndex (fromSelectToSelectOrCursor select)
-
-  swivelUp (RootGyro _) = Nothing
-  swivelUp (CursorGyro cursor) = CursorGyro <$> swivelUp cursor
-  swivelUp (SelectGyro select) = fromSelectOrCursorToGyro <$> swivelUp (fromSelectToSelectOrCursor select)
-
-  swivelDownAt _ (RootGyro tree) = Just (CursorGyro (fromTreeToCursor tree))
-  swivelDownAt i (CursorGyro cursor) = CursorGyro <$> swivelDownAt i cursor
-  swivelDownAt i (SelectGyro select) = fromSelectOrCursorToGyro <$> swivelDownAt i (fromSelectToSelectOrCursor select)
-
--- EitherF
-
-data EitherF f g (a :: Type) = LeftF (f a) | RightF (g a)
-
-eitherF :: forall b f g a. (f a -> b) -> (g a -> b) -> EitherF f g a -> b
-eitherF f _ (LeftF a)  = f a
-eitherF _ g (RightF b) = g b
-
-over :: forall f g a f' g' a368. (f a -> f' a368) -> (g a -> g' a368) -> EitherF f g a -> EitherF f' g' a368
-over f _ (LeftF a) = LeftF (f a)
-over _ g (RightF b) = RightF (g b)
-
-overM :: forall f g a m f' g' b. Functor m => (f a -> m (f' b)) -> (g a -> m (g' b)) -> EitherF f g a -> m (EitherF f' g' b)
-overM f _ (LeftF a) = LeftF <$> f a
-overM _ g (RightF b) = RightF <$> g b
-
--- utilities
-
-getPathInnerToothIndex :: forall a. Path a -> Maybe Int
-getPathInnerToothIndex = unconsPath >=> \{inner: Tooth _ (i /\ _)} -> pure i
-
-getTreeKidsLength :: forall a. Tree a -> Int
-getTreeKidsLength (Tree _ kids) = Array.length kids
-
-fromSelectOrCursor :: SelectOrCursor ~> EitherF PathPath PathTree
-fromSelectOrCursor (LeftF (Select {outside, middle, orientation: Outside})) = LeftF (PathPath outside (toPath middle))
-fromSelectOrCursor (LeftF (Select {middle, inside, orientation: Inside})) = RightF (PathTree (toPath middle) inside)
-fromSelectOrCursor (RightF cursor) = RightF (fromCursorToPathTree cursor)
-
-toSelectOrCursor :: forall a. SelectOrCursor a -> EitherF PathPath PathTree a -> SelectOrCursor a
-toSelectOrCursor esc (LeftF (PathPath outside middle_)) = case fromPathMaybe middle_ of
-  Just middle -> LeftF (Select {outside, middle, inside, orientation: Outside})
-  Nothing -> RightF (Cursor {outside, inside, orientation: Outside})
-  where
-  inside = case esc of
-    LeftF (Select {inside: i}) -> i
-    RightF (Cursor {inside: i}) -> i
-toSelectOrCursor esc (RightF (PathTree middle_ inside)) = case fromPathMaybe middle_ of
-  Just middle -> LeftF (Select {outside, middle, inside, orientation: Inside})
-  Nothing -> RightF (Cursor {outside, inside, orientation: Outside})
-  where
-  outside = case esc of
-    LeftF (Select {outside: i}) -> i
-    RightF (Cursor {outside: i}) -> i
+-- | # Utilities
 
 fromTreeToPathTree :: Tree ~> PathTree
 fromTreeToPathTree tree = PathTree mempty tree
-
-fromTreeToCursor :: Tree ~> Cursor
-fromTreeToCursor tree = Cursor {outside: mempty, inside: tree, orientation: Outside}
 
 fromCursorToPathTree :: forall a. Cursor a -> PathTree a
 fromCursorToPathTree (Cursor {outside, inside}) = PathTree outside inside
@@ -259,9 +185,3 @@ fromCursorToPathTree (Cursor {outside, inside}) = PathTree outside inside
 fromPathTreeToCursor :: forall a. PathTree a -> Cursor a
 fromPathTreeToCursor (PathTree outside inside) = Cursor {outside, inside, orientation: Outside}
 
-fromSelectToSelectOrCursor :: Select ~> SelectOrCursor
-fromSelectToSelectOrCursor = LeftF
-
-fromSelectOrCursorToGyro :: SelectOrCursor ~> Gyro
-fromSelectOrCursorToGyro (LeftF select) = SelectGyro select
-fromSelectOrCursorToGyro (RightF cursor) = CursorGyro cursor

@@ -11,7 +11,6 @@ import Text.Pretty (pretty)
 import Util (debug)
 
 applyEdit :: forall sn el ctx env. Dynamics sn el ctx env => Edit sn el -> ExprGyro sn el -> Maybe (ExprGyro sn el)
-applyEdit edit gyro@(RootGyro _) = applyEdit edit =<< ensureGyroIsCursor gyro
 applyEdit edit (SelectGyro (Select {outside, middle: _, inside})) = runStepExpr $ setupEdit (Cursor {outside, inside, orientation: Outside}) edit
 applyEdit edit (CursorGyro cursor) = runStepExpr $ setupEdit cursor edit
 

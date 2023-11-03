@@ -42,6 +42,5 @@ traverseSelect f (Select {outside, middle, inside, orientation}) = do
   pure $ Select {inside: inside', middle: middle', outside: outside', orientation}
 
 traverseGyro :: forall a m b. Monad m => FZ a m b -> Gyro a -> m (Gyro b)
-traverseGyro f (RootGyro inside) = RootGyro <$> traverseTree f {outside: mempty, middle: mempty, inside}
 traverseGyro f (CursorGyro cursor) = CursorGyro <$> traverseCursor f cursor
 traverseGyro f (SelectGyro select) = SelectGyro <$> traverseSelect f select

@@ -21,7 +21,7 @@ import Data.CodePoint.Unicode as CodePoint
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String as String
-import Data.Tree.Swivel (EitherF(..), eitherF, fromGyroToSelectOrCursorOrTree, fromSelectOrCursorOrTreeToGyro, fromSelectOrCursorToGyro, fromTreeToCursor, swivelNext, swivelNextSuchThat, swivelPrev, swivelPrevSuchThat)
+import Data.Tree.Swivel
 import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple (snd)
 import Data.Variant (case_, on)
@@ -47,7 +47,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     tokens = {slotToken, outputToken}
 
   -- The original ExprGyro before rendering.
-  exprGyro /\ exprGyroStateId <- HK.useState (RootGyro input.expr)
+  exprGyro /\ exprGyroStateId <- HK.useState (fromTreeToGyro input.expr)
 
   -- The SyncExprGyro of the current facade.
   initialSyncedExprGyro /\ syncedExprGyroRef <- HK.useRef (syncExprGyro exprGyro)
@@ -146,7 +146,6 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           gyroIsValidSelectAndBeginsLine = gyroNode >>> \(EN _ _ {validSelect, beginsLine}) -> validSelect && beginsLine Outside
         let
           selectToCursor :: forall er. SyncExprGyro sn el er -> SyncExprGyro sn el er
-          selectToCursor (RootGyro expr) = RootGyro expr
           selectToCursor (CursorGyro cursor) = CursorGyro cursor
           selectToCursor (SelectGyro select) = CursorGyro (escapeSelect select)
 
@@ -200,30 +199,30 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           -- Shift+Arrow(Left|Right|Up|Down): grab Gyro
           else if ki.key == "ArrowLeft" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelPrevSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelect))
+            modifyHydratedExprGyro $ grabGyroPrev `until` gyroIsValidSelect
           else if ki.key == "ArrowRight" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelNextSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelect))
+            modifyHydratedExprGyro $ grabGyroNext `until` gyroIsValidSelect
           else if ki.key == "ArrowUp" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelPrevSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelectAndBeginsLine))
+            modifyHydratedExprGyro $ grabGyroPrev `until` gyroIsValidSelectAndBeginsLine
           else if ki.key == "ArrowDown" && ki.mods.shift then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (fromSelectOrCursorOrTreeToGyro >>> pure) <=< ((fromGyroToSelectOrCursorOrTree >>> pure) >=> swivelNextSuchThat (fromSelectOrCursorOrTreeToGyro >>> gyroIsValidSelectAndBeginsLine))
+            modifyHydratedExprGyro $ grabGyroNext `until` gyroIsValidSelectAndBeginsLine
 
           -- Arrow(Left|Right|Up|Down): move Gyro
           else if ki.key == "ArrowLeft" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelPrevSuchThat gyroIsValidCursor
+            modifyHydratedExprGyro $ moveGyroPrev `until` gyroIsValidCursor
           else if ki.key == "ArrowRight" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelNextSuchThat gyroIsValidCursor
+            modifyHydratedExprGyro $ moveGyroNext `until` gyroIsValidCursor
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelPrevSuchThat gyroIsValidCursorAndBeginsLine
+            modifyHydratedExprGyro $ moveGyroNext `until` gyroIsValidCursorAndBeginsLine
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ (selectToCursor >>> pure) >=> swivelNextSuchThat gyroIsValidCursorAndBeginsLine
+            modifyHydratedExprGyro $ moveGyroNext `until` gyroIsValidCursorAndBeginsLine
           -- Spacebar: open Toolbox (no initial query)
           else if ki.key == " " then do
             liftEffect $ Event.preventDefault event
@@ -237,7 +236,6 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             liftEffect $ Event.preventDefault event
             hydExprGyro <- getHydratedExprGyro
             let maybeEdit = case hydExprGyro of
-                  RootGyro expr -> specialEdits.deleteExpr $ getExprSort expr
                   CursorGyro (Cursor cursor) -> specialEdits.deleteExpr $ getExprSort cursor.inside
                   SelectGyro (Select select) -> specialEdits.deleteExprPath $ getExprNonEmptyPathSortChange select.middle
             case maybeEdit of
@@ -280,8 +278,6 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
 -- | Flush the `HydrateExprGyro`'s status to the DOM.
 flushHydrateExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
 flushHydrateExprGyro = case _ of
-  (RootGyro _expr) ->
-    pure unit
   (CursorGyro (Cursor cursor)) -> do
     liftEffect $ El.updateClassName (cursor.inside # annExprAnn # _.elemId) (fromOrientationToCursorClassName cursor.orientation) (Just true)
   (SelectGyro (Select select)) -> do
@@ -291,8 +287,6 @@ flushHydrateExprGyro = case _ of
 -- | Unflush the `HydrateExprGyro`'s status from the DOM.
 unflushHydrateExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => HydrateExprGyro sn el er -> HK.HookM Aff Unit
 unflushHydrateExprGyro = case _ of
-  (RootGyro _expr) ->
-    pure unit
   (CursorGyro (Cursor cursor)) -> do
     liftEffect $ El.updateClassName (cursor.inside # annExprAnn # _.elemId) (fromOrientationToCursorClassName cursor.orientation) (Just false)
   (SelectGyro (Select select)) -> do
@@ -320,7 +314,6 @@ rehydrateExprGyro {slotToken} m_hydExprGyro m_hydExprGyro' = do
 -- render
 
 renderSyncExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => BufferLocal sn el -> SyncExprGyro sn el er -> RenderM sn el ctx env (Array (BufferHtml sn el))
-renderSyncExprGyro local (RootGyro expr) = renderSyncExpr local (Path Nil) expr
 renderSyncExprGyro local (CursorGyro cursor) = renderSyncExprCursor local cursor
 renderSyncExprGyro local (SelectGyro select) = renderSyncExprSelect local select
 
