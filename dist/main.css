@@ -270,6 +270,25 @@ body {
   white-space: pre;
 }
 
+.HoleTm {
+  animation: HoleTmRainbow 5s infinite;
+  animation-timing-function: linear;
+  /* background-color: black; */
+  /* padding: 0 calc(0.5*var(--it)); */
+}
+
+@keyframes HoleTmRainbow {
+  0% { color: red; }
+  13% { color: orange; }
+  30% { color: yellow; }
+  48% { color: green; }
+  64% { color: blue; }
+  80% { color: indigo; }
+  95% { color: violet; }
+  100% { color: red; }
+}
+
+
 .Expr:hover>.ArrangeHtml>.Whitespace,
 .Expr.OutsideCursor>.ArrangeHtml>.Whitespace,
 .Expr.InsideCursor>.ArrangeHtml>.Whitespace,

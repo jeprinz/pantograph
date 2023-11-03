@@ -319,7 +319,6 @@ specialEdits =
   }
 
 validGyro :: forall er. AnnExprGyro er -> Boolean
-validGyro (RootGyro e) | P.SN TmJg % [γ, α] <- P.getExprSort e = true
 validGyro (CursorGyro (Cursor cursor)) | P.SN TmJg % [γ, α] <- P.getExprSort cursor.inside = true
 validGyro (CursorGyro (Cursor cursor)) | P.SN TyJg % [α] <- P.getExprSort cursor.inside = true
 validGyro (CursorGyro (Cursor cursor)) | P.SN Str % [s] <- P.getExprSort cursor.inside = true
@@ -638,7 +637,7 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
   }
 getEditsAtSort (Tree (P.SN NeJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 getEditsAtSort (Tree (P.SN TyJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort sort orientation = bug $ "invalid cursor position; sort = " <> show sort <> "; orientation = " <> show orientation
+getEditsAtSort _ _ = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 
 maxPenalty :: Fuzzy.Distance
 maxPenalty = Fuzzy.Distance 1 0 0 0 0 0
@@ -677,7 +676,7 @@ arrangeExpr node@(P.EN LetTm _ _) [x, alpha, a, b] | _ % _ <- P.getExprNodeSort 
   b /\ _ <- b
   let
     parensYes = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ π."(" ⊕ a ˜⊕ π.")" ⊕ " " ⊕ π."in" ⊕ " " ⊕ b ˜⊕ Nil
-    parensNo = defer \_ -> Array.fromFoldable $ "let " ⊕ x ˜⊕ " " ⊕ ":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ a ˜⊕ " in " ⊕ b ˜⊕ Nil
+    parensNo = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ a ˜⊕ " " ⊕ π."in" ⊕ " " ⊕ b ˜⊕ Nil
   pure <<< force $ case aNode of
     P.EN LetTm _ _ -> parensYes
     P.EN CallTm _ _ -> parensYes

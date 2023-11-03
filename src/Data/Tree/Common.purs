@@ -226,7 +226,7 @@ ensureGyroIsCursor (CursorGyro _) = Nothing
 ensureGyroIsCursor (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
 escapeGyro :: forall a. Gyro a -> Maybe (Gyro a)
-escapeGyro (CursorGyro cursor) = Nothing
+escapeGyro (CursorGyro _) = Nothing
 escapeGyro (SelectGyro select) = Just $ CursorGyro (escapeSelect select)
 
 escapeCursor :: forall a. Cursor a -> Tree a
@@ -236,7 +236,7 @@ escapeSelect :: forall a. Select a -> Cursor a
 escapeSelect (Select {outside, middle, inside, orientation}) =
   case orientation of
     Outside -> Cursor {outside, inside: unPath (toPath middle) inside, orientation: Outside}
-    Inside -> Cursor {outside: outside <> toPath middle, inside, orientation: Inside}
+    Inside -> Cursor {outside: outside <> toPath middle, inside, orientation: Outside}
 
 -- Change
 
