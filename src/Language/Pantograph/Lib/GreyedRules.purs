@@ -35,6 +35,7 @@ import Data.MultiMap as MultiMap
 import Data.Expr as Expr
 import Data.List.Rev as RevList
 import Control.Apply (lift2)
+import Data.Tuple (fst)
 
 greyRuleSigmaLabel :: String
 greyRuleSigmaLabel = "grey-anything"
@@ -46,9 +47,10 @@ createGreyedRules :: forall l r. Grammar.IsRuleLabel l r =>
     -> r -- label for the regular construct
     -> Maybe r -- what rule label to use for the greyed construct
     -> Base.SplitChangeType l
-    -> LanguageChanges l r
+    -> (DerivLabel l r -> Maybe (DerivLabel l r))
+    -> LanguageChanges l r -- TODO: when I delete this argument also delete this type definition in Base.purs
     -> Array (Smallstep.StepRule l r)
-createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange languageChanges =
+createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange forgetSorts languageChanges =
         let (Grammar.Rule ruleVars ruleChildren _conclusion) = TotalMap.lookup regularRuleLabel Grammar.language in
         let Grammar.ChangeRule vars kidChanges = TotalMap.lookup regularRuleLabel languageChanges in
         let kidChange = Util.fromJust' "cgdr1" (Array.index kidChanges index) in
@@ -62,9 +64,18 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange language
         -- delete regular rule / replace with greyed if any other children are non-default derivations
             case _ of
                 ((Smallstep.Boundary Smallstep.Down c) % [
-                    (SSInj (Grammar.DerivLabel l sub)) % kids
+                    dterm@((SSInj label@(Grammar.DerivLabel l sub)) % kids)
                 ]) | l == regularRuleLabel -> do
+--                    let (Tooth _label (ZipList.Path {left, right})) /\ _ = Util.fromJust $ Expr.tooth index dterm
+--                    dleft <- sequence (map ssTermToTerm left)
+--                    dright <- sequence (map ssTermToTerm right)
+--                    let realChange = Smallstep.getPathChange2
+--                            (Path (List.singleton (Tooth label (ZipList.Path {left: dleft, right: dright})))) forgetSorts
+--                    let {downChange: realDownChange, upChange: realUpChange, cursorSort: _} = splitChange realChange
+----                    _ <- if realUpChange == c then Just unit else Nothing
+--                    traceM ("here in grey down, l is: " <> pretty l <> " and c is: " <> pretty c <> " and upChange is: " <> pretty upChange)
                     _sortSub /\ chSub1 <- getChangeMatches c (invert upChange)
+--                    traceM "got here"
                     chSub <- MultiMap.toMap chSub1
                     let subFull = map (map Expr.CInj) sub
                     let sub' = Map.union chSub subFull -- NOTE: Map.union uses first argument on duplicates, so we only use subFull for metavars not changed
@@ -97,7 +108,9 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange language
                 ((Smallstep.Boundary Smallstep.Down c) % [
                     kid
                 ]) -> do
+--                    traceM ("here in grey down, kid is: " <> pretty kid <> " and c is: " <> pretty c <> " and upChange is: " <> pretty upChange)
                     sortSub1 /\ chSub1 <- getChangeMatches c upChange
+--                    traceM "got here["
                     let (Tooth dl _) /\ _ = Edit.newToothFromRule regularRuleLabel index
                     let freshSub = Util.fromJust (derivLabelSub dl)
                     chSub <- MultiMap.toMap chSub1

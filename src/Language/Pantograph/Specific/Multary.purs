@@ -8,6 +8,7 @@ import Language.Pantograph.Generic.ChangeAlgebra
 import Language.Pantograph.Generic.Smallstep (wrapBoundary, Direction(..))
 
 import Data.Expr as Expr
+import Data.List.Zip as Z
 import Language.Pantograph.Generic.Grammar as Grammar
 import Data.Tuple.Nested ((/\))
 import Bug (bug)
@@ -330,7 +331,6 @@ language = TotalMap.makeTotalMap case _ of
 
   Lam -> Grammar.makeRule ["a", "b", "gammaInside", "gammaOutside"] \[a, b, gammaInside, gammaOutside] ->
     [ VarListSort %|-* [gammaOutside, gammaInside, a]
-    -- TODO: This isn't right. It needs to actually add each individual variable to the context...
     , TermSort %|-* [gammaInside, b] ]
     /\ --------
     ( TermSort %|-* [gammaOutside, Arrow %|-* [a, b]])
@@ -442,6 +442,8 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
     [pure [nameElem (str <> postfix)]]
   -- term
   FreeVar /\ _ ->
+    [Left (renCtx /\ 0)]
+  LocalVar /\ _ ->
     [Left (renCtx /\ 0)]
   Lam /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
@@ -622,9 +624,9 @@ splitChange c =
             let _gammaLess1 /\ gammaLess2 = ChangeAlgebra.endpoints gammaLess in
             let gammaMore1 /\ _gammaMore2 = ChangeAlgebra.endpoints gammaMore in
             let ts1 /\ _ts2 = ChangeAlgebra.endpoints ts in
-            {upChange: csor ArgListSort % [ChangeAlgebra.inject gammaLess2, gammaMore, ts]
-            , cursorSort: sor ArgListSort % [gammaLess2, gammaMore1, ts1]
-            , downChange: csor ArgListSort % [gammaLess, ChangeAlgebra.inject gammaMore1, ChangeAlgebra.inject ts1]}
+            {upChange: csor VarListSort % [ChangeAlgebra.inject gammaLess2, gammaMore, ts]
+            , cursorSort: sor VarListSort % [gammaLess2, gammaMore1, ts1]
+            , downChange: csor VarListSort % [gammaLess, ChangeAlgebra.inject gammaMore1, ChangeAlgebra.inject ts1]}
         c | Maybe.Just ([] /\ [_ty]) <- matchChange c (TypeSort %+- [cSlot])
         -> {upChange: c, cursorSort: lEndpoint c, downChange: ChangeAlgebra.inject (lEndpoint c)}
         -- TODO: maybe could just generalize this to when c is the identity?
@@ -647,6 +649,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity
     makeEditFromPath (newPathFromRule Lam 1) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule TypeListConsRule 1) "cons" cursorSort
+    , makeEditFromPath (newPathFromRule VarListCons 1) "cons" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
     , makeEditFromPath (newPathFromRule FunctionCall 0) "app" cursorSort
     , makeEditFromPath (newPathFromRule Newline 0 )"newline" cursorSort
@@ -798,19 +801,46 @@ typeBecomeRhsOfChange = Smallstep.makeDownRule
 --    pure $ dTERM ErrorBoundary ["gamma" /\ gamma, "insideType" /\ insideInside, "outsideType" /\ outsideOutside] [t]
 --mergeErrors _ = Nothing
 
-{-
-This is necessary because the wrapApp rule conflicts with the defaultUp, and the priority order of the list isn't enough
-because defaultUp happens on a term higher up in the tree.
--}
---isUpInCall :: SSTerm -> Boolean
---isUpInCall (Expr.Expr (CInj (Grammar.DerivLabel FunctionCall _)) [
---        Expr.Expr (Smallstep.Boundary Smallstep.Up ch) [_]
---    ])
---    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (NeutralSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
---    = true
-----    = not (ChangeAlgebra.isMerelyASubstitution ty)
-----    = ChangeAlgebra.isMerelyASubstitution ty
---isUpInCall _ = false
+wrapVarCons :: StepRule
+wrapVarCons ((Boundary Smallstep.Down ch) % [
+--        (SSInj (Grammar.DerivLabel VarListCons sigma)) % [inside]
+        inside
+    ])
+    | Just ([t] /\ [gammaLess, gammaMore, ts]) <- matchChange ch (VarListSort %+- [{-gammaLess-}cSlot, {-gammaMore-}cSlot,
+        dPLUS TypeListCons [{-t-}slot] {-ts-}cSlot []])
+     =
+        let varName = (Expr.MInj (Grammar.StringSortLabel "") % []) in
+        pure $
+            wrapBoundary Up (csor VarListSort % [inject (rEndpoint gammaLess)
+                , plusChange (sor CtxConsSort) [varName, t] gammaLess []
+                , csor TypeListCons % [inject t, inject (rEndpoint ts)]]) $
+            dTERM VarListCons ["name" /\ varName, "gammaLess" /\ rEndpoint gammaLess
+            , "gammaMore" /\ rEndpoint gammaMore, "t" /\ t, "ts" /\ rEndpoint ts]
+        [
+            Smallstep.termToSSTerm $ Util.fromJust $ (defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
+            , wrapBoundary Down (csor VarListSort % [gammaLess, gammaMore, ts]) inside
+        ]
+wrapVarCons _ = Nothing
+
+unWrapVarCons :: StepRule
+unWrapVarCons ((Boundary Smallstep.Down ch) % [
+        (SSInj (Grammar.DerivLabel VarListCons sigma)) % [_name, inside]
+    ])
+    | Just ([t] /\ [gammaLess, _name, _t, gammaMore, ts])
+        <- matchChange ch (VarListSort %+- [{-gammaLess-}cSlot, (CtxConsSort %+- [{-name-}cSlot, {-t-}cSlot, {-gammaMore-}cSlot]),
+        dMINUS TypeListCons [{-t-}slot] {-ts-}cSlot []])
+     =
+        let varName = Util.lookup' (RuleMetaVar "name") sigma in
+        pure $
+            wrapBoundary Up (csor VarListSort % [inject (rEndpoint gammaLess)
+                , minusChange (sor CtxConsSort) [varName, t] gammaMore []
+                , inject (rEndpoint ts)]) $
+            (wrapBoundary Down (csor VarListSort % [gammaLess, gammaMore, ts]) inside)
+unWrapVarCons _ = Nothing
+
+languageChanges :: LanguageChanges
+languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
+  _ -> identity
 
 stepRules :: List StepRule
 stepRules = do
@@ -831,10 +861,16 @@ stepRules = do
 --    , wrapCallInErrorDown
 --    , removeError
 --    , mergeErrors
+    , wrapVarCons
+    , unWrapVarCons
     ]
     <>
---    GreyedRules.createGreyedRules 1 ArrowRule Nothing splitChange languageChanges
---    <>
+    GreyedRules.createGreyedRules 1 ArrowRule Nothing splitChange forgetSorts languageChanges -- WORKS!
+    <>
+    GreyedRules.createGreyedRules 1 TypeListConsRule Nothing splitChange forgetSorts languageChanges -- WORKS!
+    <>
+    GreyedRules.createGreyedRules 1 VarListCons Nothing splitChange forgetSorts languageChanges -- Does not work
+    <>
     [
     typeBecomeRhsOfChange
     , Smallstep.defaultDown chLang

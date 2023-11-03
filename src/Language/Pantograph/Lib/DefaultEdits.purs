@@ -39,9 +39,7 @@ makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Ma
     -> Grammar.DerivPath Up l r /\ Grammar.Sort l -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
 makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorSort = do
     let change = Smallstep.getPathChange2 path forgetSorts
---    let preTopChange /\ preCursorSort /\ preBotChange = splitTopBottomChange change
     let {upChange: preTopChange, cursorSort: preCursorSort, downChange: preBotChange} = splitChange change
---    _ /\ sub <- unify cursorSort preCursorSort -- TODO: should these arguments to unify be flipped? Does it matter?
     _ /\ sub <- unify preCursorSort cursorSort
     let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange
     let botChange = ChangeAlgebra.subSomeMetaChange sub (ChangeAlgebra.invert preBotChange)

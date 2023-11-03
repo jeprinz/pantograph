@@ -48,6 +48,7 @@ import Text.Pretty (class Pretty, braces, brackets, pretty)
 import Type.Direction as Dir
 import Util (lookup', fromJust', assertSingleton, Hole)
 import Utility ((<$$>))
+import Data.Traversable (sequence)
 
 data Direction = Up | Down -- TODO:
 
@@ -62,6 +63,25 @@ instance Pretty Direction where
 data StepExprLabel l r = SSInj (Grammar.DerivLabel l r) | {-Marks e.g. where the cursor is, the Int is the number of kids-} Marker Int
     | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
+
+ssTermNoBoundary :: forall l r. SSTerm l r -> Boolean
+ssTermNoBoundary (slabel % kids) =
+    case slabel of
+        SSInj _ -> Array.all ssTermNoBoundary kids
+        _ -> false
+
+ssTermToTerm :: forall l r. IsExprLabel l => IsRuleLabel l r => SSTerm l r -> Maybe (Grammar.DerivTerm l r)
+ssTermToTerm (Expr.Expr label kids) =
+    case label of
+        SSInj l -> Expr.Expr l <$> (sequence $ map ssTermToTerm kids)
+        Marker 1 -> ssTermToTerm (assertSingleton kids)
+        _ -> Nothing
+--    Expr.Expr l (map ssTermToTerm kids)
+--ssToothToTooth :: forall l r. IsRuleLabel l r => Expr.Tooth (StepExprLabel l r) -> Maybe (Grammar.DerivTooth l r)
+--ssToothToTooth (Expr.Tooth label) =
+--    case label of
+--        SSInj
+
 
 ssTermSort :: forall l r. IsRuleLabel l r => SSTerm l r -> Grammar.Sort l
 ssTermSort (SSInj dl % _) = Grammar.derivLabelSort dl

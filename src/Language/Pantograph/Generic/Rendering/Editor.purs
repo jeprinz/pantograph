@@ -203,7 +203,7 @@ editorComponent = HK.component \tokens spec -> HK.do
     doSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
     doSmallstep ssterm = do
         -- NOTE: set to true to make it step one-by-one through smallstep
-        if false then
+        if true then
             setState $ SmallStepState {ssterm}
         else do
             let final = SmallStep.stepRepeatedly ssterm spec.stepRules
