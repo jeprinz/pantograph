@@ -1,4 +1,4 @@
-module Language.Pantograph.Specific.CurryingAndProducts where
+module Language.Pantograph.Specific.Currying where
 
 import Language.Pantograph.Generic.Grammar
 import Data.Expr
@@ -185,7 +185,7 @@ data RuleLabel
   | ArrowRule
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
---  | ErrorBoundary
+  | ErrorBoundary
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -232,7 +232,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Newline /\ [a]) = "<newline> " <> a
   prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
   prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
---  prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
+  prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -330,10 +330,10 @@ language = TotalMap.makeTotalMap case _ of
       /\
       ( TermSort %|-* [gamma, ty] )
 
---  ErrorBoundary -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
---    [TermSort %|-* [gamma, insideType]]
---    /\
---    ( TermSort %|-* [gamma, outsideType])
+  ErrorBoundary -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
+    [TermSort %|-* [gamma, insideType]]
+    /\
+    ( TermSort %|-* [gamma, outsideType])
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -392,7 +392,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [ifElem], Left (renCtx /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem]), Left (renCtx' /\ 1),
         pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem]), Left (renCtx' /\ 2)]
---  ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
+  ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -650,27 +650,110 @@ unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
                 body
 
 unWrapLambda _ = Nothing
---    = case term of
---      (Expr (Boundary Down inputCh) [inputDeriv]) -> do
 
+-- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
+wrapApp :: StepRule
+wrapApp = Smallstep.makeUpRule
+    (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    {-t-}slot
+    (\[t] -> t /\ (\[a] [gamma, b] inside -> pure $
+        Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+            dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
+                [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
 
--- rules for products:  ({_,[_]} is grey left product)
--- down{t}_(+ A x [B]) ~~> (?, down{T}_B)
--- down{t}_(+ [A] x B) ~~> (down{T}_B, ?)
--- down{(a, b)}_(- A x [B]) ~~> {?, [down{T}_B]}
--- down{(a, b)}_(- [A] x B) ~~> {[down{T}_B], ?}
--- down{{a, [b]}}_(+ A x [B]) ~~> (a, down{T}_B)
--- down{{[a], b}}_(+ [A] x B) ~~> (down{T}_B, b)
+-- App up{t1}_(Term G (- A -> B)) t2 ~~> up{t1}_(Term G B)
+unWrapApp :: StepRule
+unWrapApp = Smallstep.makeUpRule
+    (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    (App %# [{-t1-}slot, {-t2-}slot])
+    (\[t1, _t2] -> t1 /\ (\[_a] [gamma, b] inside -> pure $
+        Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+            inside))
 
-{-
-I think the problem with this plan is that I can't actually write
-f : A x B -> C
-f (a, b) = ...
-because I won't be able to pattern match on the products like that.
-At best I would have
-f p = case p of ...
-or use projections...
--}
+removeError :: StepRule
+removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
+    =
+    let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
+    let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
+    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma in
+    if insideType == outsideType then
+        pure t
+    else
+        Nothing
+removeError _ = Nothing
+
+mergeErrors :: StepRule
+mergeErrors (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma1)) [
+        Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma2)) [t]
+    ])
+    =
+    let insideInside = Util.lookup' (Expr.RuleMetaVar "insideType") sigma2 in
+    let outsideOutside = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma1 in
+    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma1 in
+    pure $ dTERM ErrorBoundary ["gamma" /\ gamma, "insideType" /\ insideInside, "outsideType" /\ outsideOutside] [t]
+mergeErrors _ = Nothing
+
+introErrorDownVar :: StepRule
+introErrorDownVar ((Smallstep.Boundary Down ch) % [
+        inside @((SSInj (DerivLabel LocalVar _)) % _)
+    ])
+    | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+    , not (isId c)
+    =
+        pure $
+            dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint c, "outsideType" /\ rEndpoint c]
+            [wrapBoundary Down (csor TermSort % [gamma, inject (lEndpoint c)]) inside]
+introErrorDownVar _ = Nothing
+
+introErrorDown :: StepRule
+introErrorDown ((Smallstep.Boundary Down ch) % [
+        inside
+    ])
+    | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+    =
+        pure $
+            dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint c, "outsideType" /\ rEndpoint c]
+            [wrapBoundary Down (csor TermSort % [gamma, inject (lEndpoint c)]) inside]
+introErrorDown _ = Nothing
+
+introErrorUp :: StepRule
+introErrorUp ((Smallstep.Boundary Up ch) % [
+        inside
+    ])
+    | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+    =
+        pure $
+            wrapBoundary Up (csor TermSort % [gamma, inject (lEndpoint c)]) $
+            dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint c, "outsideType" /\ lEndpoint c]
+                [inside]
+introErrorUp _ = Nothing
+
+mergeErrorsUp :: StepRule
+mergeErrorsUp (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [
+        Expr.Expr (Boundary Up ch) [t]
+    ])
+    | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+    =
+    let insideInside = rEndpoint c in
+    let outsideOutside = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
+    pure $
+        wrapBoundary Up (csor TermSort % [gamma, inject outsideOutside]) $
+        dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma,
+            "insideType" /\ insideInside, "outsideType" /\ outsideOutside] [t]
+mergeErrorsUp _ = Nothing
+
+mergeErrorsDown :: StepRule
+mergeErrorsDown (Expr.Expr (Boundary Down ch) [
+        Expr.Expr (SSInj (DerivLabel ErrorBoundary sigma)) [t]
+    ])
+    | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+    =
+    let insideInside = Util.lookup' (RuleMetaVar "insideType") sigma in
+    let outsideOutside = rEndpoint c in
+    pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma,
+            "insideType" /\ insideInside, "outsideType" /\ outsideOutside]
+        [wrapBoundary Down (csor TermSort % [gamma, inject insideInside]) t]
+mergeErrorsDown _ = Nothing
 
 stepRules :: List StepRule
 stepRules = do
@@ -685,13 +768,26 @@ stepRules = do
     , typeBecomeRhsOfChange
 --    , wrapLambda
 --    , unWrapLambda
+    , wrapApp
+    , unWrapApp
+    , introErrorDownVar
+    , mergeErrorsDown
+    , mergeErrorsUp
+    , removeError
     ]
 --    <>
 --    (GreyedRules.createGreyedRules 2 Lam Nothing splitChange languageChanges)
     <> [
     Smallstep.defaultDown chLang
     , Smallstep.defaultUp chLang
-    ])
+    ]
+    <> [
+--    wrapApp
+--    , unWrapApp
+--    introErrorDown
+--    , introErrorUp
+    ]
+    )
 
 onDelete :: Sort -> SortChange
 onDelete cursorSort

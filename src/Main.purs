@@ -1,7 +1,7 @@
 module Main where
 
 import Language.Pantograph.Specific.FullyApplied as FullyApplied
-import Language.Pantograph.Specific.CurryingAndProducts as CurryingAndProducts
+import Language.Pantograph.Specific.Currying as Currying
 import Language.Pantograph.Specific.Multary as Multary
 import Tutorial.Tutorial as Tutorial
 import Prelude
@@ -23,11 +23,11 @@ import Language.Pantograph.Generic.Grammar as Grammar
 --main :: Effect Unit
 --main = runEditorForLang FullyApplied.editorSpec
 
---main :: Effect Unit
---main = runEditorForLang CurryingAndProducts.editorSpec
-
 main :: Effect Unit
-main = runEditorForLang Multary.editorSpec
+main = runEditorForLang Currying.editorSpec
+
+--main :: Effect Unit
+--main = runEditorForLang Multary.editorSpec
 
 -- Tutorial test
 --main :: Effect Unit
