@@ -110,8 +110,8 @@ type ArrangeDerivTermSubs l r =
   , rule :: r
   , sigma :: (Expr.MetaVarSub (Sort l)) -- The substitution on the DerivLabel
   , sort :: Sort l
---  , renderTerm :: DerivTerm l r -> (whatever type stuff like colonElem has) -- maybe this could be used to render the type in TermHole?
-  } -> 
+  , dzipper :: Maybe (DerivZipper l r)
+  } ->
   Array (PreKid l r)
 
 type PreKid l r = 

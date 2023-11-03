@@ -61,7 +61,7 @@ arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx =
 --    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
   label@(DerivLabel rule sigma) % kids -> do
     let sort = getSortFromSub rule sigma
-    let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort, sigma}
+    let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort, sigma, dzipper: Just dzipper}
     let kidCtxElems' =
             if isHoleRule rule then
                 [renderHoleInterior locs false dzipper] <> kidCtxElems
@@ -72,7 +72,7 @@ arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx =
       Right elems -> elems
   DerivString str % [] -> 
     [ if String.null str 
-        then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.text "String"]
+        then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.text "☐"]
         else HH.div [classNames ["subnode", "string-inner"]] [HH.text str] ]
 
 arrangeNodeSubs :: forall l r. IsRuleLabel l r => 
@@ -241,7 +241,7 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
   let sort = getSortFromSub rule sigma
   let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sigma /\ kids)) \_ -> 
-        locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx: previewRenderingContext unit, rule, sort, sigma}
+        locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx: previewRenderingContext unit, rule, sort, sigma, dzipper: Just dzipper}
   let toothInteriorKidIx = ZipList.leftLength kidsPath
   let isToothInterior = case _ of
         Left (_renCtx' /\ i) -> i == toothInteriorKidIx
@@ -296,7 +296,8 @@ renderSSTerm locs term renCtx = case term of
     HH.div
       [classNames ["node", "smallstep"]]
       let kidElems = (if isHoleRule rule then [\_ -> HH.div_ [interrogativeElem, colonElem]] else []) <> (renderSSTerm locs <$> kids) in
-      (Array.concat $ unsafePartial $ locs.spec.arrangeDerivTermSubs unit {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma} <#> case _ of
+      (Array.concat $ unsafePartial $ locs.spec.arrangeDerivTermSubs unit
+            {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma, dzipper: Nothing } <#> case _ of
         Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [applyCssClasses renCtx'.cssClasses (kid renCtx')]
         Right elems -> elems)
   -- TODO for Henry from Jacob: make this work with any number of kids n, instead of just 0 and 1. Or maybe it doesn't matter.

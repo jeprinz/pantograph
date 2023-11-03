@@ -344,7 +344,7 @@ language = TotalMap.makeTotalMap case _ of
 --------------------------------------------------------------------------------
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
+arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper} = case rule /\ sort of
   _ /\ (MInj (Grammar.SInj VarSort) %
     [ _gamma
     , MInj (Grammar.StringSortLabel str) % []
@@ -357,8 +357,13 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
   LocalVar /\ _ ->
     [Left (renCtx /\ 0)]
   Lam /\ _ ->
+    trace ("dzipper is: " <> pretty dzipper) \_ ->
+    let maybeMapsTo = case dzipper of
+            Just (Zipper _ (_ % [_, _, (DerivLabel Lam _) % _])) -> [Rendering.spaceElem]
+            _ -> [mapstoElem] in
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
+    [pure [lambdaElem], Left (renCtx /\ 0), pure [colonElem]
+        , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1), pure maybeMapsTo, Left (renCtx' /\ 2)]
   Let /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
@@ -512,6 +517,8 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
         , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
     ]
 
 editsAtCursor cursorSort = Array.mapMaybe identity
@@ -670,6 +677,8 @@ unWrapApp = Smallstep.makeUpRule
         Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
             inside))
 
+-- TODO: I might want to make this do unification of inside and outside, and if is it a
+-- "mereSubsituttion" change or something, then propagate it and unify the holes in the program.
 removeError :: StepRule
 removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
@@ -766,8 +775,8 @@ stepRules = do
     , removeSucRule
     , passThroughArrow
     , typeBecomeRhsOfChange
---    , wrapLambda
---    , unWrapLambda
+    , wrapLambda
+    , unWrapLambda
     , wrapApp
     , unWrapApp
     , introErrorDownVar
