@@ -241,7 +241,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
 
   isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
     TermHole -> true
-    TypeHole -> true
+--    TypeHole -> true
     _ -> false
 
   defaultDerivTerm' (MInj (Grammar.SInj TermSort) % [gamma, ty])
@@ -405,7 +405,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
 --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
   -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
   TypeHole /\ _ | Just (MV mv % []) <- Map.lookup (RuleMetaVar "type") sigma ->
-    [Left (renCtx /\ 0), pure [HH.text (show (Base.getMetavarNumber renCtx mv))]]
+    [pure [HH.text "?", HH.text (show (Base.getMetavarNumber renCtx mv))]]
   TypeHole /\ _ -> [Left (renCtx /\ 0), pure [HH.text ("error: " <> show (Map.lookup (RuleMetaVar "type") sigma))]]
   If /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
@@ -529,17 +529,17 @@ makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity [
-        DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
-        , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
-        , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
+        DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
     ]
 
 editsAtCursor cursorSort = Array.mapMaybe identity
     [
-    makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
+    DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
+    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
+    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+    , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
     , makeEditFromPath (newPathFromRule App 0) "app" cursorSort
