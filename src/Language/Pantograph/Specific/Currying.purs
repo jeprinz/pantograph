@@ -741,6 +741,9 @@ introErrorDown ((Smallstep.Boundary Down ch) % [
             [wrapBoundary Down (csor TermSort % [gamma, inject (lEndpoint c)]) inside]
 introErrorDown _ = Nothing
 
+-- IDEA: a problem with this rule is that it might trigger before rules that propagate up through lets and stuff.
+-- I might fix that by altering it so that it actually takes a form with the boundary as a child and
+-- works on that.
 introErrorUp :: StepRule
 introErrorUp ((Smallstep.Boundary Up ch) % [
         inside
@@ -779,6 +782,7 @@ mergeErrorsDown (Expr.Expr (Boundary Down ch) [
             "insideType" /\ insideInside, "outsideType" /\ outsideOutside]
         [wrapBoundary Down (csor TermSort % [gamma, inject insideInside]) t]
 mergeErrorsDown _ = Nothing
+
 
 stepRules :: List StepRule
 stepRules = do

@@ -38,7 +38,7 @@ import Language.Pantograph.Generic.ZipperMovement (moveZipperpUntil)
 import Log (log, logM)
 import Text.Pretty (bullets, pretty)
 import Text.Pretty as P
-import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir)
+import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir, nextDir)
 import Web.DOM as DOM
 import Web.DOM.NonElementParentNode as NonElementParentNode
 import Web.Event.Event as Event
@@ -225,7 +225,6 @@ editorComponent = HK.component \tokens spec -> HK.do
         let up = hdzipperDerivPath cursor.hdzipper
         let dzipper0 = Expr.Zipper up dterm
         let dzipper1 = subDerivZipper sub dzipper0
-        traceM "this is indeed running here"
         setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper1))
 
       -- !TODO use topChange
@@ -242,6 +241,15 @@ editorComponent = HK.component \tokens spec -> HK.do
               dterm
 
         doSmallstep ssterm
+
+    moveToNextHole = do
+      getFacade >>= case _ of
+        CursorState {mode: BufferCursorMode} -> pure unit
+        CursorState cursor -> do
+          case moveHDZUntil nextDir (\hdz -> isValidCursor spec hdz && hdzIsHolePosition hdz) cursor.hdzipper of
+            Nothing -> pure unit
+            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
+        _ -> pure unit
 
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
@@ -385,10 +393,13 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- CursorState where mode = BufferCursorMode
         ------------------------------------------------------------------------
         CursorState {mode: BufferCursorMode} -> do
-          if isBufferKey key then do
+          if key == "Enter" || key == " " then do
             -- exit BufferCursorMode
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             HK.tell tokens.slotToken bufferSlot unit SubmitBufferQuery
+            if key == " " then
+                moveToNextHole
+                else pure unit
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate -- TODO: this causes an exception if the buffer wasn't active
@@ -473,7 +484,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                 , "dterm = " <> pretty dterm
                 , "sort = " <> pretty (derivTermSort dterm)
                 ]
-          else if isBufferKey key then do
+          else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             mb_str <- case hdzipperDerivTerm cursor.hdzipper of
@@ -498,6 +509,8 @@ editorComponent = HK.component \tokens spec -> HK.do
             assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
               (if shiftKey then moveSelect else moveCursor) dir
+          else if key == " " then do
+            moveToNextHole
           else pure unit
         ------------------------------------------------------------------------
         -- SelectState
@@ -536,7 +549,7 @@ editorComponent = HK.component \tokens spec -> HK.do
 --            setBufferEnabled false Nothing
             setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
           else if key == "Backspace" then deleteSelection unit
-          else if isBufferKey key then do
+          else if isOpenBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
             let cursor = cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.unzipperp select.dzipperp))
@@ -560,7 +573,7 @@ editorComponent = HK.component \tokens spec -> HK.do
         -- TopState
         ------------------------------------------------------------------------
         TopState top -> do
-          if isBufferKey key then do
+          if isOpenBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper mempty top.dterm)))
           else if isJust (readMoveDir key) then

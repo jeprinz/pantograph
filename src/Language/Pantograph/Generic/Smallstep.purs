@@ -146,7 +146,7 @@ setupSSTermFromWrapAction :: forall l r. IsExprLabel l =>
     Grammar.DerivTerm l r -> -- bot term
     SSTerm l r
 setupSSTermFromWrapAction topPath topCh insertedPath bottomCh botTerm =
-    wrapPath topPath $ wrapBoundary Up topCh $ wrapPath insertedPath $ wrapCursor $ wrapBoundary Down bottomCh $ termToSSTerm botTerm
+    wrapPath topPath $ wrapBoundary Up topCh $ wrapCursor $ wrapPath insertedPath $ wrapBoundary Down bottomCh $ termToSSTerm botTerm
 
 setupSSTermFromReplaceAction :: forall l r. IsExprLabel l =>
     Grammar.DerivPath Dir.Up l r -> -- top path

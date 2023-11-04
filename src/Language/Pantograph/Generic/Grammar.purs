@@ -105,11 +105,21 @@ makeFreshLabel ruleLabel =
     DerivLabel ruleLabel sigma
 
 isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
-isHoleDerivLabel (DerivLabel r sub) | Yes _ <- TotalMap.lookup r isHoleRuleTotalMap = pure (getSortFromSub r sub)
-isHoleDerivLabel _ = empty
+isHoleDerivLabel l =
+    case l of
+        (DerivLabel r _sub) | Yes _ <- TotalMap.lookup r isHoleRuleTotalMap -> pure $ derivLabelSort l
+        (DerivString "") -> pure $ derivLabelSort l
+        _ -> Nothing
 
 isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Maybe (Sort l)
 isHoleDerivTerm (dl % _) = isHoleDerivLabel dl
+
+isInnerHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
+isInnerHoleDerivLabel (DerivLabel r sub) | Yes true <- TotalMap.lookup r isHoleRuleTotalMap = pure (getSortFromSub r sub)
+isInnerHoleDerivLabel _ = empty
+
+isInnerHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Maybe (Sort l)
+isInnerHoleDerivTerm (dl % _) = isInnerHoleDerivLabel dl
 
 expectedHypsCount :: forall l r. IsRuleLabel l r => r -> Int
 expectedHypsCount r = do

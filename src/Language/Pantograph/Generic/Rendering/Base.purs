@@ -6,6 +6,7 @@ import Prelude
 import Type.Direction
 
 import Bug.Assertion (Assertion(..), assert, just)
+import Data.TotalMap as TotalMap
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Bounded.Generic (genericBottom, genericTop)
@@ -22,6 +23,7 @@ import Data.List (List)
 import Data.List.Zip as ZipList
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.Maybe as Maybe
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.Tuple.Nested (type (/\), (/\))
@@ -298,7 +300,7 @@ instance IsRuleLabel l r => Zippable (HoleyDerivZipper l r) where
 --  zipDowns (InjectHoleyDerivZipper dz) | Just sort <- isHoleDerivTerm (Expr.zipperExpr dz) = do
 --    [HoleInteriorHoleyDerivZipper (Expr.zipperPath dz) (Expr.exprLabel (Expr.zipperExpr dz))]
   zipDowns (HoleyDerivZipper dz false) =
-    let extraInner = case isHoleDerivTerm (Expr.zipperExpr dz) of
+    let extraInner = case isInnerHoleDerivTerm (Expr.zipperExpr dz) of
             Just _ -> [HoleyDerivZipper dz true]
             Nothing -> []
     in
@@ -306,7 +308,7 @@ instance IsRuleLabel l r => Zippable (HoleyDerivZipper l r) where
   zipDowns (HoleyDerivZipper _ true) = []
   zipUp' (HoleyDerivZipper dz false) = do
     parentDZipper <- Zippable.zipUp' dz
-    let augmentIndices = case isHoleDerivTerm (Expr.zipperExpr (snd parentDZipper)) of
+    let augmentIndices = case isInnerHoleDerivTerm (Expr.zipperExpr (snd parentDZipper)) of
             Just _ -> \i -> i + 1 -- take account of the inner hole being the leftmost child.
             Nothing -> identity
     pure (bimap augmentIndices injectHoleyDerivZipper parentDZipper)
@@ -350,6 +352,20 @@ moveHDZUntil dir valid hdz =
         Just hdz' ->
             if valid hdz' then Just hdz' else moveHDZUntil dir valid hdz'
         Nothing -> Nothing
+
+hdzIsHolePosition :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> Boolean
+hdzIsHolePosition (HoleyDerivZipper (Expr.Zipper _path (Expr.Expr dlabel _)) isInner) =
+--    case derivLabelRule dlabel of
+--        Nothing -> false
+--        Just r ->
+--            case TotalMap.lookup r isHoleRuleTotalMap of
+--            Yes hasInnerHole -> isInner || (not hasInnerHole)
+--            No -> Maybe.isJust (isHoleDerivLabel dlabel)
+    let isHoleRule = Maybe.isJust (isHoleDerivLabel dlabel) in
+    let hasInnerHole = Maybe.isJust (isInnerHoleDerivLabel dlabel) in
+    if hasInnerHole
+        then isInner
+        else isHoleRule
 
 hdzipperDerivPath :: forall l r. HoleyDerivZipper l r -> DerivPath Up l r
 hdzipperDerivPath (HoleyDerivZipper dzipper _) = Expr.zipperPath dzipper
@@ -430,8 +446,14 @@ type BufferInput l r =
 
 bufferSlot = Proxy :: Proxy "buffer"
 
-isBufferKey :: String -> Boolean
-isBufferKey = (_ `Array.elem` [" ", "Enter"])
+isOpenBufferKey :: String -> Boolean
+isOpenBufferKey = (_ `Array.elem` ["Enter"])
+
+---- Just if it is a close buffer key, and the boolean is "should I then skip to the next hole"
+--isCloseBufferKey :: String -> Maybe Boolean
+--isCloseBufferKey "Enter "= Just false
+--isCloseBufferKey " " = Just true
+--isCloseBufferKey _ = Nothing
 
 type EditAndPreview l r = 
   { edit :: Edit l r
