@@ -50,6 +50,7 @@ makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorS
         topChange
         , dpath : pathSubbed -- DerivPath Up l r
         , botChange
+        , sub
     }
     }
 

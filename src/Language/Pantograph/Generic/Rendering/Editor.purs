@@ -210,15 +210,15 @@ editorComponent = HK.component \tokens spec -> HK.do
             setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper final)))
 
     handleAction = case _ of
-      WrapAction {topChange, dpath, botChange} -> getCursorState "handleAction" >>= \cursor -> do
+      WrapAction {topChange, dpath, botChange, sub} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
         let ssterm = setupSSTermFromWrapAction
-              up
+              (subDerivPath sub up)
               topChange 
               dpath 
               botChange 
-              dterm
+              (subDerivTerm sub dterm)
         doSmallstep ssterm
 
       FillAction {sub, dterm} -> getCursorState "handleAction" >>= \cursor -> do

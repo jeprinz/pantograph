@@ -41,7 +41,7 @@ data Action l r
   -- | SetSSTermAction (Lazy (SSTerm l r))
   = FillAction {sub :: Sub (SortLabel l), dterm :: DerivTerm l r}
   | ReplaceAction {topChange :: SortChange l, dterm :: DerivTerm l r}
-  | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l}
+  | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l, sub :: Sub (SortLabel l)}
 
 newTermFromRule :: forall l r. IsRuleLabel l r => r -> DerivTerm l r
 newTermFromRule r = do

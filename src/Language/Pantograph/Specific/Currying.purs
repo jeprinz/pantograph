@@ -364,7 +364,6 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   Var /\ _ ->
     [Left (renCtx /\ 0), pure (dotOrNot unit)]
   Lam /\ _ ->
-    trace ("dzipper is: " <> pretty dzipper) \_ ->
     let maybeMapsTo = case dzipper of
             Just (Zipper _ (_ % [_, _, (DerivLabel Lam _) % _])) -> [Rendering.spaceElem]
             _ -> [mapstoElem] in
@@ -720,7 +719,7 @@ introErrorDownVar ((Smallstep.Boundary Down ch) % [
         inside @((SSInj (DerivLabel Var _)) % _)
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
-    , not (isId c)
+    , not (isMerelyASubstitution c)
     =
         pure $
             dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint c, "outsideType" /\ rEndpoint c]
