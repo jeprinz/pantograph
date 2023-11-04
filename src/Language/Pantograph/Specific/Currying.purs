@@ -386,8 +386,12 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   DataTypeRule dataType /\ _ ->
     [pure [dataTypeElem (pretty dataType)]]
   ArrowRule /\ _ ->
+    let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
+            Just (Tooth (DerivLabel ArrowRule _) (ZipList.Path {left, right})) | RevList.length left == 0
+              -> [Rendering.lparenElem] /\ [Rendering.rparenElem]
+            _ -> [] /\ [] in
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [Left (renCtx' /\ 0), pure [arrowElem], Left (renCtx' /\ 1)]
+    [pure leftParen, Left (renCtx' /\ 0), pure [arrowElem], Left (renCtx' /\ 1), pure rightParen]
   -- format
   Newline /\ _ ->
     Array.concat
