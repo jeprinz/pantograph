@@ -46,9 +46,11 @@ data Action l r
 newTermFromRule :: forall l r. IsRuleLabel l r => r -> DerivTerm l r
 newTermFromRule r = do
     let Rule mvars hyps' _con = TotalMap.lookup r language
-    let sub = freshenRuleMetaVars mvars
-    let hyps = Expr.subMetaExprPartially sub <$> hyps'
-    DerivLabel r sub % (map (fromJust' "yes" <<< defaultDerivTerm) hyps)
+    let sigma = freshenRuleMetaVars mvars
+    let hyps = Expr.subMetaExprPartially sigma <$> hyps'
+    let term1 = DerivLabel r sigma % (map (fromJust' "yes" <<< defaultDerivTerm) hyps)
+    let sub = fromJust' "ntfr" $ infer term1
+    subDerivTerm sub term1
 
 newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
 newPathFromRule r kidIx = do
