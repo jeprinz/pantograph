@@ -47,10 +47,17 @@ import Data.Foldable as Foldable
 -- RuleLabel
 --------------------------------------------------------------------------------
 
+{-
+The knowledge of if a rule is a hole rule is used for two things:
+-- Should it have an inner hole
+-- Should default terms be automatically filled into it after a substitution?
+-}
+data IsHoleRule = Yes {-Has inner hole-}Boolean | No
+
 class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleLabel l r | r -> l where
   prettyExprF'_unsafe_RuleLabel :: Partial => r /\ Array String -> String
   language :: Language l r
-  isHoleRuleTotalMap :: TotalMap r Boolean
+  isHoleRuleTotalMap :: TotalMap r IsHoleRule
   defaultDerivTerm' :: Partial => Sort l -> Maybe (DerivTerm l r)
 
 -- NOTE: if the given sort is (Name ?x), then it will return a term of sort (Name ""). So it doesn't always return
@@ -66,8 +73,11 @@ defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ 
 --    = Expr.Expr (Expr.Meta (Either.Right (StringSortLabel ""))) []
 --concretizeSort (Expr.Expr l kids) = Expr.Expr l (map concretizeSort kids)
 
-isHoleRule :: forall l r. IsRuleLabel l r => r -> Boolean
-isHoleRule r = TotalMap.lookup r isHoleRuleTotalMap
+hasInnerHole :: forall l r. IsRuleLabel l r => r -> Boolean
+hasInnerHole r = case TotalMap.lookup r isHoleRuleTotalMap of
+    Yes true -> true
+    _ -> false
+
 
 -- freshDerivLabelSub :: forall l r. IsRuleLabel r -> Expr.MetaVarSub (Sort l) 
 
@@ -95,7 +105,7 @@ makeFreshLabel ruleLabel =
     DerivLabel ruleLabel sigma
 
 isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort l)
-isHoleDerivLabel (DerivLabel r sub) | isHoleRule r = pure (getSortFromSub r sub)
+isHoleDerivLabel (DerivLabel r sub) | Yes _ <- TotalMap.lookup r isHoleRuleTotalMap = pure (getSortFromSub r sub)
 isHoleDerivLabel _ = empty
 
 isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Maybe (Sort l)

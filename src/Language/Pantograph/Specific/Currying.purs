@@ -240,9 +240,9 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   language = language
 
   isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
-    TermHole -> true
---    TypeHole -> true
-    _ -> false
+    TermHole -> Yes true
+    TypeHole -> Yes false
+    _ -> No
 
   defaultDerivTerm' (MInj (Grammar.SInj TermSort) % [gamma, ty])
     = pure (Grammar.makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [sortToType ty])
@@ -406,7 +406,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
   TypeHole /\ _ | Just (MV mv % []) <- Map.lookup (RuleMetaVar "type") sigma ->
     [pure [HH.text "?", HH.text (show (Base.getMetavarNumber renCtx mv))]]
-  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [HH.text ("error: " <> show (Map.lookup (RuleMetaVar "type") sigma))]]
+  TypeHole /\ _ -> [pure [HH.text ("error: " <> show (Map.lookup (RuleMetaVar "type") sigma))]]
   If /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [ifElem], Left (renCtx /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem]), Left (renCtx' /\ 1),

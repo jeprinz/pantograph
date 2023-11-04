@@ -56,7 +56,7 @@ arrangeDerivTermSubs :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   Array (EditorHTML l r)
 arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
---  DerivLabel rule sigma % [] | isHoleRule rule -> do
+--  DerivLabel rule sigma % [] | hasInnerHole rule -> do
 --    let sort = getSortFromSub rule sigma
 --    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
   label@(DerivLabel rule sigma) % kids -> do
@@ -64,7 +64,7 @@ arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx =
     let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit
             {mb_parent: Expr.zipperParent dzipper, renCtx, rule, sort, sigma, dzipper: Just dzipper}
     let kidCtxElems' =
-            if isHoleRule rule then
+            if hasInnerHole rule then
                 [renderHoleInterior locs false dzipper] <> kidCtxElems
                 else kidCtxElems
     Array.concat $ subCtxSymElems <#> case _ of
@@ -277,7 +277,7 @@ renderSSTerm :: forall l r. IsRuleLabel l r =>
   RenderingContext ->
   EditorHTML l r
 renderSSTerm locs term renCtx = case term of
---  SSInj (DerivLabel rule sort) % [] | isHoleRule rule ->
+--  SSInj (DerivLabel rule sort) % [] | hasInnerHole rule ->
 --    HH.div
 --      [classNames ["node", "smallstep", "hole"]]
 --      [ interrogativeElem
@@ -296,7 +296,7 @@ renderSSTerm locs term renCtx = case term of
   SSInj (DerivLabel rule sigma) % kids ->
     HH.div
       [classNames ["node", "smallstep"]]
-      let kidElems = (if isHoleRule rule then [\_ -> HH.div_ [interrogativeElem, colonElem]] else []) <> (renderSSTerm locs <$> kids) in
+      let kidElems = (if hasInnerHole rule then [\_ -> HH.div_ [interrogativeElem, colonElem]] else []) <> (renderSSTerm locs <$> kids) in
       (Array.concat $ unsafePartial $ locs.spec.arrangeDerivTermSubs unit
             {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma, dzipper: Nothing } <#> case _ of
         Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [applyCssClasses renCtx'.cssClasses (kid renCtx')]

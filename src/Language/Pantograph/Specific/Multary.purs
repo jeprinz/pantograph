@@ -281,9 +281,9 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   language = language
 
   isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
-    TermHole -> true
-    TypeHole -> true
-    _ -> false
+    TermHole -> Yes true
+    TypeHole -> Yes true
+    _ -> No
 
   defaultDerivTerm' (MInj (SInj TermSort) % [gamma, ty])
     = pure (makeLabel TermHole ["gamma" /\ gamma, "type" /\ ty] % [sortToType ty])
