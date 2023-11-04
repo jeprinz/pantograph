@@ -377,7 +377,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
         , Left (renCtx /\ 3)]
   App /\ _ ->
     let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
-            Just (Tooth (DerivLabel App _) (ZipList.Path {left, right})) | RevList.length left == 0
+            Just (Tooth (DerivLabel App _) (ZipList.Path {left, right: _})) | RevList.length left == 0
               -> [] /\ []
             _ -> [Rendering.lparenElem] /\ [Rendering.rparenElem] in
     let renCtx' = Base.incremementIndentationLevel renCtx in
@@ -387,7 +387,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
     [pure [dataTypeElem (pretty dataType)]]
   ArrowRule /\ _ ->
     let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
-            Just (Tooth (DerivLabel ArrowRule _) (ZipList.Path {left, right})) | RevList.length left == 0
+            Just (Tooth (DerivLabel ArrowRule _) (ZipList.Path {left, right: _})) | RevList.length left == 0
               -> [Rendering.lparenElem] /\ [Rendering.rparenElem]
             _ -> [] /\ [] in
     let renCtx' = Base.incremementIndentationLevel renCtx in
@@ -398,7 +398,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
       [ if renCtx.isInlined then [] else [pure (newlineIndentElem renCtx.indentationLevel)]
       , [Left (renCtx /\ 0)] ]
   -- hole
-  TermHole /\ (MInj (Grammar.SInj TermSort) % [_gamma, ty])
+  TermHole /\ (MInj (Grammar.SInj TermSort) % [_gamma, _ty])
     ->  [pure [Rendering.lbraceElem], Left (renCtx /\ 0), pure [colonElem]
         , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1)
         , pure [Rendering.rbraceElem]]

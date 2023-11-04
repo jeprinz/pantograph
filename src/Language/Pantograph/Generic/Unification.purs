@@ -100,13 +100,19 @@ noMetaVars source mexpr0 = Assertion
 
 ------------- Unification ------------------------------------------------------
 
+occurs :: forall l. Expr.IsExprLabel l => Expr.MetaVar -> Expr.MetaExpr l -> Boolean
+occurs x e =
+    case e of
+        Expr.MV x' % [] -> x' == x
+        _ % kids -> Array.any (occurs x) kids
+
 -- we may need a more general notion of unification later, but this is ok for now
 -- NOTE: should prefer substituting variables from the left if possible
 unify :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> Maybe (Expr.MetaExpr l /\ Sub l)
 unify e1@(Expr.Expr l1 kids1) e2@(Expr.Expr l2 kids2) =
     case l1 /\ l2 of
         Expr.MV x1 /\ Expr.MV x2 | x1 == x2 -> Just (e1 /\ Map.empty)
-        Expr.MV x /\ _ -> Just (e2 /\ Map.insert x e2 Map.empty)
+        Expr.MV x /\ _ | not (occurs x e2) -> Just (e2 /\ Map.insert x e2 Map.empty)
         _ /\ Expr.MV x -> unify e2 e1
         Expr.MInj l /\ Expr.MInj l' | l == l' -> do
             kids' /\ sub <- unifyLists (List.fromFoldable kids1) (List.fromFoldable kids2)
