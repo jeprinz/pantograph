@@ -917,6 +917,7 @@ isValidSelectionSorts {
 isValidSelectionSorts _ = false
 
 keyAction :: String -> Sort -> Maybe Action
+keyAction _ (MInj (Grammar.NameSortLabel) % [_]) = Nothing -- Don't have newlines in strings!
 keyAction "Enter" cursorSort =
         DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0))"newline" cursorSort
 keyAction _ _ = Nothing
