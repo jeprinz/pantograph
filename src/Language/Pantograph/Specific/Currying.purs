@@ -480,14 +480,11 @@ getIndices ctx = matchExpr2 ctx
         Nil
     )
 
---getWraps :: {-cursorCtx-}Sort -> {-cursorType-}Sort -> {-type of dterm-}Sort -> DerivTerm -> List
-{-
-If not Arrow type, Nil
-If of arrow type, return path to that argument with rest of args applied, and getWraps of a single wrap
-
-Or, maybe: I can write a more generic function which takes any term and gives all the wraps to anything which
-unifies with the cursor sort?
--}
+wrapInRef :: DerivTerm -> DerivTerm /\ Sort {-the type of the var-}
+wrapInRef index =
+    matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot, slot, slot]) \[gamma, x, ty, locality] ->
+    Grammar.makeLabel Var [ "gamma" /\ gamma , "x" /\ x, "type" /\ ty, "locality" /\ locality]
+    % [index] /\ ty
 
 maximallyApplied :: {-cursorCtx-}Sort -> {-cursorType-}Sort -> {-type of dterm-}Sort -> DerivTerm -> Maybe (DerivTerm /\ SortSub)
 maximallyApplied cursorCtx cursorTy tyOft toBeWrapped =
@@ -507,21 +504,16 @@ maximallyApplied cursorCtx cursorTy tyOft toBeWrapped =
 getVarEdits :: {-sort-}Sort -> List Edit
 getVarEdits sort =
     matchExpr2 sort (sor TermSort %$ [slot, slot]) (\[cursorCtx, cursorTy] ->
-            let wrapInRef index =
-                 matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot, slot, slot]) \[gamma, x, ty, locality] ->
-                 Grammar.makeLabel Var [ "gamma" /\ gamma , "x" /\ x, "type" /\ ty, "locality" /\ locality]
-                 % [index] /\ ty
-            in
             let indices = getIndices cursorCtx in
             let makeEdit index =
                     matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot, slot, slot]) \[_ctx2, name, _varTy, _locality] ->
                     do
                         let ref /\ ty = wrapInRef index
-                        var /\ sub <- maximallyApplied cursorCtx cursorTy ty ref
+                        application /\ sub <- maximallyApplied cursorCtx cursorTy ty ref
                         pure {
                             label: Grammar.matchStringLabel name
                             , action: defer \_ -> Edit.FillAction {
-                                sub , dterm: var
+                                sub , dterm: application
                             }
                         }
             in
@@ -529,6 +521,27 @@ getVarEdits sort =
         )
         -- If its not a TermSort, then there are no var edits
         slot \[_] -> Nil
+
+getVarWraps :: {-cursorSort-}Sort -> List Edit
+getVarWraps cursorSort
+    | Just [cursorCtx, _cursorTy] <- matchExprImpl cursorSort (sor TermSort %$ [slot, slot]) =
+    let meta = fromMetaVar (freshMetaVar "any") in
+--    let edits = getVarEdits meta in
+    let indices = getIndices cursorCtx in
+    let edits = indices <#> \index -> do
+            let ref /\ ty = wrapInRef index
+            application /\ sub <- maximallyApplied cursorCtx meta ty ref
+            pure $ matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot, slot, slot]) \[_ctx2, name, _varTy, _locality] ->
+                DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange (Grammar.matchStringLabel name) cursorSort application
+    in List.concat (List.mapMaybe (\x -> x) edits)
+getVarWraps _ = Nil
+{-
+If not Arrow type, Nil
+If of arrow type, return path to that argument with rest of args applied, and getWraps of a single wrap
+
+Or, maybe: I can write a more generic function which takes any term and gives all the wraps to anything which
+unifies with the cursor sort?
+-}
 
 splitChange ::
   SortChange ->
@@ -572,7 +585,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
     , makeEditFromPath (newPathFromRule Newline 0 )"newline" cursorSort
-    ]
+    ] <> Array.fromFoldable (getVarWraps cursorSort)
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 --------------------------------------------------------------------------------
 -- StepRules

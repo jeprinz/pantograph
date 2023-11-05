@@ -274,8 +274,8 @@ injectHoleyDerivZipper z = HoleyDerivZipper z false
 
 data HoleyDerivZipper l r = HoleyDerivZipper (DerivZipper l r) Boolean -- true if is inner hole, false if a normal cursor position
 
-isValidCursor :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Boolean
-isValidCursor spec (HoleyDerivZipper dz isInner) = isInner || spec.isValidCursorSort (derivZipperSort dz)
+isValidCursor :: forall l r. IsRuleLabel l r => (Sort l -> Boolean) -> HoleyDerivZipper l r -> Boolean
+isValidCursor isValidCursorSort (HoleyDerivZipper dz isInner) = isInner || isValidCursorSort (derivZipperSort dz)
 
 isValidSelect :: forall l r. IsRuleLabel l r => EditorSpec l r -> DerivZipperp l r -> Boolean
 isValidSelect spec (Expr.Zipperp dpath selection dterm) =

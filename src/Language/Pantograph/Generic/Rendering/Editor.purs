@@ -246,7 +246,7 @@ editorComponent = HK.component \tokens spec -> HK.do
       getFacade >>= case _ of
         CursorState {mode: BufferCursorMode} -> pure unit
         CursorState cursor -> do
-          case moveHDZUntil nextDir (\hdz -> isValidCursor spec hdz && hdzIsHolePosition hdz) cursor.hdzipper of
+          case moveHDZUntil nextDir (\hdz -> isValidCursor spec.isValidCursorSort hdz && hdzIsHolePosition hdz) cursor.hdzipper of
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         _ -> pure unit
@@ -256,7 +256,7 @@ editorComponent = HK.component \tokens spec -> HK.do
       getFacade >>= case _ of
         CursorState {mode: BufferCursorMode} -> pure unit
         CursorState cursor -> do
-          case moveHDZUntil dir (isValidCursor spec) cursor.hdzipper of
+          case moveHDZUntil dir (isValidCursor spec.isValidCursorSort) cursor.hdzipper of
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         -- TODO: if cursor is moved in select state, it should set the cursor to the right or left of the selection rather than what it does now.
@@ -624,7 +624,7 @@ editorComponent = HK.component \tokens spec -> HK.do
     -}
 
     onMouseDown hdzipper event = do
-      if isValidCursor spec hdzipper
+      if isValidCursor spec.isValidCursorSort hdzipper
           then do
             H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
             setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper)

@@ -111,6 +111,11 @@ isHoleDerivLabel l =
         (DerivString "") -> pure $ derivLabelSort l
         _ -> Nothing
 
+-- Is it a hole, does not include DerivString
+isHole :: forall l r. IsRuleLabel l r => DerivLabel l r -> Boolean
+isHole (DerivLabel r _) | Yes _ <- TotalMap.lookup r isHoleRuleTotalMap = true
+isHole _ = false
+
 isHoleDerivTerm :: forall l r. IsRuleLabel l r => DerivTerm l r -> Maybe (Sort l)
 isHoleDerivTerm (dl % _) = isHoleDerivLabel dl
 

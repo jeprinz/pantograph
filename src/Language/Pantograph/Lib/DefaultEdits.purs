@@ -13,6 +13,7 @@ import Control.Plus (empty)
 import Data.Array as Array
 import Data.Enum (enumFromTo)
 import Data.Expr ((%),(%<))
+import Data.Zippable as Zippable
 import Data.Expr as Expr
 import Data.Lazy (Lazy, defer)
 import Data.List as List
@@ -33,6 +34,39 @@ import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit as Edit
+import Type.Direction as Dir
+import Data.Maybe as Maybe
+import Data.Tuple (uncurry)
+
+-- Makes edits which around any holes in the given term
+makeWrapEdits :: forall l r. Grammar.IsRuleLabel l r =>
+    (Sort l -> Boolean)
+    -> ({bottom :: Sort l, top :: Sort l} -> Boolean)
+    -> (DerivLabel l r -> Maybe (DerivLabel l r))
+    -> Base.SplitChangeType l
+    -> String
+    -> Grammar.Sort l -> Grammar.DerivTerm l r -> List.List (Edit.Edit l r)
+makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange name cursorSort dterm =
+--    let getPaths dzipper =
+--            case Base.moveHDZUntil Dir.nextDir (\hdz -> Base.isValidCursor isValidCursorSort hdz && Base.hdzIsHolePosition hdz) (Base.HoleyDerivZipper dzipper false) of
+--                Nothing -> List.Nil
+--                Just (Base.HoleyDerivZipper zipper _) -> zipper List.: (getPaths zipper)
+--    in
+    let getPaths dzipper@(Expr.Zipper path term) =
+            let rest = List.concat $ map getPaths (List.fromFoldable $ Zippable.zipDowns dzipper) in
+            if isValidCursorSort (derivTermSort term) && Grammar.isHole (Expr.exprLabel term)
+                then dzipper List.: rest
+                else rest
+    in
+    flip List.mapMaybe (getPaths (Expr.Zipper (Expr.Path List.Nil) dterm)) \(Expr.Zipper path inside) ->
+        do
+        _ <- case path of -- cancel if the path is empty
+                Expr.Path List.Nil -> Nothing
+                _ -> Maybe.Just unit
+        _ <- if isValidSelectionSorts {bottom: Grammar.derivTermSort inside, top: nonemptyUpPathTopSort path}
+                    then Just unit else Nothing
+        makeEditFromPath forgetSorts splitChange (path /\ (Grammar.nonemptyPathInnerSort path))
+            name cursorSort
 
 -- Makes an edit that inserts a path, and propagates the context change downwards and type change upwards
 makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Maybe (DerivLabel l r)) -> Base.SplitChangeType l
