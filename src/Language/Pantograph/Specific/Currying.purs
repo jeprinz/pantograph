@@ -686,7 +686,7 @@ wrapLambda = Smallstep.makeDownRule
         let varName = (MInj (Grammar.StringSortLabel "") % []) in
         pure $
             dTERM Lam ["x" /\ varName, "a" /\ a, "b" /\ rEndpoint b, "gamma" /\ rEndpoint gamma] [
-                    Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
+                    Smallstep.termToSSTerm $ Util.fromJust' "wrapLambda" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
                     , Smallstep.termToSSTerm (sortToType a)
                     , Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [plusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
                         t
@@ -714,12 +714,23 @@ unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
 
 unWrapLambda _ = Nothing
 
+-- TODO: its not clear to me that I've correctly thought through how this will work when
+-- there are boundaries inside the input term
+isNeutralFormWithoutCursor :: SSTerm -> Boolean
+isNeutralFormWithoutCursor t = case t of
+    (SSInj (DerivLabel Var _)) % [] -> true
+    (SSInj (DerivLabel App _)) % [left, _] -> isNeutralFormWithoutCursor left
+    ((Boundary _ _) % [inside]) -> isNeutralFormWithoutCursor inside
+    _ -> false
+
 -- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
 wrapApp :: StepRule
 wrapApp = Smallstep.makeUpRule
     (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
     {-t-}slot
-    (\[t] -> t /\ (\[a] [gamma, b] inside -> pure $
+    (\[t] -> t /\ (\[a] [gamma, b] inside ->
+        if not (isNeutralFormWithoutCursor inside) then Nothing else
+        pure $
         Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
             dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
                 [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
