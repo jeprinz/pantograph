@@ -139,3 +139,8 @@ stateful t = unsafePerformEffect do
         get: \_ -> unsafePerformEffect (Ref.read tref)
         , set: \tNew -> unsafePerformEffect (Ref.write tNew tref)
     }
+
+inlineMaybeCase :: forall a out. Maybe a -> (a -> out) -> out -> out
+inlineMaybeCase cond thenn elsee = case cond of
+    Nothing -> elsee
+    Just x -> thenn x

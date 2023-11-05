@@ -14,6 +14,7 @@ import Data.Expr ((%))
 import Data.Expr as Expr
 import Data.Int.Bits as Bits
 import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe as Maybe
 import Data.String as String
 import Data.Tuple.Nested ((/\))
 import Data.Tuple as Tuple
@@ -55,6 +56,7 @@ import Debug (trace, traceM)
 import Data.Variant (case_)
 import Type.Direction (_prev)
 import Language.Pantograph.Generic.ZipperMovement (normalizeZipperp)
+import Data.Lazy as Lazy
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -210,10 +212,10 @@ editorComponent = HK.component \tokens spec -> HK.do
             setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper final)))
 
     handleAction = case _ of
-      WrapAction {topChange, dpath, botChange, sub} -> getCursorState "handleAction" >>= \cursor -> do
+      WrapAction {topChange, dpath, botChange, sub, cursorGoesInside} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
-        let ssterm = setupSSTermFromWrapAction
+        let ssterm = setupSSTermFromWrapAction cursorGoesInside
               (subDerivPath sub up)
               topChange 
               dpath 
@@ -412,11 +414,18 @@ editorComponent = HK.component \tokens spec -> HK.do
         ------------------------------------------------------------------------
         -- CursorState where mode = NavigationCursorMode
         ------------------------------------------------------------------------
-        CursorState cursor@{mode: NavigationCursorMode} -> do
+        facade@(CursorState cursor@{mode: NavigationCursorMode}) -> do
           let path = hdzipperDerivPath cursor.hdzipper
           let dterm = hdzipperDerivTerm cursor.hdzipper
+          -- language specific key edit
+          if isJust (spec.keyAction key (derivTermSort dterm)) then do
+            setState facade
+            let action = Util.fromJust $ spec.keyAction key (derivTermSort dterm)
+--            HK.raise tokens.outputToken $ ActionOutput action
+--            setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper path dterm)))
+            handleAction action
           -- copy
-          if cmdKey && key == "c" then do
+          else if cmdKey && key == "c" then do
             -- TODO: Question for Henry: why doesn't this have preventDefault?
             -- update clipboard
             genAndCopyClipTerm dterm
@@ -451,7 +460,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                         let unifiedDownChange = ChangeAlgebra.subSomeMetaChange unifyingSub downChange
                         let unifiedUpChange = ChangeAlgebra.subSomeMetaChange unifyingSub upChange
                         -- Now, we set up smallstep for changing the program on path paste
-                        let ssterm = setupSSTermFromWrapAction
+                        let ssterm = setupSSTermFromWrapAction false
                               unifiedProgPath
                               unifiedUpChange
                               unifiedClipDPath
@@ -525,7 +534,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                 let {downChange, upChange, cursorSort: _} =
                       spec.splitChange
                         (SmallStep.getPathChange2 selection'' spec.forgetSorts)
-                let ssterm = setupSSTermFromWrapAction
+                let ssterm = setupSSTermFromWrapAction false
                       path
                       (ChangeAlgebra.invert upChange)
                       (Expr.Path mempty)

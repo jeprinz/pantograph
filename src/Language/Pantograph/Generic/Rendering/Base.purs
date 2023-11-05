@@ -177,9 +177,12 @@ type EditorSpec l r =
   , clipboardSort :: Sort l -> Sort l
     -- default is identity
 
-  -- TODO: find a way to put defaultDerivTerm in EditorSpec instead of a TypeClass. Yes I know it requires re-plumbing some things.
+  -- Allow the language specific file to perform custom edits directly on a keypress instead of waiting for a query
+  , keyAction :: String -> {-cursor-}Sort l -> Maybe (Action l r)
+    -- default is const Nothing
 
   }
+-- TODO: This will never get done, but: find a way to put defaultDerivTerm in EditorSpec instead of a TypeClass
 
 editsAtHoleyDerivZipper :: forall l r. IsRuleLabel l r => EditorSpec l r -> HoleyDerivZipper l r -> Array (Edit l r)
 editsAtHoleyDerivZipper spec hdzipper = case hdzipper of

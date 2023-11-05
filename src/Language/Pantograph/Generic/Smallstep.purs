@@ -139,13 +139,18 @@ wrapPath (Expr.Path Nil) t = t
 wrapPath (Expr.Path (th : path)) t = (wrapPath (Expr.Path path) (addToothToTerm th t))
 
 setupSSTermFromWrapAction :: forall l r. IsExprLabel l =>
+    Boolean -> -- cursorGoesInside
     Grammar.DerivPath Dir.Up l r -> -- top path
     Grammar.SortChange l -> -- change that goes between top path and inserted path
     Grammar.DerivPath Dir.Up l r -> -- inserted path
     Grammar.SortChange l -> -- change the goes between inserted path and bot path
     Grammar.DerivTerm l r -> -- bot term
     SSTerm l r
-setupSSTermFromWrapAction topPath topCh insertedPath bottomCh botTerm =
+setupSSTermFromWrapAction cursorGoesInside topPath topCh insertedPath bottomCh botTerm =
+    if cursorGoesInside
+    then
+    wrapPath topPath $ wrapBoundary Up topCh $ wrapPath insertedPath $ wrapCursor $ wrapBoundary Down bottomCh $ termToSSTerm botTerm
+    else
     wrapPath topPath $ wrapBoundary Up topCh $ wrapCursor $ wrapPath insertedPath $ wrapBoundary Down bottomCh $ termToSSTerm botTerm
 
 setupSSTermFromReplaceAction :: forall l r. IsExprLabel l =>

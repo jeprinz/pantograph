@@ -72,20 +72,27 @@ makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange na
 makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Maybe (DerivLabel l r)) -> Base.SplitChangeType l
     -> Grammar.DerivPath Up l r /\ Grammar.Sort l -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
 makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorSort = do
+    action <- makeActionFromPath false forgetSorts splitChange path name cursorSort
+    pure $ { label : name
+    , action : defer \_ -> action
+    }
+
+makeActionFromPath :: forall l r. Grammar.IsRuleLabel l r =>
+    Boolean -> (DerivLabel l r -> Maybe (DerivLabel l r)) -> Base.SplitChangeType l
+    -> Grammar.DerivPath Up l r -> String -> Grammar.Sort l -> Maybe (Edit.Action l r)
+makeActionFromPath cursorGoesInside forgetSorts splitChange path name cursorSort = do
     let change = Smallstep.getPathChange2 path forgetSorts
     let {upChange: preTopChange, cursorSort: preCursorSort, downChange: preBotChange} = splitChange change
     _ /\ sub <- unify preCursorSort cursorSort
     let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange
     let botChange = ChangeAlgebra.subSomeMetaChange sub (ChangeAlgebra.invert preBotChange)
     let pathSubbed = subDerivPath sub path
-    pure $ { label : name
-    , action : defer \_ -> Edit.WrapAction
-    {
+    pure $ Edit.WrapAction {
         topChange
         , dpath : pathSubbed -- DerivPath Up l r
         , botChange
         , sub
-    }
+        , cursorGoesInside
     }
 
 makeSubEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)

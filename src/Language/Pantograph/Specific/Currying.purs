@@ -59,6 +59,8 @@ import Util (fromJust)
 import Util as Util
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Language.Pantograph.Lib.GreyedRules as GreyedRules
+import Data.Lazy as Lazy
+import Data.Tuple (fst)
 
 {-
 This file is the start of the specific langauge that we will try to have working for the user study.
@@ -165,6 +167,7 @@ type Output = Base.Output PreSortLabel RuleLabel
 type HoleyDerivZipper = Base.HoleyDerivZipper PreSortLabel RuleLabel
 
 type Edit = Edit.Edit PreSortLabel RuleLabel
+type Action = Edit.Action PreSortLabel RuleLabel
 
 -- SmallStep
 type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
@@ -902,6 +905,11 @@ isValidSelectionSorts {
     } = true
 isValidSelectionSorts _ = false
 
+keyAction :: String -> Sort -> Maybe Action
+keyAction "Enter" cursorSort =
+        DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0))"newline" cursorSort
+keyAction _ _ = Nothing
+
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -922,5 +930,6 @@ editorSpec =
   , specializeDerivation
   , forgetSorts
   , clipboardSort
+  , keyAction
   }
 

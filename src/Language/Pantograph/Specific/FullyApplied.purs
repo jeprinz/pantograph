@@ -161,6 +161,7 @@ type Output = Base.Output PreSortLabel RuleLabel
 type HoleyDerivZipper = Base.HoleyDerivZipper PreSortLabel RuleLabel
 
 type Edit = Edit.Edit PreSortLabel RuleLabel
+type Action = Edit.Action PreSortLabel RuleLabel
 
 -- SmallStep
 type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
@@ -957,6 +958,8 @@ isValidSelectionSorts {
     } = true
 isValidSelectionSorts _ = false
 
+keyAction :: String -> Sort -> Maybe Action
+keyAction _ _ = Nothing
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
@@ -977,5 +980,6 @@ editorSpec =
   , specializeDerivation
   , forgetSorts
   , clipboardSort
+  , keyAction
   }
 
