@@ -157,6 +157,7 @@ type SSTerm = Smallstep.SSTerm PreSortLabel RuleLabel
 type LanguageChanges = Grammar.LanguageChanges PreSortLabel RuleLabel
 type SortChange = Grammar.SortChange PreSortLabel
 type ChangeRule = Grammar.ChangeRule PreSortLabel
+type SortSub = Grammar.SortSub PreSortLabel
 
 -- Rendering
 type Query = Base.Query
@@ -479,21 +480,44 @@ getIndices ctx = matchExpr2 ctx
         Nil
     )
 
+--getWraps :: {-cursorCtx-}Sort -> {-cursorType-}Sort -> {-type of dterm-}Sort -> DerivTerm -> List
+{-
+If not Arrow type, Nil
+If of arrow type, return path to that argument with rest of args applied, and getWraps of a single wrap
+
+Or, maybe: I can write a more generic function which takes any term and gives all the wraps to anything which
+unifies with the cursor sort?
+-}
+
+maximallyApplied :: {-cursorCtx-}Sort -> {-cursorType-}Sort -> {-type of dterm-}Sort -> DerivTerm -> Maybe (DerivTerm /\ SortSub)
+maximallyApplied cursorCtx cursorTy tyOft toBeWrapped =
+    let answerIfMe _ = do
+         _ /\ sub <- unify cursorTy tyOft
+         pure $ subDerivTerm sub toBeWrapped /\ sub
+    in
+    case matchExprImpl tyOft (sor Arrow %$ [slot, slot]) of
+    Just [a, b] ->
+        let wrapped = Grammar.makeLabel App ["gamma" /\ cursorCtx, "a" /\ a, "b" /\ b]
+                % [toBeWrapped, Grammar.makeLabel TermHole ["gamma" /\ cursorCtx, "type" /\ a] % [sortToType a]] in
+        case maximallyApplied cursorCtx cursorTy b wrapped of
+            Just res -> Just res
+            Nothing -> answerIfMe unit
+    _ -> answerIfMe unit
+
 getVarEdits :: {-sort-}Sort -> List Edit
 getVarEdits sort =
-    matchExpr2 sort (sor TermSort %$ [slot, slot]) (\[ctx, ty] ->
+    matchExpr2 sort (sor TermSort %$ [slot, slot]) (\[cursorCtx, cursorTy] ->
             let wrapInRef index =
                  matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot, slot, slot]) \[gamma, x, ty, locality] ->
                  Grammar.makeLabel Var [ "gamma" /\ gamma , "x" /\ x, "type" /\ ty, "locality" /\ locality]
-                 % [index]
+                 % [index] /\ ty
             in
-            let indices = getIndices ctx in
+            let indices = getIndices cursorCtx in
             let makeEdit index =
                     matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot, slot, slot]) \[_ctx2, name, _varTy, _locality] ->
                     do
-                        let var = wrapInRef index
-                        [_gamma, varTy] <- matchExprImpl (Grammar.derivTermSort var) (sor TermSort %$ [slot, slot])
-                        _newTy /\ sub <- unify varTy ty -- think about order
+                        let ref /\ ty = wrapInRef index
+                        var /\ sub <- maximallyApplied cursorCtx cursorTy ty ref
                         pure {
                             label: Grammar.matchStringLabel name
                             , action: defer \_ -> Edit.FillAction {
