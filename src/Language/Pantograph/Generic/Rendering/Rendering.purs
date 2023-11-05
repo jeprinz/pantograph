@@ -51,11 +51,12 @@ applyCssClasses classes html =
 
 arrangeDerivTermSubs :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
+  Boolean ->
   DerivZipper l r ->
   Array (RenderingContext -> EditorHTML l r) ->
   RenderingContext ->
   Array (EditorHTML l r)
-arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
+arrangeDerivTermSubs locs innerHoleIsCursor dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx = assert (wellformedExpr "arrangeDerivTermSubs" dterm) \_ -> case dterm of
 --  DerivLabel rule sigma % [] | hasInnerHole rule -> do
 --    let sort = getSortFromSub rule sigma
 --    arrangeHoleExterior locs sort (renderHoleInterior locs false dpath sort) renCtx
@@ -65,7 +66,7 @@ arrangeDerivTermSubs locs dzipper@(Expr.Zipper dpath dterm) kidCtxElems renCtx =
             {mb_parent: Expr.zipperParent dzipper, renCtx, rule, sort, sigma, dzipper: Just dzipper}
     let kidCtxElems' =
             if hasInnerHole rule then
-                [renderHoleInterior locs false dzipper] <> kidCtxElems
+                [renderHoleInterior locs innerHoleIsCursor dzipper] <> kidCtxElems
                 else kidCtxElems
     Array.concat $ subCtxSymElems <#> case _ of
       Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems' kidIx))
@@ -107,10 +108,11 @@ arrangeNodeSubs locs isCursor hdzipper subElems =
 renderDerivTerm :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->
   Boolean ->
+  Boolean ->
   DerivZipper l r ->
   RenderingContext ->
   EditorHTML l r -- /\ Tree Element
-renderDerivTerm locs isCursor dzipper renCtx =
+renderDerivTerm locs isCursor innerHoleIsCursor dzipper renCtx =
   HH.div
     (Array.concat
       [ [classNames $ ["node"] <> if isCursor then [cursorClassName] else []]
@@ -122,7 +124,7 @@ renderDerivTerm locs isCursor dzipper renCtx =
         ]
       ])
     (arrangeNodeSubs locs isCursor (injectHoleyDerivZipper dzipper)
-      (arrangeDerivTermSubs locs dzipper (Zippable.zipDowns dzipper <#> renderDerivTerm locs false) renCtx))
+      (arrangeDerivTermSubs locs innerHoleIsCursor dzipper (Zippable.zipDowns dzipper <#> renderDerivTerm locs false false) renCtx))
 
 ------------------------------------------------------------------------------
 -- render hole exterior and interior
@@ -180,12 +182,12 @@ renderPath locs dzipper interior =
                 ]
               ])
             (arrangeNodeSubs locs false (injectHoleyDerivZipper dzipper2)
-              (arrangeDerivTermSubs locs 
+              (arrangeDerivTermSubs locs false
                 (Expr.Zipper (Expr.zipperPath dzipper2) (Expr.unTooth th (Expr.zipperExpr dzipper)))
                 ( Array.fromFoldable $
                   ZipList.unpathAround interior do
                     let kidZippers = Expr.zipDownsTooth dzipper2 th
-                    kidZippers <#> renderDerivTerm locs false )
+                    kidZippers <#> renderDerivTerm locs false false)
                 renCtx)))
 
 ------------------------------------------------------------------------------
@@ -262,7 +264,7 @@ renderPreviewDerivTerm :: forall l r. IsRuleLabel l r =>
 renderPreviewDerivTerm locs dzipper =
   HH.div
     [classNames ["node"]]
-    (arrangeDerivTermSubs locs 
+    (arrangeDerivTermSubs locs false
       dzipper 
       (Zippable.zipDowns dzipper <#> \kidDZipper _ -> renderPreviewDerivTerm locs kidDZipper) 
       (previewRenderingContext unit))

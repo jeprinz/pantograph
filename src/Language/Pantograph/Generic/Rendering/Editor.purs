@@ -734,7 +734,7 @@ editorComponent = HK.component \tokens spec -> HK.do
           case cursor.hdzipper of
             HoleyDerivZipper _ false ->
               [ renderPath locs dzipper 
-                    (renderDerivTerm locs true dzipper)
+                    (renderDerivTerm locs true false dzipper)
                   (defaultRenderingContext unit)
               ]
             -- TODO: I think the bug is simply that this code in the below case doesn't draw the hole exterior.
@@ -748,7 +748,8 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- OR: maybe I can instead make renderPath use zipUp, which will deal correctly with going from inner hole to outer and then up the tree.
             HoleyDerivZipper _ true ->
               [ renderPath locs dzipper
-                    (renderHoleInterior locs true dzipper)
+--                    (renderHoleInterior locs true dzipper)
+                    (renderDerivTerm locs false true dzipper)
                   (defaultRenderingContext unit)
               ]
         SelectState _select -> hole "render SelectState"
