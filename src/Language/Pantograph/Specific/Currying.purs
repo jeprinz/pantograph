@@ -399,7 +399,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   -- format
   Newline /\ _ ->
     Array.concat
-      [ if renCtx.isInlined then [] else [pure (newlineIndentElem renCtx.indentationLevel)]
+      [ if renCtx.isInlined then [] else [pure [HH.div [classNames ["newline-symbol"]] [HH.text " ↪"]], pure (newlineIndentElem renCtx.indentationLevel)]
       , [Left (renCtx /\ 0)] ]
   -- hole
   TermHole /\ (MInj (Grammar.SInj TermSort) % [_gamma, _ty])

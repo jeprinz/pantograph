@@ -466,3 +466,9 @@ console
   color: lightgrey;
   font-size: 10px;
 }
+
+.newline-symbol {
+  display: inline;
+  border-radius: 0.5em 0.5em / 0.2em;
+  color: lightgrey;
+}
