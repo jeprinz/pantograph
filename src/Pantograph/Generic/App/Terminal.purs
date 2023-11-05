@@ -15,7 +15,7 @@ import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Variant (case_, on)
 import Debug as Debug
-import Effect.Aff (Aff)
+import Effect.Aff (Aff, Milliseconds(..))
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Halogen (RefLabel(..), liftEffect)
@@ -24,17 +24,17 @@ import Halogen.Elements as El
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
+import Halogen.Query.Event as HQ
 import Halogen.Utilities (freshElementId)
 import Halogen.Utilities as HU
 import Pantograph.Generic.App.Common as HH
 import Pantograph.Generic.GlobalMessageBoard as GMB
+import Pantograph.Generic.Rendering.Hook.Timer as Timer
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Web.Event.Event as Event
 import Web.HTML.HTMLInputElement as HTMLInputElement
 import Web.UIEvent.MouseEvent as MouseEvent
-
-maximumGlobalMessages = 20
 
 terminalComponent :: H.Component TerminalQuery TerminalInput TerminalOutput Aff
 terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.trace "[render:terminal]" \_ -> HK.do
@@ -42,8 +42,9 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
 
   let items = GMB.getGlobalMessages unit
 
-  -- state
-  _ /\ counterStateId <- HK.useState 0
+  _ /\ dummyBitStateId <- HK.useState false
+  let forceUpdate = HK.modify_ dummyBitStateId not
+
   isOpen /\ isOpenStateId <- HK.useState true
 
   let toggleOpenTerminal mb_isOpen = do
@@ -55,9 +56,8 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
 
   HK.useQuery queryToken \(TerminalQuery query) -> (query # _) $ case_
     # on (Proxy :: Proxy "write") (\(item /\ a) -> do
-        -- HK.modify_ itemsStateId (List.take maximumGlobalMessages <<< List.Cons item)
-        GMB.modifyGlobalMessages (List.take maximumGlobalMessages <<< List.Cons item) \_ -> do
-          HK.modify_ counterStateId (1 + _)
+        GMB.modifyGlobalMessages (List.Cons item) \_ -> do
+          forceUpdate
           pure (Just a)
       )
     # on (Proxy :: Proxy "toggle isOpen") (\(mb_isOpen /\ a) -> do
@@ -69,20 +69,21 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
         pure (Just (k b))        
       )
 
+  Timer.useTimer (Milliseconds 1000.0) forceUpdate
+
   -- render
   HK.pure $ makePanel
     { className: El.TerminalPanel
     , info:
-        [ El.ℓ [El.Classes [El.Subtitle]] [El.text $ "Terminal"] ]
+        [ El.ℓ [El.Classes [El.Subtitle]] [El.τ $ "Terminal"] ]
     , control:
         [ if isOpen then
             El.ℓ
               [ El.Classes [El.Button]
-              , El.Ref terminalInputRefLabel
               , El.OnMouseDown \mouseEvent -> do
                   liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
                   toggleOpenTerminal (Just false) ]
-              [El.text "↓"]
+              [El.τ "↓"]
           else
             El.ℓ 
               [ El.Classes [El.Button]
@@ -90,7 +91,15 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
                   liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
                   toggleOpenTerminal (Just true)
               ]
-              [El.text "↑"] 
+              [El.τ "↑"] 
+        ] <>
+        [
+          El.ℓ
+              [ El.Classes [El.Button]
+              , El.OnMouseDown \mouseEvent -> do
+                  liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
+                  GMB.modifyGlobalMessages mempty mempty ]
+              [El.τ "×"]
         ]
     , content:
         -- [ El.ℓ [El.Classes $ [HH.ClassName "TerminalContent"] <> if not isOpen then [HH.ClassName "closed"] else []]
@@ -110,11 +119,11 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
                   El.ℓ [El.Classes [El.GlobalMessage]]
                     [ renderTag item.tag
                     , El.ℓ [El.Classes [El.GlobalMessageContent]] [item.html] ])
-            ,
-              El.ℓ 
-                [ El.Classes [El.Button]
-                , El.OnMouseDown \_ -> HK.modify_ counterStateId (1 + _) ]
-                [ El.text "force update" ]
+            -- ,
+            --   El.ℓ 
+            --     [ El.Classes [El.Button]
+            --     , El.OnMouseDown \_ -> forceUpdate ]
+            --     [ El.τ "force update" ]
 
             ]
         ]
@@ -122,6 +131,6 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
 
 renderTag :: GMB.GlobalMessageTag -> Html
 renderTag = case _ of
-  GMB.DebugGlobalMessageTag -> El.ℓ [El.Classes [El.DebugGlobalMessageTag]] [El.text "debug"]
-  GMB.ErrorGlobalMessageTag -> El.ℓ [El.Classes [El.ErrorGlobalMessageTag]] [El.text "error"]
-  GMB.InfoGlobalMessageTag -> El.ℓ [El.Classes [El.InfoGlobalMessageTag]] [El.text "info"]
+  GMB.DebugGlobalMessageTag -> El.ℓ [El.Classes [El.DebugGlobalMessageTag]] [El.τ "debug"]
+  GMB.ErrorGlobalMessageTag -> El.ℓ [El.Classes [El.ErrorGlobalMessageTag]] [El.τ "error"]
+  GMB.InfoGlobalMessageTag -> El.ℓ [El.Classes [El.InfoGlobalMessageTag]] [El.τ "info"]

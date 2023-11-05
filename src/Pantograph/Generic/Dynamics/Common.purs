@@ -124,7 +124,7 @@ renderStepExpr e@(Boundary (dir /\ ch) kid) = do
   htmls <- renderStepExpr kid
   pure 
     [ El.ℓ [El.Classes [El.StepExprBoundaryInfo]]
-        [ El.ℓ [El.Classes [El.StepExprBoundaryDirection]] [El.text $ pretty dir]
+        [ El.ℓ [El.Classes [El.StepExprBoundaryDirection]] [El.τ $ pretty dir]
         , El.ℓ [El.Classes [El.StepExprBoundaryChange]] [display ch]]
     , El.ℓ (propsStepExpr e) htmls ]
 renderStepExpr e@(Marker kid) = do
@@ -173,12 +173,12 @@ fromStepExprToExprCursor e0 = case goCursorOrExpr e0 of
     Right e -> GMB.bug $ El.ι [El.τ "no `Marker` found during `fromStepExprToExprCursor`: ", El.β [El.τ "e0: ", display e0], El.β [El.τ "e: ", displayAnnExpr e]]
   where
   goExpr :: StepExpr sn el -> Expr sn el
-  goExpr (Boundary _ _) = GMB.bug $ El.inline [El.text "encountered a `Boundary` during `goExpr`: ", display e0]
-  goExpr (Marker _) = GMB.bug $ El.inline [El.text "encountered multiple `Marker`s during `goExpr`: ", display e0]
+  goExpr (Boundary _ _) = GMB.bug $ El.μ [[El.τ "encountered a `Boundary` during `goExpr`"], [display e0]]
+  goExpr (Marker _) = GMB.bug $ El.μ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]
   goExpr (StepExpr node kids) = Tree node (kids <#> goExpr)
 
   goCursorOrExpr :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
-  goCursorOrExpr (Boundary _ _) = GMB.bug $ El.inline $ [El.text "encountered a `Boundary` during `fromStepExprToExprCursor`: ", display e0]
+  goCursorOrExpr (Boundary _ _) = GMB.bug $ El.μ $ [[El.τ "encountered a `Boundary` during `fromStepExprToExprCursor`"], [display e0]]
   goCursorOrExpr (Marker e) = Left $ {tooths: mempty, inside: goExpr e, orientation: Outside}
   goCursorOrExpr (StepExpr node kids) =
     let
@@ -187,7 +187,7 @@ fromStepExprToExprCursor e0 = case goCursorOrExpr e0 of
           i /\ Left cursor -> Just (i /\ cursor) /\ kids'
           _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
         Just i_cursor /\ kids' -> case _ of
-          _ /\ Left _cursor -> GMB.bug $ El.inline $ [El.text "encountered multiple `Marker`s during `goExpr`: ", display e0]
+          _ /\ Left _cursor -> GMB.bug $ El.μ $ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]
           _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
       maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ goCursorOrExpr <$> kids
     in

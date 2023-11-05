@@ -4,7 +4,7 @@ import Data.Tree
 import Pantograph.Generic.Language
 import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering.Common
-import Pantograph.Generic.Rendering.Keyboard
+import Pantograph.Generic.Rendering.Hook.Keyboard
 import Prelude
 import Util
 
@@ -14,7 +14,7 @@ import Control.Monad.State (get)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Data.Array as Array
 import Data.Bifunctor (rmap)
-import Data.Display (Html, embedHtml)
+import Data.Display (Html, display, embedHtml)
 import Data.Foldable (foldMap, null)
 import Data.Identity (Identity(..))
 import Data.List (List(..))
@@ -36,7 +36,8 @@ import Text.Pretty (pretty)
 import Type.Proxy (Proxy(..))
 
 displayAnnExpr :: forall sn el ctx env er. Rendering sn el ctx env => AnnExpr sn el er -> Html
-displayAnnExpr e = rmap runIdentityT $ El.ι $ fst $ snd (runRenderM :: Proxy sn /\ _) $ renderAnnExpr mempty e mempty
+displayAnnExpr e = rmap runIdentityT $ El.ι $ fst $ snd (runRenderM :: Proxy sn /\ _) $ 
+  renderAnnExpr mempty e \_ _ -> pure [El.Classes [El.Expr]]
 
 -- sync
 
@@ -192,15 +193,18 @@ makeSyncExprProps local outside inside@(Tree (EN _ _ {elemId}) _) = do
   pure
     [ El.Id elemId
     , El.Classes [El.Expr]
-    , El.StrictHover mempty
+    , El.StrictHover \mouseEvent -> do
+        -- HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ GMB.make GMB.InfoGlobalMessageTag $ HH.div_
+        --   [ HH.text $ "[SyncExpr/onStrictHover] ", displayAnnExpr (shrinkAnnExpr inside :: Expr sn el) ]
+        pure unit
     , El.OnMouseDown \mouseEvent -> do
-        HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ GMB.make GMB.InfoGlobalMessageTag $ HH.div_
-          [ HH.text "SyncExpr/onClick"
-          , HH.ul_
-              [ HH.li_ [HH.text $ "outside: " <> pretty (shrinkAnnExprPath outside :: ExprPath sn el)]
-              , HH.li_ [HH.text $ "inside: " <> pretty (shrinkAnnExpr inside :: Expr sn el)]
-              ]
-          ]
+        -- HK.raise local.tokens.outputToken $ BufferOutput $ inj (Proxy :: Proxy "write terminal") $ GMB.make GMB.InfoGlobalMessageTag $ HH.div_
+        --   [ HH.text "[SyncExpr/onClick]"
+        --   , HH.ul_
+        --       [ HH.li_ [HH.text $ "outside: " <> pretty (shrinkAnnExprPath outside :: ExprPath sn el)]
+        --       , HH.li_ [HH.text $ "inside: " <> pretty (shrinkAnnExpr inside :: Expr sn el)]
+        --       ]
+        --   ]
 
         let isModifyExprGyro = true
         if isModifyExprGyro then do

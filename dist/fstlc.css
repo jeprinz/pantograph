@@ -10,6 +10,10 @@
   height: 8pt;
 }
 
+.DataTy {
+  display: inline;
+}
+
 .HoleTm {
   color: rgb(179, 179, 179);
   font-weight: bold;

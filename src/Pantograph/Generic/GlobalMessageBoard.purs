@@ -6,6 +6,7 @@ import Bug as Bug
 import Data.Array as Array
 import Data.Display (Html)
 import Data.List (List(..))
+import Data.List as List
 import Data.Tuple.Nested ((/\))
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -28,8 +29,11 @@ terminalItemsRef = unsafePerformEffect $ Ref.new Nil
 getGlobalMessages :: Unit -> List GlobalMessage
 getGlobalMessages _ = unsafePerformEffect $ Ref.read terminalItemsRef
 
+maximumGlobalMessages :: Int
+maximumGlobalMessages = 100
+
 modifyGlobalMessages :: forall a. (List GlobalMessage -> List GlobalMessage) -> (Unit -> a) -> a
-modifyGlobalMessages f k = k (unsafePerformEffect $ Ref.modify_ f terminalItemsRef)
+modifyGlobalMessages f k = k (unsafePerformEffect $ Ref.modify_ (List.take maximumGlobalMessages <<< f) terminalItemsRef)
 
 addGlobalMessage :: forall a. GlobalMessageTag -> Html -> (Unit -> a) -> a
 addGlobalMessage tag html k = modifyGlobalMessages (Cons (make tag html)) k

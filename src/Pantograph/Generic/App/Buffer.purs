@@ -2,6 +2,7 @@ module Pantograph.Generic.App.Buffer (bufferComponent) where
 
 import Data.Either.Nested
 import Data.Tree
+import Data.Tree.Swivel
 import Data.Tuple.Nested
 import Pantograph.Generic.App.Common
 import Pantograph.Generic.App.Common
@@ -21,7 +22,6 @@ import Data.CodePoint.Unicode as CodePoint
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String as String
-import Data.Tree.Swivel
 import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple (snd)
 import Data.Variant (case_, on)
@@ -32,6 +32,7 @@ import Halogen as H
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
+import Pantograph.Generic.Rendering.Hook.Keyboard as Keyboard
 import Record as R
 import Todo (todo)
 import Type.Proxy (Proxy(..))
@@ -127,7 +128,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     # on (Proxy :: Proxy "keyboard") (\(keyboardEvent /\ a) -> do
         let
           event = KeyboardEvent.toEvent keyboardEvent
-          ki = getKeyInfo keyboardEvent
+          ki = Keyboard.getKeyInfo keyboardEvent
 
         maybeEnabledToolbox <- request slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "get enabled")
         let 

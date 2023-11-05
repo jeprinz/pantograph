@@ -2,6 +2,7 @@ module Halogen.Utilities where
 
 import Prelude
 
+import Util
 import Bug (bug)
 import Bug as Bug
 import Data.Array as Array
@@ -18,6 +19,7 @@ import Web.DOM.DOMTokenList as DOMTokenList
 import Web.DOM.Document as Document
 import Web.DOM.Element (Element)
 import Web.DOM.Element as Element
+import Web.DOM.Node as Node
 import Web.DOM.NonElementParentNode as NonElementParentNode
 import Web.Event.Internal.Types (Event)
 import Web.HTML as HTML
@@ -42,3 +44,6 @@ getElementById (ElementId elemId) = do
     Just elem -> pure elem
     
 foreign import fromInputEventToTargetValue :: Event -> Effect String
+
+parentElement :: Element -> Maybe Element
+parentElement = (Element.toNode >>> Node.parentElement) <#> unsafePerformEffect

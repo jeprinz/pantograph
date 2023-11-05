@@ -752,7 +752,7 @@ arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α] <- P.getExprNodeSort no
   _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
   pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ pretty α] :: Html] ⊕ Nil
 arrangeExpr node@(P.EN (DataTyEL dt) _ _) [] | _ % _ <- P.getExprNodeSort node = do
-  pure $ Array.fromFoldable $ pretty dt ⊕ Nil
+  pure $ Array.fromFoldable $ (["DataTy"] /\ pretty dt) ⊕ Nil
 arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort node = do
   alpha /\ alphaNode <- alpha
   beta /\ _ <- beta
@@ -787,13 +787,13 @@ instance Arrangable Identity where
   arrange (Identity a) = P.ArrangeKid a
 instance Arrangable (Const String) where
   arrange (Const string) = P.ArrangeHtml [El.π string]
-instance Arrangable (Const (Array El.ClassName /\ String)) where
-  arrange (Const (cns /\ t)) = P.ArrangeHtml [El.ℓ [El.Classes cns] [El.τ t]]
+instance Arrangable (Const (Array String /\ String)) where
+  arrange (Const (cns /\ t)) = P.ArrangeHtml [El.ℓ [El.Classes $ El.ClassName <$> cns] [El.τ t]]
 instance Arrangable (Const Format) where 
   arrange (Const Newline) = P.ArrangeHtml [El.whitespace " ↪", El.br]
   arrange (Const Indent) = P.ArrangeHtml [El.whitespace "⇥ "]
-instance Arrangable (Const (Array El.ClassName)) where
-  arrange (Const classNames) = P.ArrangeHtml [El.ℓ [El.Classes classNames] []] 
+instance Arrangable (Const (Array String)) where
+  arrange (Const cns) = P.ArrangeHtml [El.ℓ [El.Classes $ El.ClassName <$> cns] []] 
 instance Arrangable (Const (Array Html)) where
   arrange (Const htmls) = P.ArrangeHtml htmls 
 
@@ -810,26 +810,26 @@ infixr 6 consIdentityArrangable as ˜⊕
 infixr 6 consConstArrangable as ⊕
 
 π =
-  { "=":    (El.ClassName <$> ["keysymbol", "equal"])         /\ "="
-  , ":":    (El.ClassName <$> ["keysymbol", "colon"])         /\ ":"
-  , ".":    (El.ClassName <$> ["keysymbol", "period"])        /\ "."
-  , "#":    (El.ClassName <$> ["keysymbol", "period"])        /\ "♯"
-  , "(":    (El.ClassName <$> ["keysymbol", "lparen"])        /\ "("
-  , ")":    (El.ClassName <$> ["keysymbol", "rparen"])        /\ ")"
-  , "{":    (El.ClassName <$> ["keysymbol", "lparen"])        /\ "{"
-  , "}":    (El.ClassName <$> ["keysymbol", "rparen"])        /\ "}"
-  , "->":   (El.ClassName <$> ["keysymbol", "rarrow"])        /\ "→"
-  , "?":    (El.ClassName <$> ["keysymbol", "interrogative"]) /\ "?"
-  , "λ":    (El.ClassName <$> ["keysymbol", "lambda"])        /\ "λ"
-  , "~":    (El.ClassName <$> ["keysymbol", "tilde"])         /\ "~"
-  , "let":  (El.ClassName <$> ["keysymbol", "let"])           /\ "let"
-  , "in":   (El.ClassName <$> ["keysymbol", "in"])            /\ "in"
-  , "Z":    (El.ClassName <$> ["keysymbol", "zero"])          /\ "Z"
-  , "S":    (El.ClassName <$> ["keysymbol", "suc"])           /\ "S"
-  , "F":    (El.ClassName <$> ["keysymbol", "free"])          /\ "F"
-  , "if":   (El.ClassName <$> ["keysymbol", "if"])            /\ "if"
-  , "then": (El.ClassName <$> ["keysymbol", "then"])          /\ "then"
-  , "else": (El.ClassName <$> ["keysymbol", "else"])          /\ "else"
+  { "=":    ["keysymbol", "equal"]         /\ "="
+  , ":":    ["keysymbol", "colon"]         /\ ":"
+  , ".":    ["keysymbol", "period"]        /\ "."
+  , "#":    ["keysymbol", "period"]        /\ "♯"
+  , "(":    ["keysymbol", "lparen"]        /\ "("
+  , ")":    ["keysymbol", "rparen"]        /\ ")"
+  , "{":    ["keysymbol", "lparen"]        /\ "{"
+  , "}":    ["keysymbol", "rparen"]        /\ "}"
+  , "->":   ["keysymbol", "rarrow"]        /\ "→"
+  , "?":    ["keysymbol", "interrogative"] /\ "?"
+  , "λ":    ["keysymbol", "lambda"]        /\ "λ"
+  , "~":    ["keysymbol", "tilde"]         /\ "~"
+  , "let":  ["keysymbol", "let"]           /\ "let"
+  , "in":   ["keysymbol", "in"]            /\ "in"
+  , "Z":    ["keysymbol", "zero"]          /\ "Z"
+  , "S":    ["keysymbol", "suc"]           /\ "S"
+  , "F":    ["keysymbol", "free"]          /\ "F"
+  , "if":   ["keysymbol", "if"]            /\ "if"
+  , "then": ["keysymbol", "then"]          /\ "then"
+  , "else": ["keysymbol", "else"]          /\ "else"
   }
 
 -- utilities

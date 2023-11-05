@@ -252,11 +252,6 @@ body {
   /* line-height: normal; */
 }
 
-.Expr.Hover {
-  background-color: var(--hover-background-color);
-  box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
-}
-
 .Expr.beginsLine::before {
   /* content: '$' */
 }
@@ -309,10 +304,14 @@ body {
   color: rgba(0, 0, 0, 0);
 }
 
+.Expr.Hover {
+  box-shadow: -2px 0 0 0 var(--hover-border-color), 2px 0 0 0 var(--hover-border-color);
+}
+
 .Expr.OutsideCursor,
 .Expr.OutsideCursor.Hover {
   background-color: var(--cursor-background-color);
-  box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
+  box-shadow: -2px 0 0 0 var(--cursor-border-color), 2px 0 0 0 var(--cursor-border-color);
 }
 
 .Expr.InsideCursor,
@@ -322,6 +321,9 @@ body {
   box-shadow: -2px 0 0 0 var(--cursor-border-color) inset, 2px 0 0 0 var(--cursor-border-color) inset;
 }
 
+.Expr.Hover {
+  background-color: var(--hover-background-color);
+}
 
 .Expr.OutsideSelect {
   background-color: var(--select-background-color);

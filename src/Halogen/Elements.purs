@@ -65,10 +65,16 @@ compileProp (OnMouseUp k) =
   ]
 compileProp (StrictHover k) = do
   [ HE.onMouseOver \mouseEvent -> unsafePerformEffect do
+
       -- Debug.traceM "[StringHover] onMouseOver"
+      Debug.traceM "[BEGIN] mouseEvent"
+      Debug.traceM mouseEvent
+      Debug.traceM "[END] mouseEvent"
+
       let event = MouseEvent.toEvent mouseEvent
       Event.stopPropagation event
-      let target = case Event.target event >>= Element.fromEventTarget of
+      -- TODO: why do I have to take the parent??? no idea
+      let target = case Event.target event >>= Element.fromEventTarget >>= HU.parentElement of
             Nothing -> bug "[StrictHover] invalid target"
             Just target_ -> target_
       updateElementClassName target Hover (Just true)
@@ -77,7 +83,7 @@ compileProp (StrictHover k) = do
       -- Debug.traceM "[StringHover] onMouseOut"
       let event = MouseEvent.toEvent mouseEvent
       Event.stopPropagation event
-      let target = case Event.target event >>= Element.fromEventTarget of
+      let target = case Event.target event >>= Element.fromEventTarget >>= HU.parentElement of
             Nothing -> bug "[StrictHover] invalid target"
             Just target_ -> target_
       updateElementClassName target Hover (Just false)
