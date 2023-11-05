@@ -43,7 +43,7 @@ makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorS
     _ /\ sub <- unify preCursorSort cursorSort
     let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange
     let botChange = ChangeAlgebra.subSomeMetaChange sub (ChangeAlgebra.invert preBotChange)
-    let pathSubbed = map (Grammar.subDerivLabel sub) path
+    let pathSubbed = subDerivPath sub path
     pure $ { label : name
     , action : defer \_ -> Edit.WrapAction
     {

@@ -60,8 +60,8 @@ newPathFromRule r kidIx = do
 newToothFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivTooth l r /\ Sort l
 newToothFromRule r kidIx = do
   let Rule mvars hyps' _con = TotalMap.lookup r language
-  let sub = freshenRuleMetaVars mvars
-  let hyps = Expr.subMetaExprPartially sub <$> hyps'
+  let sigma = freshenRuleMetaVars mvars
+  let hyps = Expr.subMetaExprPartially sigma <$> hyps'
 
   -- `hypSort` is the sort of what should got at position `kidIx`
   let hypSortPath /\ hypSort = assertI $ just "newPathFromRule.hpySortPath" $
@@ -73,7 +73,7 @@ newToothFromRule r kidIx = do
         sequence (defaultDerivTerm <$> hypSortPath)
 
   -- Some of the children might have more specialized types, so we need to unify by calling infer. (e.g. in lambda, we call defaultDerivTerm on sort (Name ?x), but we actually get something of sort (Name ""))
-  let tooth = (DerivLabel r sub %< defaultHypDerivPath)
+  let tooth = (DerivLabel r sigma %< defaultHypDerivPath)
   let path1 = Expr.Path (List.singleton tooth)
   let sub = fromJust' "path didn't typecheck in newPathFromRule" $ inferPath (freshMetaVarSort "pathInside") path1
   let toothSubbed = subDerivTooth sub tooth

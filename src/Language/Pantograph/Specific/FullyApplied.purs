@@ -658,7 +658,7 @@ wrapLambda = Smallstep.makeDownRule
         pure $
             dTERM Lam ["x" /\ varName, "a" /\ a, "b" /\ rEndpoint b, "gamma" /\ rEndpoint gamma] [
                     Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
-                    , dTERM TypeHole ["type" /\ a] []
+                    , Smallstep.termToSSTerm (sortToType a)
                     , Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [Expr.plusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
                         t
                 ])
