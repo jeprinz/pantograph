@@ -206,6 +206,13 @@ constantName = case _ of
 data InfixOperator
     = OpPlus
     | OpMinus
+    | OpTimes
+    | OpDivide
+    | OpPow
+    | OpLess
+    | OpGreater
+    | OpLessEq
+    | OpGreaterEq
 
 derive instance Generic InfixOperator _
 instance Show InfixOperator where show x = genericShow x
@@ -223,15 +230,30 @@ instance Pretty InfixOperator where
 infixTypes :: InfixOperator -> {left :: Sort, right :: Sort, output :: Sort}
 infixTypes op =
     let int = DataType Int %|-* [] in
+    let bool = DataType Bool %|-* [] in
     case op of
     OpPlus -> {left : int, right : int, output : int}
     OpMinus -> {left : int, right : int, output : int}
+    OpTimes -> {left : int, right : int, output : int}
+    OpDivide -> {left : int, right : int, output : int}
+    OpPow -> {left : int, right : int, output : int}
+    OpLess -> {left : int, right : int, output : bool}
+    OpGreater -> {left : int, right : int, output : bool}
+    OpLessEq -> {left : int, right : int, output : bool}
+    OpGreaterEq -> {left : int, right : int, output : bool}
 
 infixName :: InfixOperator -> String
 infixName op =
     case op of
     OpPlus -> "+"
     OpMinus -> "-"
+    OpTimes -> "*"
+    OpDivide -> "/"
+    OpPow -> "^"
+    OpLess -> "<"
+    OpGreater -> ">"
+    OpLessEq -> "<="
+    OpGreaterEq -> ">="
 
 -- | Naming convention: <title>_<output sort>
 data RuleLabel
@@ -491,7 +513,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
   InfixRule op /\ _ ->
-    [Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1)]
+    [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>

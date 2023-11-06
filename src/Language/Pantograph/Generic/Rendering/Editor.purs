@@ -746,18 +746,8 @@ editorComponent = HK.component \tokens spec -> HK.do
                     (renderDerivTerm locs true false dzipper)
                   (defaultRenderingContext unit)
               ]
-            -- TODO: I think the bug is simply that this code in the below case doesn't draw the hole exterior.
-            -- It has the hole interior, and the path in dzipper is whats above the hole exterior.
-            -- But it never draws the hole exterior itself!
-            -- This bug only shows up when you put the buffer in the inner hole, specifically because
-            -- thats the only situation where the cursor actually goes there in the state.
-            -- When I fix this and make it render the hole exterior, I will need to also not have it render that
-            -- when the buffer is active.
-            -- I need to go in the git history and bring back renderHoleExterior.
-            -- OR: maybe I can instead make renderPath use zipUp, which will deal correctly with going from inner hole to outer and then up the tree.
             HoleyDerivZipper _ true ->
               [ renderPath locs dzipper
---                    (renderHoleInterior locs true dzipper)
                     (renderDerivTerm locs false true dzipper)
                   (defaultRenderingContext unit)
               ]
