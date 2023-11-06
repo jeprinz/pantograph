@@ -18,7 +18,10 @@ import Data.NonEmpty (NonEmpty(..))
 import Data.NonEmpty as NonEmpty
 import Data.Show.Generic (genericShow)
 import Data.String as String
-import Data.Supertype (class Supertype, inject, project)
+import Data.Subtype (class Subtype)
+import Data.Subtype as Subtype
+import Data.Supertype (class Supertype)
+import Data.Supertype as Supertype
 import Data.Traversable (class Traversable, traverse)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested (type (/\), (/\))
@@ -51,10 +54,6 @@ derive instance Functor Tree
 derive instance Foldable Tree
 derive instance Traversable Tree
 
-instance Supertype a b => Supertype (Tree a) (Tree b) where
-  inject = map inject
-  project = traverse project
-
 treeNode :: forall a. Tree a -> a
 treeNode (Tree a _) = a
 
@@ -70,10 +69,6 @@ derive instance Eq a => Eq (Tooth a)
 derive instance Functor Tooth
 derive instance Foldable Tooth
 derive instance Traversable Tooth
-
-instance Supertype a b => Supertype (Tooth a) (Tooth b) where
-  inject = map inject
-  project = traverse project
 
 toothNode :: forall a. Tooth a -> a
 toothNode (Tooth a _) = a
@@ -105,10 +100,6 @@ derive instance Traversable Path
 instance Semigroup (Path a) where append (Path ts1) (Path ts2) = Path (ts2 <> ts1)
 derive newtype instance Monoid (Path a)
 
-instance Supertype a b => Supertype (Path a) (Path b) where
-  inject = map inject
-  project = traverse project
-
 consPath :: forall a. Path a -> Tooth a -> Path a
 consPath (Path as) a = Path (Cons a as)
 
@@ -138,10 +129,6 @@ derive instance Functor NonEmptyPath
 derive instance Foldable NonEmptyPath
 derive instance Traversable NonEmptyPath
 instance Semigroup (NonEmptyPath a) where append (NonEmptyPath ts1) (NonEmptyPath ts2) = NonEmptyPath (ts2 <> ts1)
-
-instance Supertype a b => Supertype (NonEmptyPath a) (NonEmptyPath b) where
-  inject = map inject
-  project = traverse project
 
 toPath :: forall a. NonEmptyPath a -> Path a
 toPath (NonEmptyPath ts) = Path (List.fromFoldable ts)
@@ -177,6 +164,30 @@ nonEmptyPathOuterNode p = toothNode (unsnocNonEmptyPath p).outer
 
 nonEmptyPathInnerNode :: forall a. NonEmptyPath a -> a
 nonEmptyPathInnerNode p = toothNode (unconsNonEmptyPath p).inner
+
+-- Vertibra
+
+data Vertibra a = Vertibra a Int
+
+derive instance Generic (Vertibra a) _
+instance Show a => Show (Vertibra a) where show x = genericShow x
+derive instance Eq a => Eq (Vertibra a)
+derive instance Functor Vertibra
+derive instance Foldable Vertibra
+derive instance Traversable Vertibra
+
+-- Spine
+
+newtype Spine a = Spine (List (Vertibra a))
+
+derive instance Generic (Spine a) _
+instance Show a => Show (Spine a) where show x = genericShow x
+derive instance Eq a => Eq (Spine a)
+derive instance Functor Spine
+derive instance Foldable Spine
+derive instance Traversable Spine
+instance Semigroup (Spine a) where append (Spine vs1) (Spine vs2) = Spine (vs2 <> vs1)
+derive newtype instance Monoid (Spine a)
 
 -- Cursor
 
@@ -251,39 +262,40 @@ derive instance Functor Change
 derive instance Foldable Change
 derive instance Traversable Change
 
-instance Supertype a b => Supertype (Change a) (Change b) where
-  inject = map inject
-  project = traverse project
-
 -- `Change` forms a semigroup under composition.
 instance Eq a => Semigroup (Change a) where
   append (Shift (Plus /\ th) c) (Shift (Minus /\ th') c') | th == th' =
     c <> c'
   append (Shift (Minus /\ th@(Tooth a (i /\ ts))) c) (Shift (Plus /\ th') c') | th == th' =
-    InjectChange a $ fromJust $ Array.insertAt i (c <> c') $ map injectTreeIntoChange ts
+    InjectChange a $ fromJust $ Array.insertAt i (c <> c') $ map Supertype.inject ts
   append c (Shift (Plus /\ th) c') = Shift (Plus /\ th) (c <> c')
   append (Shift (Minus /\ th) c) c' = Shift (Minus /\ th) (c <> c')
   append (Shift (Plus /\ th@(Tooth a (i /\ ts))) c) (InjectChange a' _cs')
     | a == a'
     , cs' /\ c' <- fromJust $ extractAt i _cs'
-    , and $ map (uncurry eq) $ Array.zip (injectTreeIntoChange <$> ts) cs'
+    , and $ map (uncurry eq) $ Array.zip (Supertype.inject <$> ts) cs'
     = Shift (Plus /\ th) (c <> c')
   append (InjectChange a _cs) (Shift (Minus /\ th@(Tooth a' (i' /\ ts'))) c')
     | a == a'
     , cs /\ c <- fromJust $ extractAt i' _cs
-    , and $ map (uncurry eq) $ Array.zip cs (injectTreeIntoChange <$> ts')
+    , and $ map (uncurry eq) $ Array.zip cs (Supertype.inject <$> ts')
     = Shift (Plus /\ th) (c <> c')
   append (InjectChange a cs) (InjectChange a' cs') | a == a' = InjectChange a (Array.zipWith append cs cs')
   append c1 c2 = Replace (endpoints c1).left (endpoints c2).right
 
+instance Supertype (Change a) (Tree a) where
+  inject (Tree a kids) = InjectChange a (Supertype.inject <$> kids)
+  project = case _ of
+    InjectChange a kids -> Tree a <$> Supertype.project `traverse` kids
+    _ -> Nothing
 
-injectTreeIntoChange :: forall a. Tree a -> Change a
-injectTreeIntoChange (Tree a kids) = InjectChange a (injectTreeIntoChange <$> kids)
+-- Supertype.inject :: forall a. Tree a -> Change a
+-- Supertype.inject (Tree a kids) = InjectChange a (Supertype.inject <$> kids)
 
-projectTreeIntoChange :: forall a. Change a -> Maybe (Tree a)
-projectTreeIntoChange = case _ of
-  InjectChange a kids -> Tree a <$> projectTreeIntoChange `traverse` kids
-  _ -> Nothing
+-- projectTreeIntoChange :: forall a. Change a -> Maybe (Tree a)
+-- projectTreeIntoChange = case _ of
+--   InjectChange a kids -> Tree a <$> projectTreeIntoChange `traverse` kids
+--   _ -> Nothing
 
 endpoints :: forall a. Change a -> {left :: Tree a, right :: Tree a}
 endpoints (Shift (Plus /\ tooth) kid) =

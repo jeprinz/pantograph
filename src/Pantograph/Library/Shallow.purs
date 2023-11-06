@@ -4,9 +4,9 @@ import Pantograph.Generic.Language
 import Prelude
 
 import Data.HeteList (ConsTypeList, HeteList, NilTypeList, indHeteList)
-import Data.Supertype (inject)
+import Data.Supertype as Supertype
 import Data.Symbol (class IsSymbol)
-import Data.Tree (Change(..), Tree(..), injectTreeIntoChange)
+import Data.Tree (Change(..), Tree(..))
 import Data.Tuple.Nested (type (/\), (/\))
 import Prim.Row as R
 import Record as Rec
@@ -46,7 +46,7 @@ instance
   where
   buildRuleSortShallowSyntax p_sn = indHeteList \(p_x /\ f) cs ->
     let r = buildRuleSortShallowSyntax p_sn cs in
-    r # Rec.insert p_x (inject <<< f)
+    r # Rec.insert p_x (map Supertype.inject <<< f)
 
 -- SortChangeShallowSyntax
 
@@ -64,7 +64,7 @@ instance
   where
   buildSortChangeShallowSyntax p_sn = indHeteList \(p_x /\ f) cs ->
     let r = buildSortChangeShallowSyntax p_sn cs in
-    r # Rec.insert p_x (injectTreeIntoChange <<< f)
+    r # Rec.insert p_x (Supertype.inject <<< f)
 
 -- ExprShallowSyntax
 

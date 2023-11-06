@@ -5,11 +5,11 @@ import Prelude
 import Data.Maybe (Maybe(..))
 
 class Supertype :: Type -> Type -> Constraint
-class Supertype a b | b -> a where
+class Supertype b a | b -> a where
   inject :: a -> b
   project :: b -> Maybe a
 
-instance Supertype a (Maybe a) where
+instance Supertype (Maybe a) a where
   inject = Just
   project = identity
 

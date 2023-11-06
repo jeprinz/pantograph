@@ -12,9 +12,9 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
-import Data.Supertype (inject)
+import Data.Supertype as Supertype
 import Data.Traversable (traverse)
-import Data.Tree.Common (assertValidToothKids, injectTreeIntoChange)
+import Data.Tree.Common (assertValidToothKids)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
 import Debug as Debug
@@ -160,7 +160,7 @@ getExprPathChange :: forall sn el. Language sn el =>
   Sort sn ->
   SortChange sn
 getExprPathChange path bottomSort = case unconsPath path of
-  Nothing -> injectTreeIntoChange bottomSort
+  Nothing -> Supertype.inject bottomSort
   Just {outer, inner: Tooth (EN label sigma _) (i /\ _)} ->
     let ChangingRule rule = getChangingRule label in
     let ruleChange = fromJust $ Array.index rule.kids i in
@@ -188,8 +188,8 @@ matchRuleSortChangeWithSortChange :: forall sn.
   Eq sn => Show sn => PrettyTreeNode sn =>
   RuleSortChange sn -> SortChange sn ->
   Maybe (RuleSortVarSubst (SortChange sn))
-matchRuleSortChangeWithSortChange (Shift (sh /\ th) ch) (Shift (sh' /\ th') ch') | sh == sh', th == inject th' = matchRuleSortChangeWithSortChange ch ch'
-matchRuleSortChangeWithSortChange (Replace t1 t2) (Replace t1' t2') | t1 == inject t1', t2 == inject t2' = Just emptyRuleSortVarSubst
+matchRuleSortChangeWithSortChange (Shift (sh /\ th) ch) (Shift (sh' /\ th') ch') | sh == sh', th == (Supertype.inject <$> th') = matchRuleSortChangeWithSortChange ch ch'
+matchRuleSortChangeWithSortChange (Replace t1 t2) (Replace t1' t2') | t1 == (Supertype.inject <$> t1'), t2 == (Supertype.inject <$> t2') = Just emptyRuleSortVarSubst
 matchRuleSortChangeWithSortChange (InjectChange (InjectRuleSortNode s) kids) (InjectChange s' kids') | s == s' = Array.fold <$> uncurry matchRuleSortChangeWithSortChange `traverse` Array.zip kids kids'
 matchRuleSortChangeWithSortChange (InjectChange (VarRuleSortNode x) []) ch' = Just $ singletonRuleSortVarSubst x ch'
 matchRuleSortChangeWithSortChange (InjectChange (VarRuleSortNode _) _) _ = bug $ "invalid"

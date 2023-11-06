@@ -54,10 +54,11 @@ instance (Show sn, PrettyTreeNode el, PrettyTreeNode sn) => Pretty (StepExpr sn 
     Boundary (dir /\ ch) e -> "{{ " <> pretty dir <> " | " <> pretty ch <> " | " <> pretty e <> " }}"
     Marker kid -> braces2 $ pretty kid
 
-instance Supertype (AnnExpr sn el ()) (StepExpr sn el) where
+instance Supertype (StepExpr sn el) (AnnExpr sn el ()) where
   inject (Tree node kids) = StepExpr node (Supertype.inject <$> kids)
-  project (StepExpr node kids) = Tree node <$> Supertype.project `traverse` kids
-  project _ = Nothing
+  project = case _ of
+    StepExpr node kids -> Tree node <$> Supertype.project `traverse` kids
+    project -> Nothing
 
 makeStepExpr :: forall sn el. Language sn el => el -> Array (String /\ (Tree (SortNode sn))) -> Array (StepExpr sn el) -> StepExpr sn el
 makeStepExpr label sigma_ = 

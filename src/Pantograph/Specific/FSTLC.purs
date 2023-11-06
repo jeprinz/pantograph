@@ -26,6 +26,7 @@ import Data.String (CodePoint)
 import Data.String as String
 import Data.StringQuery as StringQuery
 import Data.Supertype (inject)
+import Data.Supertype as Supertype
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.UUID as UUID
@@ -50,6 +51,7 @@ import Type.Row.Homogeneous (class Homogeneous)
 instance P.Language SN EL where
   getSortingRule el = getSortingRule el
   getChangingRule el = getChangingRule el
+  getSortChangeThroughExprPath = todo ""
   topSort = topSort
   getDefaultExpr sr = getDefaultExpr sr
   getEditsAtSort sr ori = getEditsAtSort sr ori
@@ -412,11 +414,13 @@ getSortingRule =
 
 getChangingRule :: EL -> ChangingRule
 getChangingRule el = case el of
-  HoleTm -> P.buildChangingRule ["γ", "α"] \[γ, α] ->
-    -- [ Plus /\ (P.InjectRuleSortNode (P.SN TmJg) %- 1 /\ [γ]) %!/ injectTreeIntoChange (rs_jg_ty α) ] /\
-    [ injectTreeIntoChange $ rs_jg_ty α ]
-    /\
-    ( injectTreeIntoChange $ rs_jg_tm γ α )
+  -- HoleTm -> P.buildChangingRule ["γ", "α"] \[γ, α] ->
+  --   [ P.InjectRuleSortNode (P.SN TmJg) %! [Supertype.inject γ, Supertype.inject α] ] /\
+  --   ?a
+  --   -- [ Plus /\ (P.InjectRuleSortNode (P.SN TmJg) %- 1 /\ [γ]) %!/ Supertype.inject (rs_jg_ty α) ] /\
+  --   -- [ Supertype.inject $ rs_jg_ty α ]
+  --   -- /\
+  --   -- ( Supertype.inject $ rs_jg_tm γ α )
   _ -> getDiffChangingRule {getSortingRule} el
 
 steppingRules :: Array SteppingRule
@@ -437,8 +441,9 @@ steppingRules =
   , wrapCallInErrorDown
   , removeError
   , mergeErrors
-  , LibStep.makeDefaultDownSteppingRule {getChangingRule}
-  , LibStep.unless "isUpInCall" isUpInCall $ LibStep.makeDefaultUpSteppingRule {getChangingRule}
+  -- TODO: enable
+  -- , LibStep.makeDefaultDownSteppingRule {getChangingRule}
+  -- , LibStep.unless "isUpInCall" isUpInCall $ LibStep.makeDefaultUpSteppingRule {getChangingRule}
   ]
   where
   -- {e}↓{Var (+ <{ y : β, {> γ <}}>) x α loc}  ~~>  Suc {e}↓{Var γ x α loc}
@@ -454,7 +459,7 @@ steppingRules =
     (P.EN ZeroVar _ _ %. [])
     | true -> Just $
       P.Boundary 
-        (P.Up /\ (P.SN VarJg %! [injectTreeIntoChange (epR γ), x', α', Replace sr_loc_local sr_loc_nonlocal]))
+        (P.Up /\ (P.SN VarJg %! [Supertype.inject (epR γ), x', α', Replace sr_loc_local sr_loc_nonlocal]))
         (inject $ freeVarTerm {γ: (epR γ), x, α})
     _ -> Nothing
 
@@ -837,16 +842,16 @@ infixr 6 consConstArrangable as ⊕
 splitExprPathChanges :: SplitChange
 splitExprPathChanges (P.SN TmJg %! [γ, α]) = 
 -- | type change goes up/out, context change goes down/in
-  { outerChange: P.SN TmJg %! [injectTreeIntoChange $ epR γ, α]
-  , innerChange: invert $ P.SN TmJg %! [γ, injectTreeIntoChange $ epL α] }
+  { outerChange: P.SN TmJg %! [Supertype.inject $ epR γ, α]
+  , innerChange: invert $ P.SN TmJg %! [γ, Supertype.inject $ epL α] }
 -- | type change goes up/out, context change goes down/in
 splitExprPathChanges (P.SN NeJg %! [γ, α]) =
-  { outerChange: P.SN NeJg %! [injectTreeIntoChange $ epR γ, α]
-  , innerChange: invert $ P.SN NeJg %! [γ, injectTreeIntoChange $ epL α] }
+  { outerChange: P.SN NeJg %! [Supertype.inject $ epR γ, α]
+  , innerChange: invert $ P.SN NeJg %! [γ, Supertype.inject $ epL α] }
 -- | type change goes up/out
 splitExprPathChanges ch@(P.SN TyJg %! [_α]) =
   { outerChange: ch
-  , innerChange: invert $ injectTreeIntoChange $ epL ch }
+  , innerChange: invert $ Supertype.inject $ epL ch }
 -- | meta var change goes up/out and down/in
 splitExprPathChanges ch@(P.VarSN _ %! []) =
   { outerChange: ch 

@@ -19,6 +19,7 @@ import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.StringQuery (StringQuery)
 import Data.Supertype (class Supertype, inject, project)
+import Data.Supertype as Supertype
 import Data.Traversable (traverse)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
@@ -41,8 +42,8 @@ class
     Language sn el | sn -> el, el -> sn
   where
   getSortingRule :: el -> SortingRule sn
-  -- TODO: maybe move Change stuff to Dynamics?
   getChangingRule :: el -> ChangingRule sn
+  getSortChangeThroughExprPath :: ExprPath sn el -> SortChange sn
   topSort :: Sort sn
   getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
   validGyro :: forall er. AnnExprGyro sn el er -> Boolean
@@ -123,7 +124,7 @@ makeVarSort x = Tree (VarSN x) []
 freshVarSort :: forall sn. String -> Tree (SortNode sn)
 freshVarSort label = Tree (VarSN (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})) []
 
-instance Supertype (SortNode sn) (RuleSortNode sn) where
+instance Supertype (RuleSortNode sn) (SortNode sn) where
   inject = InjectRuleSortNode
   project = case _ of
     InjectRuleSortNode sn -> Just sn
@@ -322,13 +323,13 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSo
   applyRuleSortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ (applyRuleSortVarSubst sigma tooth)) (applyRuleSortVarSubst sigma kid)
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
-  applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = injectTreeIntoChange $ applyRuleSortVarSubst sigma x
+  applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = Supertype.inject $ applyRuleSortVarSubst sigma x
   applyRuleSortVarSubst _ _ = bug "invalid"
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) where
   -- take the right endpoints of any changes applied to adjacent kids in the tooth of the shift
-  applyRuleSortVarSubst sigma (Shift (sign /\ (Tooth (InjectRuleSortNode n) (i /\ kids))) kid) = Shift (sign /\ Tooth n (i /\ (kids <#> \kid' -> epR $ applyRuleSortVarSubst sigma $ injectTreeIntoChange kid'))) (applyRuleSortVarSubst sigma kid)
-  applyRuleSortVarSubst sigma (Replace old new) = Replace (epL $ applyRuleSortVarSubst sigma $ injectTreeIntoChange old) (epR $ applyRuleSortVarSubst sigma $ injectTreeIntoChange new)
+  applyRuleSortVarSubst sigma (Shift (sign /\ (Tooth (InjectRuleSortNode n) (i /\ kids))) kid) = Shift (sign /\ Tooth n (i /\ (kids <#> \kid' -> epR $ applyRuleSortVarSubst sigma (Supertype.inject kid' :: RuleSortChange sn)))) (applyRuleSortVarSubst sigma kid)
+  applyRuleSortVarSubst sigma (Replace old new) = Replace (epL $ applyRuleSortVarSubst sigma (Supertype.inject old :: RuleSortChange sn)) (epR $ applyRuleSortVarSubst sigma (Supertype.inject new :: RuleSortChange sn))
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = applyRuleSortVarSubst sigma x
   applyRuleSortVarSubst _ _ = bug "invalid"
@@ -386,7 +387,7 @@ instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) 
   applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ applySortVarSubst sigma tooth) (applySortVarSubst sigma kid)
   applySortVarSubst sigma (Replace old new) = Replace (applySortVarSubst sigma old) (applySortVarSubst sigma new)
   applySortVarSubst sigma (InjectChange sn@(SN _) kids) = InjectChange sn (applySortVarSubst sigma <$> kids)
-  applySortVarSubst sigma (InjectChange (VarSN x) []) = injectTreeIntoChange $ applySortVarSubst sigma x
+  applySortVarSubst sigma (InjectChange (VarSN x) []) = Supertype.inject $ applySortVarSubst sigma x
   applySortVarSubst _ (InjectChange (VarSN x) _) = bug "invalid"
 
 instance Language sn el => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where

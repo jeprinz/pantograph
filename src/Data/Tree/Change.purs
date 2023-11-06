@@ -7,6 +7,7 @@ import Bug (bug)
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.Supertype (inject)
+import Data.Supertype as Supertype
 import Data.Traversable (traverse)
 import Data.Tuple.Nested ((/\))
 import Text.Pretty (pretty, ticks)
@@ -80,7 +81,7 @@ lub' c1 c2 = case lub c1 c2 of
 -- | - `e1` = `Expr l1 [a1, ..., an]`, `e2` = `Expr l2 [b1, ..., bn]`, and for
 -- |   each `i`<=`n`, `(ai, bi)` in `S`.
 diff :: forall a. Eq a => Tree a -> Tree a -> Change a
-diff t1 t2 | t1 == t2 = injectTreeIntoChange t1
+diff t1 t2 | t1 == t2 = Supertype.inject t1
 diff t1@(Tree a1 kids1) t2@(Tree a2 kids2) =
   case isPostfix t1 t2 of
     Just ch -> ch
@@ -92,7 +93,7 @@ diff t1@(Tree a1 kids1) t2@(Tree a2 kids2) =
           else Replace t1 t2
 
 isPostfix :: forall a. Eq a => Tree a -> Tree a -> Maybe (Change a)
-isPostfix t1 t2 | t1 == t2 = Just $ injectTreeIntoChange t1
+isPostfix t1 t2 | t1 == t2 = Just $ Supertype.inject t1
 isPostfix t1 t2 =
   Array.findMap 
     (\(th /\ kid) -> Shift (Minus /\ th) <$> isPostfix kid t2)
