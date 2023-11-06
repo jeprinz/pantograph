@@ -176,6 +176,63 @@ type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
 -- RuleLabel
 --------------------------------------------------------------------------------
 
+data Constant
+    = ConstTrue
+    | ConstFalse
+
+derive instance Generic Constant _
+instance Show Constant where show x = genericShow x
+instance Eq Constant where eq x = genericEq x
+instance Ord Constant where compare x y = genericCompare x y
+instance Enum Constant where
+  pred x = genericPred x
+  succ x = genericSucc x
+instance Bounded Constant where
+  bottom = genericBottom
+  top = genericTop
+instance Pretty Constant where
+  pretty = show
+
+constantType :: Constant -> Sort {-type-}
+constantType = case _ of
+    ConstTrue -> DataType Bool %|-* []
+    ConstFalse -> DataType Bool %|-* []
+
+constantName :: Constant -> String
+constantName = case _ of
+    ConstTrue -> "true"
+    ConstFalse -> "false"
+
+data InfixOperator
+    = OpPlus
+    | OpMinus
+
+derive instance Generic InfixOperator _
+instance Show InfixOperator where show x = genericShow x
+instance Eq InfixOperator where eq x = genericEq x
+instance Ord InfixOperator where compare x y = genericCompare x y
+instance Enum InfixOperator where
+  pred x = genericPred x
+  succ x = genericSucc x
+instance Bounded InfixOperator where
+  bottom = genericBottom
+  top = genericTop
+instance Pretty InfixOperator where
+  pretty = show
+
+infixTypes :: InfixOperator -> {left :: Sort, right :: Sort, output :: Sort}
+infixTypes op =
+    let int = DataType Int %|-* [] in
+    case op of
+    OpPlus -> {left : int, right : int, output : int}
+    OpMinus -> {left : int, right : int, output : int}
+
+infixName :: InfixOperator -> String
+infixName op =
+    case op of
+    OpPlus -> "+"
+    OpMinus -> "-"
+
 -- | Naming convention: <title>_<output sort>
 data RuleLabel
   = Zero
@@ -192,6 +249,8 @@ data RuleLabel
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
   | ErrorBoundary
+  | ConstantRule Constant
+  | InfixRule InfixOperator
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -239,6 +298,8 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (FreeVar /\ []) = "free"
   prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
   prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
+  prettyExprF'_unsafe_RuleLabel (ConstantRule constant /\ []) = constantName constant
+  prettyExprF'_unsafe_RuleLabel (InfixRule op /\ [left, right]) = P.parens $ left <+> infixName op <+> right
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -333,13 +394,25 @@ language = TotalMap.makeTotalMap case _ of
       [ TermSort %|-* [gamma, DataType Bool %|-* []]
       , TermSort %|-* [gamma, ty]
       , TermSort %|-* [gamma, ty] ]
-      /\
+      /\ -------
       ( TermSort %|-* [gamma, ty] )
 
   ErrorBoundary -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
     [TermSort %|-* [gamma, insideType]]
-    /\
+    /\ -------
     ( TermSort %|-* [gamma, outsideType])
+
+  ConstantRule c -> Grammar.makeRule ["gamma"] \[gamma] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, constantType c])
+
+  InfixRule op ->
+    let {left, right, output} = infixTypes op in
+    Grammar.makeRule ["gamma"] \[gamma] ->
+    [ TermSort %|-* [gamma, left], TermSort %|-* [gamma, right] ]
+    /\ -------
+    ( TermSort %|-* [gamma, output])
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -416,6 +489,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
     [pure [ifElem], Left (renCtx /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem]), Left (renCtx' /\ 1),
         pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem]), Left (renCtx' /\ 2)]
   ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
+  ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
+  InfixRule op /\ _ ->
+    [Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1)]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -567,14 +643,19 @@ splitChange c =
 
 makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
+editsAtHoleInterior :: Sort -> Array Edit
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
-    <> Array.mapMaybe identity [
+    <> Array.mapMaybe identity ([
         DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
-    ]
+    ] <> ((Util.allPossible :: Array Constant) <#>
+        (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
+       <> ((Util.allPossible :: Array InfixOperator) <#>
+        (\op -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (InfixRule op)) (infixName op) cursorSort))
+    )
 
-editsAtCursor cursorSort = Array.mapMaybe identity
+editsAtCursor cursorSort = Array.mapMaybe identity (
     [
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
@@ -588,7 +669,11 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
     , makeEditFromPath (newPathFromRule Newline 0 )"newline" cursorSort
-    ] <> Array.fromFoldable (getVarWraps cursorSort)
+    ]) <> (Array.concat ((Util.allPossible :: Array InfixOperator) <#>
+        (\op -> Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange
+            (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
+    <> Array.fromFoldable (getVarWraps cursorSort)
+
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 --------------------------------------------------------------------------------
 -- StepRules

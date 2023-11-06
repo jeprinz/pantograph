@@ -4,6 +4,7 @@ import Data.Foldable
 import Data.Tuple.Nested
 import Prelude
 
+import Data.Tuple (Tuple(..))
 import Bug as Bug
 import Bug.Assertion (assert, just)
 import Data.Either (Either(..))
@@ -19,6 +20,8 @@ import Hole as Hole
 import Data.Array as Array
 import Effect.Unsafe (unsafePerformEffect)
 import Effect.Ref as Ref
+import Data.Enum (class Enum, succ)
+import Data.Unfoldable (unfoldr)
 
 hole' :: forall a. String -> a
 -- hole' msg = unsafeThrow $ "hole: " <> msg
@@ -144,3 +147,11 @@ inlineMaybeCase :: forall a out. Maybe a -> (a -> out) -> out -> out
 inlineMaybeCase cond thenn elsee = case cond of
     Nothing -> elsee
     Just x -> thenn x
+
+allPossible :: forall a. -- https://stackoverflow.com/questions/74462784/purescript-data-as-array-of-all-possible-data-inhabitants
+  Enum a =>
+  Bounded a =>
+  Array a
+allPossible = unfoldr (\b -> b >>= next) $ Just bottom
+  where
+    next a = Just $ Tuple a $ succ a

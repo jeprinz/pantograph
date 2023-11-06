@@ -10,6 +10,7 @@ import Data.TotalMap as TotalMap
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Bounded.Generic (genericBottom, genericTop)
+import Data.CodePoint.Unicode as Unicode
 import Data.Const (Const)
 import Data.Either (Either(..))
 import Data.Either.Nested (type (\/))
@@ -45,6 +46,7 @@ import Debug (trace)
 import Util as Util
 import Data.Tuple (snd)
 import Data.Set as Set
+import Data.String.CodePoints (CodePoint)
 
 type EditorHTML l r = 
   HH.ComponentHTML 
@@ -451,6 +453,13 @@ bufferSlot = Proxy :: Proxy "buffer"
 
 isOpenBufferKey :: String -> Boolean
 isOpenBufferKey = (_ `Array.elem` ["Enter"])
+
+additionalQueryKeys :: Array CodePoint
+additionalQueryKeys = ["+", "-"] <#> \s ->
+    Util.fromJust $ Array.index (String.toCodePointArray s) 0
+
+isQueryKey :: CodePoint -> Boolean
+isQueryKey s = Unicode.isAlpha s || Array.elem s additionalQueryKeys
 
 ---- Just if it is a close buffer key, and the boolean is "should I then skip to the next hole"
 --isCloseBufferKey :: String -> Maybe Boolean

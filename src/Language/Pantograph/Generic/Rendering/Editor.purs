@@ -501,7 +501,7 @@ editorComponent = HK.component \tokens spec -> HK.do
               _ -> pure Nothing
             -- activate buffer
             setBufferEnabled true mb_str
-          else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
+          else if (isQueryKey <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
@@ -565,7 +565,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             setFacade $ CursorState cursor
             -- activate buffer
             setBufferEnabled true Nothing
-          else if (Unicode.isAlpha <$> keyCodePoint) == Just true then do
+          else if (isQueryKey <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
