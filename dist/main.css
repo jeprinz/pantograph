@@ -108,21 +108,21 @@ body {
 .node.ref {}
 
 .node.highlight {
-  box-shadow: -2px 0 gray,2px 0 gray;
+  box-shadow: -2px 0 gray, 2px 0 gray;
 }
 
 .node.select-top {
   background-color: rgba(157, 157, 255, 0.5);
-  box-shadow: -3px 0 blue,3px 0 blue;
+  box-shadow: -3px 0 blue, 3px 0 blue;
 }
 
 .node.select-bottom {
   background-color: white;
-  box-shadow: -3px 0 blue,3px 0 blue;
+  box-shadow: -3px 0 blue, 3px 0 blue;
 }
 
 .node.cursor {
-  box-shadow: -3px 0 blue,3px 0 blue;
+  box-shadow: -3px 0 blue, 3px 0 blue;
 }
 
 .subnode.holeExterior-inner {
@@ -139,8 +139,30 @@ body {
   /* box-shadow: inset 0 0 0 2px rgb(255, 139, 50); */
 }
 
-.node.holeInterior.cursor {
-  box-shadow: -3px 0 orange,3px 0 orange;
+/* OLD version, which put an orange cursor around inner hole */
+/* .node.holeInterior.cursor {
+  box-shadow: -3px 0 orange, 3px 0 orange;
+} */
+
+.node.holeInterior.cursor,
+.node.holeInterior.highlight,
+.node.empty-string.cursor,
+.node.empty-string.highlight {
+  box-shadow: none;
+}
+
+.node.holeInterior.cursor>.subnode.holeInterior-inner>.subnode,
+.node.holeInterior.highlight>.subnode.holeInterior-inner>.subnode,
+.node.empty-string.cursor>.subnode.empty-string>.subnode,
+.node.empty-string.highlight>.subnode.empty-string>.subnode {
+  display: none;
+}
+
+.node.holeInterior.cursor>.subnode.holeInterior-inner::before,
+.node.holeInterior.highlight>.subnode.holeInterior-inner::before,
+.node.empty-string.cursor>.subnode.empty-string::before,
+.node.empty-string.highlight>.subnode.empty-string::before {
+  content: '|';
 }
 
 /*
@@ -395,7 +417,8 @@ console
 }
 
 .console-logs {
-  max-height: 20em;;
+  max-height: 20em;
+  ;
   overflow-y: scroll;
 }
 
@@ -411,52 +434,52 @@ console
 }
 
 .vertical-bar {
-    width: .1em;
-    background-color: black;
-    height: 100%;
-    float: right;
+  width: .1em;
+  background-color: black;
+  height: 100%;
+  float: right;
 }
 
 .horizontal-bar {
-    height: .1em;
-    background-color: black;
+  height: .1em;
+  background-color: black;
 }
 
 .horizontal-container {
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: row;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: row;
 }
 
 .vertical-container {
-    height: 100%;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .fill-space {
-    flex-grow: 1
+  flex-grow: 1
 }
 
 .padded {
-    padding: .6em
+  padding: .6em
 }
 
 .typesubscript {
-    color: gray;
-    font-size: 14px;
+  color: gray;
+  font-size: 14px;
 }
 
 .fill-right-space {
-    background-color: orange;
-    display: inline-block;
-    width: 20px;
-    height: 1em;
-    cursor: pointer;
-    border-radius: 0.5em 0.5em / 0.2em;
+  background-color: orange;
+  display: inline-block;
+  width: 20px;
+  height: 1em;
+  cursor: pointer;
+  border-radius: 0.5em 0.5em / 0.2em;
 }
 
 .app-circle {

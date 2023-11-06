@@ -422,6 +422,7 @@ cursorClassName = "cursor" :: String
 highlightClassName = "highlight" :: String
 selectTopClassName = "select-top" :: String
 selectBottomClassName = "select-bottom" :: String
+emptyStringClassName = "empty-string" :: String
 
 ------------------------------------------------------------------------------
 -- Editor local functions

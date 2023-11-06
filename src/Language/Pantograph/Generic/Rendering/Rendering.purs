@@ -16,9 +16,13 @@ import Data.Lazy (Lazy, defer, force)
 import Data.List (List(..), (:))
 import Data.List.Zip as ZipList
 import Data.Maybe (Maybe(..))
+import Data.Set as Set
 import Data.String as String
 import Data.Tuple.Nested ((/\))
 import Data.Zippable as Zippable
+import Debug (trace)
+import Debug (traceM)
+import Debug as Debug
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -28,13 +32,10 @@ import Language.Pantograph.Generic.Rendering.Buffer (bufferComponent)
 import Language.Pantograph.Generic.Rendering.Preview (previewComponent)
 import Language.Pantograph.Generic.Smallstep (SSTerm, StepExprLabel(..))
 import Language.Pantograph.Generic.Smallstep as SmallStep
+import Partial.Unsafe (unsafePartial)
 import Text.Pretty (pretty)
 import Type.Direction (Up, leftDir, rightDir)
 import Util (fromJust')
-import Partial.Unsafe (unsafePartial)
-import Debug (trace)
-import Debug (traceM)
-import Data.Set as Set
 
 ------------------------------------------------------------------------------
 -- helper
@@ -74,7 +75,7 @@ arrangeDerivTermSubs locs innerHoleIsCursor dzipper@(Expr.Zipper dpath dterm) ki
       Right elems -> elems
   DerivString str % [] -> 
     [ if String.null str 
-        then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.text "☐"]
+        then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.div [classNames ["subnode"]] [HH.text "☐"]]
         else HH.div [classNames ["subnode", "string-inner"]] [HH.text str] ]
 
 arrangeNodeSubs :: forall l r. IsRuleLabel l r => 
@@ -115,7 +116,10 @@ renderDerivTerm :: forall l r. IsRuleLabel l r =>
 renderDerivTerm locs isCursor innerHoleIsCursor dzipper renCtx =
   HH.div
     (Array.concat
-      [ [classNames $ ["node"] <> if isCursor then [cursorClassName] else []]
+      [ [ classNames $ ["node"] <> 
+          (if isCursor then [cursorClassName] else []) <> 
+          (if isEmptyString dzipper then [emptyStringClassName] else [])
+        ]
       , if not renCtx.isInteractive then [] else do
         let elemId = fromPathToElementId (Expr.zipperPath dzipper)
         [ HP.id elemId
@@ -125,6 +129,11 @@ renderDerivTerm locs isCursor innerHoleIsCursor dzipper renCtx =
       ])
     (arrangeNodeSubs locs isCursor (injectHoleyDerivZipper dzipper)
       (arrangeDerivTermSubs locs innerHoleIsCursor dzipper (Zippable.zipDowns dzipper <#> renderDerivTerm locs false false) renCtx))
+  where
+  isEmptyString = case _ of
+    Expr.Zipper _ (Expr.Expr (DerivString str) _) | String.null str -> true
+    Expr.Zipper _ (Expr.Expr (DerivString str) _) -> Debug.trace ("str = " <> str) \_ -> false
+    _ -> false
 
 ------------------------------------------------------------------------------
 -- render hole exterior and interior
