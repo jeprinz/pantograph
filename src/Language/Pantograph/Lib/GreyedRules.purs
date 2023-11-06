@@ -123,7 +123,7 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange forgetSo
                             <$> otherRuleChildren
 --                    let tooth = \kid -> Array.insertAt index kid otherChildren
                     let kidDownChange = (subSomeMetaChange chSubFull (invert downChange))
-                    traceM ("insert lambda here returings: downChange: " <> pretty downChange <> " chSubFull: " <> pretty chSubFull <> " kidDownChange: " <> pretty kidDownChange)
+--                    traceM ("insert lambda here returings: downChange: " <> pretty downChange <> " chSubFull: " <> pretty chSubFull <> " kidDownChange: " <> pretty kidDownChange)
                     pure $ (SSInj (DerivLabel regularRuleLabel sub))
                         % (Util.fromJust (Array.insertAt index (wrapBoundary Down kidDownChange kid) otherChildren))
                 _ -> Nothing

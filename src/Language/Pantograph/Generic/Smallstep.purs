@@ -473,9 +473,9 @@ combineUpRule _ = Nothing
 -- Assumption: input path is nonempty
 getPathChange2 :: forall l r. Ord r => Grammar.IsRuleLabel l r => Grammar.DerivPath Dir.Up l r
     -> (Grammar.DerivLabel l r -> Maybe (Grammar.DerivLabel l r)) -> Grammar.SortChange l
-getPathChange2 forgetSorts path =
+getPathChange2 path forgetSorts =
     -- Forget all derivlabels, except remember a mapping from the newly created variables to the values they had originally
-    let path' /\ subs = Grammar.forgetCollectDerivPath path forgetSorts in
+    let path' /\ subs = Grammar.forgetCollectDerivPath forgetSorts path in
     -- infer
     let sortSub = fromJust' "gpc2" $ Grammar.inferPath (Grammar.nonemptyPathInnerSort path') path' in
     let inferredPath = Grammar.subDerivPath sortSub path' in
@@ -483,6 +483,9 @@ getPathChange2 forgetSorts path =
     -- get a change with diff
     let generalChange = diff innerGeneralSort (Grammar.derivPathSort inferredPath innerGeneralSort) in
     -- substitute the substitution from step 1 back into that change
+--    let _ = trace ("in getPathChange2") \_ -> unit in
+--    let _ = trace ("path is: " <> pretty path <> " and path' is: " <> pretty path') \_ -> unit in
+--    let _ = trace ("in getPathChange2, returning general change: " <> pretty generalChange) \_ -> unit in
     subSomeMetaChange subs generalChange
 
 

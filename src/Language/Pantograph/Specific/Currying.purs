@@ -508,8 +508,8 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   TypeHole /\ _ -> [pure [HH.text ("error: " <> show (Map.lookup (RuleMetaVar "type") sigma))]]
   If /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [ifElem], Left (renCtx /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem]), Left (renCtx' /\ 1),
-        pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem]), Left (renCtx' /\ 2)]
+    [pure [ifElem, Rendering.spaceElem], Left (renCtx' /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem, Rendering.spaceElem]), Left (renCtx' /\ 1),
+        pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem, Rendering.spaceElem]), Left (renCtx' /\ 2)]
   ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
   InfixRule op /\ _ ->
@@ -806,6 +806,13 @@ unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
     ])
     = do
         let varName = Util.lookup' (RuleMetaVar "x") sigma
+        -- TODO: HERE IS WHERE I LEFT OFF: this match works, but match below fails. TODO: Get the second cslot, and debug matchChange on that!
+        -- TODO: Also, compare to what these output (including real case) when one Int is a metavar?!?
+        case (matchChange ch (TermSort %+- [{-gamma-}cSlot, cSlot])) of
+            Just ([] /\ [_, lad])  -> do
+                traceM ("here we go: " <> pretty lad)
+                traceM (pretty (matchChange lad (dMINUS Arrow [slot] cSlot [])))
+            _ -> pure unit
         restOfCh <- case unit of
                     _ | Just ([a] /\ [gamma, b]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
                         -> pure (csor TermSort % [minusChange (sor CtxConsSort) [varName, a] gamma [] , b])
@@ -941,6 +948,9 @@ mergeErrorsDown (Expr.Expr (Boundary Down ch) [
         [wrapBoundary Down (csor TermSort % [gamma, inject insideInside]) t]
 mergeErrorsDown _ = Nothing
 
+languageChanges :: LanguageChanges
+languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
+  _ -> identity
 
 stepRules :: List StepRule
 stepRules = do
@@ -963,7 +973,7 @@ stepRules = do
     , removeError
     ]
 --    <>
---    (GreyedRules.createGreyedRules 2 Lam Nothing splitChange languageChanges)
+--    (GreyedRules.createGreyedRules 2 Lam Nothing splitChange forgetSorts languageChanges)
     <> [
     Smallstep.defaultDown chLang
     , Smallstep.defaultUp chLang

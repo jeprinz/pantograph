@@ -40,7 +40,7 @@ import Data.UUID as UUID
 import Data.Variant (case_, on)
 import Data.Zippable (class Zippable)
 import Data.Zippable as Zippable
-import Debug (trace)
+import Debug (trace, traceM)
 import Debug as Debug
 import Effect (Effect)
 import Effect.Class.Console (log)
@@ -570,8 +570,8 @@ derive instance Traversable ChangeLabel
 --   sequence fa = sequenceDefault fa
 
 instance IsExprLabel l => IsExprLabel (ChangeLabel l) where
-  prettyExprF'_unsafe (Plus th /\ [kid]) = P.parens $ "+" <> prettyTooth th kid
-  prettyExprF'_unsafe (Minus th /\ [kid]) = P.parens $ "-" <> prettyTooth th kid
+  prettyExprF'_unsafe (Plus th /\ [kid]) = P.parens $ "+" <> prettyTooth th ("[" <> kid <> "]")
+  prettyExprF'_unsafe (Minus th /\ [kid]) = P.parens $ "-" <> prettyTooth th ("[" <> kid <> "]")
   prettyExprF'_unsafe (CInj l /\ kids) = prettyExprF (l /\ kids)
   prettyExprF'_unsafe (Replace e1 e2 /\ []) = P.parens (pretty e1) <> " ~~> " <> P.parens (pretty e2)
 
