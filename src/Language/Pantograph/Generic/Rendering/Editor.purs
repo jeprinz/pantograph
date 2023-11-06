@@ -13,16 +13,21 @@ import Data.Either.Nested (type (\/))
 import Data.Expr ((%))
 import Data.Expr as Expr
 import Data.Int.Bits as Bits
+import Data.Lazy as Lazy
+import Data.List (List(..))
 import Data.Maybe (Maybe(..), isJust)
 import Data.Maybe as Maybe
 import Data.String as String
-import Data.Tuple.Nested ((/\))
 import Data.Tuple as Tuple
+import Data.Tuple.Nested ((/\))
+import Data.Variant (case_)
 import Data.Variant (case_, on, default)
+import Debug (trace, traceM)
 import Debug as Debug
 import Debug as Debug
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
+import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Halogen as H
 import Halogen.HTML as HH
@@ -31,15 +36,20 @@ import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
 import Halogen.Utilities (classNames, setClassName)
 import Hole (hole)
+import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Rendering.Console (_consoleSlot, consoleComponent)
 import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleInterior, renderPath, renderSSTerm)
 import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
 import Language.Pantograph.Generic.Smallstep as SmallStep
+import Language.Pantograph.Generic.Unification as Unification
 import Language.Pantograph.Generic.ZipperMovement (moveZipperpUntil)
+import Language.Pantograph.Generic.ZipperMovement (normalizeZipperp)
 import Log (log, logM)
 import Text.Pretty (bullets, pretty)
 import Text.Pretty as P
 import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir, nextDir)
+import Type.Direction (_prev)
+import Util as Util
 import Web.DOM as DOM
 import Web.DOM.NonElementParentNode as NonElementParentNode
 import Web.Event.Event as Event
@@ -49,14 +59,6 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
-import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
-import Util as Util
-import Language.Pantograph.Generic.Unification as Unification
-import Debug (trace, traceM)
-import Data.Variant (case_)
-import Type.Direction (_prev)
-import Language.Pantograph.Generic.ZipperMovement (normalizeZipperp)
-import Data.Lazy as Lazy
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -73,6 +75,10 @@ editorComponent = HK.component \tokens spec -> HK.do
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
+  _ /\ stateIsStale_ref <- HK.useRef false
+
+  -- history
+  _ /\ history_ref <- HK.useRef $ (pure initState :: List (State l r))
 
   -- facade state
   _ /\ facade_ref <- HK.useRef $ initState
@@ -181,6 +187,7 @@ editorComponent = HK.component \tokens spec -> HK.do
         SmallStepState _ss -> do
           pure unit
       liftEffect (Ref.write st facade_ref)
+      liftEffect $ Ref.write true stateIsStale_ref
 
     getFacade :: HK.HookM Aff (State l r)
     getFacade = liftEffect (Ref.read facade_ref)
@@ -193,6 +200,9 @@ editorComponent = HK.component \tokens spec -> HK.do
       HK.put state_id st
       -- can use `setFacade'` since we already `unsetFacadeElements`
       setFacade' st
+      -- state is now fresh
+      liftEffect $ Ref.write true stateIsStale_ref
+      pushHistory st
 
     getState :: HK.HookM Aff (State l r)
     getState = HK.get state_id
@@ -371,6 +381,30 @@ editorComponent = HK.component \tokens spec -> HK.do
                   upChange
                   dterm'
             doSmallstep ssterm
+    
+    popHistory :: HK.HookM Aff (Maybe (State l r))
+    popHistory = do
+      history <- liftEffect $ Ref.read history_ref
+      case history of
+        Nil -> do
+          Console.log "[popHistory] empty history"
+          pure Nothing
+        Cons st history' -> do
+          liftEffect $ Ref.write history' history_ref
+        -- NOTE: if true, allows you to undo to the cursor position right before
+        -- you made an edit, BUT this introduces a new undo point there so you
+        -- have to undo twice sometimes
+          let allowUndoToCursorPositionBeforeLastEdit = false
+          case st of
+            CursorState cursor@{mode: BufferCursorMode} | allowUndoToCursorPositionBeforeLastEdit -> 
+              pure $ Just $ CursorState cursor {mode = NavigationCursorMode}
+            CursorState {mode: BufferCursorMode} | not allowUndoToCursorPositionBeforeLastEdit -> 
+              popHistory
+            _ -> pure $ Just st
+    
+    pushHistory :: State l r -> HK.HookM Aff Unit
+    -- pushHistory (CursorState cursor@{mode: BufferCursorMode}) = liftEffect $ Ref.modify_ (Cons (CursorState cursor {mode = NavigationCursorMode})) history_ref
+    pushHistory st = liftEffect $ Ref.modify_ (Cons st) history_ref
 
     ------------------------------------------------------------------------------
     -- handle keyboard event
@@ -424,6 +458,15 @@ editorComponent = HK.component \tokens spec -> HK.do
 --            HK.raise tokens.outputToken $ ActionOutput action
 --            setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper path dterm)))
             handleAction action
+          -- undo
+          else if cmdKey && key == "z" then do
+            Console.log "[handleKeyboardEvent] undo"
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            popHistory >>= \_ -> popHistory >>= case _ of
+              Nothing -> pure unit
+              Just st' -> do
+                Console.log $ pretty st'
+                setState st'
           -- copy
           else if cmdKey && key == "c" then do
             -- TODO: Question for Henry: why doesn't this have preventDefault?
