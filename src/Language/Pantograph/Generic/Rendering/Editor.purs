@@ -459,13 +459,10 @@ editorComponent = HK.component \tokens spec -> HK.do
             handleAction action
           -- undo
           else if cmdKey && key == "z" then do
-            Console.log "[handleKeyboardEvent] undo"
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             popHistory >>= \_ -> popHistory >>= case _ of
               Nothing -> pure unit
-              Just st' -> do
-                Console.log $ pretty st'
-                setState st'
+              Just st' -> setState st'
           -- copy
           else if cmdKey && key == "c" then do
             -- TODO: Question for Henry: why doesn't this have preventDefault?
