@@ -403,7 +403,6 @@ editorComponent = HK.component \tokens spec -> HK.do
             _ -> pure $ Just st
     
     pushHistory :: State l r -> HK.HookM Aff Unit
-    -- pushHistory (CursorState cursor@{mode: BufferCursorMode}) = liftEffect $ Ref.modify_ (Cons (CursorState cursor {mode = NavigationCursorMode})) history_ref
     pushHistory st = liftEffect $ Ref.modify_ (Cons st) history_ref
 
     ------------------------------------------------------------------------------
