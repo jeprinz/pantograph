@@ -217,8 +217,7 @@ derive instance Newtype (SortingRule sn) _
 -- | the parent's sort.
 newtype ChangingRule sn = ChangingRule 
   { parameters :: Set.Set RuleSortVar
-  , kids :: Array (RuleSortChange sn)
-  , parent :: RuleSortChange sn }
+  , kids :: Array (RuleSortChange sn) }
 
 derive instance Newtype (ChangingRule sn) _
 

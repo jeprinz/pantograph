@@ -10,7 +10,6 @@ getDiffChangingRule :: forall el sn. Eq sn => {getSortingRule :: el -> SortingRu
 getDiffChangingRule {getSortingRule} el =
   ChangingRule
     { parameters: rule.parameters
-    , kids: rule.kids <#> \kid -> diff kid rule.parent
-    , parent: Supertype.inject rule.parent }
+    , kids: rule.kids <#> \kid -> diff kid rule.parent }
   where
   SortingRule rule = getSortingRule el
