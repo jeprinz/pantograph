@@ -51,7 +51,6 @@ import Type.Row.Homogeneous (class Homogeneous)
 instance P.Language SN EL where
   getSortingRule el = getSortingRule el
   getChangingRule el = getChangingRule el
-  getSortChangeThroughExprPath = todo ""
   topSort = topSort
   getDefaultExpr sr = getDefaultExpr sr
   getEditsAtSort sr ori = getEditsAtSort sr ori
@@ -442,8 +441,8 @@ steppingRules =
   , removeError
   , mergeErrors
   -- TODO: enable
-  -- , LibStep.makeDefaultDownSteppingRule {getChangingRule}
-  -- , LibStep.unless "isUpInCall" isUpInCall $ LibStep.makeDefaultUpSteppingRule {getChangingRule}
+  , LibStep.makeDefaultDownSteppingRule
+  , LibStep.unless "isUpInCall" isUpInCall $ LibStep.makeDefaultUpSteppingRule
   ]
   where
   -- {e}↓{Var (+ <{ y : β, {> γ <}}>) x α loc}  ~~>  Suc {e}↓{Var γ x α loc}
@@ -702,7 +701,7 @@ arrangeExpr node@(P.EN HoleTm _ _) [α] | _ % _ <- P.getExprNodeSort node = do
   α /\ _ <- α
   _countHoleTm <- modify (R.modify (Proxy :: Proxy "countHoleTm") (_ + 1)) <#> (_.countHoleTm >>> (_ - 1))
   -- pure $ Array.fromFoldable $ π."(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "□", HH.sub_ [HH.text $ show countHoleTm]] :: Html] ⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ π.")" ⊕ Nil
-  pure $ Array.fromFoldable $ π."(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "?"] :: Html] ⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ π.")" ⊕ Nil
+  pure $ Array.fromFoldable $ ["HoleTm-anchor"] ⊕ π."{{" ⊕ " " ⊕ π."box" ⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."}}" ⊕ Nil
 arrangeExpr node@(P.EN ErrorBoundaryTm _ _) [a] | _ % _ <- P.getExprNodeSort node = do
   a /\ _ <- a
   pure $ Array.fromFoldable $ "ErrorBoundary " ⊕ a ˜⊕ Nil
@@ -815,26 +814,30 @@ infixr 6 consIdentityArrangable as ˜⊕
 infixr 6 consConstArrangable as ⊕
 
 π =
-  { "=":    ["keysymbol", "equal"]         /\ "="
-  , ":":    ["keysymbol", "colon"]         /\ ":"
-  , ".":    ["keysymbol", "period"]        /\ "."
-  , "#":    ["keysymbol", "period"]        /\ "♯"
-  , "(":    ["keysymbol", "lparen"]        /\ "("
-  , ")":    ["keysymbol", "rparen"]        /\ ")"
-  , "{":    ["keysymbol", "lparen"]        /\ "{"
-  , "}":    ["keysymbol", "rparen"]        /\ "}"
-  , "->":   ["keysymbol", "rarrow"]        /\ "→"
-  , "?":    ["keysymbol", "interrogative"] /\ "?"
-  , "λ":    ["keysymbol", "lambda"]        /\ "λ"
-  , "~":    ["keysymbol", "tilde"]         /\ "~"
-  , "let":  ["keysymbol", "let"]           /\ "let"
-  , "in":   ["keysymbol", "in"]            /\ "in"
-  , "Z":    ["keysymbol", "zero"]          /\ "Z"
-  , "S":    ["keysymbol", "suc"]           /\ "S"
-  , "F":    ["keysymbol", "free"]          /\ "F"
-  , "if":   ["keysymbol", "if"]            /\ "if"
-  , "then": ["keysymbol", "then"]          /\ "then"
-  , "else": ["keysymbol", "else"]          /\ "else"
+  { "=":          ["keysymbol", "equal"]                              /\ "="
+  , ":":          ["keysymbol", "colon"]                              /\ ":"
+  , ".":          ["keysymbol", "period"]                             /\ "."
+  , "#":          ["keysymbol", "period"]                             /\ "♯"
+  , "(":          ["keysymbol", "paren-left"]                         /\ "("
+  , ")":          ["keysymbol", "paren-right"]                        /\ ")"
+  , "{":          ["keysymbol", "brace-left"]                         /\ "{"
+  , "}":          ["keysymbol", "brace-right"]                        /\ "}"
+  , "{{":         ["keysymbol", "double-brace-left"]                  /\ "⦃"
+  , "}}":         ["keysymbol", "double-brace-right"]                 /\ "⦄"
+  , "^...":       ["keysymbol", "dotted-fence"]                       /\ "⦙"
+  , "->":         ["keysymbol", "arrow-right"]                        /\ "→"
+  , "?":          ["keysymbol", "interrogative"]                      /\ "?"
+  , "box":        ["keysymbol", "box"]                                /\ "□"
+  , "λ":          ["keysymbol", "lambda"]                             /\ "λ"
+  , "~":          ["keysymbol", "tilde"]                              /\ "~"
+  , "let":        ["keysymbol", "let"]                                /\ "let"
+  , "in":         ["keysymbol", "in"]                                 /\ "in"
+  , "Z":          ["keysymbol", "zero"]                               /\ "Z"
+  , "S":          ["keysymbol", "suc"]                                /\ "S"
+  , "F":          ["keysymbol", "free"]                               /\ "F"
+  , "if":         ["keysymbol", "if"]                                 /\ "if"
+  , "then":       ["keysymbol", "then"]                               /\ "then"
+  , "else":       ["keysymbol", "else"]                               /\ "else"
   }
 
 -- utilities

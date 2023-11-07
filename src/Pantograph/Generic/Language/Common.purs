@@ -10,9 +10,10 @@ import Data.Display (class Display, display)
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
+import Data.List (List)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Ord.Generic (genericCompare)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
@@ -20,7 +21,7 @@ import Data.String as String
 import Data.StringQuery (StringQuery)
 import Data.Supertype (class Supertype, inject, project)
 import Data.Supertype as Supertype
-import Data.Traversable (traverse)
+import Data.Traversable (sequence, traverse)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
@@ -31,6 +32,7 @@ import Halogen.HTML.Properties as HP
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
+import Todo (todo)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
 import Util (debug, debugM, fromJust, fromJust')
@@ -43,7 +45,6 @@ class
   where
   getSortingRule :: el -> SortingRule sn
   getChangingRule :: el -> ChangingRule sn
-  getSortChangeThroughExprPath :: ExprPath sn el -> SortChange sn
   topSort :: Sort sn
   getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
   validGyro :: forall er. AnnExprGyro sn el er -> Boolean
@@ -121,8 +122,11 @@ makeSort sn kids = Tree (SN sn) kids
 makeVarSort :: forall sn. SortVar -> Sort sn
 makeVarSort x = Tree (VarSN x) []
 
-freshVarSort :: forall sn. String -> Tree (SortNode sn)
-freshVarSort label = Tree (VarSN (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})) []
+freshVarSort :: forall sn. String -> Sort sn
+freshVarSort label = Tree (freshVarSortNode label) []
+
+freshVarSortNode :: forall sn. String -> SortNode sn
+freshVarSortNode label = VarSN (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})
 
 instance Supertype (RuleSortNode sn) (SortNode sn) where
   inject = InjectRuleSortNode
@@ -264,6 +268,7 @@ type SpecialEdits sn el =
 
 newtype RuleSortVar = MakeRuleSortVar String
 
+derive instance Newtype RuleSortVar _
 derive newtype instance Show RuleSortVar
 derive instance Eq RuleSortVar
 derive instance Ord RuleSortVar
@@ -283,6 +288,12 @@ instance (Eq sn, Show sn, PrettyTreeNode sn) => Semigroup (RuleSortVarSubst (Sor
 instance (Eq sn, Show sn, PrettyTreeNode sn) => Monoid (RuleSortVarSubst (SortChange sn)) where
   mempty = emptyRuleSortVarSubst
 
+-- | You can only compose `RuleSortVarSubst (Sort sn)` if each `RuleSortVar`
+-- | maps to the same `Sort`.
+composeRuleSortVarSubstSort :: forall sn. Eq sn => RuleSortVarSubst (Sort sn) -> RuleSortVarSubst (Sort sn) -> Maybe (RuleSortVarSubst (Sort sn))
+composeRuleSortVarSubstSort (RuleSortVarSubst m1) (RuleSortVarSubst m2) = do
+  map RuleSortVarSubst $ sequence $ Map.unionWith (\s1 s2 -> if s1 == s2 then s1 else Nothing) (Just <$> m1) (Just <$> m2)
+
 emptyRuleSortVarSubst :: forall a. RuleSortVarSubst a
 emptyRuleSortVarSubst = RuleSortVarSubst Map.empty
 
@@ -301,15 +312,24 @@ instance Display v => Display (RuleSortVarSubst v) where
 
 lookupRuleSortVarSubst :: forall sn v. Show sn => PrettyTreeNode sn => Pretty v => RuleSortVar -> RuleSortVarSubst v -> v
 lookupRuleSortVarSubst x sigma@(RuleSortVarSubst m) = case Map.lookup x m of
-  Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
+  Nothing -> bug $ "Could not find RuleSortVar " <> pretty x <> " in RuleSortVarSubst " <> pretty sigma
   Just v -> v
+
+-- ApplyRuleSortVarSubst
 
 class ApplyRuleSortVarSubst v a b | v a -> b where
   applyRuleSortVarSubst :: RuleSortVarSubst v -> a -> b
 
-instance Pretty v => ApplyRuleSortVarSubst v RuleSortVar v where
+instance ApplyRuleSortVarSubst (Sort sn) RuleSortVar (Sort sn) where
   applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
-    Nothing -> bug $ "Could not find RuleSortVar " <> show x <> " in RuleSortVarSubst " <> pretty sigma
+    -- Nothing -> bug $ "Could not find RuleSortVar " <> pretty x <> " in RuleSortVarSubst " <> pretty sigma
+    Nothing -> freshVarSort (unwrap x)
+    Just sr -> sr
+
+instance ApplyRuleSortVarSubst (SortChange sn) RuleSortVar (SortChange sn) where
+  applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
+    -- Nothing -> bug $ "Could not find RuleSortVar " <> pretty x <> " in RuleSortVarSubst " <> pretty sigma
+    Nothing -> InjectChange (freshVarSortNode (unwrap x) :: SortNode sn) []
     Just sr -> sr
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) String (Sort sn) where

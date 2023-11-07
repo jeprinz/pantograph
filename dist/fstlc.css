@@ -1,6 +1,4 @@
 .HoleTy {
-  /* color: white; */
-  /* background-color: black; */
   padding: 0 calc(0.5*var(--it));
   box-shadow: 0 0 0 2px white inset, 0 0 0 3px black inset;
 }
@@ -14,12 +12,23 @@
   display: inline;
 }
 
-.HoleTm {
-  color: rgb(179, 179, 179);
-  font-weight: bold;
+.HoleTm-anchor {
+  display: inline;
 }
+
+.HoleTm-anchor~*.keysymbol {
+  font-weight: bold;
+  color: red;
+}
+
+/* keysymbol */
 
 .keysymbol {
   display: inline;
   font-weight: bold;
+}
+
+.keysymbol.dotted-fence {
+  display: inline-block;
+  /* margin: 0 calc(0.5*var(--it)); */
 }

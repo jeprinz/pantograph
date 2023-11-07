@@ -187,6 +187,12 @@ asStateT f1 f2 (StateT k) = StateT \s2 -> map (map (f1 s2)) $ k (f2 s2)
 extractAt :: forall a. Int -> Array a -> Maybe (Tuple (Array a) a)
 extractAt i xs = Tuple <$> Array.deleteAt i xs <*> Array.index xs i
 
+-- extractAtFindMap :: forall a b. (a -> Maybe b) -> Array a -> Maybe (Array a /\ b)
+-- extractAtFindMap f xs = do
+--   i /\ b <- findIndexMap f xs
+--   xs' <- Array.deleteAt i xs
+--   Just 
+
 splitAt :: forall a. Int -> Array a -> Maybe (Array a /\ a /\ Array a)
 splitAt i xs = do
   let {before: l, after: xr} = Array.splitAt i xs
