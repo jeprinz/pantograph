@@ -215,7 +215,7 @@ editorComponent = HK.component \tokens spec -> HK.do
     doSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
     doSmallstep ssterm = do
         -- NOTE: set to true to make it step one-by-one through smallstep
-        if true then
+        if false then
             setState $ SmallStepState {ssterm}
         else do
             let final = SmallStep.stepRepeatedly ssterm spec.stepRules
@@ -531,6 +531,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                 [ "path = " <> pretty path
                 , "dterm = " <> pretty dterm
                 , "sort = " <> pretty (derivTermSort dterm)
+                , "dlabel = " <> pretty (Expr.exprLabel dterm)
                 ]
           else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm

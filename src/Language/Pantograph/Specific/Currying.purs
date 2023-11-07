@@ -963,15 +963,15 @@ fallbackUpError sterm =
     (SSInj label@(DerivLabel _ _) % kids)
 --    | Just [_gamma, outsideTy] <- matchExprImpl (Smallstep.ssTermSort outside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
     -> do
-        (gamma /\ c /\ inside) /\ i <- flip Util.findWithIndex kids case _ of
+        (gamma /\ c /\ inside /\ insideTy) /\ i <- flip Util.findWithIndex kids case _ of
             (Boundary Up ch % [inside])
                 | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
---                , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
+                , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
 --                , not (isId c)
-                -> pure $ gamma /\ c /\ inside
+                -> pure $ gamma /\ c /\ inside /\ insideTy
             _ -> Nothing
 --        traceM ("returning from fallbackUpError. i is: " <> pretty i <> " inside is: " <> pretty inside <> "and outside is: " <> pretty outside <> " and label is: " <> pretty label)
-        let insideTy = Smallstep.ssTermSort inside
+--        let insideTy = Smallstep.ssTermSort inside
         let outsideTy = lEndpoint c
         pure $
             (SSInj label % Util.fromJust (Array.updateAt i
