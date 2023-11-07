@@ -1,8 +1,7 @@
 module Pantograph.Generic.Language.Common where
 
-import Data.Tree
 import Prelude
-
+import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation, Path, Select, Tooth(..), Tree(..), assertValidTreeKids, displayTreeNode, epL, epR, lubStrict, prettyTreeNode, validKidsCount, (%-))
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -10,32 +9,25 @@ import Data.Display (class Display, display)
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.List (List)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype, unwrap)
-import Data.Ord.Generic (genericCompare)
+import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.StringQuery (StringQuery)
-import Data.Supertype (class Supertype, inject, project)
+import Data.Supertype (class Supertype)
 import Data.Supertype as Supertype
-import Data.Traversable (sequence, traverse)
+import Data.Traversable (sequence)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
-import Pantograph.Generic.GlobalMessageBoard as GMB
 import Prim.Row (class Union)
-import Text.Pretty (class Pretty, braces, braces2, parens, pretty, (<+>))
-import Todo (todo)
+import Text.Pretty (class Pretty, braces, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
-import Util (debug, debugM, fromJust, fromJust')
 
 -- Language
 
@@ -280,10 +272,14 @@ derive newtype instance (Eq v) => Eq (RuleSortVarSubst v)
 derive newtype instance (Show v) => Show (RuleSortVarSubst v)
 derive instance Functor (RuleSortVarSubst)
 
--- | `RuleSortVarSubst (SortChange sn)` forms a `Monoid` since we can `lub` the
+unionRuleSortVarSubst :: forall v. (v -> v -> v) -> RuleSortVarSubst v -> RuleSortVarSubst v -> RuleSortVarSubst v
+unionRuleSortVarSubst f (RuleSortVarSubst m1) (RuleSortVarSubst m2) = RuleSortVarSubst (Map.unionWith f m1 m2)
+
+-- | `RuleSortVarSubst (SortChange sn)` forms a `Monoid` since we can `lubStrict` the
 -- | multiple assignments of a single `RuleSortVar`.
 instance (Eq sn, Show sn, PrettyTreeNode sn) => Semigroup (RuleSortVarSubst (SortChange sn)) where
-  append (RuleSortVarSubst m1) (RuleSortVarSubst m2) = RuleSortVarSubst (Map.unionWith lub' m1 m2)
+  -- append (RuleSortVarSubst m1) (RuleSortVarSubst m2) = RuleSortVarSubst (Map.unionWith lubStrict m1 m2)
+  append = unionRuleSortVarSubst lubStrict
 
 instance (Eq sn, Show sn, PrettyTreeNode sn) => Monoid (RuleSortVarSubst (SortChange sn)) where
   mempty = emptyRuleSortVarSubst
@@ -320,16 +316,16 @@ lookupRuleSortVarSubst x sigma@(RuleSortVarSubst m) = case Map.lookup x m of
 class ApplyRuleSortVarSubst v a b | v a -> b where
   applyRuleSortVarSubst :: RuleSortVarSubst v -> a -> b
 
-instance ApplyRuleSortVarSubst (Sort sn) RuleSortVar (Sort sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) RuleSortVar (Sort sn) where
   applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
-    -- Nothing -> bug $ "Could not find RuleSortVar " <> pretty x <> " in RuleSortVarSubst " <> pretty sigma
-    Nothing -> freshVarSort (unwrap x)
+    Nothing -> bug $ "Could not find RuleSortVar " <> pretty x <> " in RuleSortVarSubst " <> pretty sigma
+    -- Nothing -> freshVarSort (unwrap x)
     Just sr -> sr
 
-instance ApplyRuleSortVarSubst (SortChange sn) RuleSortVar (SortChange sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) RuleSortVar (SortChange sn) where
   applyRuleSortVarSubst sigma@(RuleSortVarSubst m) x = case Map.lookup x m of
-    -- Nothing -> bug $ "Could not find RuleSortVar " <> pretty x <> " in RuleSortVarSubst " <> pretty sigma
-    Nothing -> InjectChange (freshVarSortNode (unwrap x) :: SortNode sn) []
+    Nothing -> bug $ "Could not find RuleSortVar " <> pretty x <> " in RuleSortVarSubst " <> pretty sigma
+    -- Nothing -> InjectChange (freshVarSortNode (unwrap x) :: SortNode sn) []
     Just sr -> sr
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) String (Sort sn) where
@@ -377,7 +373,7 @@ derive instance Functor SortVarSubst
 
 -- | `SortVarSubst` forms a `Semigroup` via composition.
 instance Language sn el => Semigroup (SortVarSubst sn) where
-  append sigma1@(SortVarSubst m1) sigma2@(SortVarSubst m2) = SortVarSubst (Map.union m1 (m2 <#> applySortVarSubst sigma2))
+  append (SortVarSubst m1) sigma2@(SortVarSubst m2) = SortVarSubst (Map.union m1 (m2 <#> applySortVarSubst sigma2))
 
 instance Language sn el => Monoid (SortVarSubst sn) where
   mempty = SortVarSubst Map.empty
@@ -391,7 +387,7 @@ class ApplySortVarSubst sn a b | a -> b where
   applySortVarSubst :: SortVarSubst sn -> a -> b
 
 instance Language sn el => ApplySortVarSubst sn SortVar (Sort sn) where
-  applySortVarSubst sigma@(SortVarSubst m) x = case Map.lookup x m of
+  applySortVarSubst (SortVarSubst m) x = case Map.lookup x m of
     Nothing -> makeVarSort x
     Just s -> s
 
@@ -408,7 +404,7 @@ instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) 
   applySortVarSubst sigma (Replace old new) = Replace (applySortVarSubst sigma old) (applySortVarSubst sigma new)
   applySortVarSubst sigma (InjectChange sn@(SN _) kids) = InjectChange sn (applySortVarSubst sigma <$> kids)
   applySortVarSubst sigma (InjectChange (VarSN x) []) = Supertype.inject $ applySortVarSubst sigma x
-  applySortVarSubst _ (InjectChange (VarSN x) _) = bug "invalid"
+  applySortVarSubst _ (InjectChange (VarSN _) _) = bug "invalid"
 
 instance Language sn el => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where
   applySortVarSubst = append

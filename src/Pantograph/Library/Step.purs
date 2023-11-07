@@ -1,45 +1,46 @@
 module Pantograph.Library.Step where
 
-import Data.Tuple.Nested
-import Pantograph.Generic.Dynamics
-import Pantograph.Generic.Language
-import Pantograph.Generic.Rendering
 import Prelude
-
-import Bug (bug)
+import Data.Tuple.Nested ((/\))
+import Pantograph.Generic.Dynamics (Direction(..), StepExpr(..), SteppingRule(..), (%.), (%.|))
+import Pantograph.Generic.Language (AnnExprNode(..), RuleSortChange, SortChange, SortingRule(..), applyRuleSortVarSubst, getSortingRule, unifyChangeWithRuleChange)
 import Data.Array as Array
-import Data.Display (display)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Supertype as Supertype
-import Data.Tree (epL, epR, tooths)
-import Halogen.Elements as El
-import Pantograph.Generic.GlobalMessageBoard as GMB
-import Text.Pretty (pretty)
-import Todo (todo)
-import Util (debug, debugM, extractAt, findIndexMap, fromJust, splitAt, splitAtFindMap)
+import Data.Tree (epL, epR)
+import Pantograph.Generic.Language.Common (unionRuleSortVarSubst)
+import Util (splitAtFindMap)
 
 makeDefaultDownSteppingRule :: forall sn el. SteppingRule sn el
 makeDefaultDownSteppingRule = SteppingRule "defaultDown" case _ of
-  Down /\ ch %.| (EN label _ er %. kids) -> do
+  Down /\ ch %.| (EN label sortSigma er %. kids) -> do
     let SortingRule rule = getSortingRule label
-    changeSigma <- unifyChangeWithRuleChange ch (Supertype.inject rule.parent)
-    let kidChanges = rule.kids <#> \kid -> applyRuleSortVarSubst changeSigma (Supertype.inject kid :: RuleSortChange sn)
+    sigma <- do
+      sigma <- unifyChangeWithRuleChange ch (Supertype.inject rule.parent)
+      -- RuleSortVars that are not concretized by this substitution are assigned
+      -- to the injected sorts from the original `sortSigma`.
+      Just $ unionRuleSortVarSubst const sigma (sortSigma <#> Supertype.inject)
+    let kidChanges = rule.kids <#> \kid -> applyRuleSortVarSubst sigma (Supertype.inject kid :: RuleSortChange sn)
     let kids' = Array.zip kidChanges kids <#> \(kidChange /\ kid) -> Down /\ kidChange %.| kid
-    Just $ EN label (changeSigma <#> epR) er %. kids'
+    Just $ EN label (sigma <#> epR) er %. kids'
   _ -> Nothing
 
 makeDefaultUpSteppingRule :: forall sn el. SteppingRule sn el
 makeDefaultUpSteppingRule = SteppingRule "defaultUp" case _ of
-  EN label _ er %. kids -> do
+  EN label sortSigma er %. kids -> do
     let SortingRule rule = getSortingRule label
     leftKidsAndRuleSorts /\ (kidChange /\ kid /\ kidRuleSort) /\ rightKidsAndRuleSorts <- splitAtFindMap findUpBoundary $ Array.zip kids rule.kids
-    changeSigma <- unifyChangeWithRuleChange kidChange (Supertype.inject kidRuleSort :: RuleSortChange sn)
-    let makeKidBoundary (kid' /\ kidRuleSort') = Down /\ (changeSigma `applyRuleSortVarSubst` (Supertype.inject kidRuleSort' :: RuleSortChange sn)) %.| kid'
+    sigma <- do
+      sigma <- unifyChangeWithRuleChange kidChange (Supertype.inject kidRuleSort :: RuleSortChange sn)
+      -- RuleSortVars that are not concretized by this substitution are assigned
+      -- to the injected sorts from the original `sortSigma`.
+      Just $ unionRuleSortVarSubst const sigma (sortSigma <#> Supertype.inject)
+    let makeKidBoundary (kid' /\ kidRuleSort') = Down /\ (sigma `applyRuleSortVarSubst` (Supertype.inject kidRuleSort' :: RuleSortChange sn)) %.| kid'
         leftKids = leftKidsAndRuleSorts <#> makeKidBoundary
         rightKids = rightKidsAndRuleSorts <#> makeKidBoundary
         kids' = leftKids <> [kid] <> rightKids
-    let parentChange = applyRuleSortVarSubst changeSigma (Supertype.inject rule.parent :: RuleSortChange sn)
-    Just $ Up /\ parentChange %.| (EN label (changeSigma <#> epL) er %. kids')  
+    let parentChange = applyRuleSortVarSubst sigma (Supertype.inject rule.parent :: RuleSortChange sn)
+    Just $ Up /\ parentChange %.| (EN label (sigma <#> epL) er %. kids')  
   _ -> Nothing
   where
   findUpBoundary = case _ of

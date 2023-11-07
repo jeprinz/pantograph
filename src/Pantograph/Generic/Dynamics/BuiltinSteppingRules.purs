@@ -20,7 +20,7 @@ builtinSteppingRules =
 passThroughRule :: forall el sn. Eq sn => Show sn => PrettyTreeNode sn => SteppingRule sn el
 passThroughRule = SteppingRule "passThroughRule" case _ of
   Boundary (Down /\ down) (Boundary (Up /\ up) kid) -> Just
-    let hypotenuse = lub' down up in
+    let hypotenuse = lubStrict down up in
     let up' = invert down <> hypotenuse in
     let down' = invert up <> hypotenuse in
     Boundary (Up /\ up') (Boundary (Down /\ down') kid)

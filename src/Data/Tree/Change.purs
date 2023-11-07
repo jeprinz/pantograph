@@ -60,8 +60,8 @@ minusLub (Shift (Minus /\ th@(Tooth a (i /\ _))) c1) (InjectChange a' cs) | a ==
 minusLub c1@(Replace _ _) c2 | isIdentity c2 = Just c1
 minusLub _ _ = Nothing
 
-lub' :: forall a. Eq a => PrettyTreeNode a => Change a -> Change a -> Change a
-lub' c1 c2 = case lub c1 c2 of
+lubStrict :: forall a. Eq a => PrettyTreeNode a => Change a -> Change a -> Change a
+lubStrict c1 c2 = case lub c1 c2 of
   Nothing -> bug $ "lub doesn't exist for changes: c1 = " <> ticks (pretty c1) <> "; c2 = " <> ticks (pretty c2)
   Just c -> c
 
