@@ -45,6 +45,7 @@ buildEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
     , inside: Nothing
     , sigma: Just sigma }
 
+-- TODO: probably don't want this
 -- buildExprToothEditsFromExpr :: forall sn el.
 --   Language sn el =>
 --   {splitExprPathChanges :: SplitChange sn} ->
