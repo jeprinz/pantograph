@@ -146,6 +146,7 @@ getExprNonEmptyPathSortChange = unconsNonEmptyPath >>> case _ of
   {outer: Nothing, inner} -> getExprToothSortChange inner
   {outer: Just outer, inner} -> getExprNonEmptyPathSortChange outer <> getExprToothSortChange inner
 
+-- TODO: is the computed change inverted? of does `diff` give the reversed change sometimes...
 -- | The SortChange that corresponds to going from the inner sort of the tooth
 -- | to the outer sort of the path.
 getExprToothSortChange :: forall sn el er. Language sn el => AnnExprTooth sn el er -> SortChange sn

@@ -221,6 +221,13 @@ newtype ChangingRule sn = ChangingRule
 
 derive instance Newtype (ChangingRule sn) _
 
+-- getChangingRuleParent :: forall sn el. Language sn el => el -> ChangingRule sn -> RuleSortChange sn
+-- getChangingRuleParent el (ChangingRule {parameters, kids}) = do
+--   let SortingRule rule = getSortingRule el
+--   let parentRuleSort = rule.parent
+--   let parentRuleSortChange = Supertype.inject parentRuleSort :: RuleSortChange sn
+--   Array.foldl ?a parentRuleSortChange kids
+
 -- Edit
 
 -- | An `Edit` is described by the changes, inserted path, and replacing expr

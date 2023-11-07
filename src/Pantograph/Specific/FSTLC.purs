@@ -35,7 +35,7 @@ import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
 import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
 import Pantograph.Generic.GlobalMessageBoard as GMB
-import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit, Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortVar(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
+import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortVar(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
 import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM) as P
 import Pantograph.Library.Change (getDiffChangingRule)
 import Pantograph.Library.Edit as LibEdit
@@ -310,7 +310,9 @@ specialEdits =
       P.SN Str % [strInner] -> Just $ LibEdit.makeOuterChangeEdit $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
       _ -> Nothing
   , copyExpr: const Nothing
-  , deleteExprPath: \ch -> Just $ LibEdit.makeOuterChangeEdit ch
+  , deleteExprPath: \ch -> 
+      let {outerChange, innerChange} = splitExprPathChanges ch in
+      Just $ LibEdit.makeOuterAndInnerChangeEdit outerChange innerChange
   , copyExprPath: const Nothing
   -- TODO: 'enter' makes a newline
   , enter: const Nothing
@@ -419,7 +421,7 @@ getChangingRule el = case el of
   --   -- [ Supertype.inject $ rs_jg_ty α ]
   --   -- /\
   --   -- ( Supertype.inject $ rs_jg_tm γ α )
-  _ -> getDiffChangingRule {getSortingRule} el
+  _ -> getDiffChangingRule el
 
 steppingRules :: Array SteppingRule
 steppingRules =
@@ -587,6 +589,7 @@ steppingRules =
       let delta = P.applyRuleSortVarSubst sigma2 "β" in
       P.buildStepExpr ErrorBoundaryTm {γ, α, β: delta} [a]
     _ -> Nothing
+
 
 getEditsAtSort :: Sort -> Orientation -> Edits
 getEditsAtSort (Tree (P.SN Str) []) Outside = P.Edits $ StringQuery.fuzzy 

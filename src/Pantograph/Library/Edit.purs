@@ -42,16 +42,16 @@ buildEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
   let middle' = applySortVarSubst sigma middle
   let innerChange' = applySortVarSubst sigma innerChange
 
-  GMB.debugRM (El.τ "buildEditFromExprNonEmptyPath") 
-    { sort: display sort
-    , middle: El.τ $ pretty middle
-    , ch: display ch
-    , outerChange: display outerChange 
-    , innerChange: display innerChange 
-    , sigma: El.τ $ pretty sigma
-    , outerChange': display outerChange'
-    , innerChange': display innerChange'
-    }
+  -- GMB.debugRM (El.τ "buildEditFromExprNonEmptyPath") 
+  --   { sort: display sort
+  --   , middle: El.τ $ pretty middle
+  --   , ch: display ch
+  --   , outerChange: display outerChange 
+  --   , innerChange: display innerChange 
+  --   , sigma: El.τ $ pretty sigma
+  --   , outerChange': display outerChange'
+  --   , innerChange': display innerChange'
+  --   }
 
   Just $ Edit
     { outerChange: Just outerChange'
@@ -78,6 +78,9 @@ makeOuterChangeEdit ch = identityEdit # Newtype.over Edit _ {outerChange = Just 
 
 makeInnerChangeEdit :: forall sn el. SortChange sn -> Edit sn el
 makeInnerChangeEdit ch = identityEdit # Newtype.over Edit _ {innerChange = Just ch}
+
+makeOuterAndInnerChangeEdit :: forall sn el. SortChange sn -> SortChange sn -> Edit sn el
+makeOuterAndInnerChangeEdit outerChange innerChange = identityEdit # Newtype.over Edit _ {outerChange = Just outerChange, innerChange = Just innerChange}
 
 makeInsideChangeEdit :: forall sn el. Expr sn el -> Edit sn el
 makeInsideChangeEdit e = identityEdit # Newtype.over Edit _ {inside = Just e}
