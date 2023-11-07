@@ -1,22 +1,23 @@
 module Pantograph.Generic.Language.Unification where
 
+import Data.Tree
 import Data.Tuple.Nested
-import Pantograph.Generic.Language
 import Pantograph.Generic.Language.Common
 import Prelude
+import Util
 
+import Control.Alternative (guard)
 import Data.Array as Array
 import Data.List (List)
 import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Set as Set
+import Data.Supertype as Supertype
 import Data.Traversable (sequence, traverse)
-import Data.Tree (Tree(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Text.Pretty (pretty)
 import Todo (todo)
-import Util (debug, debugM)
 
 -- | Try to unify `a₁ : Sort` and `a₂ : Sort`. If they can unify, then yield the
 -- | unified `a : Sort` and the unifying `σ : SortVarSubst` such that `a = σ a₁
@@ -49,4 +50,29 @@ unifySort3 s1 s2 s3 = do
 --   let es = Map.intersectionWith Tuple m1' m2'
 --   let m = List.foldl ?a (Set.toUnfoldable ks :: List _) 
 --   -- map SortVarSubst $ sequence $ Map.unionWith ?a m1' m2'
---   -- todo ""
+--   ?a
+
+unifySortWithRuleSort :: forall sn el. Language sn el => Sort sn -> RuleSort sn -> Maybe (RuleSortVarSubst (Sort sn))
+unifySortWithRuleSort (Tree sn1 ss1) (Tree (InjectRuleSortNode sn2) ss2) = do
+    guard $ sn1 == sn2
+    Array.foldM composeRuleSortVarSubstSort emptyRuleSortVarSubst =<< traverse (uncurry unifySortWithRuleSort) (Array.zip ss1 ss2)
+unifySortWithRuleSort s (VarRuleSortNode x % []) = Just $ singletonRuleSortVarSubst x s
+unifySortWithRuleSort _ _ = Nothing
+
+unifyChangeWithRuleChange :: forall sn el. Language sn el => SortChange sn -> RuleSortChange sn -> Maybe (RuleSortVarSubst (SortChange sn))
+unifyChangeWithRuleChange ch (VarRuleSortNode x %! []) = Just $ singletonRuleSortVarSubst x ch
+unifyChangeWithRuleChange (sign1 /\ (sn1 %- i1 /\ kids1) %!/ kid1) (sign2 /\ (InjectRuleSortNode sn2 %- i2 /\ kids2) %!/ kid2) = do
+  guard $ sign1 == sign2
+  guard $ i1 == i2
+  guard $ sn1 == sn2
+  sigma1 <- map Array.fold $ uncurry (\s rs -> Supertype.inject <$$> unifySortWithRuleSort s rs) `traverse` Array.zip kids1 kids2
+  sigma2 <- unifyChangeWithRuleChange kid1 kid2
+  Just $ sigma1 <> sigma2
+unifyChangeWithRuleChange (s1 %!~> s1') (s2 %!~> s2') = do
+  sigma1 <- unifySortWithRuleSort s1 s2
+  sigma2 <- unifySortWithRuleSort s1' s2'
+  Just $ (Supertype.inject <$> sigma1) <> (Supertype.inject <$> sigma2)
+unifyChangeWithRuleChange (sn1 %! kids1) (InjectRuleSortNode sn2 %! kids2) = do
+  guard $ sn1 == sn2
+  map Array.fold $ uncurry unifyChangeWithRuleChange `traverse` Array.zip kids1 kids2
+unifyChangeWithRuleChange _ _ = Nothing
