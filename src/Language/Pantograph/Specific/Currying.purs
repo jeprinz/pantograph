@@ -949,7 +949,7 @@ mergeErrorsDown (Expr.Expr (Boundary Down ch) [
 mergeErrorsDown _ = Nothing
 
 fallbackDownError :: StepRule
-fallbackDownError (Expr.Expr (Boundary Down ch) [ inside ])
+fallbackDownError (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
 --    , not (isId c)
