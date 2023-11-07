@@ -14,6 +14,7 @@ import Data.Map (Map, toUnfoldable, fromFoldable, lookup, member, delete, unionW
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe (maybe)
+import Data.Maybe as Maybe
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Hole as Hole
@@ -22,6 +23,7 @@ import Effect.Unsafe (unsafePerformEffect)
 import Effect.Ref as Ref
 import Data.Enum (class Enum, succ)
 import Data.Unfoldable (unfoldr)
+import Debug (trace)
 
 hole' :: forall a. String -> a
 -- hole' msg = unsafeThrow $ "hole: " <> msg
@@ -106,14 +108,18 @@ threeCaseUnionMaybe join m1 m2 = Map.mapMaybe (\x -> x) $ threeCaseUnion (\x -> 
     (\x y -> join (Just x) (Just y)) m1 m2
 
 
-findWithIndex :: forall l t out. Foldable l => (t -> Maybe out) -> l t -> Maybe (out /\ Int)
+findWithIndex :: forall t out. (t -> Maybe out) -> Array t -> Maybe (out /\ Int)
 findWithIndex f l =
-    foldl
-        (\acc x i ->
-            case f x of
-                Just y -> Just (y /\ i)
-                Nothing -> acc (i + 1))
-        (\_ -> Nothing) l 0
+--    foldl
+--        (\acc x ->
+--            case f x of
+--                Just y -> Just (y /\ i)
+--                Nothing -> acc (i + 1))
+--        (\_ -> Nothing) l 0
+    do -- stupid implementation calls f an extra time
+    i <- Array.findIndex (Maybe.isJust <<< f) l
+    res <- Array.findMap f l
+    pure $ res /\ i
 
 assertSingleton :: forall t. Array t -> t
 assertSingleton [x] = x

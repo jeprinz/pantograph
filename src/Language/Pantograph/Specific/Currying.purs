@@ -816,11 +816,11 @@ unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
         restOfCh <- case unit of
                     _ | Just ([a] /\ [gamma, b]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
                         -> pure (csor TermSort % [minusChange (sor CtxConsSort) [varName, a] gamma [] , b])
-                    -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
-                    _ | Just ([a, b, x] /\ [gamma]) <- matchChange ch
-                            (TermSort %+- [{-gamma-}cSlot, replaceChange ((InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
-                      , (MV _ % _) <- x
-                        -> pure (csor TermSort % [minusChange (sor CtxConsSort) [varName, a] gamma [], replaceChange b x])
+--                    -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
+--                    _ | Just ([a, b, x] /\ [gamma]) <- matchChange ch
+--                            (TermSort %+- [{-gamma-}cSlot, replaceChange ((InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
+--                      , (MV _ % _) <- x
+--                        -> pure (csor TermSort % [minusChange (sor CtxConsSort) [varName, a] gamma [], replaceChange b x])
                     _ -> Nothing
         pure $
             Smallstep.wrapBoundary Smallstep.Down restOfCh $
@@ -948,6 +948,37 @@ mergeErrorsDown (Expr.Expr (Boundary Down ch) [
         [wrapBoundary Down (csor TermSort % [gamma, inject insideInside]) t]
 mergeErrorsDown _ = Nothing
 
+fallbackDownError :: StepRule
+fallbackDownError (Expr.Expr (Boundary Down ch) [ inside ])
+    | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+    , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
+--    , not (isId c)
+    = pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ rEndpoint c]
+        [wrapBoundary Down (csor TermSort % [gamma, inject insideTy]) inside]
+fallbackDownError _ = Nothing
+
+fallbackUpError :: StepRule
+fallbackUpError sterm =
+    case sterm of
+    (SSInj label@(DerivLabel _ _) % kids)
+--    | Just [_gamma, outsideTy] <- matchExprImpl (Smallstep.ssTermSort outside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
+    -> do
+        (gamma /\ c /\ inside) /\ i <- flip Util.findWithIndex kids case _ of
+            (Boundary Up ch % [inside])
+                | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+--                , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
+--                , not (isId c)
+                -> pure $ gamma /\ c /\ inside
+            _ -> Nothing
+--        traceM ("returning from fallbackUpError. i is: " <> pretty i <> " inside is: " <> pretty inside <> "and outside is: " <> pretty outside <> " and label is: " <> pretty label)
+        let insideTy = Smallstep.ssTermSort inside
+        let outsideTy = lEndpoint c
+        pure $
+            (SSInj label % Util.fromJust (Array.updateAt i
+                (wrapBoundary Up (csor TermSort % [gamma, inject outsideTy]) $
+                    dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ outsideTy] [inside]) kids))
+    _ -> Nothing
+
 languageChanges :: LanguageChanges
 languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
   _ -> identity
@@ -967,7 +998,7 @@ stepRules = do
     , unWrapLambda
     , wrapApp
     , unWrapApp
-    , introErrorDownVar
+--    , introErrorDownVar
     , mergeErrorsDown
     , mergeErrorsUp
     , removeError
@@ -983,6 +1014,8 @@ stepRules = do
 --    , unWrapApp
 --    introErrorDown
 --    , introErrorUp
+      fallbackDownError
+    , fallbackUpError
     ]
     )
 
