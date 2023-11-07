@@ -806,13 +806,13 @@ unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
     ])
     = do
         let varName = Util.lookup' (RuleMetaVar "x") sigma
-        -- TODO: HERE IS WHERE I LEFT OFF: this match works, but match below fails. TODO: Get the second cslot, and debug matchChange on that!
-        -- TODO: Also, compare to what these output (including real case) when one Int is a metavar?!?
-        case (matchChange ch (TermSort %+- [{-gamma-}cSlot, cSlot])) of
-            Just ([] /\ [_, lad])  -> do
-                traceM ("here we go: " <> pretty lad)
-                traceM (pretty (matchChange lad (dMINUS Arrow [slot] cSlot [])))
-            _ -> pure unit
+--        -- TODO: HERE IS WHERE I LEFT OFF: this match works, but match below fails. TODO: Get the second cslot, and debug matchChange on that!
+--        -- TODO: Also, compare to what these output (including real case) when one Int is a metavar?!?
+--        case (matchChange ch (TermSort %+- [{-gamma-}cSlot, cSlot])) of
+--            Just ([] /\ [_, lad])  -> do
+--                traceM ("here we go: " <> pretty lad)
+--                traceM (pretty (matchChange lad (dMINUS Arrow [slot] cSlot [])))
+--            _ -> pure unit
         restOfCh <- case unit of
                     _ | Just ([a] /\ [gamma, b]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
                         -> pure (csor TermSort % [minusChange (sor CtxConsSort) [varName, a] gamma [] , b])
@@ -832,7 +832,7 @@ unWrapLambda _ = Nothing
 -- there are boundaries inside the input term
 isNeutralFormWithoutCursor :: SSTerm -> Boolean
 isNeutralFormWithoutCursor t = case t of
-    (SSInj (DerivLabel Var _)) % [] -> true
+    (SSInj (DerivLabel Var _)) % _ -> true
     (SSInj (DerivLabel App _)) % [left, _] -> isNeutralFormWithoutCursor left
     ((Boundary _ _) % [inside]) -> isNeutralFormWithoutCursor inside
     _ -> false

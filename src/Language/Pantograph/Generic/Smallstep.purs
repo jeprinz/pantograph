@@ -484,6 +484,9 @@ getPathChange2 path forgetSorts =
     let generalChange = diff innerGeneralSort (Grammar.derivPathSort inferredPath innerGeneralSort) in
     -- substitute the substitution from step 1 back into that change
 --    let _ = trace ("in getPathChange2") \_ -> unit in
+--    let _ = trace ("path is: " <> show path) \_ -> unit in
+--    let _ = trace ("path' is: " <> show path') \_ -> unit in
+--    let _ = trace ("innerGeneralSort is: " <> pretty innerGeneralSort) \_ -> unit in
 --    let _ = trace ("path is: " <> pretty path <> " and path' is: " <> pretty path') \_ -> unit in
 --    let _ = trace ("in getPathChange2, returning general change: " <> pretty generalChange) \_ -> unit in
     subSomeMetaChange subs generalChange

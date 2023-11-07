@@ -521,11 +521,11 @@ forgetCollectDerivLabel :: forall l r. IsRuleLabel l r =>
     (DerivLabel l r -> Maybe (DerivLabel l r)) -> DerivLabel l r -> DerivLabel l r /\ SortSub l
 forgetCollectDerivLabel forgetSorts label =
     case (forgetSorts label) /\ label of
-        Just label' /\ (DerivLabel r sigma) ->
+        Nothing /\ (DerivLabel r sigma) ->
             let (Rule vars _children _conclusion) = TotalMap.lookup r language in
             let freshVars = Map.fromFoldable (Set.map (\mv -> mv /\ (Expr.freshMetaVar (Expr.metaVarName mv))) vars) in
             let newSigma = map Expr.fromMetaVar freshVars :: SortSub l in
-            let collectedMap = Map.fromFoldable (Set.map (\mv -> (Util.lookup' mv freshVars) /\ Util.lookup' mv newSigma) vars) :: SortSub l in
+            let collectedMap = Map.fromFoldable (Set.map (\mv -> (Util.lookup' mv freshVars) /\ Util.lookup' mv sigma) vars) :: SortSub l in
             (DerivLabel r newSigma) /\ collectedMap
         _ -> label /\ Map.empty -- TODO: is this going to work as a fallback case?
 

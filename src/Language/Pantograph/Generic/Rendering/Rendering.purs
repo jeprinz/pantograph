@@ -132,7 +132,7 @@ renderDerivTerm locs isCursor innerHoleIsCursor dzipper renCtx =
   where
   isEmptyString = case _ of
     Expr.Zipper _ (Expr.Expr (DerivString str) _) | String.null str -> true
-    Expr.Zipper _ (Expr.Expr (DerivString str) _) -> Debug.trace ("str = " <> str) \_ -> false
+    Expr.Zipper _ (Expr.Expr (DerivString str) _) -> false
     _ -> false
 
 ------------------------------------------------------------------------------
