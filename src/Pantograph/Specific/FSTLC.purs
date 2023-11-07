@@ -34,6 +34,7 @@ import Javascript as Javascript
 import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
 import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit, Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortVar(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
 import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM) as P
 import Pantograph.Library.Change (getDiffChangingRule)
@@ -622,6 +623,7 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
               let xEx = ex_str x
               let αEx = reifyTypeSortAsTypeExpr α
               let aHole = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+              GMB.debugM $ El.τ "en-let around body"
               LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
                 P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, aHole] []
           , -- (a :: Tm γ α) ~~> (let '' : α = a in (?a :: Tm ('' : α, γ) α)
@@ -632,6 +634,7 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
               let xEx = ex_str x
               let αEx = reifyTypeSortAsTypeExpr α
               let aHole = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+              GMB.debugM $ El.τ "en-let around impl"
               LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
                 P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [aHole]
           ]

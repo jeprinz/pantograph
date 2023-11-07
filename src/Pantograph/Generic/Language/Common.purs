@@ -32,7 +32,8 @@ import Unsafe.Coerce (unsafeCoerce)
 -- Language
 
 class 
-    (Eq sn, Show sn, PrettyTreeNode sn, Eq el, Show el, PrettyTreeNode el) <=
+    ( Eq sn, Show sn, PrettyTreeNode sn, DisplayTreeNode sn
+    , Eq el, Show el, PrettyTreeNode el ) <=
     Language sn el | sn -> el, el -> sn
   where
   getSortingRule :: el -> SortingRule sn

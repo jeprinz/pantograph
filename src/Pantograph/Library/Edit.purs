@@ -5,11 +5,14 @@ import Prelude
 
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Display (display)
 import Data.Maybe (Maybe(..))
 import Data.Newtype as Newtype
 import Data.Tree (epL, epR, fromPath, singletonNonEmptyPath, tooths)
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
+import Halogen.Elements as El
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Pantograph.Generic.Language.Unification (unifySort, unifySort3)
 import Text.Pretty (pretty)
 import Util (debugM, fromJust)
@@ -38,6 +41,18 @@ buildEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
   let outerChange' = applySortVarSubst sigma outerChange
   let middle' = applySortVarSubst sigma middle
   let innerChange' = applySortVarSubst sigma innerChange
+
+  GMB.debugRM (El.τ "buildEditFromExprNonEmptyPath") 
+    { sort: display sort
+    , middle: El.τ $ pretty middle
+    , ch: display ch
+    , outerChange: display outerChange 
+    , innerChange: display innerChange 
+    , sigma: El.τ $ pretty sigma
+    , outerChange': display outerChange'
+    , innerChange': display innerChange'
+    }
+
   Just $ Edit
     { outerChange: Just outerChange'
     , middle: Just middle'

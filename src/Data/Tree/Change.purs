@@ -15,7 +15,7 @@ import Todo (todo)
 import Util (fromJust)
 
 invert :: forall a. Change a -> Change a
-invert (Shift (sign /\ tooth) kid) = Shift (invertShiftSign sign /\ tooth) kid
+invert (Shift (sign /\ tooth) kid) = Shift (invertShiftSign sign /\ tooth) (invert kid)
 invert (Replace old new) = Replace new old
 invert (InjectChange a kids) = InjectChange a (invert <$> kids)
 
