@@ -1,23 +1,18 @@
 module Pantograph.Specific.FSTLC where
 
-import Data.Tree
-import Data.Tuple.Nested
 import Prelude
-import Util
 
 import Bug (bug)
-import Control.Monad.State (gets, modify)
+import Control.Monad.State (modify)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Const (Const(..))
 import Data.Display (Html)
 import Data.Enum as Enum
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.Identity (Identity(..))
 import Data.Int as Int
-import Data.Lazy (Lazy, defer, force)
+import Data.Lazy (defer, force)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Ord.Generic (genericCompare)
@@ -28,7 +23,9 @@ import Data.StringQuery as StringQuery
 import Data.Supertype (inject)
 import Data.Supertype as Supertype
 import Data.Traversable (sequence)
+import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, (%), (%!), (%!/), (%!~>), (%-))
 import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID as UUID
 import Halogen.Elements as El
 import Halogen.HTML as HH
@@ -36,17 +33,18 @@ import Halogen.HTML.Properties as HP
 import Javascript as Javascript
 import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
-import Pantograph.Generic.Dynamics as P
-import Pantograph.Generic.Language as P
-import Pantograph.Generic.Rendering as P
+import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
+import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit, Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortVar(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
+import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM) as P
 import Pantograph.Library.Change (getDiffChangingRule)
 import Pantograph.Library.Edit as LibEdit
+import Pantograph.Library.Rendering (π, (˜⊕), (⊕))
+import Pantograph.Library.Rendering as LibRendering
 import Pantograph.Library.Step as LibStep
 import Record as R
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
-import Todo (todo)
 import Type.Proxy (Proxy(..))
-import Type.Row.Homogeneous (class Homogeneous)
+import Util (fromJust, (<$$>))
 
 instance P.Language SN EL where
   getSortingRule el = getSortingRule el
@@ -294,8 +292,8 @@ topSort = sr_jg_tm sr_ctx_nil (P.SN (DataTySN UnitDataTy) % [])
 
 getDefaultExpr :: Sort -> Maybe Expr
 getDefaultExpr (P.SN Str % [strInner]) = Just $ P.buildExpr StrEL {x: strInner} []
-getDefaultExpr (P.SN TmJg % [γ, α]) = Just $ P.buildExpr HoleTm {γ, α} [fromTypeSortToTypeExpr α]
-getDefaultExpr (P.SN TyJg % [α]) = Just $ fromTypeSortToTypeExpr α
+getDefaultExpr (P.SN TmJg % [γ, α]) = Just $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α]
+getDefaultExpr (P.SN TyJg % [α]) = Just $ reifyTypeSortAsTypeExpr α
 getDefaultExpr _ = Nothing
 
 specialEdits :: SpecialEdits
@@ -484,14 +482,14 @@ steppingRules =
 
   -- {_ : Type α!}↓{_} ~~> α
   typeBecomesRhsOfChange = P.SteppingRule "typeBecomesRhsOfChange" case _ of
-    (P.Down /\ (P.SN TyJg %! [α])) %.| _ -> Just $ inject (fromTypeSortToTypeExpr (epR α))
+    (P.Down /\ (P.SN TyJg %! [α])) %.| _ -> Just $ inject (reifyTypeSortAsTypeExpr (epR α))
     _ -> Nothing
 
   -- {Term γ (+ <{α -> {> β<}}>)}↓{b} ~~> lam ~ : α . {Term (+ <{ ~ : α, {> γ <}}>) β}↓{b}
   wrapLambda = P.SteppingRule "wrapLambda" case _ of
     (P.Down /\ (P.SN TmJg %! [γ, Plus /\ (P.SN TmJg %- 1 /\ [α]) %!/ β])) %.| b -> Just $
       let x = sr_strInner "" in
-      se_tm_lam x α (epR β) (epR γ) (se_str x) (inject (fromTypeSortToTypeExpr α)) b
+      se_tm_lam x α (epR β) (epR γ) (se_str x) (inject (reifyTypeSortAsTypeExpr α)) b
     _ -> Nothing
 
   -- {Term γ (- <{α -> {> β <}}>)}↓{lam x : α . b} ~~> {Term (- x : α, γ) β}↓{b}
@@ -511,7 +509,7 @@ steppingRules =
   -- {Term γ (+ α -> β)}↑{f} ~~> {Term γ β}↑{App f (? : α)}
   wrapApp = P.SteppingRule "wrapApp" case _ of
     P.Up /\ (P.SN TmJg %! [γ, Plus /\ (P.SN ArrowTySN %- (1 /\ [α])) %!/ β]) %.| f -> Just $ 
-      P.Up /\ (P.SN TmJg %! [γ, β]) %.| (P.buildStepExpr AppNe {γ: epL γ, α, β: epL β} [f, se_tm_hole (epR γ) α (inject (fromTypeSortToTypeExpr α))])
+      P.Up /\ (P.SN TmJg %! [γ, β]) %.| (P.buildStepExpr AppNe {γ: epL γ, α, β: epL β} [f, se_tm_hole (epR γ) α (inject (reifyTypeSortAsTypeExpr α))])
     _ -> Nothing
 
   -- App {Term γ (- α -> β)}↑{b} a ~~> {Term γ β}↑{b}
@@ -610,7 +608,7 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
           let α = sr_freshVar "α"
           let x = sr_strInner ""
           let xEx = ex_str x
-          let αEx = fromTypeSortToTypeExpr α
+          let αEx = reifyTypeSortAsTypeExpr α
           LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
               P.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
       , 
@@ -622,20 +620,20 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
               let β = sr_freshVar "β"
               let x = sr_strInner ""
               let xEx = ex_str x
-              let αEx = fromTypeSortToTypeExpr α
-              let ha = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+              let αEx = reifyTypeSortAsTypeExpr α
+              let aHole = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
               LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
-                P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, ha] []
+                P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, aHole] []
           , -- (a :: Tm γ α) ~~> (let '' : α = a in (?a :: Tm ('' : α, γ) α)
             do
               let γ = γ0
               let α = α0
               let x = sr_strInner ""
               let xEx = ex_str x
-              let αEx = fromTypeSortToTypeExpr α
-              let ha = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+              let αEx = reifyTypeSortAsTypeExpr α
+              let aHole = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
               LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
-                P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [ha]
+                P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [aHole]
           ]
     ]
   }
@@ -648,6 +646,7 @@ maxPenalty = Fuzzy.Distance 1 0 0 0 0 0
 
 -- Renderer
 
+type CTX :: forall k. Row k
 type CTX = ()
 topCtx :: Record CTX
 topCtx = {}
@@ -730,27 +729,7 @@ arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x % []] <- P.getExp
 
 arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x@(P.SortVar {uuid}) % []] <- P.getExprNodeSort node = do
   _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-  -- let src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
-  -- let src = "data:image/png;base64," <> String.replaceAll (String.Pattern "-") (String.Replacement "/") (UUID.toString uuid)
-  -- let src = "data:image/png;base64," <> Javascript.fromStringToBase64String (UUID.toString uuid)
-  -- let src = Javascript.fromByteArrayToImageSrc ?a 1
-  
-  -- TODO: I need 4 numbers in [0, 256)
-
-  -- uuidString = "eab5a42c-da69-42a1-900f-5778d27f15a3"
-  -- let uuidString = UUID.toString uuid
-  -- debugM "arrangeExpr HoleTy" {uuidString}
-
-  let bytes =
-        let 
-          cps = Array.take 8 $ String.toCodePointArray $ UUID.toString uuid
-          byteStrings = map String.fromCodePointArray $ map (cps # _) $ [Array.slice 0 2, Array.slice 2 4, Array.slice 4 6, Array.slice 6 8]
-        in
-        byteStrings <#> Int.fromStringAs Int.hexadecimal >>> fromJust
-  
-  -- let src = Javascript.exampleImageSrc unit
-  let src = Javascript.fromByteArrayToImageSrc bytes 32
-  pure $ Array.fromFoldable $ [HH.img [HP.classes [HH.ClassName "HoleTyImage"], HP.src src] :: Html] ⊕ Nil
+  pure $ Array.fromFoldable $ [LibRendering.renderUuidSplotch uuid [HP.classes [HH.ClassName "HoleTySplotch"]]] ⊕ Nil
 
 arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α] <- P.getExprNodeSort node = do
   _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
@@ -770,7 +749,9 @@ arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort
   domainRequiresParens _ = false
 arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node = do
   a /\ _ <- a
-  pure $ Array.fromFoldable $ fmt ⊕ a ˜⊕ Nil
+  case fmt of
+    Newline -> pure $ Array.fromFoldable $ [El.whitespace " ↪", El.br :: Html] ⊕ a ˜⊕ Nil
+    Indent  -> pure $ Array.fromFoldable $ [El.whitespace "⇥ " :: Html] ⊕ a ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
   bug $ "invalid; node = " <> pretty node <> "; kidNodes = " <> pretty kidNodes
@@ -782,63 +763,6 @@ getBeginsLine _ = false
 getInitialQuery :: forall er. AnnExprCursor er -> String
 getInitialQuery (Cursor {inside: e@(P.EN StrEL _ _ % _)}) | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprSort e = string
 getInitialQuery _ = ""
-
--- Arrangable
-
-class Arrangable f where
-  arrange :: f ~> ArrangeKid
-instance Arrangable Identity where
-  arrange (Identity a) = P.ArrangeKid a
-instance Arrangable (Const String) where
-  arrange (Const string) = P.ArrangeHtml [El.π string]
-instance Arrangable (Const (Array String /\ String)) where
-  arrange (Const (cns /\ t)) = P.ArrangeHtml [El.ℓ [El.Classes $ El.ClassName <$> cns] [El.τ t]]
-instance Arrangable (Const Format) where 
-  arrange (Const Newline) = P.ArrangeHtml [El.whitespace " ↪", El.br]
-  arrange (Const Indent) = P.ArrangeHtml [El.whitespace "⇥ "]
-instance Arrangable (Const (Array String)) where
-  arrange (Const cns) = P.ArrangeHtml [El.ℓ [El.Classes $ El.ClassName <$> cns] []] 
-instance Arrangable (Const (Array Html)) where
-  arrange (Const htmls) = P.ArrangeHtml htmls 
-
-consArrangable :: forall f a. Arrangable f => f a -> List (ArrangeKid a) -> List (ArrangeKid a)
-consArrangable a aks = Cons (arrange a) aks
-
-consIdentityArrangable :: forall a. a -> List (ArrangeKid a) -> List (ArrangeKid a)
-consIdentityArrangable a = consArrangable (Identity a)
-
-consConstArrangable :: forall a b. Arrangable (Const a) => a -> List (ArrangeKid b) -> List (ArrangeKid b)
-consConstArrangable a = consArrangable (Const a)
-
-infixr 6 consIdentityArrangable as ˜⊕
-infixr 6 consConstArrangable as ⊕
-
-π =
-  { "=":          ["keysymbol", "equal"]                              /\ "="
-  , ":":          ["keysymbol", "colon"]                              /\ ":"
-  , ".":          ["keysymbol", "period"]                             /\ "."
-  , "#":          ["keysymbol", "period"]                             /\ "♯"
-  , "(":          ["keysymbol", "paren-left"]                         /\ "("
-  , ")":          ["keysymbol", "paren-right"]                        /\ ")"
-  , "{":          ["keysymbol", "brace-left"]                         /\ "{"
-  , "}":          ["keysymbol", "brace-right"]                        /\ "}"
-  , "{{":         ["keysymbol", "double-brace-left"]                  /\ "⦃"
-  , "}}":         ["keysymbol", "double-brace-right"]                 /\ "⦄"
-  , "^...":       ["keysymbol", "dotted-fence"]                       /\ "⦙"
-  , "->":         ["keysymbol", "arrow-right"]                        /\ "→"
-  , "?":          ["keysymbol", "interrogative"]                      /\ "?"
-  , "box":        ["keysymbol", "box"]                                /\ "□"
-  , "λ":          ["keysymbol", "lambda"]                             /\ "λ"
-  , "~":          ["keysymbol", "tilde"]                              /\ "~"
-  , "let":        ["keysymbol", "let"]                                /\ "let"
-  , "in":         ["keysymbol", "in"]                                 /\ "in"
-  , "Z":          ["keysymbol", "zero"]                               /\ "Z"
-  , "S":          ["keysymbol", "suc"]                                /\ "S"
-  , "F":          ["keysymbol", "free"]                               /\ "F"
-  , "if":         ["keysymbol", "if"]                                 /\ "if"
-  , "then":       ["keysymbol", "then"]                               /\ "then"
-  , "else":       ["keysymbol", "else"]                               /\ "else"
-  }
 
 -- utilities
 
@@ -878,11 +802,11 @@ isUpInCall :: StepExpr -> Boolean
 isUpInCall (P.EN CallTm _ _ %. [P.Up /\ (P.SN NeJg %! [_γ, P.SN ArrowTySN %! [_α, _beta]]) %.| _]) = true
 isUpInCall _ = false
 
-fromTypeSortToTypeExpr :: Sort -> Expr
-fromTypeSortToTypeExpr (P.SN (DataTySN dt) % []) = P.buildExpr (DataTyEL dt) {} []
-fromTypeSortToTypeExpr (P.SN ArrowTySN % [α, β]) = P.buildExpr ArrowTyEL {α, β} [fromTypeSortToTypeExpr α, fromTypeSortToTypeExpr β]
-fromTypeSortToTypeExpr α@(P.VarSN x % []) = P.buildExpr HoleTy {α} []
-fromTypeSortToTypeExpr sr = bug $ "invalid: " <> show sr
+reifyTypeSortAsTypeExpr :: Sort -> Expr
+reifyTypeSortAsTypeExpr (P.SN (DataTySN dt) % []) = P.buildExpr (DataTyEL dt) {} []
+reifyTypeSortAsTypeExpr (P.SN ArrowTySN % [α, β]) = P.buildExpr ArrowTyEL {α, β} [reifyTypeSortAsTypeExpr α, reifyTypeSortAsTypeExpr β]
+reifyTypeSortAsTypeExpr α@(P.VarSN x % []) = P.buildExpr HoleTy {α} []
+reifyTypeSortAsTypeExpr sr = bug $ "invalid: " <> show sr
 
 showCountHoleTy :: Int -> String
 showCountHoleTy i = if d == 0 then str else str <> "#" <> show d

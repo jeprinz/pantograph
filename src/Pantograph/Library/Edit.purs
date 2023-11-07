@@ -45,17 +45,6 @@ buildEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
     , inside: Nothing
     , sigma: Just sigma }
 
--- TODO: probably don't want this
--- buildExprToothEditsFromExpr :: forall sn el.
---   Language sn el =>
---   {splitExprPathChanges :: SplitChange sn} ->
---   Expr sn el ->
---   NonEmptyArray (Edit sn el)
--- buildExprToothEditsFromExpr {splitExprPathChanges} expr =
---   let middles = singletonNonEmptyPath <<< fst <$> tooths expr in
---   fromJust $ NonEmptyArray.fromArray $ middles <#> \middle -> 
---     buildEditFromExprNonEmptyPath {splitExprPathChanges} middle
-
 identitySpecialEdits :: forall sn el. SpecialEdits sn el
 identitySpecialEdits = 
   { deleteExpr: const Nothing
