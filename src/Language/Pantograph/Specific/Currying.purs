@@ -952,7 +952,6 @@ fallbackDownError :: StepRule
 fallbackDownError (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
---    , not (isId c)
     = pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ rEndpoint c]
         [wrapBoundary Down (csor TermSort % [gamma, inject insideTy]) inside]
 fallbackDownError _ = Nothing
@@ -979,6 +978,16 @@ fallbackUpError sterm =
                     dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ outsideTy] [inside]) kids))
     _ -> Nothing
 
+-- Don't allow a down boundary to propagate into a neutral form
+introErrorNeutral :: StepRule
+introErrorNeutral (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
+    | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+    , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
+    , isNeutralFormWithoutCursor inside
+    = pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ rEndpoint c]
+        [wrapBoundary Down (csor TermSort % [gamma, inject insideTy]) inside]
+introErrorNeutral _ = Nothing
+
 languageChanges :: LanguageChanges
 languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
   _ -> identity
@@ -994,11 +1003,12 @@ stepRules = do
     , removeSucRule
     , passThroughArrow
     , typeBecomeRhsOfChange
+--    , introErrorNeutral
+    , introErrorDownVar
     , wrapLambda
     , unWrapLambda
     , wrapApp
     , unWrapApp
---    , introErrorDownVar
     , mergeErrorsDown
     , mergeErrorsUp
     , removeError
