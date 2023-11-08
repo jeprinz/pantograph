@@ -72,7 +72,7 @@
 }
 
 .BufferPanel>.PanelContent>* {
-  padding: var(--it);
+  /* padding: var(--it); */
 }
 
 /* TerminalPanel */

@@ -139,6 +139,8 @@ data ClassName
   -- Buffer
   | Cursor | OutsideCursor | InsideCursor
   | Select | OutsideSelect | InsideSelect
+  -- BufferInfo
+  | BufferInfo | BufferInfoItem | BufferInfoItemTitle | BufferInfoItemValue
   -- Tree
   | Change | ShiftChange | ShiftChangeInner | ReplaceChange | ReplaceChangeLeft 
   | ReplaceChangeRight | InjectChange

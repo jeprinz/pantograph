@@ -204,13 +204,44 @@ body {
 
 .PreviewRight {}
 
-
 .PreviewRightInsert {}
 
 .PreviewRightPaste {}
 
 .PreviewLeftPaste+.Expr {
   background-color: rgb(255, 165, 165);
+}
+
+/* BufferInfo */
+
+.Program {
+  padding: var(--it);
+  flex-grow: 1;
+}
+
+.BufferInfo {
+  padding: var(--it);
+  flex-grow: 0;
+}
+
+.BufferInfoItem {
+  box-shadow: 0 0 8px 2px black;
+  display: flex;
+  flex-direction: row;
+  gap: var(--it);
+}
+
+.BufferInfoItemTitle {
+  display: block;
+  text-align: center;
+  background-color: black;
+  color: white;
+  padding: var(--it);
+}
+
+.BufferInfoItemValue {
+  display: block;
+  padding: var(--it);
 }
 
 /* Sort */
@@ -325,7 +356,7 @@ body {
 .SortingRuleParameters {
   display: block;
   padding: 0 var(--it);
-  background-color: rgb(206, 206, 206);
+  background-color: lightgray;
 }
 
 .SortingRuleKids {

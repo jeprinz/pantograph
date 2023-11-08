@@ -4,7 +4,7 @@ import Pantograph.Generic.Language
 import Data.Tree
 import Prelude
 
-import Bug (bug)
+import Data.Either.Nested (type (\/))
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, runStateT)
 import Data.Const (Const)
@@ -19,7 +19,6 @@ import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.Elements as El
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Halogen.Utilities as HU
 import Pantograph.Generic.GlobalMessageBoard (GlobalMessage)
@@ -175,7 +174,7 @@ newtype BufferQuery sn el a = BufferQuery (Variant
   , "keyboard" :: KeyboardEvent.KeyboardEvent /\ a ))
 newtype BufferOutput sn el = BufferOutput (Variant
   ( "write terminal" :: GlobalMessage ))
-data BufferSlotId
+type BufferSlotId = Unit
 
 type BufferLocal sn el =
   { tokens :: BufferLocalTokens sn el
@@ -190,7 +189,20 @@ type BufferLocalTokens sn el =
 type BufferHtml sn el = HH.ComponentHTML (HK.HookM Aff Unit) (BufferSlots sn el) Aff
 type BufferSlots sn el = 
   ( toolbox :: ToolboxSlot sn el
-  , preview :: PreviewSlot sn el )
+  , preview :: PreviewSlot sn el
+  , info :: BufferInfoSlot sn el )
+
+-- | # BufferInfo
+-- | 
+-- | The information box inside the buffer the shows info related to your cursor/select.
+
+type BufferInfoSlot sn el = H.Slot (BufferInfoQuery sn el) BufferInfoOutput BufferInfoSlotId
+newtype BufferInfoInput sn el ctx env = BufferInfoInput 
+  { mbSort :: Maybe (Sort sn) }
+newtype BufferInfoQuery sn el a = BufferInfoQuery (Variant
+  ( "set mbSort" :: Maybe (Sort sn) /\ a ))
+type BufferInfoOutput = Void
+type BufferInfoSlotId = Unit
 
 -- | # Toolbox
 -- |

@@ -32,6 +32,7 @@ import Halogen as H
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
+import Pantograph.Generic.App.BufferInfo (bufferInfoComponent)
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Pantograph.Generic.Rendering.Hook.Keyboard as Keyboard
 import Record as R
@@ -280,7 +281,10 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         , El.ℓ [El.Classes [El.Button]] [El.text "⇓"]
         , El.ℓ [El.Classes [El.Button]] [El.text "×"] ]
     , content:
-        [ El.ℓ [El.Classes [El.Program]] gyroHtmls ]
+        [ El.ℓ [El.Classes [El.Program]] gyroHtmls
+        , HH.slot_ (Proxy :: Proxy "info") unit bufferInfoComponent $ BufferInfoInput 
+            { mbSort: Just $ getExprSort input.expr }
+        ]
     }
 
 -- hydrate
@@ -311,15 +315,21 @@ hydrateExprGyro syncExprGyro = syncExprGyro # traverseGyro \{inside: EN label si
 -- | hydrate data). The first `HydrateExprGyro` is old and the second
 -- | `HydrateExprGyro` is new.
 rehydrateExprGyro :: forall sn el er ctx env. Dynamics sn el ctx env => BufferLocalTokens sn el -> Maybe (HydrateExprGyro sn el er) -> Maybe (HydrateExprGyro sn el er) -> HK.HookM Aff Unit
-rehydrateExprGyro {slotToken} m_hydExprGyro m_hydExprGyro' = do
-  when (isJust m_hydExprGyro || isJust m_hydExprGyro') do
+rehydrateExprGyro localTokens@{slotToken} mb_hydExprGyro mb_hydExprGyro' = do
+  when (isJust mb_hydExprGyro || isJust mb_hydExprGyro') do
     tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") (const false)
-  case m_hydExprGyro of
+  case mb_hydExprGyro of
     Nothing -> pure unit
     Just hydExprGyro -> unflushHydrateExprGyro hydExprGyro
-  case m_hydExprGyro' of
+  case mb_hydExprGyro' of
     Nothing -> pure unit
     Just hydExprGyro -> flushHydrateExprGyro hydExprGyro
+  updateBufferInfo localTokens mb_hydExprGyro'
+
+updateBufferInfo :: forall sn el er. Language sn el => BufferLocalTokens sn el -> Maybe (AnnExprGyro sn el er) -> HK.HookM Aff Unit
+updateBufferInfo {slotToken} = case _ of
+  Just (CursorGyro (Cursor cursor)) -> tell slotToken (Proxy :: Proxy "info") unit BufferInfoQuery (Proxy :: Proxy "set mbSort") $ Just $ getExprSort cursor.inside
+  _ -> tell slotToken (Proxy :: Proxy "info") unit BufferInfoQuery (Proxy :: Proxy "set mbSort") Nothing
 
 -- render
 
