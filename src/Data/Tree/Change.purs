@@ -60,7 +60,7 @@ minusLub _ _ = Nothing
 
 lubStrict :: forall a. Eq a => DisplayTreeNode a => Change a -> Change a -> Change a
 lubStrict c1 c2 = case lub c1 c2 of
-  Nothing -> GMB.bugR (El.τ "Change LUB (least upper bound) doesnt exist") {c1: display c1, c2: display c2}
+  Nothing -> GMB.errorR (El.τ "Change LUB (least upper bound) doesnt exist") {c1: display c1, c2: display c2}
   Just c -> c
 
 -- TODO: The change should always be from the kid to the parent. is this true?

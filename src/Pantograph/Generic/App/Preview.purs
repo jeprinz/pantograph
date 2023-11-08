@@ -61,7 +61,7 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> Debug.trac
               in 
               case edit.middle of
                 Nothing -> case edit.inside of
-                  Nothing -> GMB.bug $ display"TODO: how to preview this kind of Edit?"
+                  Nothing -> GMB.error $ display"TODO: how to preview this kind of Edit?"
                   Just inside -> El.ℓ [El.Classes classNames] (insideHtml inside)
                 Just middle -> case edit.inside of
                   Nothing -> El.ℓ [El.Classes classNames] (middleHtml middle [])

@@ -197,7 +197,7 @@ renderEdit :: forall sn el ctx env. Dynamics sn el ctx env =>
 renderEdit adjacentIndexedEdits outside inside = case _ of
   Edit edit -> case edit.middle of
     Nothing -> case edit.inside of
-      Nothing -> GMB.bug $ display"TODO: how to render this kind of Edit?"
+      Nothing -> GMB.error $ display"TODO: how to render this kind of Edit?"
       Just inside -> renderAnnExpr outside inside (makeToolboxExprProps adjacentIndexedEdits)
     Just middle -> renderAnnExprPath outside (toPath middle) inside (makeToolboxExprProps adjacentIndexedEdits) case edit.inside of
       Nothing -> pure editHole

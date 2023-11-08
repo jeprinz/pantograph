@@ -361,7 +361,7 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSo
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = Supertype.inject $ applyRuleSortVarSubst sigma x
-  applyRuleSortVarSubst sigma ch = GMB.bugR (display"[ApplyRuleSortVarSubst (Sort sn) (RuleSortChange sn) (SortChange sn) / applyRuleSortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
+  applyRuleSortVarSubst sigma ch = GMB.errorR (display"[ApplyRuleSortVarSubst (Sort sn) (RuleSortChange sn) (SortChange sn) / applyRuleSortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) where
   -- take the right endpoints of any changes applied to adjacent kids in the tooth of the shift
@@ -369,11 +369,11 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (
   applyRuleSortVarSubst sigma (Replace old new) = Replace (epL $ applyRuleSortVarSubst sigma (Supertype.inject old :: RuleSortChange sn)) (epR $ applyRuleSortVarSubst sigma (Supertype.inject new :: RuleSortChange sn))
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = applyRuleSortVarSubst sigma x
-  applyRuleSortVarSubst sigma ch = GMB.bugR (display"[ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) / applyRuleSortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
+  applyRuleSortVarSubst sigma ch = GMB.errorR (display"[ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) / applyRuleSortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (Tooth (RuleSortNode sn)) (Tooth (SortNode sn)) where
   applyRuleSortVarSubst sigma (InjectRuleSortNode sn %- i /\ kids) = sn %- i /\ (applyRuleSortVarSubst sigma <$> kids)
-  applyRuleSortVarSubst sigma th@(VarRuleSortNode _ %- _ /\ _) = GMB.bug (display"impossible: there should never be a VarRuleSortNode at a ExprTooth") {th: display $ pretty th}
+  applyRuleSortVarSubst sigma th@(VarRuleSortNode _ %- _ /\ _) = GMB.error (display"impossible: there should never be a VarRuleSortNode at a ExprTooth") {th: display $ pretty th}
 
 -- SortVar
 
@@ -418,14 +418,14 @@ instance Language sn el => ApplySortVarSubst sn (Sort sn) (Sort sn) where
 
 instance Language sn el => ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) where
   applySortVarSubst sigma (Tooth sn@(SN _) (i /\ kids)) = Tooth sn (i /\ (applySortVarSubst sigma <$> kids))
-  applySortVarSubst sigma th@(Tooth (VarSN _) _) = GMB.bugR (display"[ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, th: display $ pretty th}
+  applySortVarSubst sigma th@(Tooth (VarSN _) _) = GMB.errorR (display"[ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, th: display $ pretty th}
 
 instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) where
   applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ applySortVarSubst sigma tooth) (applySortVarSubst sigma kid)
   applySortVarSubst sigma (Replace old new) = Replace (applySortVarSubst sigma old) (applySortVarSubst sigma new)
   applySortVarSubst sigma (InjectChange sn@(SN _) kids) = InjectChange sn (applySortVarSubst sigma <$> kids)
   applySortVarSubst sigma (InjectChange (VarSN x) []) = Supertype.inject $ applySortVarSubst sigma x
-  applySortVarSubst sigma ch@(InjectChange (VarSN _) _) = GMB.bugR (display"[ApplySortVarSubst sn (SortChange sn) (SortChange sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
+  applySortVarSubst sigma ch@(InjectChange (VarSN _) _) = GMB.errorR (display"[ApplySortVarSubst sn (SortChange sn) (SortChange sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
 
 instance Language sn el => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where
   applySortVarSubst = append

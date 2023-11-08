@@ -32,7 +32,7 @@ assertValidRuleVarSubst :: forall a sn el. Language sn el => el -> RuleSortVarSu
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
   if rule.parameters /= Map.keys m then
-    GMB.bugR (display"[assertValidRuleVarSubst] invalid") {label: display $ show label, sigma: display $ pretty sigma, rule_parameters: display $ show rule.parameters}
+    GMB.errorR (display"[assertValidRuleVarSubst] invalid") {label: display $ show label, sigma: display $ pretty sigma, rule_parameters: display $ show rule.parameters}
   else k unit
 
 -- build

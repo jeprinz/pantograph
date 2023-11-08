@@ -60,7 +60,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
   let
     getHydratedExprGyro = do
       liftEffect (Ref.read hydExprGyroRef) >>= case _ of
-        Nothing -> GMB.bug $ El.text $ "[modifyHydratedExprGyro] hydExprGyroRef should already be `Just _` by now"
+        Nothing -> GMB.error $ El.text $ "[modifyHydratedExprGyro] hydExprGyroRef should already be `Just _` by now"
         Just hydExprGyro -> pure hydExprGyro
 
     modifyExprGyro f = do

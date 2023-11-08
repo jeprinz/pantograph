@@ -171,7 +171,7 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 fromStepExprToExprCursor :: forall sn el ctx env. Rendering sn el ctx env => StepExpr sn el -> Maybe (ExprCursor sn el)
 fromStepExprToExprCursor e0 = case goCursorOrExpr e0 of
     Just (Left {tooths, inside, orientation}) -> Just $ Cursor {outside: Path (List.reverse tooths), inside, orientation}
-    Just (Right e) -> GMB.bug $ El.ι [El.τ "no `Marker` found during `fromStepExprToExprCursor`: ", El.β [El.τ "e0: ", display e0], El.β [El.τ "e: ", displayAnnExpr e]]
+    Just (Right e) -> GMB.error $ El.ι [El.τ "no `Marker` found during `fromStepExprToExprCursor`: ", El.β [El.τ "e0: ", display e0], El.β [El.τ "e: ", displayAnnExpr e]]
     Nothing -> Nothing
   where
   goExpr :: StepExpr sn el -> Maybe (Expr sn el)
@@ -190,7 +190,7 @@ fromStepExprToExprCursor e0 = case goCursorOrExpr e0 of
             i /\ Left cursor -> Just (i /\ cursor) /\ kids'
             _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
           Just i_cursor /\ kids' -> case _ of
-            _ /\ Left _cursor -> GMB.bug $ El.matrix $ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]
+            _ /\ Left _cursor -> GMB.error $ El.matrix $ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]
             _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
     
     coeKids <- goCursorOrExpr `traverse` kids

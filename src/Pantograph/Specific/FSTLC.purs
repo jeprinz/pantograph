@@ -779,7 +779,7 @@ arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node =
     Indent  -> pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
-  GMB.bugR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
+  GMB.errorR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
 
 getBeginsLine :: forall er. AnnExprCursor er -> Boolean
 getBeginsLine (Cursor {inside: P.EN (Format Newline) _ _ % _}) = true
@@ -808,17 +808,17 @@ splitExprPathChanges ch@(P.SN TyJg %! [_α]) =
 splitExprPathChanges ch@(P.VarSN _ %! []) =
   { outerChange: ch 
   , innerChange: ch }
-splitExprPathChanges ch = GMB.bugR (display"[splitExprPathChanges] invalid") {ch: display ch}
+splitExprPathChanges ch = GMB.errorR (display"[splitExprPathChanges] invalid") {ch: display ch}
 
 freeVarTerm :: {x :: Sort, α :: Sort, γ :: Sort} -> Expr
 freeVarTerm {γ, x, α} = case γ of
   Tree (P.SN ConsCtx) [y, β, γ'] -> sucVar {y, β, pred: freeVarTerm {γ: γ', x, α}}
   Tree (P.SN NilCtx) [] -> ex_var_free x α
-  _ -> GMB.bugR (display"[freeVarTerm] impossible") {γ: display γ, x: display x, α: display α}
+  _ -> GMB.errorR (display"[freeVarTerm] impossible") {γ: display γ, x: display x, α: display α}
 
 sucVar :: {y :: Sort, β :: Sort, pred :: Expr} -> Expr
 sucVar {y, β, pred} | P.SN VarJg % [γ, x, α, loc] <- P.getExprSort pred = ex_var_suc γ x α y β loc pred
-sucVar {y, β, pred} = GMB.bugR (display"[sucVar] impossible") {y: display y, β: display β, pred: P.displayAnnExpr pred}
+sucVar {y, β, pred} = GMB.errorR (display"[sucVar] impossible") {y: display y, β: display β, pred: P.displayAnnExpr pred}
 
 -- | This is necessary because the wrapApp rule conflicts with the `defaultUp`,
 -- | and the priority order of the list isn't enough because `defaultUp` happens
@@ -831,7 +831,7 @@ reifyTypeSortAsTypeExpr :: Sort -> Expr
 reifyTypeSortAsTypeExpr (P.SN (DataTySN dt) % []) = P.buildExpr (DataTyEL dt) {} []
 reifyTypeSortAsTypeExpr (P.SN ArrowTySN % [α, β]) = P.buildExpr ArrowTyEL {α, β} [reifyTypeSortAsTypeExpr α, reifyTypeSortAsTypeExpr β]
 reifyTypeSortAsTypeExpr α@(P.VarSN _ % []) = P.buildExpr HoleTy {α} []
-reifyTypeSortAsTypeExpr s = GMB.bugR (display "[reifyTypeSortAsTypeExpr] invalid") {sort: display s}
+reifyTypeSortAsTypeExpr s = GMB.errorR (display "[reifyTypeSortAsTypeExpr] invalid") {sort: display s}
 
 showCountHoleTy :: Int -> String
 showCountHoleTy i = if d == 0 then str else str <> "#" <> show d

@@ -12,6 +12,7 @@ import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
+import Partial.Unsafe (unsafeCrashWith)
 import Type.Row.Homogeneous (class Homogeneous)
 import Util (fromHomogenousRecordToTupleArray)
 
@@ -48,16 +49,16 @@ renderRecord r =
   let keysAndValues = fromHomogenousRecordToTupleArray r in
   El.matrix $ keysAndValues <#> \(k /\ v) -> [El.ℓ [El.Classes [El.GlobalMessageRecordKey]] [El.τ k], v]
 
--- bug
+-- error
 
-bug :: forall a. Html -> a
-bug html = addGlobalMessage ErrorGlobalMessageTag html \_ ->
-  Bug.bug "global message board bug"
+error :: forall a. Html -> a
+error html = addGlobalMessage ErrorGlobalMessageTag html \_ ->
+  unsafeCrashWith "global message board error"
 
-bugR :: forall r a. Homogeneous r Html => Html -> Record r -> a
-bugR title r = 
+errorR :: forall r a. Homogeneous r Html => Html -> Record r -> a
+errorR title r = 
   addGlobalMessage ErrorGlobalMessageTag (El.β [title, El.br, renderRecord r]) \_ ->
-    Bug.bug "global message board bug"
+    unsafeCrashWith "global message board error"
 
 -- log
 
