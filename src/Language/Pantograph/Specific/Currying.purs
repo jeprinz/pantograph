@@ -104,6 +104,7 @@ data PreSortLabel
   -- Types
   | DataType DataType
   | Arrow {-Type-} {-Type-}
+  | List {-Type-}
   -- Locality
   | Local
   | NonLocal
@@ -127,6 +128,7 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (NonLocal /\ []) = "NonLocal"
   prettyExprF'_unsafe (DataType ty /\ []) = show ty
   prettyExprF'_unsafe (Arrow  /\ [a, b]) = a <> " -> " <> b
+  prettyExprF'_unsafe (List  /\ [t]) = "List" <+> t
 
 
   expectedKidsCount VarSort = 4
@@ -138,6 +140,7 @@ instance IsExprLabel PreSortLabel where
   expectedKidsCount NonLocal = 0
   expectedKidsCount (DataType _) = 0
   expectedKidsCount Arrow = 2
+  expectedKidsCount List = 1
 
 --------------------------------------------------------------------------------
 -- Shorter Aliases
@@ -278,11 +281,16 @@ data RuleLabel
   | TypeHole
   | DataTypeRule DataType
   | ArrowRule
+  | ListRule
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
   | ErrorBoundary
   | ConstantRule Constant
   | InfixRule InfixOperator
+  | EqualsRule
+  | NilRule
+  | ConsRule
+  | ListMatchRule
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -310,6 +318,8 @@ sortToType (Expr (MInj (Grammar.SInj (DataType dt))) []) =
     Grammar.makeLabel (DataTypeRule dt) [] % []
 sortToType (Expr (MInj (Grammar.SInj Arrow)) [a, b]) =
     Grammar.makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
+sortToType (Expr (MInj (Grammar.SInj List)) [ty]) =
+    Grammar.makeLabel ListRule ["type" /\ ty] % [sortToType ty]
 sortToType ty =
     Grammar.makeLabel TypeHole ["type" /\ ty] % []
 --    Smallstep.termToSSTerm $ assertI $ just "sortToType: invalid sort"
@@ -321,6 +331,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "↦" <+> b
   prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
+  prettyExprF'_unsafe_RuleLabel (ListRule /\ [t]) = "List" <+> t
   prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (Var /\ [x]) = "@" <> x
@@ -332,6 +343,10 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
   prettyExprF'_unsafe_RuleLabel (ConstantRule constant /\ []) = constantName constant
   prettyExprF'_unsafe_RuleLabel (InfixRule op /\ [left, right]) = P.parens $ left <+> infixName op <+> right
+  prettyExprF'_unsafe_RuleLabel (NilRule /\ []) = "nil"
+  prettyExprF'_unsafe_RuleLabel (ConsRule /\ []) = "cons"
+  prettyExprF'_unsafe_RuleLabel (EqualsRule /\ [a, b]) = a <+> "==" <+> b
+  prettyExprF'_unsafe_RuleLabel (ListMatchRule /\ [l, n, x, xs, c]) = "match" <+> l <+> "with Nil -> " <+> n <+> " cons" <+> x <+> " " <+> xs <+> " -> " <+> c
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -417,6 +432,11 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TypeSort %|-* [DataType dataType %|-* []] )
 
+  ListRule -> Grammar.makeRule ["type"] \[ty] ->
+    [TypeSort %|-* [ty]]
+    /\ -------
+    ( TypeSort %|-* [List %|-* [ty]] )
+
   ArrowRule -> Grammar.makeRule ["a", "b"] \[a, b] ->
     [TypeSort %|-* [a], TypeSort %|-* [b]]
     /\ --------
@@ -445,6 +465,30 @@ language = TotalMap.makeTotalMap case _ of
     [ TermSort %|-* [gamma, left], TermSort %|-* [gamma, right] ]
     /\ -------
     ( TermSort %|-* [gamma, output])
+
+  EqualsRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    [ TermSort %|-* [gamma, ty], TermSort %|-* [gamma, ty] ]
+    /\ -------
+    ( TermSort %|-* [gamma, DataType Bool %|-* []])
+
+  NilRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, List %|-* [ty]])
+
+  ConsRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, Arrow %|-* [ty, Arrow %|-* [List %|-* [ty], List %|-* [ty]]]])
+
+  ListMatchRule -> Grammar.makeRule ["gamma", "type", "outTy", "consElemArg", "consListArg"] \[gamma, ty, outTy, consElemArg, consListArg] ->
+    [ TermSort %|-* [gamma, List %|-* [ty]]
+    , TermSort %|-* [gamma, outTy]
+    , Grammar.NameSortLabel %* [consElemArg]
+    , Grammar.NameSortLabel %* [consListArg]
+    , TermSort %|-* [CtxConsSort %|-* [consElemArg, ty, CtxConsSort %|-* [consListArg, List %|-* [ty], gamma]], outTy]]
+    /\ -------
+    ( TermSort %|-* [gamma, outTy])
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -524,6 +568,17 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
   InfixRule op /\ _ ->
     [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
+  EqualsRule /\ _ ->
+    [Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text "==", Rendering.spaceElem], Left (renCtx /\ 1)]
+  ListRule /\ _ -> [pure [HH.text "List "], Left (renCtx /\ 0)]
+  NilRule /\ _ -> [pure [HH.text "nil"]]
+  ConsRule /\ _ -> [pure [HH.text "cons"]]
+  ListMatchRule /\ _ ->
+    let renCtx' = Base.incremementIndentationLevel renCtx in
+    [pure [HH.text "match "], Left (renCtx' /\ 0), pure [HH.text " with"], pure (newlineIndentElem renCtx.indentationLevel)
+        , pure [HH.text "Nil -> "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
+        , pure [HH.text "Cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
+        , pure [HH.text " -> "], Left (renCtx' /\ 4)]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -633,19 +688,25 @@ getVarEdits sort =
         -- If its not a TermSort, then there are no var edits
         slot \[_] -> Nil
 
+{-
+TODO: the problem causing bugs is that this returns a thing with gamma just a metavariable when it should be a specific gamma
+-}
 getWrapInAppEdit :: String -> {-cursorSort-}Sort -> DerivTerm -> Maybe Edit
 getWrapInAppEdit name cursorSort dterm =
     matchExpr2 cursorSort (sor TermSort %$ [slot, slot]) (\[cursorCtx, cursorTy] ->
             matchExpr (Grammar.derivTermSort dterm) (sor TermSort %$ [slot, slot]) \[gamma, ty] ->
             do
-            application /\ sub <- maximallyApplied cursorCtx cursorTy ty dterm
-            _ /\ sub2 <- unify (Grammar.derivTermSort application) (subMetaExprPartially sub cursorSort)
---            traceM ("final is: " <> pretty final <> " with " <> pretty (exprLabel final))
+            _ /\ sub <- unify gamma cursorCtx
+            let cursorCtx' = subMetaExprPartially sub cursorCtx
+            let cursorTy' = subMetaExprPartially sub cursorTy
+            let ty' = subMetaExprPartially sub ty
+            let dterm' = subDerivTerm sub dterm
+            application /\ sub2 <- maximallyApplied cursorCtx' cursorTy' ty' dterm'
             pure {
                 label: name
                 , action: defer \_ -> Edit.FillAction {
                     sub: Unification.composeSub sub sub2
-                    , dterm: subDerivTerm sub application
+                    , dterm: application
                 }
             }
         )
@@ -700,6 +761,10 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "app" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
+        , getWrapInAppEdit "cons" cursorSort (newTermFromRule ConsRule)
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule ListMatchRule) "match" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule EqualsRule) "==" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
 --        (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
         (\constant -> getWrapInAppEdit (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))
@@ -712,6 +777,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
     , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
