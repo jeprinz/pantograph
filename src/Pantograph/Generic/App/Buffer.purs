@@ -221,7 +221,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             modifyHydratedExprGyro $ moveGyroNext `until` gyroIsValidCursor
           else if ki.key == "ArrowUp" then do
             liftEffect $ Event.preventDefault event
-            modifyHydratedExprGyro $ moveGyroNext `until` gyroIsValidCursorAndBeginsLine
+            modifyHydratedExprGyro $ moveGyroPrev `until` gyroIsValidCursorAndBeginsLine
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ moveGyroNext `until` gyroIsValidCursorAndBeginsLine

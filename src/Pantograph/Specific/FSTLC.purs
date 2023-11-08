@@ -22,7 +22,7 @@ import Data.StringQuery as StringQuery
 import Data.Supertype (inject)
 import Data.Supertype as Supertype
 import Data.Traversable (sequence)
-import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, singletonNonEmptyPath, treeNode, (%), (%!), (%!/), (%!~>), (%-))
+import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, singletonNonEmptyPath, treeNode, unconsPath, unsnocPath, (%), (%!), (%!/), (%!~>), (%-))
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Halogen.Elements as El
@@ -603,7 +603,7 @@ steppingRules =
     _ -> Nothing
 
 getEditsAtSort :: Sort -> Orientation -> Edits
-getEditsAtSort (Tree (P.SN Str) [_]) Outside = P.Edits $ StringQuery.fuzzy 
+getEditsAtSort (P.SN Str % [_]) Outside = P.Edits $ StringQuery.fuzzy 
   { toString: fst, maxPenalty
   , getItems: \string ->
       [ Tuple string $
@@ -696,10 +696,10 @@ arrangeExpr node@(P.EN LamTm _ _) [x, α, b] | _ % _ <- P.getExprNodeSort node =
   α /\ _ <- α
   b /\ _ <- b
   pure $ Array.fromFoldable $ π."λ" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."." ⊕ " " ⊕ b ˜⊕ Nil
-arrangeExpr node@(P.EN LetTm _ _) [x, alpha, a, b] | _ % _ <- P.getExprNodeSort node = do
-  x /\ _ <- x
-  α /\ _ <- alpha
-  a /\ aNode <- a
+arrangeExpr node@(P.EN LetTm _ _) [x, α, a, b] | _ % _ <- P.getExprNodeSort node = do
+  x /\ _ <- x # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
+  α /\ _ <- α # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
+  a /\ aNode <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
   b /\ _ <- b
   let
     parensYes = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ π."(" ⊕ a ˜⊕ π.")" ⊕ " " ⊕ π."in" ⊕ " " ⊕ b ˜⊕ Nil
@@ -786,11 +786,11 @@ arrangeExpr node mkids = do
   GMB.errorR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
 
 getBeginsLine :: forall er. AnnExprCursor er -> Boolean
-getBeginsLine (Cursor {inside: P.EN (Format Newline) _ _ % _}) = true
+getBeginsLine (Cursor {outside}) | Just {inner: P.EN (Format Newline) _ _ %- 0 /\ []} <- unconsPath outside = true
 getBeginsLine _ = false
 
 getInitialQuery :: forall er. AnnExprCursor er -> String
-getInitialQuery (Cursor {inside: e@(P.EN StrEL _ _ % _)}) | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprSort e = string
+getInitialQuery (Cursor {inside: e}) | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprSort e = string
 getInitialQuery _ = ""
 
 -- utilities
