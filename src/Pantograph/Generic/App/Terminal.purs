@@ -103,13 +103,12 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
         ]
     , content:
         [ El.ℓ [El.Classes $ [El.TerminalContent] <> if not isOpen then [El.Closed] else []]
-            [ 
-              embedHtml mempty $
-              El.ℓ [El.Classes [El.GlobalMessages]]
-                (List.toUnfoldable items <#> \(GMB.GlobalMessage item) -> do
+            [ embedHtml mempty $
+              El.ℓ [El.Classes [El.GlobalMessages]] $
+                List.toUnfoldable items <#> \(GMB.GlobalMessage item) -> do
                   El.ℓ [El.Classes [El.GlobalMessage]]
                     [ renderTag item.tag
-                    , El.ℓ [El.Classes [El.GlobalMessageContent]] [item.html] ])
+                    , El.ℓ [El.Classes [El.GlobalMessageContent]] [item.html] ]
             ]
         ]
     }

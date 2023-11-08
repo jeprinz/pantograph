@@ -4,6 +4,7 @@ html,
 body {
   margin: 0;
   padding: 0;
+  font-family: 'Courier New', Courier, monospace;
 }
 
 /* GlobalMessage */
@@ -13,14 +14,14 @@ body {
   /* flex-direction: column; */
   flex-direction: column-reverse;
   gap: var(--it);
-  width: calc(100% - 2*var(--it));
-  padding: var(--it);
+  /* width: calc(100% - 2*var(--it)); */
+  /* padding: var(--it); */
 }
 
 .GlobalMessage {
   display: flex;
   flex-direction: row;
-  width: 100%;
+  /* width: 100%; */
 }
 
 .GlobalMessageTag {
@@ -38,7 +39,8 @@ body {
 .ErrorGlobalMessageTag {
   color: var(--error-color);
 }
-.ErrorGlobalMessageTag +  .GlobalMessageContent {
+
+.ErrorGlobalMessageTag+.GlobalMessageContent {
   /* box-shadow: 0 0 0 1px var(--error-color); */
   background-color: rgb(255, 230, 230);
 }
@@ -51,7 +53,7 @@ body {
   flex-grow: 1;
   padding: 0 var(--it);
   box-shadow: -1px 0 0 0 black;
-  width: 100%;
+  /* width: 100%; */
 }
 
 .GlobalMessageRecordKey {
@@ -86,10 +88,6 @@ body {
   content: "*";
 }
 
-.ArrangeHtml {
-  display: inline;
-}
-
 .Punctuation {
   display: inline;
   white-space: pre;
@@ -101,9 +99,9 @@ body {
   white-space: pre;
 }
 
-.Expr:hover>.ArrangeHtml>.Whitespace,
-.Expr.OutsideCursor>.ArrangeHtml>.Whitespace,
-.Expr.InsideCursor>.ArrangeHtml>.Whitespace,
+.Expr:hover>.Whitespace,
+.Expr.OutsideCursor>.Whitespace,
+.Expr.InsideCursor>.Whitespace,
 .Expr.OutsideSelect .Whitespace {
   color: gray;
 }
@@ -326,7 +324,7 @@ body {
 
 .SortingRuleParameters {
   display: block;
-  padding: var(--it);
+  padding: 0 var(--it);
   background-color: rgb(206, 206, 206);
 }
 

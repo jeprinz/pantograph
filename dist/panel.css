@@ -1,0 +1,91 @@
+/* Panel */
+
+.Panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.PanelHeader {
+  padding: var(--it);
+  width: calc(100% - 2*var(--it));
+  height: calc(2 * var(--it));
+
+  display: flex;
+  flex-direction: row;
+  gap: var(--it);
+  justify-content: space-between;
+
+  color: var(--color3);
+  border-bottom: var(--it) solid var(--color2);
+  background-color: black;
+}
+
+.PanelHeaderInfo {
+  display: flex;
+  flex-direction: row;
+  gap: var(--it);
+}
+
+.PanelHeaderInfo>.Title {
+  color: var(--color1);
+  font-weight: bold;
+}
+
+.PanelHeaderInfo>.Subtitle {
+  color: var(--color2);
+  font-weight: bold;
+}
+
+.PanelHeaderControl {
+  display: flex;
+  flex-direction: row;
+  gap: var(--it);
+}
+
+.PanelContent {
+  width: 100%;
+  height: 100%;
+}
+
+.PanelContentInterior {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+/* EditorPanel */
+
+.EditorPanel {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* BufferPanel */
+
+.BufferPanel {
+  flex-grow: 1;
+}
+
+.BufferPanel>.PanelContent {
+  overflow: scroll;
+}
+
+.BufferPanel>.PanelContent>* {
+  padding: var(--it);
+}
+
+/* TerminalPanel */
+
+.TerminalPanel {
+  flex-grow: 0;
+  max-height: 45vh;
+}
+
+.TerminalPanel>.PanelContent {
+  overflow: scroll;
+}
+
+.TerminalContent.Closed {
+  display: none;
+}
