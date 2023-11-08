@@ -2,6 +2,7 @@ module Pantograph.Specific.FSTLC where
 
 import Prelude
 
+import Control.Monad.Reader (asks, local)
 import Control.Monad.State (modify)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
@@ -670,10 +671,9 @@ maxPenalty = Fuzzy.Distance 1 0 0 0 0 0
 
 -- Renderer
 
-type CTX :: forall k. Row k
-type CTX = ()
+type CTX = (indentLevel :: Int)
 topCtx :: Record CTX
-topCtx = {}
+topCtx = {indentLevel: 0}
 
 type ENV = (countHoleTm :: Int, countHoleTy :: Int)
 topEnv :: Record ENV
@@ -773,10 +773,14 @@ arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort
   domainRequiresParens (P.EN ArrowTyEL _ _) = true
   domainRequiresParens _ = false
 arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node = do
-  a /\ _ <- a
   case fmt of
-    Newline -> pure $ Array.fromFoldable $ [El.whitespace " ↪", El.br :: Html] ⊕ a ˜⊕ Nil
-    Indent  -> pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a ˜⊕ Nil
+    Newline -> do
+      a /\ _ <- a
+      indentLevel <- asks _.indentLevel
+      pure $ Array.fromFoldable $ ([El.whitespace " ↪", El.br :: Html] <> Array.replicate indentLevel (El.whitespace " ⇥" :: Html)) ⊕ a ˜⊕ Nil
+    Indent -> do
+      a /\ _ <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
+      pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
   GMB.errorR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
