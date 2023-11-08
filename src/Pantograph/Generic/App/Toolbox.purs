@@ -5,9 +5,9 @@ import Pantograph.Generic.Language
 import Pantograph.Generic.Rendering
 import Prelude
 
-import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Display (display)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.StringQuery as StringQuery
@@ -24,6 +24,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Type.Proxy (Proxy(..))
 import Util (fromJust, fromJust')
 import Web.Event.Event as Event
@@ -187,7 +188,6 @@ makeToolboxExprProps {adjacentIndexedEdits, modifySelect, outside: toolboxOutsid
             liftEffect $ Event.stopPropagation $ MouseEvent.toEvent mouseEvent
             modifySelect $ const select  ]
 
-
 renderEdit :: forall sn el ctx env. Dynamics sn el ctx env =>
   RenderEditLocals sn el ->
   ExprPath sn el ->
@@ -197,7 +197,7 @@ renderEdit :: forall sn el ctx env. Dynamics sn el ctx env =>
 renderEdit adjacentIndexedEdits outside inside = case _ of
   Edit edit -> case edit.middle of
     Nothing -> case edit.inside of
-      Nothing -> bug "TODO: how to render this kind of Edit?"
+      Nothing -> GMB.bug $ display"TODO: how to render this kind of Edit?"
       Just inside -> renderAnnExpr outside inside (makeToolboxExprProps adjacentIndexedEdits)
     Just middle -> renderAnnExprPath outside (toPath middle) inside (makeToolboxExprProps adjacentIndexedEdits) case edit.inside of
       Nothing -> pure editHole

@@ -7,6 +7,7 @@ import Util
 
 import Bug (bug)
 import Data.Array as Array
+import Data.Display (display)
 import Data.List.NonEmpty as NonEmptyList
 import Data.Map (Map)
 import Data.Map as Map
@@ -18,6 +19,7 @@ import Data.Tree.Common (assertValidToothKids)
 import Data.Tuple (uncurry)
 import Data.Tuple.Nested ((/\), type (/\))
 import Debug as Debug
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (pretty)
 import Todo (todo)
@@ -29,9 +31,9 @@ import Type.Row.Homogeneous (class Homogeneous)
 assertValidRuleVarSubst :: forall a sn el. Language sn el => el -> RuleSortVarSubst (Sort sn) -> (Unit -> a) -> a
 assertValidRuleVarSubst label sigma@(RuleSortVarSubst m) k =
   let SortingRule rule = getSortingRule label in
-  if rule.parameters == Map.keys m then k unit else
-  debug "assertValidRuleVarSubst" {label: show label, sigma: pretty sigma, rule_parameters: show rule.parameters} \_ ->
-  bug $ "invalid substitution"
+  if rule.parameters /= Map.keys m then
+    GMB.bugR (display"[assertValidRuleVarSubst] invalid") {label: display $ show label, sigma: display $ pretty sigma, rule_parameters: display $ show rule.parameters}
+  else k unit
 
 -- build
 
@@ -186,7 +188,7 @@ prefixExprPathSkeleton p1 p2 = case unconsPath p1 /\ unconsPath p2 of
   _ -> false
 
 matchRuleSortChangeWithSortChange :: forall sn. 
-  Eq sn => Show sn => PrettyTreeNode sn =>
+  Eq sn => Show sn => PrettyTreeNode sn => DisplayTreeNode sn =>
   RuleSortChange sn -> SortChange sn ->
   Maybe (RuleSortVarSubst (SortChange sn))
 matchRuleSortChangeWithSortChange (Shift (sh /\ th) ch) (Shift (sh' /\ th') ch') | sh == sh', th == (Supertype.inject <$> th') = matchRuleSortChangeWithSortChange ch ch'
@@ -206,7 +208,7 @@ matchRuleSortChangeWithSortChange _ _ = Nothing
 -- | outputs `Nothing`. (Note that `c2` has metavariables in the change
 -- | positions, so its `(Expr (Meta (ChangeLabel l))))`
 doOperation :: forall sn.
-  Eq sn => Show sn => PrettyTreeNode sn =>
+  Eq sn => Show sn => PrettyTreeNode sn => DisplayTreeNode sn =>
   SortChange sn -> RuleSortChange sn -> 
   Maybe (RuleSortVarSubst (SortChange sn) /\ SortChange sn)
 doOperation c1 c2 = do

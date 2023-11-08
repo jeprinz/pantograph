@@ -227,7 +227,7 @@ body {
   width: 100%;
 }
 
-.GlobalMessageDebugRecordKey {
+.GlobalMessageRecordKey {
   display: inline-block;
   margin-right: var(--it);
   background-color: rgb(204, 204, 204);
@@ -269,6 +269,7 @@ body {
 }
 
 .Whitespace {
+  display: inline;
   color: rgba(0, 0, 0, 0);
   white-space: pre;
 }
@@ -490,6 +491,30 @@ body {
   border: var(--it) solid var(--hover-border-color);
 }
 
+/* SortingRule */
+
+.SortingRule {
+  display: inline;
+}
+
+.SortingRuleParameters {
+  display: block;
+  padding: var(--it);
+  background-color: rgb(206, 206, 206);
+}
+
+.SortingRuleKids {
+  display: inline;
+}
+
+.SortingRuleParent {
+  display: inline;
+}
+
+.RuleSortVar {
+  display: inline;
+}
+
 /* Html */
 
 .Hole {
@@ -499,6 +524,10 @@ body {
 
 .Inline {
   display: inline;
+}
+
+.Block {
+  margin-bottom: var(--it);
 }
 
 .Button {
@@ -524,4 +553,10 @@ body {
   display: inline;
   padding: 0 var(--it);
   margin-right: var(--it);
+}
+
+.Matrix tr {}
+
+.Matrix td {
+  padding: calc(0.5*var(--it));
 }

@@ -8,6 +8,7 @@ import Util
 
 import Control.Alternative (guard)
 import Data.Array as Array
+import Data.Display (display)
 import Data.List (List)
 import Data.List as List
 import Data.Map as Map
@@ -16,6 +17,8 @@ import Data.Set as Set
 import Data.Supertype as Supertype
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..), uncurry)
+import Halogen.Elements as El
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Text.Pretty (pretty)
 import Todo (todo)
 
@@ -61,18 +64,44 @@ unifySortWithRuleSort _ _ = Nothing
 
 unifyChangeWithRuleChange :: forall sn el. Language sn el => SortChange sn -> RuleSortChange sn -> Maybe (RuleSortVarSubst (SortChange sn))
 unifyChangeWithRuleChange ch (VarRuleSortNode x %! []) = Just $ singletonRuleSortVarSubst x ch
-unifyChangeWithRuleChange (sign1 /\ (sn1 %- i1 /\ kids1) %!/ kid1) (sign2 /\ (InjectRuleSortNode sn2 %- i2 /\ kids2) %!/ kid2) = do
+unifyChangeWithRuleChange ch1@(sign1 /\ (sn1 %- i1 /\ kids1) %!/ kid1) ch2@(sign2 /\ (InjectRuleSortNode sn2 %- i2 /\ kids2) %!/ kid2) = do
   guard $ sign1 == sign2
   guard $ i1 == i2
   guard $ sn1 == sn2
-  sigma1 <- map Array.fold $ uncurry (\s rs -> Supertype.inject <$$> unifySortWithRuleSort s rs) `traverse` Array.zip kids1 kids2
-  sigma2 <- unifyChangeWithRuleChange kid1 kid2
-  Just $ sigma1 <> sigma2
-unifyChangeWithRuleChange (s1 %!~> s1') (s2 %!~> s2') = do
-  sigma1 <- unifySortWithRuleSort s1 s2
-  sigma2 <- unifySortWithRuleSort s1' s2'
-  Just $ (Supertype.inject <$> sigma1) <> (Supertype.inject <$> sigma2)
-unifyChangeWithRuleChange (sn1 %! kids1) (InjectRuleSortNode sn2 %! kids2) = do
+  if true then do
+    GMB.debugRM (display "unifyChangeWithRuleChange / Shift") {ch1: display ch1, ch2: display ch2}
+    sigma1 <- map Array.fold $ uncurry (\s rs -> Supertype.inject <$$> unifySortWithRuleSort s rs) `traverse` Array.zip kids1 kids2
+    GMB.debugRM (display "unifyChangeWithRuleChange / Shift") {sigma1: display sigma1}
+    sigma2 <- unifyChangeWithRuleChange kid1 kid2
+    GMB.debugRM (display "unifyChangeWithRuleChange / Shift") {sigma12: display sigma2}
+    Just $ sigma1 <> sigma2
+  else do
+    sigma1 <- map Array.fold $ uncurry (\s rs -> Supertype.inject <$$> unifySortWithRuleSort s rs) `traverse` Array.zip kids1 kids2
+    sigma2 <- unifyChangeWithRuleChange kid1 kid2
+    Just $ sigma1 <> sigma2
+unifyChangeWithRuleChange ch1@(s1 %!~> s1') ch2@(s2 %!~> s2') = do
+  if true then do
+    GMB.debugRM (display "unifyChangeWithRuleChange / Replace") {ch1: display ch1, ch2: display ch2}
+    sigma1 <- unifySortWithRuleSort s1 s2
+    GMB.debugRM (display "unifyChangeWithRuleChange / Replace") {sigma1: display sigma1}
+    sigma2 <- unifySortWithRuleSort s1' s2'
+    GMB.debugRM (display "unifyChangeWithRuleChange / Replace") {sigma12: display sigma2}
+    -- Just $ (Supertype.inject <$> sigma1) <> (Supertype.inject <$> sigma2)
+    let sigma1' = Supertype.inject <$> sigma1
+    let sigma2' = Supertype.inject <$> sigma2
+    GMB.debugRM (display "unifyChangeWithRuleChange / Replace") {sigma1': display sigma1', sigma2': display sigma2'}
+    Just $ sigma1' <> sigma2'
+  else do
+    sigma1 <- unifySortWithRuleSort s1 s2
+    sigma2 <- unifySortWithRuleSort s1' s2'
+    Just $ (Supertype.inject <$> sigma1) <> (Supertype.inject <$> sigma2)
+unifyChangeWithRuleChange ch1@(sn1 %! kids1) ch2@(InjectRuleSortNode sn2 %! kids2) = do
   guard $ sn1 == sn2
-  map Array.fold $ uncurry unifyChangeWithRuleChange `traverse` Array.zip kids1 kids2
+  if true then do
+    GMB.debugRM (display "unifyChangeWithRuleChange / Inject") {ch1: display ch1, ch2: display ch2}
+    sigmas <- uncurry unifyChangeWithRuleChange `traverse` Array.zip kids1 kids2
+    GMB.debugRM (display "unifyChangeWithRuleChange / Inject") {sigmas: display sigmas}
+    Just $ Array.fold sigmas
+  else do
+    map Array.fold $ uncurry unifyChangeWithRuleChange `traverse` Array.zip kids1 kids2
 unifyChangeWithRuleChange _ _ = Nothing

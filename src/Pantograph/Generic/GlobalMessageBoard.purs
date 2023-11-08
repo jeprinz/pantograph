@@ -41,20 +41,23 @@ addGlobalMessage tag html k = modifyGlobalMessages (Cons (make tag html)) k
 make :: GlobalMessageTag -> Html -> GlobalMessage
 make tag html = GlobalMessage {tag, html}
 
+-- record
+
+renderRecord :: forall r. Homogeneous r Html => Record r -> Html
+renderRecord r =
+  let keysAndValues = fromHomogenousRecordToTupleArray r in
+  El.matrix $ keysAndValues <#> \(k /\ v) -> [El.ℓ [El.Classes [El.GlobalMessageRecordKey]] [El.τ k], v]
+
 -- bug
 
 bug :: forall a. Html -> a
 bug html = addGlobalMessage ErrorGlobalMessageTag html \_ ->
-  Bug.bug "bug info printed to terminal"
+  Bug.bug "global message board bug"
 
 bugR :: forall r a. Homogeneous r Html => Html -> Record r -> a
 bugR title r = 
-  let keysAndValues = fromHomogenousRecordToTupleArray r 
-      html = El.ι $ [title] <> if Array.null keysAndValues then [] else
-              Array.foldMap (\(k /\ v) -> [El.β [El.ι [El.ℓ [El.Classes [El.GlobalMessageDebugRecordKey]] [El.τ k], v]]]) keysAndValues 
-  in
-  addGlobalMessage ErrorGlobalMessageTag html \_ ->
-    Bug.bug "bug info printed to terminal"
+  addGlobalMessage ErrorGlobalMessageTag (El.β [title, El.br, renderRecord r]) \_ ->
+    Bug.bug "global message board bug"
 
 -- log
 
@@ -66,12 +69,8 @@ logM tag html = do
   log tag html \_ -> pure unit
 
 logR tag title r =
-  let keysAndValues = fromHomogenousRecordToTupleArray r in
-  log tag $
-    El.ι $ 
-      [title] <>
-      if Array.null keysAndValues then [] else
-      Array.foldMap (\(k /\ v) -> [El.β [El.ι [El.ℓ [El.Classes [El.GlobalMessageDebugRecordKey]] [El.τ k], v]]]) keysAndValues
+  log tag $ El.β [title, El.br, renderRecord r]
+      
 
 logRM tag title r = do
   pure unit

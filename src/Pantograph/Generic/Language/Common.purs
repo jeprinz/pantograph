@@ -1,7 +1,7 @@
 module Pantograph.Generic.Language.Common where
 
 import Prelude
-import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation, Path, Select, Tooth(..), Tree(..), assertValidTreeKids, displayTreeNode, epL, epR, lubStrict, prettyTreeNode, validKidsCount, (%-))
+
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -19,11 +19,14 @@ import Data.StringQuery (StringQuery)
 import Data.Supertype (class Supertype)
 import Data.Supertype as Supertype
 import Data.Traversable (sequence)
+import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation, Path, Select, Tooth(..), Tree(..), assertValidTreeKids, displayTreeNode, epL, epR, lubStrict, prettyTreeNode, validKidsCount, (%-))
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
+import Halogen.HTML as HH
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, parens, pretty, (<+>))
 import Type.Proxy (Proxy)
@@ -72,7 +75,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (SortNode sn) where
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
       SN node -> ass \kids -> displayTreeNode node kids
-      VarSN var -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [El.text $ pretty var]
+      VarSN var -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [display $ pretty var]
 
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)
@@ -104,7 +107,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (RuleSortNode sn) wher
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
       InjectRuleSortNode node -> ass \kids -> displayTreeNode node kids
-      VarRuleSortNode var -> ass \[] -> El.ℓ [El.Classes [El.VarRuleSortNode]] [El.text $ pretty var]
+      VarRuleSortNode var -> ass \[] -> El.ℓ [El.Classes [El.VarRuleSortNode]] [display $ pretty var]
 
 makeVarRuleSort :: forall sn. RuleSortVar -> Tree (RuleSortNode sn)
 makeVarRuleSort x = Tree (VarRuleSortNode x) []
@@ -210,6 +213,18 @@ newtype SortingRule sn = SortingRule
 
 derive instance Newtype (SortingRule sn) _
 
+instance (Show sn, DisplayTreeNode sn) => Display (SortingRule sn) where
+  display (SortingRule rule) = do
+    El.ℓ [El.Classes [El.SortingRule]]
+      [ El.ℓ [El.Classes [El.SortingRuleParameters]] $ ([display "∀ "] <> _) $ Array.intercalate [display " "] $ (Set.toUnfoldable rule.parameters :: Array _) <#> display >>> pure
+      , El.ℓ [El.Classes [El.SortingRuleKids]] $ rule.kids <#> \kid -> El.ℓ [] [display kid]
+      , HH.hr []
+      , El.ℓ [El.Classes [El.SortingRuleParent]] [El.ℓ [] [display rule.parent]]
+      ]
+
+instance Display RuleSortVar where
+  display x = El.ℓ [El.Classes [El.RuleSortVar]] [display $ pretty x]
+
 -- | A `ChangeRule` specifies the changes from each kid to the parent of a
 -- | corresponding `SortingRule`. The `parent` is probably just the injection of
 -- | the the parent's sort, using `RuleSortVar`s appropriately. This is useful
@@ -259,9 +274,9 @@ type SpecialEdits sn el =
     -- copy a path (this is applied to the path in the clipboard)
   , copyExprPath :: SortChange sn -> Maybe (Edit sn el)
   -- 'enter' key
-  , enter :: Unit -> Maybe (Edit sn el)
+  , enter :: Sort sn -> Maybe (Edit sn el)
   -- 'tab' key
-  , tab :: Unit -> Maybe (Edit sn el) }
+  , tab :: Sort sn -> Maybe (Edit sn el) }
 
 -- RuleSortVar
 
@@ -284,11 +299,10 @@ unionRuleSortVarSubst f (RuleSortVarSubst m1) (RuleSortVarSubst m2) = RuleSortVa
 
 -- | `RuleSortVarSubst (SortChange sn)` forms a `Monoid` since we can `lubStrict` the
 -- | multiple assignments of a single `RuleSortVar`.
-instance (Eq sn, Show sn, PrettyTreeNode sn) => Semigroup (RuleSortVarSubst (SortChange sn)) where
-  -- append (RuleSortVarSubst m1) (RuleSortVarSubst m2) = RuleSortVarSubst (Map.unionWith lubStrict m1 m2)
+instance (Eq sn, Show sn, DisplayTreeNode sn) => Semigroup (RuleSortVarSubst (SortChange sn)) where
   append = unionRuleSortVarSubst lubStrict
 
-instance (Eq sn, Show sn, PrettyTreeNode sn) => Monoid (RuleSortVarSubst (SortChange sn)) where
+instance (Eq sn, Show sn, DisplayTreeNode sn) => Monoid (RuleSortVarSubst (SortChange sn)) where
   mempty = emptyRuleSortVarSubst
 
 -- | You can only compose `RuleSortVarSubst (Sort sn)` if each `RuleSortVar`
@@ -347,7 +361,7 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (RuleSo
   applyRuleSortVarSubst sigma (Replace old new) = Replace (applyRuleSortVarSubst sigma old) (applyRuleSortVarSubst sigma new)
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = Supertype.inject $ applyRuleSortVarSubst sigma x
-  applyRuleSortVarSubst _ _ = bug "invalid"
+  applyRuleSortVarSubst sigma ch = GMB.bugR (display"[ApplyRuleSortVarSubst (Sort sn) (RuleSortChange sn) (SortChange sn) / applyRuleSortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) where
   -- take the right endpoints of any changes applied to adjacent kids in the tooth of the shift
@@ -355,11 +369,11 @@ instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (SortChange sn) (
   applyRuleSortVarSubst sigma (Replace old new) = Replace (epL $ applyRuleSortVarSubst sigma (Supertype.inject old :: RuleSortChange sn)) (epR $ applyRuleSortVarSubst sigma (Supertype.inject new :: RuleSortChange sn))
   applyRuleSortVarSubst sigma (InjectChange (InjectRuleSortNode sn) kids) = InjectChange sn (applyRuleSortVarSubst sigma <$> kids)
   applyRuleSortVarSubst sigma (InjectChange (VarRuleSortNode x) []) = applyRuleSortVarSubst sigma x
-  applyRuleSortVarSubst _ _ = bug "invalid"
+  applyRuleSortVarSubst sigma ch = GMB.bugR (display"[ApplyRuleSortVarSubst (SortChange sn) (RuleSortChange sn) (SortChange sn) / applyRuleSortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
 
 instance (Show sn, PrettyTreeNode sn) => ApplyRuleSortVarSubst (Sort sn) (Tooth (RuleSortNode sn)) (Tooth (SortNode sn)) where
   applyRuleSortVarSubst sigma (InjectRuleSortNode sn %- i /\ kids) = sn %- i /\ (applyRuleSortVarSubst sigma <$> kids)
-  applyRuleSortVarSubst _ th@(VarRuleSortNode _ %- _ /\ _) = bug $ "impossible: there should never be a VarRuleSortNode at a ExprTooth; th = " <> pretty th
+  applyRuleSortVarSubst sigma th@(VarRuleSortNode _ %- _ /\ _) = GMB.bug (display"impossible: there should never be a VarRuleSortNode at a ExprTooth") {th: display $ pretty th}
 
 -- SortVar
 
@@ -404,14 +418,14 @@ instance Language sn el => ApplySortVarSubst sn (Sort sn) (Sort sn) where
 
 instance Language sn el => ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) where
   applySortVarSubst sigma (Tooth sn@(SN _) (i /\ kids)) = Tooth sn (i /\ (applySortVarSubst sigma <$> kids))
-  applySortVarSubst _ (Tooth (VarSN _) _) = bug "invalid"
+  applySortVarSubst sigma th@(Tooth (VarSN _) _) = GMB.bugR (display"[ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, th: display $ pretty th}
 
 instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) where
   applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ applySortVarSubst sigma tooth) (applySortVarSubst sigma kid)
   applySortVarSubst sigma (Replace old new) = Replace (applySortVarSubst sigma old) (applySortVarSubst sigma new)
   applySortVarSubst sigma (InjectChange sn@(SN _) kids) = InjectChange sn (applySortVarSubst sigma <$> kids)
   applySortVarSubst sigma (InjectChange (VarSN x) []) = Supertype.inject $ applySortVarSubst sigma x
-  applySortVarSubst _ (InjectChange (VarSN _) _) = bug "invalid"
+  applySortVarSubst sigma ch@(InjectChange (VarSN _) _) = GMB.bugR (display"[ApplySortVarSubst sn (SortChange sn) (SortChange sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
 
 instance Language sn el => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where
   applySortVarSubst = append

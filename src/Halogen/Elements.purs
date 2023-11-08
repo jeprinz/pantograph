@@ -67,9 +67,9 @@ compileProp (StrictHover k) = do
   [ HE.onMouseOver \mouseEvent -> unsafePerformEffect do
 
       -- Debug.traceM "[StringHover] onMouseOver"
-      Debug.traceM "[BEGIN] mouseEvent"
-      Debug.traceM mouseEvent
-      Debug.traceM "[END] mouseEvent"
+      -- Debug.traceM "[BEGIN] mouseEvent"
+      -- Debug.traceM mouseEvent
+      -- Debug.traceM "[END] mouseEvent"
 
       let event = MouseEvent.toEvent mouseEvent
       Event.stopPropagation event
@@ -115,9 +115,15 @@ data ClassName
   -- UI
   | Title | Subtitle | Button | Program
   -- Plain
-  | Inline | Block
+  | Inline | Block | Matrix
   -- Language
-  | VarSN | Expr | Hole | ArrangeHtml | VarRuleSortNode
+  | Expr
+  | VarSN 
+  | Hole
+  | VarRuleSortNode
+  | RuleSortVar
+  | SortingRule | SortingRuleParameters | SortingRuleKids | SortingRuleParent
+  | ArrangeHtml
   -- StepExpr
   | StepExpr | StepExprBoundary | StepExprMarker
   | StepExprBoundaryInfo | StepExprBoundaryDirection | StepExprBoundaryChange
@@ -140,7 +146,7 @@ data ClassName
   | TerminalContent
   | GlobalMessageTag | DebugGlobalMessageTag | ErrorGlobalMessageTag | InfoGlobalMessageTag
   | GlobalMessages | GlobalMessage | GlobalMessageContent
-  | GlobalMessageDebugRecordKey
+  | GlobalMessageRecordKey
   -- Hover
   | Hover
   -- Misc
@@ -215,8 +221,9 @@ block kids = ℓ [Classes [Block]] kids
 text string = HH.text string
 τ string = text string
 
-matrix rows = β (ι <$> rows)
-μ rows = matrix rows
+matrix rows = 
+  HH.table [HP.classes [HH.ClassName "Matrix"]] $ rows <#> \row ->
+    HH.tr_ $ row <#> \dat -> HH.td_ [dat]
 
 br = HH.br_
 

@@ -20,7 +20,7 @@ import Control.Monad.State (get)
 import Data.Array as Array
 import Data.CodePoint.Unicode as CodePoint
 import Data.List (List(..))
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.String as String
 import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple (snd)
@@ -32,6 +32,7 @@ import Halogen as H
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Pantograph.Generic.Rendering.Hook.Keyboard as Keyboard
 import Record as R
 import Todo (todo)
@@ -59,7 +60,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
   let
     getHydratedExprGyro = do
       liftEffect (Ref.read hydExprGyroRef) >>= case _ of
-        Nothing -> bug "[modifyHydratedExprGyro] hydExprGyroRef should already be `Just _` by now"
+        Nothing -> GMB.bug $ El.text $ "[modifyHydratedExprGyro] hydExprGyroRef should already be `Just _` by now"
         Just hydExprGyro -> pure hydExprGyro
 
     modifyExprGyro f = do
@@ -246,16 +247,22 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           -- Enter: special "enter" Edit
           else if ki.key == "Enter" then do
             liftEffect $ Event.preventDefault event
-            case specialEdits.enter unit of
-              Nothing -> pure unit
-              Just edit -> modifyExprGyro $ applyEdit edit
+            hydExprGyro <- getHydratedExprGyro
+            fromMaybe (pure unit) do
+              edit <- case hydExprGyro of
+                CursorGyro (Cursor cursor) -> specialEdits.enter $ getExprSort cursor.inside
+                SelectGyro _ -> Nothing
+              Just $ modifyExprGyro $ applyEdit edit
           
           -- Tab: special "tab" Edit
           else if ki.key == "Tab" then do
             liftEffect $ Event.preventDefault event
-            case specialEdits.tab unit of
-              Nothing -> pure unit
-              Just edit -> modifyExprGyro $ applyEdit edit
+            hydExprGyro <- getHydratedExprGyro
+            fromMaybe (pure unit) do
+              edit <- case hydExprGyro of
+                CursorGyro (Cursor cursor) -> specialEdits.tab $ getExprSort cursor.inside
+                SelectGyro _ -> Nothing
+              Just $ modifyExprGyro $ applyEdit edit
 
           else pure unit
 
@@ -269,7 +276,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         [ El.ℓ [El.Classes [El.Subtitle]] [El.text input.name] 
         ]
     , control:
-        [ El.ℓ [El.Classes [El.Button]] [El.text "×"] ]
+        [ El.ℓ [El.Classes [El.Button]] [El.text "⤓"]
+        , El.ℓ [El.Classes [El.Button]] [El.text "×"] ]
     , content:
         [ El.ℓ [El.Classes [El.Program]] gyroHtmls ]
     }

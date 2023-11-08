@@ -9,6 +9,7 @@ import Pantograph.Generic.Rendering
 import Prelude
 
 import Bug (bug)
+import Data.Display (display)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Tuple (fst)
@@ -18,6 +19,7 @@ import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.Elements as El
 import Halogen.Hooks as HK
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Type.Proxy (Proxy(..))
 
 previewComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Component (PreviewQuery sn el) (PreviewInput sn el ctx env) PreviewOutput Aff
@@ -59,7 +61,7 @@ previewComponent = HK.component \{queryToken} (PreviewInput input) -> Debug.trac
               in 
               case edit.middle of
                 Nothing -> case edit.inside of
-                  Nothing -> bug "TODO: how to preview this kind of Edit?"
+                  Nothing -> GMB.bug $ display"TODO: how to preview this kind of Edit?"
                   Just inside -> El.ℓ [El.Classes classNames] (insideHtml inside)
                 Just middle -> case edit.inside of
                   Nothing -> El.ℓ [El.Classes classNames] (middleHtml middle [])

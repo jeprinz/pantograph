@@ -1,17 +1,15 @@
 module Data.Tree.Change where
 
-import Data.Tree.Common
 import Prelude
-
-import Bug (bug)
+import Data.Tree.Common (class DisplayTreeNode, Change(..), ShiftSign(..), Tooth(..), Tree(..), tooths)
 import Data.Array as Array
+import Data.Display (display)
 import Data.Maybe (Maybe(..))
-import Data.Supertype (inject)
 import Data.Supertype as Supertype
 import Data.Traversable (traverse)
 import Data.Tuple.Nested ((/\))
-import Text.Pretty (pretty, ticks)
-import Todo (todo)
+import Halogen.Elements as El
+import Pantograph.Generic.GlobalMessageBoard as GMB
 import Util (fromJust)
 
 invert :: forall a. Change a -> Change a
@@ -60,9 +58,9 @@ minusLub (Shift (Minus /\ th@(Tooth a (i /\ _))) c1) (InjectChange a' cs) | a ==
 minusLub c1@(Replace _ _) c2 | isIdentity c2 = Just c1
 minusLub _ _ = Nothing
 
-lubStrict :: forall a. Eq a => PrettyTreeNode a => Change a -> Change a -> Change a
+lubStrict :: forall a. Eq a => DisplayTreeNode a => Change a -> Change a -> Change a
 lubStrict c1 c2 = case lub c1 c2 of
-  Nothing -> bug $ "lub doesn't exist for changes: c1 = " <> ticks (pretty c1) <> "; c2 = " <> ticks (pretty c2)
+  Nothing -> GMB.bugR (El.τ "Change LUB (least upper bound) doesnt exist") {c1: display c1, c2: display c2}
   Just c -> c
 
 -- TODO: The change should always be from the kid to the parent. is this true?

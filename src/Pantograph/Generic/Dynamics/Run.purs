@@ -33,7 +33,7 @@ runStepExpr e = do
   GMB.debugM $ El.ι [El.π "runStepExpr input", El.β [display e]]
   let e' = runStepM steppingRules $ stepFixpoint e
   GMB.debugM $ El.ι [El.π "runStepExpr output", El.β [display e']]
-  let cursor = fromStepExprToExprCursor e'
+  cursor <- fromStepExprToExprCursor e'
   GMB.debugM $ El.ι [El.π "runStepExpr output cursor", El.β [El.τ $ pretty cursor]]
   Just $ CursorGyro cursor
 

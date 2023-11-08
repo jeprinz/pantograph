@@ -6,15 +6,14 @@ import Bug (bug)
 import Control.Monad.State (modify)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Display (Html)
+import Data.Display (Html, display)
 import Data.Enum as Enum
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
-import Data.Int as Int
 import Data.Lazy (defer, force)
 import Data.List (List(..))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.String (CodePoint)
@@ -23,20 +22,18 @@ import Data.StringQuery as StringQuery
 import Data.Supertype (inject)
 import Data.Supertype as Supertype
 import Data.Traversable (sequence)
-import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, (%), (%!), (%!/), (%!~>), (%-))
+import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, singletonNonEmptyPath, treeNode, (%), (%!), (%!/), (%!~>), (%-))
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
-import Data.UUID as UUID
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Javascript as Javascript
 import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
 import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
 import Pantograph.Generic.GlobalMessageBoard as GMB
-import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortVar(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
-import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM) as P
+import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortVar(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
+import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM, displayAnnExpr) as P
 import Pantograph.Library.Change (getDiffChangingRule)
 import Pantograph.Library.Edit as LibEdit
 import Pantograph.Library.Rendering (π, (˜⊕), (⊕))
@@ -271,7 +268,9 @@ instance PrettyTreeNode EL where
       HoleTy -> ass \[] -> "?"
       DataTyEL dt -> ass \[] -> pretty dt
       ArrowTyEL -> ass \[α, β] -> parens $ α <+> "→" <+> β
-      Format fmt -> ass \[] -> pretty fmt
+      Format fmt -> ass \[e] -> case fmt of
+        Newline -> "<newline> " <> e
+        Indent -> "<indent> " <> e
 
 -- Format
 
@@ -300,13 +299,14 @@ getDefaultExpr _ = Nothing
 specialEdits :: SpecialEdits
 specialEdits = 
   { deleteExpr: case _ of
-      -- when you delete a type-Expr, you need to push an outward change that
+      P.SN TmJg % [γ, α] -> Just $ LibEdit.makeInsideChangeEdit $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α]
+      -- When you delete a type-Expr, you need to push an outward change that
       -- replaces the type-sort that is reflected in the type-Expr's sort
       -- (otherwise the type-Expr would just be filled to correspond to its
-      -- type-Sort again)
-      P.SN TyJg % [alpha] -> Just $ LibEdit.makeOuterChangeEdit $ P.SN TyJg %! [alpha %!~> P.freshVarSort "deleted"]
-      -- when you delete a string-Expr, you need to push an outward change the
-      -- replaces the StrInner-sort with the empty-string StrInner-sort
+      -- type-Sort again).
+      P.SN TyJg % [α] -> Just $ LibEdit.makeOuterChangeEdit $ P.SN TyJg %! [α %!~> P.freshVarSort "deleted"]
+      -- When you delete a string-Expr, you need to push an outward change the
+      -- replaces the StrInner-sort with the empty-string StrInner-sort.
       P.SN Str % [strInner] -> Just $ LibEdit.makeOuterChangeEdit $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
       _ -> Nothing
   , copyExpr: const Nothing
@@ -314,17 +314,23 @@ specialEdits =
       let {outerChange, innerChange} = splitExprPathChanges ch in
       Just $ LibEdit.makeOuterAndInnerChangeEdit outerChange innerChange
   , copyExprPath: const Nothing
-  -- TODO: 'enter' makes a newline
-  , enter: const Nothing
-  -- TODO: 'tab' makes an indentation
-  , tab: const Nothing
+  , enter: \sort -> case sort of
+      P.SN TmJg % [_, _] -> Just $ LibEdit.makeMiddleChangeEdit $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []
+      _ -> Nothing
+  , tab: \sort -> case sort of
+      P.SN TmJg % [_, _] -> Just $ LibEdit.makeMiddleChangeEdit $ singletonNonEmptyPath $ P.buildExprTooth (Format Indent) {sort} [] []
+      _ -> Nothing
   }
 
 validGyro :: forall er. AnnExprGyro er -> Boolean
+-- Cursor
 validGyro (CursorGyro (Cursor cursor)) | P.SN TmJg % [γ, α] <- P.getExprSort cursor.inside = true
+validGyro (CursorGyro (Cursor cursor)) | P.SN NeJg % [γ, α] <- P.getExprSort cursor.inside = true
 validGyro (CursorGyro (Cursor cursor)) | P.SN TyJg % [α] <- P.getExprSort cursor.inside = true
 validGyro (CursorGyro (Cursor cursor)) | P.SN Str % [s] <- P.getExprSort cursor.inside = true
-validGyro (SelectGyro (Select select)) | P.SN TmJg % [γ, α] <- P.getExprSort select.inside = true
+-- Select
+validGyro (SelectGyro (Select select)) = treeNode (P.getExprNonEmptyPathInnerSort select.middle) == treeNode (P.getExprNonEmptyPathOuterSort select.middle)
+--
 validGyro _ = false
 
 getSortingRule :: EL -> SortingRule
@@ -408,9 +414,9 @@ getSortingRule =
       , rs_jg_ty β ] /\
       ( rs_jg_ty (rs_ty_arrow α β) )
 
-    Format _ -> P.buildSortingRuleFromStrings ["a"] \[a] -> 
-      [] /\
-      ( a )
+    Format _ -> P.buildSortingRuleFromStrings ["sort"] \[sort] ->
+      [ sort ] /\
+      ( sort )
 
 getChangingRule :: EL -> ChangingRule
 getChangingRule el = case el of
@@ -509,16 +515,22 @@ steppingRules =
       Just $ P.Boundary (P.Down /\ ch') b
     _ -> Nothing
 
-  -- {Term γ (+ α -> β)}↑{f} ~~> {Term γ β}↑{App f (? : α)}
+  -- -- {Term γ (+ α -> β)}↑{f} ~~> {Term γ β}↑{App f (? : α)}
+  -- wrapApp = P.SteppingRule "wrapApp" case _ of
+  --   P.Up /\ (P.SN TmJg %! [γ, Plus /\ (P.SN ArrowTySN %- (1 /\ [α])) %!/ β]) %.| f -> Just $ 
+  --     P.Up /\ (P.SN TmJg %! [γ, β]) %.| (P.buildStepExpr AppNe {γ: epL γ, α, β: epL β} [f, se_tm_hole (epR γ) α (inject (reifyTypeSortAsTypeExpr α))])
+  --   _ -> Nothing
+
+  -- {Ne γ (+ α -> β)}↑{f} ~~> {Ne γ β}↑{App f (? : α)}
   wrapApp = P.SteppingRule "wrapApp" case _ of
-    P.Up /\ (P.SN TmJg %! [γ, Plus /\ (P.SN ArrowTySN %- (1 /\ [α])) %!/ β]) %.| f -> Just $ 
-      P.Up /\ (P.SN TmJg %! [γ, β]) %.| (P.buildStepExpr AppNe {γ: epL γ, α, β: epL β} [f, se_tm_hole (epR γ) α (inject (reifyTypeSortAsTypeExpr α))])
+    P.Up /\ (P.SN NeJg %! [γ, Plus /\ (P.SN ArrowTySN %- (1 /\ [α])) %!/ β]) %.| f -> Just $ 
+      P.Up /\ (P.SN NeJg %! [γ, β]) %.| (P.buildStepExpr AppNe {γ: epL γ, α, β: epL β} [f, se_tm_hole (epR γ) α (inject (reifyTypeSortAsTypeExpr α))])
     _ -> Nothing
 
   -- App {Term γ (- α -> β)}↑{b} a ~~> {Term γ β}↑{b}
   unWrapApp = P.SteppingRule "unWrapApp" case _ of
-    P.EN AppNe _ _ %. [P.Up /\ (P.SN TmJg %! [γ, Minus /\ (P.SN ArrowTySN %- 1 /\ [_α]) %!/ β]) %.| b, _a] -> Just $ 
-      P.Up /\ (P.SN TmJg %! [γ, β]) %.| b
+    P.EN AppNe _ _ %. [P.Up /\ (P.SN NeJg %! [γ, Minus /\ (P.SN ArrowTySN %- 1 /\ [_α]) %!/ β]) %.| b, _a] -> Just $ 
+      P.Up /\ (P.SN NeJg %! [γ, β]) %.| b
     _ -> Nothing 
 
   -- App {Ne γ (α -> β)}↑{f} a ~~> {Ne γ β}↑{GrayApp f a}
@@ -590,62 +602,69 @@ steppingRules =
       P.buildStepExpr ErrorBoundaryTm {γ, α, β: delta} [a]
     _ -> Nothing
 
-
 getEditsAtSort :: Sort -> Orientation -> Edits
-getEditsAtSort (Tree (P.SN Str) []) Outside = P.Edits $ StringQuery.fuzzy 
+getEditsAtSort (Tree (P.SN Str) [_]) Outside = P.Edits $ StringQuery.fuzzy 
   { toString: fst, maxPenalty
-  , getItems: \string -> 
+  , getItems: \string ->
       [ Tuple string $
         NonEmptyArray.singleton $
           LibEdit.makeInsideChangeEdit $ ex_str (sr_strInner string) ]
   }
 getEditsAtSort (Tree (P.SN VarJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuzzy
+getEditsAtSort (Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuzzy
   { toString: fst, maxPenalty
-  , getItems: const $ Array.foldMap (maybe [] Array.singleton)
-      [ 
-        map (Tuple "lambda") $ 
-        -- (b :: Tm γ β) ~~> (λ ('' : ?α) (b' :: Tm ('' : ?α , γ) β) :: Tm γ (?α -> β))
-        map NonEmptyArray.singleton $ do
-          let γ = γ0
-          let β = α0
-          let α = sr_freshVar "α"
-          let x = sr_strInner ""
-          let xEx = ex_str x
-          let αEx = reifyTypeSortAsTypeExpr α
-          LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
-              P.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
-      , 
-        map (Tuple "let") $ join $ map NonEmptyArray.fromArray $ Array.fold $ map (map Array.singleton) $
-          [ -- (a :: Tm γ α) ~~> (let '' : ?β = (?b :: Tm ('' : ?β, γ) ?β) in (a' :: Tm ('' : ?α, γ) α))
-            do
-              let γ = γ0
-              let α = α0
-              let β = sr_freshVar "β"
-              let x = sr_strInner ""
-              let xEx = ex_str x
-              let αEx = reifyTypeSortAsTypeExpr α
-              let aHole = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
-              GMB.debugM $ El.τ "en-let around body"
-              LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
-                P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, aHole] []
-          , -- (a :: Tm γ α) ~~> (let '' : α = a in (?a :: Tm ('' : α, γ) α)
-            do
-              let γ = γ0
-              let α = α0
-              let x = sr_strInner ""
-              let xEx = ex_str x
-              let αEx = reifyTypeSortAsTypeExpr α
-              let aHole = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
-              GMB.debugM $ El.τ "en-let around impl"
-              LibEdit.buildEditFromExprNonEmptyPath {splitExprPathChanges} sort $ P.singletonExprNonEmptyPath $
-                P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [aHole]
-          ]
+  , getItems: const $ LibEdit.makeEditRows [
+      "lambda" /\ [ 
+      do
+        let γ = γ0
+            β = α0
+            α = sr_freshVar "α"
+            x = sr_strInner ""
+            xEx = ex_str x
+            αEx = reifyTypeSortAsTypeExpr α
+        Just $ P.Edit
+          { sigma: Nothing
+          , outerChange: Just $ P.SN TmJg %! [Supertype.inject γ, Plus /\ (P.SN ArrowTySN %- 1 /\ [α]) %!/ Supertype.inject β]
+          , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
+          , innerChange: Just $ P.SN TmJg %! [Plus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β]
+          , inside: Nothing } 
+      ], 
+      "let" /\ [
+      do
+        let x = sr_strInner ""
+            α = sr_freshVar "α"
+            β = α0
+            γ = γ0
+            xEx = ex_str x
+            αEx = reifyTypeSortAsTypeExpr α
+            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+        Just $ P.Edit
+          { sigma: Nothing
+          , outerChange: Nothing
+          , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, a] []
+          , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β] 
+          , inside: Nothing },
+      do
+        let x = sr_strInner ""
+            α = α0
+            γ = γ0
+            xEx = ex_str x
+            αEx = reifyTypeSortAsTypeExpr α
+            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+        Just $ P.Edit
+          { sigma: Nothing
+          , outerChange: Nothing
+          , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [a]
+          , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject α] 
+          , inside: Nothing } 
+      ]
     ]
   }
 getEditsAtSort (Tree (P.SN NeJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 getEditsAtSort (Tree (P.SN TyJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort _ _ = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
+getEditsAtSort sort orientation = 
+  GMB.debugR (display "getEditsAtSort/default") {sort: display $ show sort, orientation: display $ show orientation} \_ ->
+  P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 
 maxPenalty :: Fuzzy.Distance
 maxPenalty = Fuzzy.Distance 1 0 0 0 0 0
@@ -677,7 +696,7 @@ arrangeExpr node@(P.EN LamTm _ _) [x, α, b] | _ % _ <- P.getExprNodeSort node =
   x /\ _ <- x
   α /\ _ <- α
   b /\ _ <- b
-  pure $ Array.fromFoldable $ π."λ" ⊕ " " ⊕ x ˜⊕ π.":" ⊕ α ˜⊕ " " ⊕ π."." ⊕ " " ⊕ b ˜⊕ Nil
+  pure $ Array.fromFoldable $ π."λ" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."." ⊕ " " ⊕ b ˜⊕ Nil
 arrangeExpr node@(P.EN LetTm _ _) [x, alpha, a, b] | _ % _ <- P.getExprNodeSort node = do
   x /\ _ <- x
   α /\ _ <- alpha
@@ -697,8 +716,10 @@ arrangeExpr node@(P.EN IfTm _ _) [a, b, c] | _ % _ <- P.getExprNodeSort node = d
   c /\ _ <- c
   pure $ Array.fromFoldable $ π."if" ⊕ " " ⊕ a ˜⊕ " " ⊕ π."then" ⊕ " " ⊕ b ˜⊕ " " ⊕ π."else" ⊕ " " ⊕ c ˜⊕ Nil
 arrangeExpr node@(P.EN CallTm _ _) [ne] | _ % _ <- P.getExprNodeSort node = do
-  ne /\ _ <- ne
-  pure $ Array.fromFoldable $ ne ˜⊕ Nil
+  ne /\ neNode <- ne
+  case neNode of
+    -- P.EN VarNe _ _ -> pure $ Array.fromFoldable $ ne ˜⊕ Nil
+    _ -> pure $ Array.fromFoldable $ π."(" ⊕ ne ˜⊕ π.")" ⊕ Nil
 arrangeExpr node@(P.EN ErrorCallTm _ _) [ne] | _ % _ <- P.getExprNodeSort node = do
   ne /\ _ <- ne
   pure $ Array.fromFoldable $ "ErrorCall " ⊕ ne ˜⊕ Nil
@@ -728,15 +749,14 @@ arrangeExpr node@(P.EN GrayAppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node =
   f /\ _ <- f
   a /\ _ <- a
   pure $ Array.fromFoldable $ f ˜⊕ " " ⊕ π."{" ⊕ a ˜⊕ π."}" ⊕ Nil
-
-arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x % []] <- P.getExprNodeSort node = do
-  countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-  pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
-
-arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x@(P.SortVar {uuid}) % []] <- P.getExprNodeSort node = do
-  _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-  pure $ Array.fromFoldable $ [LibRendering.renderUuidSplotch uuid [HP.classes [HH.ClassName "HoleTySplotch"]]] ⊕ Nil
-
+arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x@(P.SortVar {uuid}) % []] <- P.getExprNodeSort node =
+  let doHoleTySplotch = true in
+  if doHoleTySplotch then do
+    _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+    pure $ Array.fromFoldable $ [LibRendering.renderUuidSplotch uuid [HP.classes [HH.ClassName "HoleTySplotch"]]] ⊕ Nil
+  else do
+    countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+    pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
 arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α] <- P.getExprNodeSort node = do
   _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
   pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ pretty α] :: Html] ⊕ Nil
@@ -748,7 +768,7 @@ arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort
   pure $ Array.fromFoldable $
     if domainRequiresParens alphaNode
       then π."(" ⊕ alpha ˜⊕ π.")" ⊕ " " ⊕ π."->" ⊕ " " ⊕ beta ˜⊕ Nil
-      else alpha ˜⊕ " " ⊕ π."->" ⊕ beta ˜⊕ Nil
+      else alpha ˜⊕ " " ⊕ π."->" ⊕ " " ⊕ beta ˜⊕ Nil
   where
   domainRequiresParens :: AnnExprNode er -> Boolean
   domainRequiresParens (P.EN ArrowTyEL _ _) = true
@@ -757,7 +777,7 @@ arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node =
   a /\ _ <- a
   case fmt of
     Newline -> pure $ Array.fromFoldable $ [El.whitespace " ↪", El.br :: Html] ⊕ a ˜⊕ Nil
-    Indent  -> pure $ Array.fromFoldable $ [El.whitespace "⇥ " :: Html] ⊕ a ˜⊕ Nil
+    Indent  -> pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
   bug $ "invalid; node = " <> pretty node <> "; kidNodes = " <> pretty kidNodes
@@ -795,11 +815,11 @@ freeVarTerm :: {x :: Sort, α :: Sort, γ :: Sort} -> Expr
 freeVarTerm {γ, x, α} = case γ of
   Tree (P.SN ConsCtx) [y, β, γ'] -> sucVar {y, β, pred: freeVarTerm {γ: γ', x, α}}
   Tree (P.SN NilCtx) [] -> ex_var_free x α
-  _ -> bug "impossible"
+  _ -> GMB.bugR (display"[freeVarTerm] impossible") {γ: display γ, x: display x, α: display α}
 
 sucVar :: {y :: Sort, β :: Sort, pred :: Expr} -> Expr
 sucVar {y, β, pred} | P.SN VarJg % [γ, x, α, loc] <- P.getExprSort pred = ex_var_suc γ x α y β loc pred
-sucVar _ = bug "impossible"
+sucVar {y, β, pred} = GMB.bugR (display"[sucVar] impossible") {y: display y, β: display β, pred: P.displayAnnExpr pred}
 
 -- | This is necessary because the wrapApp rule conflicts with the `defaultUp`,
 -- | and the priority order of the list isn't enough because `defaultUp` happens

@@ -98,7 +98,7 @@ data SteppingRule sn el
 applySteppingRule :: forall sn el ctx env. Dynamics sn el ctx env => SteppingRule sn el -> StepExpr sn el -> Maybe (StepExpr sn el)
 applySteppingRule (SteppingRule name f) e = do
   e' <- f e
-  GMB.debugM $ El.μ 
+  GMB.debugM $ El.matrix 
     [ [El.β [display e]]
     , [El.π ("applySteppingRule: " <> name)]
     , [El.β [display e']] ]
@@ -168,33 +168,53 @@ instance ToStepExpr (AnnExprCursor sn el r) sn el where
 
 -- | Convert a `StepExpr` into an `ExprCursor`. The `StepExpr` must have
 -- | _exactly_ 1 `Marker` and exactly `0` `Boundary`s.
-fromStepExprToExprCursor :: forall sn el ctx env. Rendering sn el ctx env => StepExpr sn el -> ExprCursor sn el
+fromStepExprToExprCursor :: forall sn el ctx env. Rendering sn el ctx env => StepExpr sn el -> Maybe (ExprCursor sn el)
 fromStepExprToExprCursor e0 = case goCursorOrExpr e0 of
-    Left {tooths, inside, orientation} -> Cursor {outside: Path (List.reverse tooths), inside, orientation}
-    Right e -> GMB.bug $ El.ι [El.τ "no `Marker` found during `fromStepExprToExprCursor`: ", El.β [El.τ "e0: ", display e0], El.β [El.τ "e: ", displayAnnExpr e]]
+    Just (Left {tooths, inside, orientation}) -> Just $ Cursor {outside: Path (List.reverse tooths), inside, orientation}
+    Just (Right e) -> GMB.bug $ El.ι [El.τ "no `Marker` found during `fromStepExprToExprCursor`: ", El.β [El.τ "e0: ", display e0], El.β [El.τ "e: ", displayAnnExpr e]]
+    Nothing -> Nothing
   where
-  goExpr :: StepExpr sn el -> Expr sn el
-  goExpr (Boundary _ _) = GMB.bug $ El.μ [[El.τ "encountered a `Boundary` during `goExpr`"], [display e0]]
-  goExpr (Marker _) = GMB.bug $ El.μ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]
-  goExpr (StepExpr node kids) = Tree node (kids <#> goExpr)
+  goExpr :: StepExpr sn el -> Maybe (Expr sn el)
+  goExpr (Boundary _ _) = GMB.debug (El.matrix [[El.τ "encountered a `Boundary` during `goExpr`"], [display e0]]) \_ -> Nothing
+  goExpr (Marker _) = GMB.debug (El.matrix [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]) \_ -> Nothing
+  goExpr (StepExpr node kids) = Tree node <$> (goExpr `traverse` kids)
 
-  goCursorOrExpr :: StepExpr sn el -> {tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el
-  goCursorOrExpr (Boundary _ _) = GMB.bug $ El.μ $ [[El.τ "encountered a `Boundary` during `fromStepExprToExprCursor`"], [display e0]]
-  goCursorOrExpr (Marker e) = Left $ {tooths: mempty, inside: goExpr e, orientation: Outside}
-  goCursorOrExpr (StepExpr node kids) =
+  goCursorOrExpr :: StepExpr sn el -> Maybe ({tooths :: List (ExprTooth sn el), inside :: Expr sn el, orientation :: Orientation} \/ Expr sn el)
+  goCursorOrExpr (Boundary _ _) = GMB.debug (El.matrix $ [[El.τ "encountered a `Boundary` during `fromStepExprToExprCursor`"], [display e0]]) \_ -> Nothing
+  goCursorOrExpr (Marker e) = do
+    inside <- goExpr e
+    Just $ Left $ {tooths: mempty, inside, orientation: Outside}
+  goCursorOrExpr (StepExpr node kids) = do
+    let f = case _ of
+          Nothing /\ kids' -> case _ of
+            i /\ Left cursor -> Just (i /\ cursor) /\ kids'
+            _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
+          Just i_cursor /\ kids' -> case _ of
+            _ /\ Left _cursor -> GMB.bug $ El.matrix $ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]
+            _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
+    
+    coeKids <- goCursorOrExpr `traverse` kids
+    let maybe_i_cursor /\ kids' = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ coeKids
+
+    case maybe_i_cursor of
+      Just (i /\ {tooths, inside, orientation}) -> Just $ Left $ {tooths: List.Cons (Tooth node (i /\ kids')) tooths, inside, orientation}
+      Nothing -> Just $ Right $ Tree node kids'
+
+{-
     let
       f = case _ of
         Nothing /\ kids' -> case _ of
-          i /\ Left cursor -> Just (i /\ cursor) /\ kids'
-          _ /\ Right kid' -> Nothing /\ Array.cons kid' kids'
+          i /\ Left cursor -> Just $ Just (i /\ cursor) /\ kids'
+          _ /\ Right kid' -> Just $ Nothing /\ Array.cons kid' kids'
         Just i_cursor /\ kids' -> case _ of
-          _ /\ Left _cursor -> GMB.bug $ El.μ $ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]
-          _ /\ Right kid' -> Just i_cursor /\ Array.cons kid' kids'
-      maybe_i_cursor /\ kids = Array.foldr (flip f) (Nothing /\ []) $ Array.mapWithIndex Tuple $ goCursorOrExpr <$> kids
-    in
+          _ /\ Left _cursor -> GMB.debug (El.matrix $ [[El.τ "encountered multiple `Marker`s during `goExpr`"], [display e0]]) \_ -> Nothing
+          _ /\ Right kid' -> Just $ Just i_cursor /\ Array.cons kid' kids'
+    kids' <- goCursorOrExpr `traverse` kids
+    maybe_i_cursor /\ kids'' <- Array.foldM f (Nothing /\ []) $ Array.mapWithIndex Tuple kids'
     case maybe_i_cursor of
-      Just (i /\ {tooths, inside, orientation}) -> Left $ {tooths: List.Cons (Tooth node (i /\ kids)) tooths, inside, orientation}
-      Nothing -> Right $ Tree node kids
+      Just (i /\ {tooths, inside, orientation}) -> Just $ Left $ {tooths: List.Cons (Tooth node (i /\ kids'')) tooths, inside, orientation}
+      Nothing -> Just $ Right $ Tree node kids''
+-}
 
 -- manipulate StepExpr
 

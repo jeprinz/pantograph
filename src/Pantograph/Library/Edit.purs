@@ -1,21 +1,18 @@
 module Pantograph.Library.Edit where
 
-import Pantograph.Generic.Language
 import Prelude
 
+import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Display (display)
 import Data.Maybe (Maybe(..))
 import Data.Newtype as Newtype
-import Data.Tree (epL, epR, fromPath, singletonNonEmptyPath, tooths)
-import Data.Tuple (fst)
-import Data.Tuple.Nested ((/\))
-import Halogen.Elements as El
-import Pantograph.Generic.GlobalMessageBoard as GMB
-import Pantograph.Generic.Language.Unification (unifySort, unifySort3)
-import Text.Pretty (pretty)
-import Util (debugM, fromJust)
+import Data.Tree (epL, epR, invert)
+import Data.Tuple (uncurry)
+import Data.Tuple.Nested (type (/\), (/\))
+import Pantograph.Generic.Language (class Language, Edit(..), Expr, Sort, SortChange, SpecialEdits, ExprNonEmptyPath, applySortVarSubst, getExprNonEmptyPathSortChange, unifySort3)
+
+-- | ## Edit Makers
 
 type SplitChange sn = SortChange sn -> {outerChange :: SortChange sn, innerChange :: SortChange sn}
 
@@ -28,24 +25,39 @@ type SplitChange sn = SortChange sn -> {outerChange :: SortChange sn, innerChang
 -- | 
 -- | p[e : Expr a] ~~~> σp[ {σδ₂}↑{ σm[ {σδ₁}↓{σe} ] } ]
 -- | ```
-buildEditFromExprNonEmptyPath :: forall sn el.
+makeEditFromExprNonEmptyPath :: forall sn el.
   Language sn el =>
   {splitExprPathChanges :: SplitChange sn} ->
   Sort sn ->
   ExprNonEmptyPath sn el ->
   Maybe (Edit sn el)
-buildEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
-  let ch = getExprNonEmptyPathSortChange middle
-  let {outerChange, innerChange} = splitExprPathChanges ch
+makeEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
+  let middleChange = getExprNonEmptyPathSortChange middle
+  let {outerChange: outerChange_, innerChange} = splitExprPathChanges middleChange
+  let outerChange = invert outerChange_
+
+  -- GMB.debugRM (El.τ "makeEditFromExprNonEmptyPath [1]")
+  --   { sort: display sort
+  --   , middle: El.τ $ pretty middle
+  --   , middleChange: display middleChange
+  --   , outerChange: display outerChange 
+  --   , innerChange: display innerChange 
+  --   , "epL innerChange": display $ epL innerChange
+  --   , "epR innerChange": display $ epR innerChange
+  --   , "epL outerChange": display $ epL outerChange
+  --   , "epR outerChange": display $ epR outerChange
+  --   }
+  
   _ /\ sigma <- unifySort3 sort (epL innerChange) (epR outerChange)
+
   let outerChange' = applySortVarSubst sigma outerChange
   let middle' = applySortVarSubst sigma middle
   let innerChange' = applySortVarSubst sigma innerChange
 
-  -- GMB.debugRM (El.τ "buildEditFromExprNonEmptyPath") 
+  -- GMB.debugRM (El.τ "makeEditFromExprNonEmptyPath [2]")
   --   { sort: display sort
   --   , middle: El.τ $ pretty middle
-  --   , ch: display ch
+  --   , middleChange: display middleChange
   --   , outerChange: display outerChange 
   --   , innerChange: display innerChange 
   --   , sigma: El.τ $ pretty sigma
@@ -54,11 +66,31 @@ buildEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
   --   }
 
   Just $ Edit
-    { outerChange: Just outerChange'
+    { sigma: Just sigma
+    , outerChange: Just outerChange'
     , middle: Just middle'
     , innerChange: Just innerChange'
-    , inside: Nothing
-    , sigma: Just sigma }
+    , inside: Nothing }
+
+makeOuterChangeEdit :: forall sn el. SortChange sn -> Edit sn el
+makeOuterChangeEdit ch = identityEdit # Newtype.over Edit _ {outerChange = Just ch}
+
+makeInnerChangeEdit :: forall sn el. SortChange sn -> Edit sn el
+makeInnerChangeEdit ch = identityEdit # Newtype.over Edit _ {innerChange = Just ch}
+
+makeOuterAndInnerChangeEdit :: forall sn el. SortChange sn -> SortChange sn -> Edit sn el
+makeOuterAndInnerChangeEdit outerChange innerChange = identityEdit # Newtype.over Edit _ {outerChange = Just outerChange, innerChange = Just innerChange}
+
+makeMiddleChangeEdit :: forall sn el. ExprNonEmptyPath sn el -> Edit sn el
+makeMiddleChangeEdit p = identityEdit # Newtype.over Edit _ {middle = Just p}
+
+makeInsideChangeEdit :: forall sn el. Expr sn el -> Edit sn el
+makeInsideChangeEdit e = identityEdit # Newtype.over Edit _ {inside = Just e}
+
+-- | ## Simple Edits
+
+identityEdit :: forall sn el. Edit sn el
+identityEdit = Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing, sigma: Nothing}
 
 identitySpecialEdits :: forall sn el. SpecialEdits sn el
 identitySpecialEdits = 
@@ -70,17 +102,10 @@ identitySpecialEdits =
   , tab: const Nothing
   }
 
-identityEdit :: forall sn el. Edit sn el
-identityEdit = Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing, sigma: Nothing}
+-- | ## Utilities
 
-makeOuterChangeEdit :: forall sn el. SortChange sn -> Edit sn el
-makeOuterChangeEdit ch = identityEdit # Newtype.over Edit _ {outerChange = Just ch}
+makeEditRow :: forall sn el. String -> Array (Maybe (Edit sn el)) -> Maybe (String /\ NonEmptyArray (Edit sn el))
+makeEditRow key edits = map (key /\ _) $ join $ map NonEmptyArray.fromArray $ Array.fold $ map (map Array.singleton) $ edits
 
-makeInnerChangeEdit :: forall sn el. SortChange sn -> Edit sn el
-makeInnerChangeEdit ch = identityEdit # Newtype.over Edit _ {innerChange = Just ch}
-
-makeOuterAndInnerChangeEdit :: forall sn el. SortChange sn -> SortChange sn -> Edit sn el
-makeOuterAndInnerChangeEdit outerChange innerChange = identityEdit # Newtype.over Edit _ {outerChange = Just outerChange, innerChange = Just innerChange}
-
-makeInsideChangeEdit :: forall sn el. Expr sn el -> Edit sn el
-makeInsideChangeEdit e = identityEdit # Newtype.over Edit _ {inside = Just e}
+makeEditRows :: forall sn el. Array (String /\ Array (Maybe (Edit sn el))) -> Array (String /\ NonEmptyArray (Edit sn el))
+makeEditRows = map (uncurry makeEditRow) >>> Array.foldMap Array.fromFoldable
