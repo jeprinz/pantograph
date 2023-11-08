@@ -179,6 +179,7 @@ type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
 data Constant
     = ConstTrue
     | ConstFalse
+    | ConstNot
 
 derive instance Generic Constant _
 instance Show Constant where show x = genericShow x
@@ -197,11 +198,13 @@ constantType :: Constant -> Sort {-type-}
 constantType = case _ of
     ConstTrue -> DataType Bool %|-* []
     ConstFalse -> DataType Bool %|-* []
+    ConstNot -> Arrow %|-* [DataType Bool %|-* [], DataType Bool %|-* []]
 
 constantName :: Constant -> String
 constantName = case _ of
     ConstTrue -> "true"
     ConstFalse -> "false"
+    ConstNot -> "not"
 
 data InfixOperator
     = OpPlus
@@ -213,6 +216,8 @@ data InfixOperator
     | OpGreater
     | OpLessEq
     | OpGreaterEq
+    | OpAnd
+    | OpOr
 
 derive instance Generic InfixOperator _
 instance Show InfixOperator where show x = genericShow x
@@ -241,6 +246,8 @@ infixTypes op =
     OpGreater -> {left : int, right : int, output : bool}
     OpLessEq -> {left : int, right : int, output : bool}
     OpGreaterEq -> {left : int, right : int, output : bool}
+    OpAnd -> {left : bool, right : bool, output : bool}
+    OpOr -> {left : bool, right : bool, output : bool}
 
 infixName :: InfixOperator -> String
 infixName op =
@@ -254,6 +261,8 @@ infixName op =
     OpGreater -> ">"
     OpLessEq -> "<="
     OpGreaterEq -> ">="
+    OpAnd -> "and"
+    OpOr -> "or"
 
 -- | Naming convention: <title>_<output sort>
 data RuleLabel
@@ -671,6 +680,7 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "app" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
         (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
        <> ((Util.allPossible :: Array InfixOperator) <#>
@@ -690,7 +700,6 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
-    , makeEditFromPath (newPathFromRule Newline 0 )"newline" cursorSort
     ]) <> (Array.concat ((Util.allPossible :: Array InfixOperator) <#>
         (\op -> Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange
             (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
