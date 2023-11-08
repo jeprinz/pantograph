@@ -2,7 +2,6 @@ module Pantograph.Specific.FSTLC where
 
 import Prelude
 
-import Bug (bug)
 import Control.Monad.State (modify)
 import Data.Array as Array
 import Data.Array.NonEmpty as NonEmptyArray
@@ -780,7 +779,7 @@ arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node =
     Indent  -> pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
-  bug $ "invalid; node = " <> pretty node <> "; kidNodes = " <> pretty kidNodes
+  GMB.bugR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
 
 getBeginsLine :: forall er. AnnExprCursor er -> Boolean
 getBeginsLine (Cursor {inside: P.EN (Format Newline) _ _ % _}) = true
@@ -809,7 +808,7 @@ splitExprPathChanges ch@(P.SN TyJg %! [_α]) =
 splitExprPathChanges ch@(P.VarSN _ %! []) =
   { outerChange: ch 
   , innerChange: ch }
-splitExprPathChanges ch = bug $ "invalid: " <> pretty ch
+splitExprPathChanges ch = GMB.bugR (display"[splitExprPathChanges] invalid") {ch: display ch}
 
 freeVarTerm :: {x :: Sort, α :: Sort, γ :: Sort} -> Expr
 freeVarTerm {γ, x, α} = case γ of
@@ -831,8 +830,8 @@ isUpInCall _ = false
 reifyTypeSortAsTypeExpr :: Sort -> Expr
 reifyTypeSortAsTypeExpr (P.SN (DataTySN dt) % []) = P.buildExpr (DataTyEL dt) {} []
 reifyTypeSortAsTypeExpr (P.SN ArrowTySN % [α, β]) = P.buildExpr ArrowTyEL {α, β} [reifyTypeSortAsTypeExpr α, reifyTypeSortAsTypeExpr β]
-reifyTypeSortAsTypeExpr α@(P.VarSN x % []) = P.buildExpr HoleTy {α} []
-reifyTypeSortAsTypeExpr sr = bug $ "invalid: " <> show sr
+reifyTypeSortAsTypeExpr α@(P.VarSN _ % []) = P.buildExpr HoleTy {α} []
+reifyTypeSortAsTypeExpr s = GMB.bugR (display "[reifyTypeSortAsTypeExpr] invalid") {sort: display s}
 
 showCountHoleTy :: Int -> String
 showCountHoleTy i = if d == 0 then str else str <> "#" <> show d

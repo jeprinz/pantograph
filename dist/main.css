@@ -215,6 +215,10 @@ body {
 .ErrorGlobalMessageTag {
   color: var(--error-color);
 }
+.ErrorGlobalMessageTag +  .GlobalMessageContent {
+  /* box-shadow: 0 0 0 1px var(--error-color); */
+  background-color: rgb(255, 230, 230);
+}
 
 .InfoGlobalMessageTag {
   color: var(--info-color);
