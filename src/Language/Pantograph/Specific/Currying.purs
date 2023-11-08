@@ -52,6 +52,7 @@ import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS, (%#))
 import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM)
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Generic.Unification (unify)
+import Language.Pantograph.Generic.Unification as Unification
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
@@ -632,6 +633,24 @@ getVarEdits sort =
         -- If its not a TermSort, then there are no var edits
         slot \[_] -> Nil
 
+getWrapInAppEdit :: String -> {-cursorSort-}Sort -> DerivTerm -> Maybe Edit
+getWrapInAppEdit name cursorSort dterm =
+    matchExpr2 cursorSort (sor TermSort %$ [slot, slot]) (\[cursorCtx, cursorTy] ->
+            matchExpr (Grammar.derivTermSort dterm) (sor TermSort %$ [slot, slot]) \[gamma, ty] ->
+            do
+            application /\ sub <- maximallyApplied cursorCtx cursorTy ty dterm
+            _ /\ sub2 <- unify (Grammar.derivTermSort application) (subMetaExprPartially sub cursorSort)
+--            traceM ("final is: " <> pretty final <> " with " <> pretty (exprLabel final))
+            pure {
+                label: name
+                , action: defer \_ -> Edit.FillAction {
+                    sub: Unification.composeSub sub sub2
+                    , dterm: subDerivTerm sub application
+                }
+            }
+        )
+        slot \[_] -> Nothing
+
 getVarWraps :: {-cursorSort-}Sort -> List Edit
 getVarWraps cursorSort
     | Just [cursorCtx, _cursorTy] <- matchExprImpl cursorSort (sor TermSort %$ [slot, slot]) =
@@ -682,7 +701,8 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "app" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
-        (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
+--        (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
+        (\constant -> getWrapInAppEdit (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))
        <> ((Util.allPossible :: Array InfixOperator) <#>
         (\op -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (InfixRule op)) (infixName op) cursorSort))
     )
