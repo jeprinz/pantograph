@@ -1,0 +1,38 @@
+/* 
+  fonts
+*/
+
+/* @font-face {
+  font-family: 'Iosevka Curly';
+  src: url(./assets/fonts/iosevka-curly.ttc) format('truetype');
+} */
+
+/* @font-face {
+  font-family: 'FiraCode';
+  src: url(./assets/fonts/FiraCode-Regular.ttf) format('truetype');
+} */
+
+/* variables */
+
+:root {
+  /* colors */
+  --color1: #2AEDFF;
+  --color2: #cf6d27;
+  --color3: #eed69b;
+
+  --debug-color: rgb(0, 196, 0);
+  --error-color: rgb(255, 107, 107);
+  --info-color: rgb(84, 133, 255);
+
+  --cursor-background-color: rgb(240, 240, 255);
+  --cursor-border-color: rgb(0, 0, 255);
+
+  --select-background-color: rgb(202, 202, 255);
+
+  --hover-background-color: rgb(250, 238, 255);
+  --hover-border-color: rgb(179, 0, 255);
+
+  --boundary-color: rgb(178, 0, 0);
+
+  --it: 0.6em;
+}

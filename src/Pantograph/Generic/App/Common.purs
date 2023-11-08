@@ -15,15 +15,16 @@ makePanel :: forall w i.
   } -> 
   HH.HTML w i
 makePanel {className, info, control, content} =
-  El.ℓ [El.Classes [className]]
-    [ El.ℓ [El.Classes [El.PanelHeader]]
-        [ El.ℓ [El.Classes [El.PanelHeaderInfo]] info
-        , El.ℓ [El.Classes [El.PanelHeaderControl]] control
-        ]
-    , El.ℓ [El.Classes [El.PanelContent]] $ Array.singleton $
-        El.ℓ [El.Classes [El.PanelContentInterior]]
-          content
-    ]
+  El.ℓ [El.Classes [className]] content
+  -- El.ℓ [El.Classes [className]]
+  --   [ El.ℓ [El.Classes [El.PanelHeader]]
+  --       [ El.ℓ [El.Classes [El.PanelHeaderInfo]] info
+  --       , El.ℓ [El.Classes [El.PanelHeaderControl]] control
+  --       ]
+  --   , El.ℓ [El.Classes [El.PanelContent]] $ Array.singleton $
+  --       El.ℓ [El.Classes [El.PanelContentInterior]]
+  --         content
+  --   ]
 
 -- hole :: forall w i.
 --   { ann :: Maybe (HH.HTML w i)

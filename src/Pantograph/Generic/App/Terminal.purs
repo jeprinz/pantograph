@@ -102,29 +102,14 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
               [El.τ "×"]
         ]
     , content:
-        -- [ El.ℓ [El.Classes $ [HH.ClassName "TerminalContent"] <> if not isOpen then [HH.ClassName "closed"] else []]
         [ El.ℓ [El.Classes $ [El.TerminalContent] <> if not isOpen then [El.Closed] else []]
             [ 
-              -- TODO: should there be a text terminal?
-              --   El.ℓ [El.Classes [HH.ClassName "TerminalInput"]]
-              --     [ HH.input 
-              --         [ HP.ref terminalInputRefLabel
-              --         , HE.onFocusIn \_ -> liftEffect $ Ref.write true terminalInputIsFocusedRef
-              --         , HE.onFocusOut \_ -> liftEffect $ Ref.write false terminalInputIsFocusedRef ]
-              --     ]
-              -- , 
               embedHtml mempty $
               El.ℓ [El.Classes [El.GlobalMessages]]
                 (List.toUnfoldable items <#> \(GMB.GlobalMessage item) -> do
                   El.ℓ [El.Classes [El.GlobalMessage]]
                     [ renderTag item.tag
                     , El.ℓ [El.Classes [El.GlobalMessageContent]] [item.html] ])
-            -- ,
-            --   El.ℓ 
-            --     [ El.Classes [El.Button]
-            --     , El.OnMouseDown \_ -> forceUpdate ]
-            --     [ El.τ "force update" ]
-
             ]
         ]
     }
