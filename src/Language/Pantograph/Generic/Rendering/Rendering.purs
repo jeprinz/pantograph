@@ -95,6 +95,7 @@ arrangeNodeSubs locs isCursor hdzipper subElems =
             \edit -> 
               { lazy_preview: renderPreview locs hdzipper edit
               , edit }
+        , extraEdits: locs.spec.extraQueryEdits (derivTermSort (hdzipperDerivTerm hdzipper))
         }
         locs.handleBufferOutput
     , HH.slot_ previewSlot leftDir previewComponent leftDir

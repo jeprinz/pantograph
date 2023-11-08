@@ -183,6 +183,8 @@ type EditorSpec l r =
   , keyAction :: String -> {-cursor-}Sort l -> Maybe (Action l r)
     -- default is const Nothing
 
+  -- Extra edits that are queried by a string rather than having a list
+  , extraQueryEdits :: {-cursor-}Sort l -> String -> Array (Edit l r)
   }
 -- TODO: This will never get done, but: find a way to put defaultDerivTerm in EditorSpec instead of a TypeClass
 
@@ -448,6 +450,7 @@ trivialEditorLocals spec =
 type BufferInput l r =
   { hdzipper :: HoleyDerivZipper l r
   , edits :: Array (EditAndPreview l r)
+  , extraEdits :: String -> Array (Edit l r)
   }
 
 bufferSlot = Proxy :: Proxy "buffer"
@@ -460,7 +463,7 @@ additionalQueryKeys = ["+", "-", ">", "<", "=", "*", "/", "^"] <#> \s ->
     Util.fromJust $ Array.index (String.toCodePointArray s) 0
 
 isQueryKey :: CodePoint -> Boolean
-isQueryKey s = Unicode.isAlpha s || Array.elem s additionalQueryKeys
+isQueryKey s = Unicode.isAlphaNum s || Array.elem s additionalQueryKeys
 
 ---- Just if it is a close buffer key, and the boolean is "should I then skip to the next hole"
 --isCloseBufferKey :: String -> Maybe Boolean

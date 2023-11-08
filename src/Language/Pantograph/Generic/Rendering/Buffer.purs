@@ -74,15 +74,20 @@ computeEdits input {bufferString, mb_oldString} =
         , lazy_preview: defer (\_ -> FillEditPreview (HH.text bufferString))
         } ]
     Nothing ->
-      input.edits #
-        -- memo fuzzy distances
-        map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
-        -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
-        Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
-        -- sort the remaining edits by the fuzzy distance
-        Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
-        -- forget fuzzy distances
-        map snd
+      let sortedMatchingEdits =
+              input.edits #
+                -- memo fuzzy distances
+                map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
+                -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
+                Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
+                -- sort the remaining edits by the fuzzy distance
+                Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
+                -- forget fuzzy distances
+                map snd
+      in
+      let extraEdits = input.extraEdits bufferString in
+      let extraEditsAndPreviews = map (\edit -> {edit, lazy_preview: defer (\_ -> FillEditPreview (HH.text bufferString))}) extraEdits in
+      extraEditsAndPreviews <> sortedMatchingEdits
 
 computeNormalBufferFocus {bufferFocus, edits} = 
   bufferFocus `mod` Array.length edits

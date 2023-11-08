@@ -62,6 +62,8 @@ import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Language.Pantograph.Lib.GreyedRules as GreyedRules
 import Data.Lazy as Lazy
 import Data.Tuple (fst)
+import Data.Int as Int
+
 
 {-
 This file is the start of the specific langauge that we will try to have working for the user study.
@@ -291,6 +293,7 @@ data RuleLabel
   | NilRule
   | ConsRule
   | ListMatchRule
+  | IntegerLiteral
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -347,6 +350,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (ConsRule /\ []) = "cons"
   prettyExprF'_unsafe_RuleLabel (EqualsRule /\ [a, b]) = a <+> "==" <+> b
   prettyExprF'_unsafe_RuleLabel (ListMatchRule /\ [l, n, x, xs, c]) = "match" <+> l <+> "with Nil -> " <+> n <+> " cons" <+> x <+> " " <+> xs <+> " -> " <+> c
+  prettyExprF'_unsafe_RuleLabel (IntegerLiteral /\ [lit]) = lit
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -489,6 +493,11 @@ language = TotalMap.makeTotalMap case _ of
     /\ -------
     ( TermSort %|-* [gamma, outTy])
 
+  IntegerLiteral -> Grammar.makeRule ["gamma", "n"] \[gamma, n] ->
+    [ TypeOfLabel SortInt %* [n] ]
+    /\ -------
+    ( TermSort %|-* [gamma, DataType Int %|-* []] )
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -578,10 +587,11 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
         , pure [HH.text "Nil -> "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
         , pure [HH.text "Cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
         , pure [HH.text " -> "], Left (renCtx' /\ 4)]
-  _ -> bug $
-    "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
-    "  - rule = " <> pretty rule <> "\n" <>
-    "  - sort = " <> show sort
+  IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
+--  _ -> bug $
+--    "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
+--    "  - rule = " <> pretty rule <> "\n" <>
+--    "  - sort = " <> show sort
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
@@ -764,6 +774,7 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         , getWrapInAppEdit "cons" cursorSort (newTermFromRule ConsRule)
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule ListMatchRule) "match" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule EqualsRule) "==" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule IntegerLiteral) "zero" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
 --        (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
         (\constant -> getWrapInAppEdit (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))
@@ -1158,6 +1169,13 @@ clipboardSort _other = fromMetaVar (freshMetaVar "anySort")
 
 isValidCursorSort :: Sort -> Boolean
 isValidCursorSort (MInj (Grammar.SInj VarSort) % _) = false
+{-
+NOTE: this says you can't select integer textboxes.
+If we want to be able to, then I need to finish implementing things in Generic.
+It needs to have the correct sort on replace.
+The code for that is in computeEdits of Buffer.purs. Currently it just assumes that its a String textbox.
+-}
+isValidCursorSort (MInj (Grammar.TypeOfLabel SortInt) % _) = false
 isValidCursorSort _ = true
 
 isValidSelectionSorts :: {bottom :: Sort, top :: Sort} -> Boolean
@@ -1176,6 +1194,25 @@ keyAction _ (MInj (Grammar.TypeOfLabel _) % [_]) = Nothing -- Don't have newline
 keyAction "Enter" cursorSort =
         DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0))"newline" cursorSort
 keyAction _ _ = Nothing
+
+extraQueryEdits :: Sort -> String -> Array Edit
+extraQueryEdits cursorSort query
+    | Just [cursorCtx, cursorTy] <- matchExprImpl cursorSort (sor TermSort %$ [slot, slot]) =
+        case Int.fromString query of
+            Nothing -> []
+            Just n -> [
+                { label : query
+                , action : defer \_ -> Edit.FillAction
+                    {
+                        sub: Map.empty
+                        , dterm :
+                            makeLabel IntegerLiteral ["gamma" /\ cursorCtx, "n" /\ MInj (DataLabel (DataInt n)) % []]
+--    , TypeOfLabel SortString %* [consListArg]
+                                % [DerivLiteral (DataInt n) % []]
+                    }
+                }
+                ]
+extraQueryEdits _ _ = []
 
 --------------------------------------------------------------------------------
 -- EditorSpec
@@ -1198,5 +1235,6 @@ editorSpec =
   , forgetSorts
   , clipboardSort
   , keyAction
+  , extraQueryEdits
   }
 
