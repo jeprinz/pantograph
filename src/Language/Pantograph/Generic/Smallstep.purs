@@ -334,7 +334,7 @@ fastStepImpl fullRules assumeStepWithin0 t0 =
 --            trace (pretty t) \_ ->
             if assumeStepWithin == 0 then t /\ false else
             let t' /\ changed = case doAnyApply t fullRules of
-                    Just t' -> trace (pretty t) \_ -> t' /\ true
+                    Just t' -> {- trace (pretty t) \_ -> -} t' /\ true
                     Nothing -> t /\ false
             in
             let l % kids = t' in

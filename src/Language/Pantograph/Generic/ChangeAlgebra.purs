@@ -123,7 +123,10 @@ lub c1 c2 =
         _ | Just out <- plusLub c2 c1 -> pure out
         _ | Just out <- minusLub c1 c2 -> pure out
         _ | Just out <- minusLub c2 c1 -> pure out
-        _ -> Nothing
+        _ | isId c1 -> pure c2
+        _ | isId c2 -> pure c1
+        -- TODO: I think that probably there is no reason for lub to ever fail.
+        _ -> trace "WARNING: I think that this case probably shouldn't happen if I figured out the right way to code lub" \_ -> Nothing
 
 plusLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
 plusLub c1 c2 | c1 == c2 = Just c1
