@@ -184,7 +184,8 @@ derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 instance (IsExprLabel l, Pretty r) => Pretty (DerivLabel l r) where
   -- pretty (DerivLabel r ix) = pretty r <> "(" <> pretty ix <> ")"
   pretty (DerivLabel r ix) = pretty r <> "(" <> List.intercalate ", " (map (\(x /\ sort) -> pretty x <> " : " <> pretty sort) (Map.toUnfoldable ix) :: List _) <> ")"
-  pretty (DerivLiteral str) = show str
+  pretty (DerivLiteral (DataString str)) =  str
+  pretty (DerivLiteral (DataInt n)) = show n
 
 instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
@@ -242,7 +243,8 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   -- NOTE: This implementation ignores the expression label and metaexpression,
   -- but maybe we want to print those at some point for debugging?
   prettyExprF'_unsafe (DerivLabel r _sub /\ kids) = Expr.prettyExprF (AsExprLabel r /\ kids)
-  prettyExprF'_unsafe (DerivLiteral str /\ []) = show str
+  prettyExprF'_unsafe (DerivLiteral (DataString str) /\ []) = str
+  prettyExprF'_unsafe (DerivLiteral (DataInt n) /\ []) = show n
 
   expectedKidsCount (DerivLabel r _) = Expr.expectedKidsCount (AsExprLabel r)
   expectedKidsCount (DerivLiteral str) = 0
@@ -320,13 +322,15 @@ matchStringLabel _ = bug "wasn't stringlabel"
 instance Pretty l => Pretty (SortLabel l) where
   pretty (SInj l) = pretty l
   pretty (TypeOfLabel kind) = "TypeOfSort" <> show kind
-  pretty (DataLabel dataa) = show dataa
+  pretty (DataLabel (DataString str)) = str
+  pretty (DataLabel (DataInt n)) = show n
 
 instance IsExprLabel l => IsExprLabel (SortLabel l) where
   prettyExprF'_unsafe = case _ of
     SInj l /\ kids -> prettyExprF'_unsafe (l /\ kids)
     TypeOfLabel kind /\ [string] -> show kind <> "(" <> string <> ")"
-    DataLabel dataa /\ [] -> show dataa
+    DataLabel (DataString str) /\ [] -> str
+    DataLabel (DataInt n) /\ [] -> show n
 
   expectedKidsCount = case _ of
     SInj l -> expectedKidsCount l

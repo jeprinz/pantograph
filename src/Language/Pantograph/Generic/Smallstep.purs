@@ -302,7 +302,7 @@ stepRepeatedly t rules =
     let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
     let res = fst $ fastStepImpl fullRules infinity t
     in
---    trace "end" \_ ->
+--    trace ("after stepping res is: \n" <> pretty res) \_ ->
     res
 
 
@@ -331,9 +331,10 @@ fastStepImpl :: forall l r. IsRuleLabel l r =>
     List (StepRule l r) -> Int -> SSTerm l r -> SSTerm l r /\ Boolean
 fastStepImpl fullRules assumeStepWithin0 t0 =
     let fastStepTCO assumeStepWithin outChanged t =
+--            trace (pretty t) \_ ->
             if assumeStepWithin == 0 then t /\ false else
             let t' /\ changed = case doAnyApply t fullRules of
-                    Just t' -> t' /\ true
+                    Just t' -> trace (pretty t) \_ -> t' /\ true
                     Nothing -> t /\ false
             in
             let l % kids = t' in
@@ -367,6 +368,7 @@ langToChLang lang = map (\(Grammar.Rule vars kids parent)
 
 -- wraps a boundary unless the change is the identity, in which case so is this function
 wrapBoundary :: forall l r. IsExprLabel l => Direction -> Grammar.SortChange l{-Expr.MetaChange l-} -> SSTerm l r -> SSTerm l r
+--wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir (eliminateReplaces ch)) [t]
 wrapBoundary dir ch t = if isId ch then t else Expr.Expr (Boundary dir ch) [t]
 
 -- finds an element of a list satisfying a property, and splits the list into the pieces before and after it
@@ -422,6 +424,7 @@ defaultUp lang (Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids) =
  do
      (leftKidsAndSorts /\ (ch /\ kid /\ gSort) /\ rightKidsAndSorts)
          <- getFirst ((List.fromFoldable (Array.zip kids kidGSorts))) findUpBoundary
+--     traceM ("in defaultUp, ch = " <> pretty ch <> " and gSort =" <> pretty gSort <> " and doOp is =" <> pretty (doOperation ch gSort))
      chSub /\ chBackDown <- doOperation ch gSort
      let subFull = map (map Expr.CInj) sub
      let sub' = Map.union chSub subFull
