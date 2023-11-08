@@ -8,7 +8,7 @@
 
 .HoleTm-anchor~*.keysymbol {
   font-weight: bold;
-  color: red;
+  color: rgb(177, 177, 177);
 }
 
 /* keysymbol */

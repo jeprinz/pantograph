@@ -65,7 +65,7 @@ infixr 6 consConstArrangable as ⊕
   , "^...":       ["keysymbol", "dotted-fence"]                       /\ "⦙"
   , "->":         ["keysymbol", "arrow-right"]                        /\ "→"
   , "?":          ["keysymbol", "interrogative"]                      /\ "?"
-  , "box":        ["keysymbol", "box"]                                /\ "∙"
+  , "box":        ["keysymbol", "box"]                                /\ "◯"
   , "λ":          ["keysymbol", "lambda"]                             /\ "λ"
   , "~":          ["keysymbol", "tilde"]                              /\ "~"
   , "let":        ["keysymbol", "let"]                                /\ "let"

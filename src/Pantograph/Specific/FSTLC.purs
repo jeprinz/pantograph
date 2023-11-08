@@ -22,23 +22,21 @@ import Data.StringQuery as StringQuery
 import Data.Supertype (inject)
 import Data.Supertype as Supertype
 import Data.Traversable (sequence)
-import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, singletonNonEmptyPath, treeNode, unconsPath, unsnocPath, (%), (%!), (%!/), (%!~>), (%-))
+import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, singletonNonEmptyPath, treeNode, unconsPath, (%), (%!), (%!/), (%!~>), (%-))
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
-import Halogen.Elements as El
-import Halogen.SpecialElements as El
+import Halogen.Elements (br, whitespace, ι, π) as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
 import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
 import Pantograph.Generic.GlobalMessageBoard as GMB
-import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortVar(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
+import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
 import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM, displayAnnExpr) as P
 import Pantograph.Library.Change (getDiffChangingRule)
 import Pantograph.Library.Edit as LibEdit
 import Pantograph.Library.Rendering (π, (˜⊕), (⊕))
-import Pantograph.Library.Rendering as LibRendering
 import Pantograph.Library.Step as LibStep
 import Record as R
 import Text.Pretty (class Pretty, parens, pretty, quotes, quotes2, (<+>))

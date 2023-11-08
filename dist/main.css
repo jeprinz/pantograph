@@ -223,7 +223,7 @@ body {
   display: block;
   text-align: center;
   background-color: black;
-  color: white;
+  color: var(--color2);
   padding: var(--it);
 }
 
@@ -367,9 +367,10 @@ body {
   display: inline;
 }
 
-.SortVarLabel::before {
+/* TODO: need this? */
+/* .SortVarLabel::before {
   content: '?';
-}
+} */
 
 .SortVarUuid {
   display: none;
