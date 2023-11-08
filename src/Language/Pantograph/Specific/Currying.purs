@@ -1200,18 +1200,10 @@ extraQueryEdits cursorSort query
     | Just [cursorCtx, cursorTy] <- matchExprImpl cursorSort (sor TermSort %$ [slot, slot]) =
         case Int.fromString query of
             Nothing -> []
-            Just n -> [
-                { label : query
-                , action : defer \_ -> Edit.FillAction
-                    {
-                        sub: Map.empty
-                        , dterm :
-                            makeLabel IntegerLiteral ["gamma" /\ cursorCtx, "n" /\ MInj (DataLabel (DataInt n)) % []]
---    , TypeOfLabel SortString %* [consListArg]
-                                % [DerivLiteral (DataInt n) % []]
-                    }
-                }
-                ]
+            Just n ->
+                let dterm = makeLabel IntegerLiteral ["gamma" /\ cursorCtx, "n" /\ MInj (DataLabel (DataInt n)) % []]
+                        % [DerivLiteral (DataInt n) % []] in
+                Array.mapMaybe identity [ DefaultEdits.makeSubEditFromTerm dterm (show n) cursorSort ]
 extraQueryEdits _ _ = []
 
 --------------------------------------------------------------------------------
