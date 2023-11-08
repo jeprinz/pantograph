@@ -64,7 +64,11 @@ class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleL
 -- a term with the sort you gave it. On the other hand, if you give it a sort that is allowed to appear in the
 -- program, then it will always return a term with the given sort. So we should think of what the exact criteria is here.
 defaultDerivTerm :: forall l r. IsRuleLabel l r => Sort l -> Maybe (DerivTerm l r)
-defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ -> 
+defaultDerivTerm (Expr.MInj (TypeOfLabel ty) % [_]) =
+    case ty of
+        SortString -> pure $ DerivLiteral (DataString "") % []
+        SortInt -> pure $ DerivLiteral (DataInt 0) % []
+defaultDerivTerm sort = assert (Expr.wellformedExpr "defaultDerivTerm" sort) \_ ->
   defaultDerivTerm' sort
 
 ---- replaces (Name ?x) with (Name (Str ""))
@@ -108,10 +112,11 @@ isHoleDerivLabel :: forall l r. IsRuleLabel l r => DerivLabel l r -> Maybe (Sort
 isHoleDerivLabel l =
     case l of
         (DerivLabel r _sub) | Yes _ <- TotalMap.lookup r isHoleRuleTotalMap -> pure $ derivLabelSort l
-        (DerivString "") -> pure $ derivLabelSort l
+        (DerivLiteral (DataString "")) -> pure $ derivLabelSort l
+--        (DerivLiteral (DataInt 0)) -> pure $ derivLabelSort l
         _ -> Nothing
 
--- Is it a hole, does not include DerivString
+-- Is it a hole, does not include DerivLiteral
 isHole :: forall l r. IsRuleLabel l r => DerivLabel l r -> Boolean
 isHole (DerivLabel r _) | Yes _ <- TotalMap.lookup r isHoleRuleTotalMap = true
 isHole _ = false
@@ -137,33 +142,33 @@ expectedHypsCount r = do
 
 data DerivLabel l r
   = DerivLabel r (Expr.MetaVarSub (Sort l)) -- NOTE: the domain of this substitution is the set of MetaVars in the Rule for r
-  | DerivString String -- NOTE: When we generalize NameSortLabel to be a TypeOf label, this will also be parametrized by the same set of type labels.
+  | DerivLiteral SortData -- NOTE: When we generalize NameSortLabel to be a TypeOf label, this will also be parametrized by the same set of type labels.
     -- When we make that generalization, we could rename this to "DerivLiteral"
     -- IDEA: we could have UUID symbol literals, which are displayed nicely but have a UUID underlying them. These could be used in a language for naming libraries.
         -- You can copy/paste the symbol, which remembers the UUID, but when you generate a new one it gets a new UUID.
 
 derivLabelRule :: forall l r. DerivLabel l r -> Maybe r
 derivLabelRule (DerivLabel r _) = Just r
-derivLabelRule (DerivString _) = Nothing
+derivLabelRule (DerivLiteral _) = Nothing
 
 derivLabelSub :: forall l r. DerivLabel l r -> Maybe (SortSub l)
 derivLabelSub (DerivLabel _ s) = Just s
-derivLabelSub (DerivString _) = Nothing
+derivLabelSub (DerivLiteral _) = Nothing
 
 derivLabelSort :: forall l r. IsRuleLabel l r => DerivLabel l r -> Sort l
 derivLabelSort (DerivLabel r sub) = getSortFromSub r sub
-derivLabelSort (DerivString str) = NameSortLabel %* [StringSortLabel str %* []]
+derivLabelSort (DerivLiteral str) = TypeOfLabel (typeOfSortData str) %* [DataLabel str %* []]
 
 kidSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
     DerivLabel l r -> Array (Sort l)
 kidSorts (DerivLabel ruleLabel sigma) =
     let (Rule _vars kidSorts _parentSort) = TotalMap.lookup ruleLabel language in
     map (Expr.subMetaExprPartially sigma) kidSorts
-kidSorts (DerivString _) = []
+kidSorts (DerivLiteral _) = []
 
 mapDerivLabelSort :: forall l r. (Sort l -> Sort l) -> DerivLabel l r -> DerivLabel l r
 mapDerivLabelSort f (DerivLabel r sub) = DerivLabel r (map f sub)
-mapDerivLabelSort _ (DerivString str) = DerivString str
+mapDerivLabelSort _ (DerivLiteral str) = DerivLiteral str
 
 infix 8 DerivLabel as %|-
 
@@ -179,11 +184,11 @@ derive instance (Ord l, Ord r) => Ord (DerivLabel l r)
 instance (IsExprLabel l, Pretty r) => Pretty (DerivLabel l r) where
   -- pretty (DerivLabel r ix) = pretty r <> "(" <> pretty ix <> ")"
   pretty (DerivLabel r ix) = pretty r <> "(" <> List.intercalate ", " (map (\(x /\ sort) -> pretty x <> " : " <> pretty sort) (Map.toUnfoldable ix) :: List _) <> ")"
-  pretty (DerivString str) = "String(" <> str <> ")"
+  pretty (DerivLiteral str) = show str
 
 instance Freshenable (DerivLabel l r) where
   freshen rho (DerivLabel hr me) = DerivLabel hr (freshen' rho me)
-  freshen _rho (DerivString str) = DerivString str
+  freshen _rho (DerivLiteral str) = DerivLiteral str
 
 subDerivLabel :: forall l r. IsRuleLabel l r => SortSub l -> DerivLabel l r -> DerivLabel l r
 subDerivLabel sub (DerivLabel r s) = DerivLabel r (map (Expr.subMetaExprPartially sub) s)
@@ -237,10 +242,10 @@ instance IsRuleLabel l r => Expr.IsExprLabel (DerivLabel l r) where
   -- NOTE: This implementation ignores the expression label and metaexpression,
   -- but maybe we want to print those at some point for debugging?
   prettyExprF'_unsafe (DerivLabel r _sub /\ kids) = Expr.prettyExprF (AsExprLabel r /\ kids)
-  prettyExprF'_unsafe (DerivString str /\ []) = "Text(" <> str <> ")"
+  prettyExprF'_unsafe (DerivLiteral str /\ []) = show str
 
   expectedKidsCount (DerivLabel r _) = Expr.expectedKidsCount (AsExprLabel r)
-  expectedKidsCount (DerivString str) = 0
+  expectedKidsCount (DerivLiteral str) = 0
 
 --------------------------------------------------------------------------------
 -- Sorts
@@ -258,10 +263,27 @@ For example, in SULC, where sorts have scopes:
 type Sort l = Expr.MetaExpr (SortLabel l)
 type SortChange l = Expr.MetaChange (SortLabel l)
 
+data SortType = SortString | SortInt
+derive instance Generic SortType _
+instance Show SortType where show x = genericShow x
+derive instance Eq SortType
+derive instance Ord SortType
+
+data SortData = DataString String | DataInt Int
+derive instance Generic SortData _
+instance Show SortData where show x = genericShow x
+derive instance Eq SortData
+derive instance Ord SortData
+
+typeOfSortData :: SortData -> SortType
+typeOfSortData = case _ of
+    DataString _ -> SortString
+    DataInt _ -> SortInt
+
 data SortLabel l  -- l is language specific sort labels, and SortLabel adds on generic ones that exist for every language
   = SInj l
-  | NameSortLabel -- NOTE: can generalize to "TypeOf sort label" -- Jacob note: I still think that we should call this TextboxSortLabel, since it really is just used to indicate a literal in the derivations
-  | StringSortLabel String -- NOTE: can generalize to DataSortLabel
+  | TypeOfLabel SortType
+  | DataLabel SortData
 
 derive instance Generic (SortLabel l) _
 instance Show l => Show (SortLabel l) where show x = genericShow x
@@ -279,7 +301,7 @@ sor :: forall l. l -> Expr.Meta (SortLabel l)
 sor l = Expr.MInj (SInj l)
 
 nameSort :: forall l. String -> Expr.MetaExpr (SortLabel l)
-nameSort name = Expr.MInj (StringSortLabel name) % []
+nameSort name = Expr.MInj (DataLabel (DataString name)) % []
 
 -- This is used as part of a DSL for building up sort changes
 csor :: forall l. l -> Expr.ChangeLabel (Expr.Meta (SortLabel l))
@@ -287,29 +309,29 @@ csor l = Expr.CInj (Expr.MInj (SInj l))
 
 -- assert that a label is a name and return the string
 matchNameLabel :: forall l. Sort l -> String
-matchNameLabel (Expr.Expr (Expr.MInj NameSortLabel) [Expr.Expr (Expr.MInj (StringSortLabel s)) []]) = s
+matchNameLabel (Expr.Expr (Expr.MInj (TypeOfLabel SortString)) [Expr.Expr (Expr.MInj (DataLabel (DataString s))) []]) = s
 matchNameLabel _ = bug "wasn't name"
 
 -- assert that a label is a string and return the string
 matchStringLabel :: forall l. Sort l -> String
-matchStringLabel (Expr.Expr (Expr.MInj (StringSortLabel s)) []) = s
+matchStringLabel (Expr.Expr (Expr.MInj (DataLabel (DataString s))) []) = s
 matchStringLabel _ = bug "wasn't stringlabel"
 
 instance Pretty l => Pretty (SortLabel l) where
   pretty (SInj l) = pretty l
-  pretty NameSortLabel = "NameSort"
-  pretty (StringSortLabel str) = "\"" <> str <> "\"" 
+  pretty (TypeOfLabel kind) = "TypeOfSort" <> show kind
+  pretty (DataLabel dataa) = show dataa
 
 instance IsExprLabel l => IsExprLabel (SortLabel l) where
   prettyExprF'_unsafe = case _ of
     SInj l /\ kids -> prettyExprF'_unsafe (l /\ kids)
-    NameSortLabel /\ [string] -> "Name(" <> string <> ")"
-    StringSortLabel str /\ [] -> "\"" <> str <> "\"" 
+    TypeOfLabel kind /\ [string] -> show kind <> "(" <> string <> ")"
+    DataLabel dataa /\ [] -> show dataa
 
   expectedKidsCount = case _ of
     SInj l -> expectedKidsCount l
-    NameSortLabel -> 1
-    StringSortLabel _ -> 0
+    TypeOfLabel _ -> 1
+    DataLabel _ -> 0
 
 type SortSub l = Sub (SortLabel l)
 

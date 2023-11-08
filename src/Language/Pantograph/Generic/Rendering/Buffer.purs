@@ -64,11 +64,11 @@ computeEdits input {bufferString, mb_oldString} =
                 -- !TODO compute actual change
                 -- OLD: Expr.injectExprChange sort
                 { topChange: 
-                    Expr.injectChange (Expr.MInj NameSortLabel)
+                    Expr.injectChange (Expr.MInj (TypeOfLabel SortString))
                       [Expr.replaceChange 
-                        (StringSortLabel oldString %* [])
-                        (StringSortLabel bufferString %* [])]
-                , dterm: DerivString bufferString % []
+                        (DataLabel (DataString oldString) %* [])
+                        (DataLabel (DataString bufferString) %* [])]
+                , dterm: DerivLiteral (DataString bufferString) % []
                 }
             }
         , lazy_preview: defer (\_ -> FillEditPreview (HH.text bufferString))
@@ -95,7 +95,8 @@ computeFocussedEdit {isEnabled, normalBufferFocus, edits} = do
 computeBufferState :: forall l r. IsRuleLabel l r => BufferInput l r -> BufferPreState l r -> BufferState l r
 computeBufferState input preSt@{isEnabled, bufferString, bufferFocus} = do
   let mb_oldString = case input.hdzipper of
-        HoleyDerivZipper (Expr.Zipper _ (DerivString str % _)) false -> Just str
+        HoleyDerivZipper (Expr.Zipper _ (DerivLiteral (DataString str) % _)) false -> Just str
+        HoleyDerivZipper (Expr.Zipper _ (DerivLiteral (DataInt n) % _)) false -> Just (show n)
         _ -> Nothing
   let edits = computeEdits input {bufferString, mb_oldString}
   let normalBufferFocus = computeNormalBufferFocus {bufferFocus, edits}

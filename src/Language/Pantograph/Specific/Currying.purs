@@ -362,7 +362,6 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   defaultDerivTerm' (MInj (Grammar.SInj TypeSort) % [ty]) =
     pure $ sortToType ty
   -- TODO: This case should probably be in Generic.
-  defaultDerivTerm' (MInj (Grammar.NameSortLabel) % [_]) = pure $ Grammar.DerivString "" % [] -- TODO: this case should be in generic rather than here. In other words, the defaultDerivTerm in Grammar should do this case, and only hand the language specific cases to this function.
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
 appRule :: Rule
@@ -386,7 +385,7 @@ language = TotalMap.makeTotalMap case _ of
     ( VarSort %|-* [CtxConsSort %|-* [y, typeY, gamma], x, typeX, locality] )
 
   Lam -> Grammar.makeRule ["x", "a", "b", "gamma"] \[x, a, b, gamma] ->
-    [ Grammar.NameSortLabel %* [x]
+    [ TypeOfLabel SortString %* [x]
     , TypeSort %|-* [a]
     , TermSort %|-* [CtxConsSort %|-* [x, a, gamma], b] ]
     /\ --------
@@ -415,7 +414,7 @@ language = TotalMap.makeTotalMap case _ of
     ( s )
 
   Let -> Grammar.makeRule ["x", "a", "b", "gamma"] \[x, a, b, gamma] ->
-    [ Grammar.NameSortLabel %* [x]
+    [ TypeOfLabel SortString %* [x]
     , TypeSort %|-* [a]
     , TermSort %|-* [CtxConsSort %|-* [x, a, gamma], a]
     , TermSort %|-* [CtxConsSort %|-* [x, a, gamma], b] ]
@@ -484,8 +483,8 @@ language = TotalMap.makeTotalMap case _ of
   ListMatchRule -> Grammar.makeRule ["gamma", "type", "outTy", "consElemArg", "consListArg"] \[gamma, ty, outTy, consElemArg, consListArg] ->
     [ TermSort %|-* [gamma, List %|-* [ty]]
     , TermSort %|-* [gamma, outTy]
-    , Grammar.NameSortLabel %* [consElemArg]
-    , Grammar.NameSortLabel %* [consListArg]
+    , TypeOfLabel SortString %* [consElemArg]
+    , TypeOfLabel SortString %* [consListArg]
     , TermSort %|-* [CtxConsSort %|-* [consElemArg, ty, CtxConsSort %|-* [consListArg, List %|-* [ty], gamma]], outTy]]
     /\ -------
     ( TermSort %|-* [gamma, outTy])
@@ -507,7 +506,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   case rule /\ sort of
   _ /\ (MInj (Grammar.SInj VarSort) %
     [ _gamma
-    , MInj (Grammar.StringSortLabel str) % []
+    , MInj (Grammar.DataLabel (DataString str)) % []
     , _ty
     , locality ]) ->
     -- TODO: use locality in rendering?
@@ -885,10 +884,10 @@ wrapLambda = Smallstep.makeDownRule
     (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
     {-t-}slot
     (\[a] [gamma, b] [t] ->
-        let varName = (MInj (Grammar.StringSortLabel "") % []) in
+        let varName = (MInj (Grammar.DataLabel (DataString "")) % []) in
         pure $
             dTERM Lam ["x" /\ varName, "a" /\ a, "b" /\ rEndpoint b, "gamma" /\ rEndpoint gamma] [
-                    Smallstep.termToSSTerm $ Util.fromJust' "wrapLambda" $ (Grammar.defaultDerivTerm (Grammar.NameSortLabel %* [varName]))
+                    Smallstep.termToSSTerm $ Util.fromJust' "wrapLambda" $ (Grammar.defaultDerivTerm (Grammar.TypeOfLabel SortString %* [varName]))
                     , Smallstep.termToSSTerm (sortToType a)
                     , Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [plusChange (sor CtxConsSort) [varName, a] gamma [] , b]) $
                         t
@@ -1128,9 +1127,10 @@ onDelete :: Sort -> SortChange
 onDelete cursorSort
     | Maybe.Just [ty] <- matchExprImpl cursorSort (sor TypeSort %$ [slot])
     = csor TypeSort % [replaceChange ty (fromMetaVar (freshMetaVar "deleted"))]
-onDelete (MInj Grammar.NameSortLabel % [s])
-    = Expr.CInj (MInj Grammar.NameSortLabel) %
-        [replaceChange s (MInj (Grammar.StringSortLabel "") % [])]
+onDelete (MInj (TypeOfLabel SortString) % [s]) -- TODO: put in generic
+    = Expr.CInj (MInj (TypeOfLabel SortString)) %
+        [replaceChange s (MInj (Grammar.DataLabel (DataString "")) % [])]
+-- TODO: If you want to be able to delete integer literals, put something here
 onDelete cursorSort = ChangeAlgebra.inject cursorSort
 
 generalizeDerivation :: Sort -> SortChange
@@ -1172,7 +1172,7 @@ isValidSelectionSorts {
 isValidSelectionSorts _ = false
 
 keyAction :: String -> Sort -> Maybe Action
-keyAction _ (MInj (Grammar.NameSortLabel) % [_]) = Nothing -- Don't have newlines in strings!
+keyAction _ (MInj (Grammar.TypeOfLabel _) % [_]) = Nothing -- Don't have newlines in literals!
 keyAction "Enter" cursorSort =
         DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0))"newline" cursorSort
 keyAction _ _ = Nothing

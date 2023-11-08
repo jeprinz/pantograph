@@ -1,8 +1,8 @@
 module Main where
 
-import Language.Pantograph.Specific.FullyApplied as FullyApplied
+--import Language.Pantograph.Specific.FullyApplied as FullyApplied
 import Language.Pantograph.Specific.Currying as Currying
-import Language.Pantograph.Specific.Multary as Multary
+--import Language.Pantograph.Specific.Multary as Multary
 import Tutorial.Tutorial as Tutorial
 import Prelude
 

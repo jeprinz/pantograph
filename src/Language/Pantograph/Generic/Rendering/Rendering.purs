@@ -73,10 +73,12 @@ arrangeDerivTermSubs locs innerHoleIsCursor dzipper@(Expr.Zipper dpath dterm) ki
       Left (renCtx' /\ kidIx) -> assert (just "arrangeDerivTermSubs" (Array.index kidCtxElems' kidIx))
             \kidElem -> [applyCssClasses renCtx'.cssClasses (kidElem renCtx')]
       Right elems -> elems
-  DerivString str % [] -> 
+  DerivLiteral (DataString str) % [] ->
     [ if String.null str 
         then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.div [classNames ["subnode"]] [HH.text "☐"]]
         else HH.div [classNames ["subnode", "string-inner"]] [HH.text str] ]
+  DerivLiteral (DataInt n) % [] ->
+    [ HH.div [classNames ["subnode", "string-inner"]] [HH.text (show n)] ]
 
 arrangeNodeSubs :: forall l r. IsRuleLabel l r => 
   EditorLocals l r ->
@@ -131,8 +133,8 @@ renderDerivTerm locs isCursor innerHoleIsCursor dzipper renCtx =
       (arrangeDerivTermSubs locs innerHoleIsCursor dzipper (Zippable.zipDowns dzipper <#> renderDerivTerm locs false false) renCtx))
   where
   isEmptyString = case _ of
-    Expr.Zipper _ (Expr.Expr (DerivString str) _) | String.null str -> true
-    Expr.Zipper _ (Expr.Expr (DerivString str) _) -> false
+    Expr.Zipper _ (Expr.Expr (DerivLiteral (DataString str)) _) | String.null str -> true
+--    Expr.Zipper _ (Expr.Expr (DerivString str) _) -> false
     _ -> false
 
 ------------------------------------------------------------------------------
@@ -236,7 +238,7 @@ renderPreviewDerivTooth :: forall l r. IsRuleLabel l r =>
 renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   let rule /\ sigma = case dl of
         DerivLabel rule sigma -> rule /\ sigma
-        DerivString _ -> bug "in `renderPreviewDerivTooth`: should not have a tooth with a non-DerivLabel DerivLabel"
+        DerivLiteral _ -> bug "in `renderPreviewDerivTooth`: should not have a tooth with a non-DerivLabel DerivLabel"
 
   let dzipper = Expr.Zipper up (Expr.unTooth dtooth dterm)
   let kidDZippers = Zippable.zipDowns dzipper
@@ -295,7 +297,7 @@ renderSSTerm locs term renCtx = case term of
 --      , colonElem
 --      , HH.text $ pretty sort
 --      ]
-  SSInj (DerivString str) % [] ->
+  SSInj (DerivLiteral (DataString str)) % [] ->
     HH.div
       [classNames ["node", "smallstep", "string"]]
       [ lparenElem
@@ -304,6 +306,8 @@ renderSSTerm locs term renCtx = case term of
       , HH.text $ "String " <> show str
       , rparenElem
       ]
+  SSInj (DerivLiteral (DataInt n)) % [] ->
+    HH.div [classNames ["subnode", "smallstep", "string-inner"]] [HH.text (show n)]
   SSInj (DerivLabel rule sigma) % kids ->
     HH.div
       [classNames ["node", "smallstep"]]

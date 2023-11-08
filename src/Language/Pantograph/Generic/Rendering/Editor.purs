@@ -541,7 +541,8 @@ editorComponent = HK.component \tokens spec -> HK.do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             mb_str <- case hdzipperDerivTerm cursor.hdzipper of
-              DerivString str % _ -> pure (Just str)
+              DerivLiteral (DataString str) % _ -> pure (Just str)
+              DerivLiteral (DataInt n) % _ -> pure (Just (show n))
               _ -> pure Nothing
             -- activate buffer
             setBufferEnabled true mb_str
