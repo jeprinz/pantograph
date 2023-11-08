@@ -75,19 +75,6 @@ body {
   user-select: none;
 }
 
-.Expr>* {
-  /* vertical-align: middle; */
-  /* line-height: normal; */
-}
-
-.Expr.beginsLine::before {
-  /* content: '$' */
-}
-
-.Expr.validCursor::before {
-  content: "*";
-}
-
 .Punctuation {
   display: inline;
   white-space: pre;
@@ -99,7 +86,7 @@ body {
   white-space: pre;
 }
 
-.Expr:hover>.Whitespace,
+.Expr.Hover>.Whitespace,
 .Expr.OutsideCursor>.Whitespace,
 .Expr.InsideCursor>.Whitespace,
 .Expr.OutsideSelect .Whitespace {
@@ -415,4 +402,12 @@ body {
 
 .Matrix td {
   padding: calc(0.5*var(--it));
+}
+
+.UuidSplotch {
+  display: inline;
+  font-weight: bold;
+  /* text-decoration: underline; */
+  /* background-color: black; */
+  padding: 0 calc(0.5*var(--it));
 }

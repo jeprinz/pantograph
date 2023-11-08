@@ -1,4 +1,4 @@
-.HoleTy {
+/* .HoleTy {
   padding: 0 calc(0.5*var(--it));
   box-shadow: 0 0 0 2px white inset, 0 0 0 3px black inset;
 }
@@ -6,7 +6,7 @@
 .HoleTySplotch {
   display: inline-block;
   height: 8pt;
-}
+} */
 
 .DataTy {
   display: inline;

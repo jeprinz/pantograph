@@ -75,7 +75,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (SortNode sn) where
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
       SN node -> ass \kids -> displayTreeNode node kids
-      VarSN var -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [display $ pretty var]
+      VarSN x@(SortVar {uuid}) -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [El.uuidSplotch uuid [display $ pretty x]] 
 
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)

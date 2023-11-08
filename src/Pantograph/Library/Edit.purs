@@ -75,6 +75,9 @@ makeEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
 makeOuterChangeEdit :: forall sn el. SortChange sn -> Edit sn el
 makeOuterChangeEdit ch = identityEdit # Newtype.over Edit _ {outerChange = Just ch}
 
+makeOuterAndInsideChangeEdit :: forall sn el. SortChange sn -> Expr sn el -> Edit sn el
+makeOuterAndInsideChangeEdit ch e = identityEdit # Newtype.over Edit _ {outerChange = Just ch, inside = Just e}
+
 makeInnerChangeEdit :: forall sn el. SortChange sn -> Edit sn el
 makeInnerChangeEdit ch = identityEdit # Newtype.over Edit _ {innerChange = Just ch}
 

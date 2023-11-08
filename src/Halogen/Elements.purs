@@ -3,26 +3,36 @@ module Halogen.Elements where
 import Prelude
 
 import Bug (bug)
+import CSS (CSS)
 import DOM.HTML.Indexed as HTML
 import Data.Array as Array
+import Data.Display (Html)
 import Data.Generic.Rep (class Generic)
+import Data.Int as Int
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.Show.Generic (genericShow)
+import Data.String as String
 import Data.Subtype (class Subtype)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\), type (/\))
+import Data.UUID (UUID)
+import Data.UUID as UUID
 import Debug as Debug
 import Effect (Effect)
+import Effect.Aff (Aff)
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Utilities as HU
+import Todo (todo)
+import Util (fromJust)
 import Web.DOM.DOMTokenList as DOMTokenList
 import Web.DOM.Element as Element
 import Web.Event.Event as Event
@@ -42,6 +52,8 @@ data Prop i
   | OnMouseOver (MouseEvent -> i)
   | OnMouseOut (MouseEvent -> i)
   | StrictHover (MouseEvent -> i)
+  | StyleCSS CSS
+  | Style String
 
 -- TODO: combine multiple onMouseDown, onMouseUp, etc.
 compileProps :: forall i. Props i -> Array (HP.IProp HTML.HTMLdiv i)
@@ -101,6 +113,8 @@ compileProp (OnMouseOut k) =
       Event.stopPropagation event
       pure $ k mouseEvent
   ]
+compileProp (StyleCSS css) = [ HCSS.style css ]
+compileProp (Style str) = [ HP.style str ]
 
 -- ClassName
 
@@ -152,7 +166,7 @@ data ClassName
   -- Hover
   | Hover
   -- Misc
-  | Closed | Bug
+  | Closed | Bug | UuidSplotch
 
 derive instance Generic ClassName _
 derive instance Eq ClassName
@@ -261,3 +275,12 @@ updateElementClassName elem className mb_classValue = do
     Nothing -> void $ DOMTokenList.toggle classList $ show className
     Just true -> void $ DOMTokenList.add classList $ show className
     Just false -> void $ DOMTokenList.remove classList $ show className
+
+uuidSplotch :: UUID -> Array Html -> Html
+uuidSplotch uuid body = ℓ [Style style, Classes [UuidSplotch]] body
+  where
+  string = uuid # UUID.toString >>> String.take 6
+  h = string # Int.fromStringAs Int.hexadecimal >>> fromJust >>> (_ `mod` 360) >>> Int.toNumber
+  s = 100.0
+  l = 50.0
+  style = "color: hsl(" <> show h <> ", " <> show s <> "%, " <> show l <> "%)"

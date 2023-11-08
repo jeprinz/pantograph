@@ -13,3 +13,4 @@ foreign import fromStringToBase64String :: String -> String
 foreign import fromByteArrayToImageSrc :: Array Int -> Int -> String
 
 foreign import exampleImageSrc :: Unit -> String
+

@@ -40,7 +40,7 @@ import Pantograph.Library.Rendering (π, (˜⊕), (⊕))
 import Pantograph.Library.Rendering as LibRendering
 import Pantograph.Library.Step as LibStep
 import Record as R
-import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
+import Text.Pretty (class Pretty, parens, pretty, quotes, quotes2, (<+>))
 import Type.Proxy (Proxy(..))
 import Util (fromJust, (<$$>))
 
@@ -165,20 +165,19 @@ instance PrettyTreeNode SN where
 instance DisplayTreeNode SN where
   displayTreeNode sn = 
     let ass = assertValidTreeKids "displayTreeNode" sn in
-    let punc = El.π in
     case sn of
-      StrInner s -> ass \[] -> El.inline [punc (quotes s)]
-      Str -> ass \[str] -> El.inline [punc "'", str, punc "'"]
-      VarJg -> ass \[γ, x, α, loc] -> El.inline [γ, punc " ⊢ ", loc, x, punc " : ", α]
-      TmJg -> ass \[γ, α] -> El.inline [γ, punc " ⊢ ", α]
-      NeJg -> ass \[γ, α] -> El.inline [γ, punc " ⊢ ", α]
-      TyJg -> ass \[α] -> El.inline [α]
-      NilCtx -> ass \[] -> El.inline [punc "∅"]
-      ConsCtx -> ass \[x, α, γ] -> El.inline [punc "(", x, punc " : ", α, punc ")", punc ", ", γ]
-      DataTySN dt -> ass \[] -> El.inline [punc (pretty dt)]
-      ArrowTySN -> ass \[α, β] -> El.inline [α, punc " → ", β]
-      LocalLoc -> ass \[] -> El.inline [punc "[local]"]
-      NonlocalLoc -> ass \[] -> El.inline [punc "[nonlocal]"]
+      StrInner s -> ass \[] -> El.ι [El.π $ quotes2 s]
+      Str -> ass \[str] -> El.ι [El.π "String ", str]
+      VarJg -> ass \[γ, x, α, loc] -> El.ι [El.π "Var ", γ, x, El.π " : ", α, El.π " ", loc]
+      TmJg -> ass \[γ, α] -> El.ι [γ, El.π " ⊢ ", α]
+      NeJg -> ass \[γ, α] -> El.ι [γ, El.π " ⊢ ", α, El.π " [neutral]"]
+      TyJg -> ass \[α] -> El.ι [El.π"⊨ ", α]
+      NilCtx -> ass \[] -> El.ι [El.π "∅"]
+      ConsCtx -> ass \[x, α, γ] -> El.ι [El.π "(", x, El.π " : ", α, El.π ")", El.π ", ", γ]
+      DataTySN dt -> ass \[] -> El.ι [El.π (pretty dt)]
+      ArrowTySN -> ass \[α, β] -> El.ι [El.π "(", α, El.π " → ", β, El.π ")"]
+      LocalLoc -> ass \[] -> El.ι [El.π "[local]"]
+      NonlocalLoc -> ass \[] -> El.ι [El.π "[nonlocal]"]
 
 -- DataTy
 
@@ -304,7 +303,9 @@ specialEdits =
       -- replaces the type-sort that is reflected in the type-Expr's sort
       -- (otherwise the type-Expr would just be filled to correspond to its
       -- type-Sort again).
-      P.SN TyJg % [α] -> Just $ LibEdit.makeOuterChangeEdit $ P.SN TyJg %! [α %!~> P.freshVarSort "deleted"]
+      P.SN TyJg % [α] -> 
+        let α' = P.freshVarSort "deleted" in
+        Just $ LibEdit.makeOuterAndInsideChangeEdit (P.SN TyJg %! [α %!~> α']) (P.buildExpr HoleTy {α: α'} [])
       -- When you delete a string-Expr, you need to push an outward change the
       -- replaces the StrInner-sort with the empty-string StrInner-sort.
       P.SN Str % [strInner] -> Just $ LibEdit.makeOuterChangeEdit $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
@@ -748,17 +749,21 @@ arrangeExpr node@(P.EN GrayAppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node =
   f /\ _ <- f
   a /\ _ <- a
   pure $ Array.fromFoldable $ f ˜⊕ " " ⊕ π."{" ⊕ a ˜⊕ π."}" ⊕ Nil
+
+-- if the reflected sort-type is a SortVar
 arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x@(P.SortVar {uuid}) % []] <- P.getExprNodeSort node =
   let doHoleTySplotch = true in
   if doHoleTySplotch then do
     _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-    pure $ Array.fromFoldable $ [LibRendering.renderUuidSplotch uuid [HP.classes [HH.ClassName "HoleTySplotch"]]] ⊕ Nil
+    pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTySplotch"]] [El.uuidSplotch uuid [display $ pretty x]]] ⊕ Nil
   else do
     countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
     pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
+-- if the reflected sort-type is a more specific type (this type hole has been refined)
 arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α] <- P.getExprNodeSort node = do
   _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
   pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ pretty α] :: Html] ⊕ Nil
+
 arrangeExpr node@(P.EN (DataTyEL dt) _ _) [] | _ % _ <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ (["DataTy"] /\ pretty dt) ⊕ Nil
 arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort node = do

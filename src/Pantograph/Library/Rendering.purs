@@ -1,24 +1,29 @@
 module Pantograph.Library.Rendering where
 
 import Prelude
-import Data.Tuple.Nested (type (/\), (/\))
-import Pantograph.Generic.Rendering (ArrangeKid(..))
+
+import CSS as CSS
 import DOM.HTML.Indexed (HTMLimg)
 import Data.Array as Array
 import Data.Const (Const(..))
-import Data.Display (Html)
+import Data.Display (Html, display)
 import Data.Identity (Identity(..))
 import Data.Int as Int
 import Data.List (List)
 import Data.List as List
+import Data.Number as Number
 import Data.String as String
+import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
+import Debug as Debug
 import Effect.Aff (Aff)
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Javascript as Javascript
+import Pantograph.Generic.Rendering (ArrangeKid(..))
+import Todo (todo)
 import Util (fromJust)
 
 -- Arrangable
@@ -60,7 +65,7 @@ infixr 6 consConstArrangable as ⊕
   , "^...":       ["keysymbol", "dotted-fence"]                       /\ "⦙"
   , "->":         ["keysymbol", "arrow-right"]                        /\ "→"
   , "?":          ["keysymbol", "interrogative"]                      /\ "?"
-  , "box":        ["keysymbol", "box"]                                /\ "□"
+  , "box":        ["keysymbol", "box"]                                /\ "▪"
   , "λ":          ["keysymbol", "lambda"]                             /\ "λ"
   , "~":          ["keysymbol", "tilde"]                              /\ "~"
   , "let":        ["keysymbol", "let"]                                /\ "let"
@@ -75,10 +80,11 @@ infixr 6 consConstArrangable as ⊕
 
 -- special rendering
 
-renderUuidSplotch :: UUID -> Array (HP.IProp HTMLimg (Aff Unit)) -> Html
-renderUuidSplotch uuid props = HH.img ([HP.src src] <> props)
-  where
-  cps = Array.take 8 $ String.toCodePointArray $ UUID.toString uuid
-  byteStrings = map String.fromCodePointArray $ map (cps # _) $ [Array.slice 0 2, Array.slice 2 4, Array.slice 4 6, Array.slice 6 8]
-  bytes = byteStrings <#> Int.fromStringAs Int.hexadecimal >>> fromJust
-  src = Javascript.fromByteArrayToImageSrc bytes 32
+-- uuidSplotch :: UUID -> Array HH.ClassName -> Html
+-- uuidSplotch uuid classNames = HH.img ([HP.src src, HP.classes classNames])
+--   where
+--   cps = Array.take 8 $ String.toCodePointArray $ UUID.toString uuid
+--   byteStrings = map String.fromCodePointArray $ map (cps # _) $ [Array.slice 0 2, Array.slice 2 4, Array.slice 4 6, Array.slice 6 8]
+--   bytes = byteStrings <#> Int.fromStringAs Int.hexadecimal >>> fromJust
+--   src = Javascript.fromByteArrayToImageSrc bytes 32
+
