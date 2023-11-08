@@ -276,7 +276,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         [ El.ℓ [El.Classes [El.Subtitle]] [El.text input.name] 
         ]
     , control:
-        [ El.ℓ [El.Classes [El.Button]] [El.text "⤓"]
+        [ El.ℓ [El.Classes [El.Button]] [El.text "⇑"]
+        , El.ℓ [El.Classes [El.Button]] [El.text "⇓"]
         , El.ℓ [El.Classes [El.Button]] [El.text "×"] ]
     , content:
         [ El.ℓ [El.Classes [El.Program]] gyroHtmls ]
