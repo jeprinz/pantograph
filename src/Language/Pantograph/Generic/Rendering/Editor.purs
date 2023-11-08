@@ -524,6 +524,10 @@ editorComponent = HK.component \tokens spec -> HK.do
                         setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper unifiedPath unifiedDTerm)))
                     Nothing -> do -- Didn't unify; can't paste
                         pure unit
+                -- If not in a hole, swap the old term back into the clipboard:
+                if hdzIsHolePosition cursor.hdzipper then pure unit else
+                    genAndCopyClipTerm dterm
+
           else if cmdKey && key == "s" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             Debug.traceM $ pretty $ 
