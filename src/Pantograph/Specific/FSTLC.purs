@@ -26,6 +26,7 @@ import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, C
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Halogen.Elements as El
+import Halogen.SpecialElements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.App as App
@@ -750,19 +751,20 @@ arrangeExpr node@(P.EN GrayAppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node =
   a /\ _ <- a
   pure $ Array.fromFoldable $ f ˜⊕ " " ⊕ π."{" ⊕ a ˜⊕ π."}" ⊕ Nil
 
--- if the reflected sort-type is a SortVar
-arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [P.VarSN x@(P.SortVar {uuid}) % []] <- P.getExprNodeSort node =
-  let doHoleTySplotch = true in
-  if doHoleTySplotch then do
-    _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-    pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTySplotch"]] [El.uuidSplotch uuid [display $ pretty x]]] ⊕ Nil
-  else do
-    countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-    pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
+-- -- if the reflected sort-type is a SortVar
+-- arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α@(P.VarSN _ % [])] <- P.getExprNodeSort node =
+--   let doHoleTySplotch = true in
+--   if doHoleTySplotch then do
+--     _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+--     pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [display α]] ⊕ Nil
+--   else do
+--     countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
+--     pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ showCountHoleTy countHoleTy] :: Html] ⊕ Nil
+
 -- if the reflected sort-type is a more specific type (this type hole has been refined)
 arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α] <- P.getExprNodeSort node = do
   _countHoleTy <- modify (R.modify (Proxy :: Proxy "countHoleTy") (_ + 1)) <#> (_.countHoleTy >>> (_ - 1))
-  pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [HH.text $ pretty α] :: Html] ⊕ Nil
+  pure $ Array.fromFoldable $ [HH.span [HP.classes [HH.ClassName "HoleTy"]] [display α] :: Html] ⊕ Nil
 
 arrangeExpr node@(P.EN (DataTyEL dt) _ _) [] | _ % _ <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ (["DataTy"] /\ pretty dt) ⊕ Nil

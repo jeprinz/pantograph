@@ -136,6 +136,7 @@ data ClassName
   | Hole
   | VarRuleSortNode
   | RuleSortVar
+  | SortVar | SortVarLabel | SortVarUuid
   | SortingRule | SortingRuleParameters | SortingRuleKids | SortingRuleParent
   | ArrangeHtml
   -- StepExpr
@@ -276,11 +277,3 @@ updateElementClassName elem className mb_classValue = do
     Just true -> void $ DOMTokenList.add classList $ show className
     Just false -> void $ DOMTokenList.remove classList $ show className
 
-uuidSplotch :: UUID -> Array Html -> Html
-uuidSplotch uuid body = ℓ [Style style, Classes [UuidSplotch]] body
-  where
-  string = uuid # UUID.toString >>> String.take 6
-  h = string # Int.fromStringAs Int.hexadecimal >>> fromJust >>> (_ `mod` 360) >>> Int.toNumber
-  s = 100.0
-  l = 50.0
-  style = "color: hsl(" <> show h <> ", " <> show s <> "%, " <> show l <> "%)"

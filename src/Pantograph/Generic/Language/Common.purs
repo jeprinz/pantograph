@@ -25,6 +25,7 @@ import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
+import Halogen.SpecialElements as El
 import Halogen.HTML as HH
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Prim.Row (class Union)
@@ -75,7 +76,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (SortNode sn) where
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
       SN node -> ass \kids -> displayTreeNode node kids
-      VarSN x@(SortVar {uuid}) -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [El.uuidSplotch uuid [display $ pretty x]] 
+      VarSN x@(SortVar {uuid}) -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [El.uuidSplotch uuid [display x]] 
 
 type Sort sn = Tree (SortNode sn)
 type SortTooth sn = Tooth (SortNode sn)
@@ -107,7 +108,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (RuleSortNode sn) wher
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
       InjectRuleSortNode node -> ass \kids -> displayTreeNode node kids
-      VarRuleSortNode var -> ass \[] -> El.ℓ [El.Classes [El.VarRuleSortNode]] [display $ pretty var]
+      VarRuleSortNode var -> ass \[] -> El.ℓ [El.Classes [El.VarRuleSortNode]] [display var]
 
 makeVarRuleSort :: forall sn. RuleSortVar -> Tree (RuleSortNode sn)
 makeVarRuleSort x = Tree (VarRuleSortNode x) []
@@ -386,6 +387,12 @@ derive newtype instance Ord SortVar
 
 instance Pretty SortVar where
   pretty (SortVar {label, uuid}) = "?" <> label <> "#" <> String.take 2 (UUID.toString uuid)
+
+instance Display SortVar where
+  display (SortVar {label, uuid}) = 
+    El.ℓ [El.Classes [El.SortVar]]
+      [ El.ℓ [El.Classes [El.SortVarLabel]] [display label]
+      , El.ℓ [El.Classes [El.SortVarUuid]] [display $ String.take 2 (UUID.toString uuid)] ]
 
 newtype SortVarSubst sn = SortVarSubst (Map.Map SortVar (Sort sn))
 derive newtype instance Eq sn => Eq (SortVarSubst sn)

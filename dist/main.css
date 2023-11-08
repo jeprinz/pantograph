@@ -212,7 +212,8 @@ body {
 }
 
 .BufferInfoItem {
-  box-shadow: 0 0 8px 2px black;
+  /* box-shadow: 0 0 8px 2px black; */
+  box-shadow: 0 0 0 2px black;
   display: flex;
   flex-direction: row;
   gap: var(--it);
@@ -358,6 +359,34 @@ body {
   display: inline;
 }
 
+.SortVar {
+  display: inline;
+}
+
+.SortVarLabel {
+  display: inline;
+}
+
+.SortVarLabel::before {
+  content: '?';
+}
+
+.SortVarUuid {
+  display: none;
+}
+
+/* TODO: do i want this? */
+
+/* .SortVar:hover>.SortVarUuid {
+  display: inline;
+}
+
+.SortVar:hover>.SortVarUuid::before {
+  content: '#'; 
+}
+*/
+
+
 /* Html */
 
 .Hole {
@@ -405,9 +434,33 @@ body {
 }
 
 .UuidSplotch {
-  display: inline;
+  display: inline-block;
   font-weight: bold;
   /* text-decoration: underline; */
   /* background-color: black; */
   padding: 0 calc(0.5*var(--it));
+  margin: 0 calc(0.5*var(--it));
+  border-radius: var(--it);
+  outline-style: solid;
+  outline-width: 0;
+}
+
+.LinkedUuidSplotch {
+  /* box-shadow: 0 0 0 4px black; */
+  /* border-left-width: var(--it);
+  border-right-width: var(--it);
+  border-style: inset; */
+  outline-width: 4px;
+}
+
+.UuidSplotch {
+  transition-property: outline-width;
+  transition-duration: 0.2s;
+  transition-timing-function: linear;
+}
+
+.LinkedUuidSplotch {
+  transition-property: outline-width;
+  transition-duration: 0.2s;
+  transition-timing-function: linear;
 }
