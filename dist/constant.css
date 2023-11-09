@@ -39,6 +39,10 @@
   --hover-border-color: rgb(179, 0, 255);
 
   --boundary-color: rgb(178, 0, 0);
+  --boundary-background-color: rgb(224, 224, 224);
+
+  --old-background-color: rgb(255, 211, 211);
+  --new-background-color: rgb(211, 255, 218);
 
   --it: 0.6em;
 }

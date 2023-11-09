@@ -412,11 +412,8 @@ instance DisplayTreeNode a => Display (Change a) where
       [El.π $ pretty sh, displayS th $ El.ℓ [El.Classes [El.ShiftChangeInner]] [display ch]]
   display (Replace s1 s2) = 
     El.ℓ [El.Classes [El.ReplaceChange]]
-      [ El.π "("
-      , El.ℓ [El.Classes [El.ReplaceChangeLeft]] [display s1]
-      , El.π " ~> "
-      , El.ℓ [El.Classes [El.ReplaceChangeRight]] [display s2]
-      , El.π ")" ]
+      [ El.ℓ [El.Classes [El.ReplaceChangeLeft]] [display s1]
+      , El.ℓ [El.Classes [El.ReplaceChangeRight]] [display s2] ]
   display (InjectChange a kids) =
     El.ℓ [El.Classes [El.InjectChange]]
       [displayTreeNode a (kids <#> \kid -> Nothing /\ display kid)]

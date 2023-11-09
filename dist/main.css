@@ -277,10 +277,14 @@ body {
 
 .ReplaceChangeLeft {
   display: inline;
+  background-color: var(--old-background-color);
+  padding: 0 calc(0.5*var(--it));
 }
 
 .ReplaceChangeRight {
   display: inline;
+  background-color: var(--new-background-color);
+  padding: 0 calc(0.5*var(--it));
 }
 
 .InjectChange {}
@@ -292,6 +296,8 @@ body {
   display: inline-flex;
   flex-direction: row;
   outline: 1px solid var(--boundary-color);
+  /* align-items: center; */
+  align-items: stretch;
 }
 
 .StepExpr {
@@ -299,27 +305,33 @@ body {
 }
 
 .StepExprBoundary {
-  /* outline: 1px solid var(--boundary-color); */
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
 
-  padding: 0 calc(0.5*var(--it));
+  padding: calc(0.5*var(--it));
   border-left: 1px solid var(--boundary-color);
 }
 
-.StepExprBoundaryInfo {
-  display: inline-flex;
-  flex-direction: row;
-  /* outline: 1px solid var(--boundary-color); */
-}
-
 .StepExprBoundaryDirection {
-  display: inline-block;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+
   padding: 0 calc(0.5*var(--it));
   background-color: black;
   color: white;
 }
 
 .StepExprBoundaryChange {
-  display: inline-block;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+
+  background-color: var(--boundary-background-color);
   padding: 0 var(--it);
 }
 
