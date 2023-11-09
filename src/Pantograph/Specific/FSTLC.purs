@@ -166,8 +166,8 @@ instance DisplayTreeNode SN where
   displayTreeNode sn = 
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
-      StrInner s -> ass \[] -> El.ι [El.π $ quotes2 s]
-      Str -> ass \[_ /\ str] -> El.ι [El.π "String ", str]
+      StrInner s -> ass \[] -> El.ι [display s]
+      Str -> ass \[_ /\ innerStr] -> El.ι [El.π "\"", innerStr, El.π "\""]
       VarJg -> ass \[_ /\ γ, _ /\ x, _ /\ α, _ /\ loc] -> El.ι [El.π "Var ", γ, x, El.π " : ", α, El.π " ", loc]
       TmJg -> ass \[_ /\ γ, _ /\ α] -> El.ι [γ, El.π " ⊢ ", α]
       NeJg -> ass \[_ /\ γ, _ /\ α] -> El.ι [γ, El.π " ⊢ ", α, El.π " [neutral]"]

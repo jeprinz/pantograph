@@ -53,6 +53,7 @@ infixr 6 consConstArrangable as ⊕
 
 π =
   { "=":          ["keysymbol", "equal"]                              /\ "="
+  , "\"":         ["keysymbol", "quote2"]                             /\ "\""
   , ":":          ["keysymbol", "colon"]                              /\ ":"
   , ".":          ["keysymbol", "period"]                             /\ "."
   , "#":          ["keysymbol", "period"]                             /\ "♯"
