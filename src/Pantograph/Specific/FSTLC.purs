@@ -14,6 +14,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Lazy (defer, force)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
+import Data.Newtype as Newtype
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.String (CodePoint)
@@ -299,22 +300,29 @@ getDefaultExpr _ = Nothing
 specialEdits :: SpecialEdits
 specialEdits = 
   { deleteExpr: case _ of
-      P.SN TmJg % [γ, α] -> Just $ LibEdit.makeInsideChangeEdit $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α]
+      P.SN Str % [strInner] -> Just $ LibEdit.buildEdit _
+        { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
+        , inside      = Just $ P.buildExpr StrEL {x: P.SN (StrInner "") % []} [] }
+      P.SN TmJg % [γ, α] -> Just $ LibEdit.buildEdit _ 
+        { inside = Just $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α] }
       -- When you delete a type-Expr, you need to push an outward change that
       -- replaces the type-sort that is reflected in the type-Expr's sort
       -- (otherwise the type-Expr would just be filled to correspond to its
       -- type-Sort again).
       P.SN TyJg % [α] -> 
         let α' = P.freshVarSort "deleted" in
-        Just $ LibEdit.makeOuterAndInsideChangeEdit (P.SN TyJg %! [α %!~> α']) (P.buildExpr HoleTy {α: α'} [])
+        Just $ LibEdit.buildEdit _
+          { outerChange = Just $ P.SN TyJg %! [α %!~> α']
+          , inside      = Just $ P.buildExpr HoleTy {α: α'} [] }
       -- When you delete a string-Expr, you need to push an outward change the
       -- replaces the StrInner-sort with the empty-string StrInner-sort.
-      P.SN Str % [strInner] -> Just $ LibEdit.makeOuterChangeEdit $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
       _ -> Nothing
   , copyExpr: const Nothing
-  , deleteExprPath: \ch -> 
+  , deleteExprPath: \ch ->
       let {outerChange, innerChange} = splitExprPathChanges ch in
-      Just $ LibEdit.makeOuterAndInnerChangeEdit outerChange innerChange
+      Just $ LibEdit.buildEdit _
+        { outerChange = Just outerChange 
+        , innerChange = Just innerChange }
   , copyExprPath: const Nothing
   , enter: \sort -> case sort of
       P.SN TmJg % [_, _] -> Just $ LibEdit.makeMiddleChangeEdit $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []

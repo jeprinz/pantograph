@@ -6,6 +6,7 @@ import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
 import Data.Newtype as Newtype
 import Data.Tree (epL, epR, invert)
 import Data.Tuple (uncurry)
@@ -72,28 +73,13 @@ makeEditFromExprNonEmptyPath {splitExprPathChanges} sort middle = do
     , innerChange: Just innerChange'
     , inside: Nothing }
 
-makeOuterChangeEdit :: forall sn el. SortChange sn -> Edit sn el
-makeOuterChangeEdit ch = identityEdit # Newtype.over Edit _ {outerChange = Just ch}
-
-makeOuterAndInsideChangeEdit :: forall sn el. SortChange sn -> Expr sn el -> Edit sn el
-makeOuterAndInsideChangeEdit ch e = identityEdit # Newtype.over Edit _ {outerChange = Just ch, inside = Just e}
-
-makeInnerChangeEdit :: forall sn el. SortChange sn -> Edit sn el
-makeInnerChangeEdit ch = identityEdit # Newtype.over Edit _ {innerChange = Just ch}
-
-makeOuterAndInnerChangeEdit :: forall sn el. SortChange sn -> SortChange sn -> Edit sn el
-makeOuterAndInnerChangeEdit outerChange innerChange = identityEdit # Newtype.over Edit _ {outerChange = Just outerChange, innerChange = Just innerChange}
-
-makeMiddleChangeEdit :: forall sn el. ExprNonEmptyPath sn el -> Edit sn el
-makeMiddleChangeEdit p = identityEdit # Newtype.over Edit _ {middle = Just p}
-
-makeInsideChangeEdit :: forall sn el. Expr sn el -> Edit sn el
-makeInsideChangeEdit e = identityEdit # Newtype.over Edit _ {inside = Just e}
-
 -- | ## Simple Edits
 
 identityEdit :: forall sn el. Edit sn el
 identityEdit = Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Nothing, sigma: Nothing}
+
+buildEdit :: forall sn el. Newtype (Edit sn el) _ => _ -> Edit sn el
+buildEdit f = identityEdit # Newtype.over Edit f
 
 identitySpecialEdits :: forall sn el. SpecialEdits sn el
 identitySpecialEdits = 
