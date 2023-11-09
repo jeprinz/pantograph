@@ -29,7 +29,7 @@ makeDefaultDownSteppingRule = SteppingRule "defaultDown" case _ of
     let kidChanges = rule.kids <#> \kid -> applyRuleSortVarSubst sigma (Supertype.inject kid :: RuleSortChange sn)
     let kids' = Array.zip kidChanges kids <#> \(kidChange /\ kid) -> Down /\ kidChange %.| kid
     GMB.debugRM (El.text "makeDefaultDownSteppingRule") {kids': display kids'}
-    Just $ EN label (sigma <#> epR) er %. kids'
+    Just $ EN label (sigma <#> epL) er %. kids'
   _ -> Nothing
 
 makeDefaultUpSteppingRule :: forall sn el. SteppingRule sn el
@@ -50,7 +50,7 @@ makeDefaultUpSteppingRule = SteppingRule "defaultUp" case _ of
         kids' = leftKids <> [kid] <> rightKids
     let parentChange = applyRuleSortVarSubst sigma (Supertype.inject rule.parent :: RuleSortChange sn)
     GMB.debugRM (El.text "makeDefaultUpSteppingRule") {kids': display kids', parentChange: display parentChange}
-    Just $ Up /\ parentChange %.| (EN label (sigma <#> epL) er %. kids')  
+    Just $ Up /\ parentChange %.| (EN label (sigma <#> epR) er %. kids')  
   _ -> Nothing
   where
   findUpBoundary = case _ of
