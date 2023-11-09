@@ -123,11 +123,12 @@ renderStepExpr e@(StepExpr node kids) = do
   pure $ [El.ℓ (propsStepExpr e) htmls]
 renderStepExpr e@(Boundary (dir /\ ch) kid) = do
   htmls <- renderStepExpr kid
-  pure 
-    [ El.ℓ [El.Classes [El.StepExprBoundaryInfo]]
-        [ El.ℓ [El.Classes [El.StepExprBoundaryDirection]] [El.τ $ pretty dir]
-        , El.ℓ [El.Classes [El.StepExprBoundaryChange]] [display ch]]
-    , El.ℓ (propsStepExpr e) htmls ]
+  pure
+    [ El.ℓ [El.Classes [El.StepExprBoundaryContainer]]
+        [ El.ℓ [El.Classes [El.StepExprBoundaryInfo]]
+            [ El.ℓ [El.Classes [El.StepExprBoundaryDirection]] [El.τ $ pretty dir]
+            , El.ℓ [El.Classes [El.StepExprBoundaryChange]] [display ch]]
+        , El.ℓ (propsStepExpr e) htmls ] ]
 renderStepExpr e@(Marker kid) = do
   htmls <- renderStepExpr kid
   pure $ [El.ℓ (propsStepExpr e) htmls]

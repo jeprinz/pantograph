@@ -141,7 +141,7 @@ data ClassName
   | ArrangeHtml
   -- StepExpr
   | StepExpr | StepExprBoundary | StepExprMarker
-  | StepExprBoundaryInfo | StepExprBoundaryDirection | StepExprBoundaryChange
+  | StepExprBoundaryContainer | StepExprBoundaryInfo | StepExprBoundaryDirection | StepExprBoundaryChange
   -- Preview
   | PreviewExpr | Preview 
   | PreviewLeft | PreviewLeftInsert | PreviewLeftPaste

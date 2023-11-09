@@ -288,28 +288,30 @@ body {
 
 /* StepExpr */
 
-.StepExpr {
-  /* display: inline; */
-  display: inline-block;
+.StepExprBoundaryContainer {
+  display: inline-flex;
+  flex-direction: row;
+  outline: 1px solid var(--boundary-color);
 }
 
-.StepExprBoundaryInfo {
-  /* display: inline; */
+.StepExpr {
   display: inline-block;
-  /* box-shadow: 0 0 0 4px var(--boundary-color); */
-  border: var(--it) solid var(--boundary-color);
 }
 
 .StepExprBoundary {
-  /* display: inline; */
-  display: inline-block;
-  /* box-shadow: 0 0 0 4px var(--boundary-color); */
-  border: var(--it) solid var(--boundary-color);
+  /* outline: 1px solid var(--boundary-color); */
+
   padding: 0 calc(0.5*var(--it));
+  border-left: 1px solid var(--boundary-color);
+}
+
+.StepExprBoundaryInfo {
+  display: inline-flex;
+  flex-direction: row;
+  /* outline: 1px solid var(--boundary-color); */
 }
 
 .StepExprBoundaryDirection {
-  /* display: inline; */
   display: inline-block;
   padding: 0 calc(0.5*var(--it));
   background-color: black;
@@ -317,23 +319,13 @@ body {
 }
 
 .StepExprBoundaryChange {
-  /* display: inline; */
   display: inline-block;
   padding: 0 var(--it);
 }
 
 .StepExprMarker {
-  /* display: inline; */
   display: inline-block;
-  /* box-shadow: 0 0 0 4px var(--cursor-border-color); */
-  border: var(--it) solid var(--cursor-border-color);
-}
-
-.StepExprBoundaryInfo:hover,
-.StepExprBoundaryInfo:hover+.StepExprBoundary,
-.StepExpr:hover {
-  /* box-shadow: 0 0 0 4px var(--hover-border-color); */
-  border: var(--it) solid var(--hover-border-color);
+  /* outline: 1px solid var(--cursor-border-color); */
 }
 
 /* SortingRule */
