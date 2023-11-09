@@ -158,6 +158,7 @@ data ClassName
   | BufferInfo | BufferInfoItem | BufferInfoItemInner | BufferInfoItemTitle | BufferInfoItemValue
   -- Tree
   | Change | ShiftChange | ShiftChangeInner | ReplaceChange | ReplaceChangeLeft 
+  | MinusShift | PlusShift
   | ReplaceChangeRight | InjectChange
   -- Terminal
   | TerminalContent
@@ -206,7 +207,7 @@ ancestorClassNamesRelationsClosure = Array.fromFoldable <<< go mempty
 ancestorClassNamesRelationsMap :: Map ClassName (Array ClassName)
 ancestorClassNamesRelationsMap =
   Map.fromFoldableWith (\cns1 cns2 -> Array.nub $ cns1 <> cns2) $
-    ancestorClassNamesRelations # Array.foldMap \(cnParent /\ cnKids) -> cnKids <#> \cnKid -> cnKid /\ ([cnParent] <> ancestorClassNamesRelationsClosure cnParent)
+    ancestorClassNamesRelations # Array.nub <<< Array.foldMap \(cnParent /\ cnKids) -> cnKids <#> \cnKid -> cnKid /\ ([cnParent] <> ancestorClassNamesRelationsClosure cnParent)
 
 ancestorClassNames :: ClassName -> Array ClassName
 ancestorClassNames cn = fromMaybe [] $ Map.lookup cn ancestorClassNamesRelationsMap

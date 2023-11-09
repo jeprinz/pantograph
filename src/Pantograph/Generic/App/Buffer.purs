@@ -357,28 +357,28 @@ renderSyncExprCursor local cursor@(Cursor {outside, inside, orientation}) = do
             tell local.tokens.slotToken (Proxy :: Proxy "preview") LeftPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
             tell local.tokens.slotToken (Proxy :: Proxy "preview") RightPreviewPosition PreviewQuery (Proxy :: Proxy "modify maybeEdit") $ const maybeEdit
           )
-  let wrapCursor htmls = do
-        let toolboxInput = ToolboxInput
-              { ctx
-              , env
-              , outside: shrinkAnnExprPath outside
-              , inside: shrinkAnnExpr inside
-              , enabled: false
-              , edits: getEditsAtSort (getExprSort inside) orientation
-              , initialQuery: getInitialQuery cursor }
-        let previewInput position = PreviewInput 
-              { ctx
-              , env
-              , position
-              , outside: shrinkAnnExprPath outside
-              , inside: shrinkAnnExpr inside
-              , maybeEdit: Nothing }
-        Array.concat
-          [ [HH.slot (Proxy :: Proxy "toolbox") unit toolboxComponent toolboxInput toolboxHandler]
-          , [HH.slot_ (Proxy :: Proxy "preview") LeftPreviewPosition previewComponent (previewInput LeftPreviewPosition)]
-          , htmls
-          , [HH.slot_ (Proxy :: Proxy "preview") RightPreviewPosition previewComponent (previewInput RightPreviewPosition)] 
-          ]
+  let wrapCursor htmls =
+        let 
+          toolboxInput = ToolboxInput
+            { ctx
+            , env
+            , outside: shrinkAnnExprPath outside
+            , inside: shrinkAnnExpr inside
+            , enabled: false
+            , edits: getEditsAtSort (getExprSort inside) orientation
+            , initialQuery: getInitialQuery cursor }
+          previewInput position = PreviewInput 
+            { ctx
+            , env
+            , position
+            , outside: shrinkAnnExprPath outside
+            , inside: shrinkAnnExpr inside
+            , maybeEdit: Nothing }
+        in
+        [ HH.slot (Proxy :: Proxy "toolbox") unit toolboxComponent toolboxInput toolboxHandler
+        , HH.slot_ (Proxy :: Proxy "preview") LeftPreviewPosition previewComponent (previewInput LeftPreviewPosition) ] <>
+        htmls <>
+        [ HH.slot_ (Proxy :: Proxy "preview") RightPreviewPosition previewComponent (previewInput RightPreviewPosition) ]
   renderSyncExprPath local mempty outside inside $
-    wrapCursor <$>
+    map wrapCursor $
       renderSyncExpr local outside inside

@@ -408,8 +408,12 @@ instance DisplayTreeNode a => DisplayS (Tooth a) where
 
 instance DisplayTreeNode a => Display (Change a) where
   display (Shift (sh /\ th) ch) = 
-    El.ℓ [El.Classes [El.ShiftChange]]
+    El.ℓ [El.Classes [El.ShiftChange, shiftClassName]]
       [El.π $ pretty sh, displayS th $ El.ℓ [El.Classes [El.ShiftChangeInner]] [display ch]]
+    where
+    shiftClassName = case sh of
+      Minus -> El.MinusShift
+      Plus -> El.PlusShift
   display (Replace s1 s2) = 
     El.ℓ [El.Classes [El.ReplaceChange]]
       [ El.ℓ [El.Classes [El.ReplaceChangeLeft]] [display s1]

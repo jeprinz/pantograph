@@ -626,15 +626,10 @@ getEditsAtSort (P.SN Str % [strInner]) Outside = P.Edits $ StringQuery.fuzzy
             , inside      = Just $ ex_str (sr_strInner string) } ]
   }
 getEditsAtSort (Tree (P.SN VarJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuzzy
-  { toString: fst, maxPenalty
-  , getItems: \string -> LibEdit.makeEditRows [
-    
-      string /\ 
-      [ Just $ LibEdit.buildEdit _ {middle = Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth (Format (Comment string)) {sort} [] []}
-      ]
-    
-    , "lambda" /\ 
+getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = 
+  let
+    lambdaEditRow = 
+      "lambda" /\ 
       [ let γ = γ0
             β = α0
             α = sr_freshVar "α"
@@ -648,8 +643,8 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
           , innerChange: Just $ P.SN TmJg %! [Plus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β]
           , inside: Nothing } 
       ]
-
-    , "let" /\ 
+    letEditRow =
+      "let" /\ 
       [ let x = sr_strInner ""
             α = sr_freshVar "α"
             β = α0
@@ -676,9 +671,16 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuer
           , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject α] 
           , inside: Nothing } 
       ]
-
-    ]
+  in
+  P.Edits $ StringQuery.fuzzy
+  { toString: fst, maxPenalty
+  , getItems: \string -> LibEdit.makeEditRows
+      [ lambdaEditRow
+      , letEditRow
+      -- , string /\ [Just $ LibEdit.buildEdit _ {middle = Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth (Format (Comment string)) {sort} [] []}]
+      ]
   }
+
 getEditsAtSort (Tree (P.SN NeJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 getEditsAtSort (Tree (P.SN TyJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 getEditsAtSort sort orientation = 
