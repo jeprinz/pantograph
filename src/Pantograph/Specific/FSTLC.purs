@@ -26,7 +26,7 @@ import Data.Traversable (sequence)
 import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor(..), Gyro(..), Orientation(..), Select(..), ShiftSign(..), Tree(..), assertValidTreeKids, epL, epR, invert, singletonNonEmptyPath, treeNode, unconsPath, (%), (%!), (%!/), (%!~>), (%-))
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
-import Halogen.Elements (br, whitespace, ι, π) as El
+import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pantograph.Generic.App as App
@@ -166,7 +166,7 @@ instance DisplayTreeNode SN where
   displayTreeNode sn = 
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
-      StrInner s -> ass \[] -> El.ι [display s]
+      StrInner s -> ass \[] -> El.element [El.Classes [El.ClassName "StrInner"]] [display if String.null s then "◌" else s]
       Str -> ass \[_ /\ innerStr] -> El.ι [El.π "\"", innerStr, El.π "\""]
       VarJg -> ass \[_ /\ γ, _ /\ x, _ /\ α, _ /\ loc] -> El.ι [El.π "Var ", γ, x, El.π " : ", α, El.π " ", loc]
       TmJg -> ass \[_ /\ γ, _ /\ α] -> El.ι [γ, El.π " ⊢ ", α]
@@ -695,8 +695,8 @@ topEnv = {countHoleTm: 0, countHoleTy: 0}
 arrangeExpr :: forall er a. AnnExprNode er -> Array (RenderM (a /\ AnnExprNode er)) -> RenderM (Array (ArrangeKid a))
 arrangeExpr node@(P.EN StrEL _ _) [] | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprNodeSort node = do
   if String.null string 
-    then pure $ Array.fromFoldable $ π."~" ⊕ Nil
-    else pure $ Array.fromFoldable $ string ⊕ Nil
+    then pure $ Array.fromFoldable $ ["StrEL-anchor"] ⊕ π."~" ⊕ Nil
+    else pure $ Array.fromFoldable $ ["StrEL-anchor"] ⊕ string ⊕ Nil
 arrangeExpr node@(P.EN ZeroVar _ _) [] | _ % _ <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ π."Z" ⊕ Nil
 arrangeExpr node@(P.EN SucVar _ _) [x] | _ % _ <- P.getExprNodeSort node = do

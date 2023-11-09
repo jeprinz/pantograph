@@ -212,24 +212,31 @@ body {
   flex-grow: 0;
 }
 
-.BufferInfoItem {
+.BufferInfoItemInner {
   /* box-shadow: 0 0 8px 2px black; */
   box-shadow: 0 0 0 2px black;
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   gap: var(--it);
 }
 
 .BufferInfoItemTitle {
-  display: block;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+
   background-color: black;
   color: var(--color2);
-  padding: var(--it);
+  padding: calc(1.5*var(--it)) calc(var(--it));
 }
 
 .BufferInfoItemValue {
-  display: block;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+
   padding: var(--it);
 }
 

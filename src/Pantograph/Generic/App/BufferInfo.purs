@@ -60,7 +60,8 @@ bufferInfoComponent = HK.component \{queryToken, slotToken, outputToken} (Buffer
     El.ℓ [El.Classes [El.BufferInfo]] $ Array.catMaybes [
       mbSort <#> \sort -> embedHtml mempty $
         El.ℓ [El.Classes [El.BufferInfoItem]]
-          [ El.ℓ [El.Classes [El.BufferInfoItemTitle]] [display "sort"]
-          , El.ℓ [El.Classes [El.BufferInfoItemValue]] [display sort] ]
+          [ El.ℓ [El.Classes [El.BufferInfoItemInner]]
+            [ El.ℓ [El.Classes [El.BufferInfoItemTitle]] [display "sort"]
+            , El.ℓ [El.Classes [El.BufferInfoItemValue]] [display sort] ] ]
     ]
 

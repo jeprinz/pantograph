@@ -7,7 +7,6 @@
 }
 
 .HoleTm-anchor~*.keysymbol {
-  font-weight: bold;
   color: gray;
 }
 
@@ -15,7 +14,6 @@
 
 .keysymbol {
   display: inline;
-  font-weight: bold;
 }
 
 .keysymbol.dotted-fence {
@@ -25,4 +23,20 @@
 
 .keysymbol.emptyString {
   color: gray;
+}
+
+.StrInner,
+.StrEL-anchor~*.keysymbol.emptyString {
+  color: green;
+  text-decoration: underline;
+}
+
+/* StrInner, StrEL */
+
+.StrInner {
+  display: inline;
+}
+
+.StrEL-anchor {
+  display: inline;
 }
