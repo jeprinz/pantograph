@@ -277,6 +277,7 @@ data RuleLabel
   | Lam
   | Let
   | App
+  | GreyApp
   | Var
   | FreeVar
   | TermHole
@@ -337,6 +338,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (ListRule /\ [t]) = "List" <+> t
   prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
+  prettyExprF'_unsafe_RuleLabel (GreyApp /\ [f, a]) = "<" <> f <+> a <> ">"
   prettyExprF'_unsafe_RuleLabel (Var /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ [ty]) = "(? : " <> ty <> ")"
   prettyExprF'_unsafe_RuleLabel (TypeHole /\ []) = "?<type>"
@@ -396,6 +398,8 @@ language = TotalMap.makeTotalMap case _ of
     ( TermSort %|-* [gamma, Arrow %|-* [a, b]])
 
   App -> appRule
+
+  GreyApp -> GreyedRules.createGreyedConstruct appRule 0
 
   FreeVar -> Grammar.makeRule ["name", "type"] \[name, ty] ->
     []
@@ -543,7 +547,9 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
             _ -> [Rendering.lparenElem] /\ [Rendering.rparenElem] in
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure leftParen, Left (renCtx' /\ 0), Left (renCtx' /\ 1), pure (dotOrNot unit), pure rightParen]
-  -- types
+  GreyApp /\ _ ->
+    let renCtx' = Base.incremementIndentationLevel renCtx in
+    [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
   DataTypeRule dataType /\ _ ->
     [pure [dataTypeElem (pretty dataType)]]
   ArrowRule /\ _ ->
