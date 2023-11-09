@@ -148,6 +148,7 @@ body {
   outline: none;
   border-radius: 0;
   background-color: rgb(217, 217, 217);
+  font-family: 'Courier New', Courier, monospace;
 }
 
 .EditRows {}

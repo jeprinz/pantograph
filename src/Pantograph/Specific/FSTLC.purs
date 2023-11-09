@@ -325,10 +325,11 @@ specialEdits =
         , innerChange = Just innerChange }
   , copyExprPath: const Nothing
   , enter: \sort -> case sort of
-      P.SN TmJg % [_, _] -> Just $ LibEdit.makeMiddleChangeEdit $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []
+      -- P.SN TmJg % [_, _] -> Just $ LibEdit.makeMiddleChangeEdit $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []
+      P.SN TmJg % [_, _] -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []}
       _ -> Nothing
   , tab: \sort -> case sort of
-      P.SN TmJg % [_, _] -> Just $ LibEdit.makeMiddleChangeEdit $ singletonNonEmptyPath $ P.buildExprTooth (Format Indent) {sort} [] []
+      P.SN TmJg % [_, _] -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Indent) {sort} [] []}
       _ -> Nothing
   }
 
@@ -613,12 +614,14 @@ steppingRules =
     _ -> Nothing
 
 getEditsAtSort :: Sort -> Orientation -> Edits
-getEditsAtSort (P.SN Str % [_]) Outside = P.Edits $ StringQuery.fuzzy 
+getEditsAtSort (P.SN Str % [strInner]) Outside = P.Edits $ StringQuery.fuzzy 
   { toString: fst, maxPenalty
   , getItems: \string ->
       [ Tuple string $
         NonEmptyArray.singleton $
-          LibEdit.makeInsideChangeEdit $ ex_str (sr_strInner string) ]
+          LibEdit.buildEdit _ 
+            { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner string) % [])]
+            , inside      = Just $ ex_str (sr_strInner string) } ]
   }
 getEditsAtSort (Tree (P.SN VarJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 getEditsAtSort (Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuzzy
