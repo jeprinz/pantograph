@@ -1,16 +1,18 @@
 module Pantograph.Generic.Language.Common where
 
 import Prelude
+import Util
 
 import Bug (bug)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Bifunctor (lmap)
 import Data.Display (class Display, display)
 import Data.Eq.Generic (genericEq)
 import Data.Fuzzy as Fuzzy
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
@@ -18,15 +20,15 @@ import Data.String as String
 import Data.StringQuery (StringQuery)
 import Data.Supertype (class Supertype)
 import Data.Supertype as Supertype
-import Data.Traversable (sequence)
+import Data.Traversable (sequence, traverse)
 import Data.Tree (class DisplayTreeNode, class PrettyTreeNode, class TreeNode, Change(..), Cursor, Gyro, NonEmptyPath, Orientation, Path, Select, Tooth(..), Tree(..), assertValidTreeKids, displayTreeNode, epL, epR, lubStrict, prettyTreeNode, validKidsCount, (%-))
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
-import Halogen.SpecialElements as El
 import Halogen.HTML as HH
+import Halogen.SpecialElements as El
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Prim.Row (class Union)
 import Text.Pretty (class Pretty, braces, parens, pretty, (<+>))
@@ -59,10 +61,15 @@ derive instance Eq sn => Eq (SortNode sn)
 instance Show sn => Show (SortNode sn) where show = genericShow
 derive instance Functor SortNode
 
+instance Supertype (SortNode sn) sn where
+  inject = SN
+  project = case _ of
+    SN sn -> Just sn
+    VarSN _ -> Nothing
+
 instance TreeNode sn => TreeNode (SortNode sn) where
   validKidsCount (SN node) = validKidsCount node
   validKidsCount (VarSN _) = (0 == _)
-
 
 instance (Show sn, PrettyTreeNode sn) => PrettyTreeNode (SortNode sn) where
   prettyTreeNode sn =
@@ -75,7 +82,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (SortNode sn) where
   displayTreeNode sn =
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
-      SN node -> ass \kids -> displayTreeNode node kids
+      SN node -> ass \kids -> displayTreeNode node $ kids <#> lmap (maybe Nothing (traverse Supertype.project))
       VarSN x@(SortVar {uuid}) -> ass \[] -> El.ℓ [El.Classes [El.VarSN]] [El.uuidSplotch uuid [display x]] 
 
 type Sort sn = Tree (SortNode sn)
@@ -107,7 +114,7 @@ instance (Show sn, DisplayTreeNode sn) => DisplayTreeNode (RuleSortNode sn) wher
   displayTreeNode sn =
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
-      InjectRuleSortNode node -> ass \kids -> displayTreeNode node kids
+      InjectRuleSortNode node -> ass \kids -> displayTreeNode node $ kids <#> lmap (maybe Nothing (traverse Supertype.project))
       VarRuleSortNode var -> ass \[] -> El.ℓ [El.Classes [El.VarRuleSortNode]] [display var]
 
 makeVarRuleSort :: forall sn. RuleSortVar -> Tree (RuleSortNode sn)

@@ -4,7 +4,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--code-font);
 }
 
 /* GlobalMessage */
@@ -440,7 +440,7 @@ body {
   /* text-decoration: underline; */
   /* background-color: black; */
   padding: 0 calc(0.5*var(--it));
-  margin: 0 calc(0.5*var(--it));
+  /* margin: 0 calc(0.5*var(--it)); */
   border-radius: var(--it);
   outline-style: solid;
   outline-width: 0;

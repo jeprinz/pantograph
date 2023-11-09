@@ -2,6 +2,7 @@ module Data.Tree.Common where
 
 import Prelude
 
+import Data.Either.Nested
 import Bug (bug)
 import Data.Array as Array
 import Data.Display (class Display, class DisplayS, Html, display, displayS)
@@ -397,13 +398,13 @@ instance PrettyTreeNode a => Pretty (Change a) where
   pretty (InjectChange a kids) = prettyTreeNode a (pretty <$> kids)
 
 class TreeNode a <= DisplayTreeNode a where
-  displayTreeNode :: a -> Array Html -> Html
+  displayTreeNode :: a -> Array (Maybe (Tree a) /\ Html) -> Html
 
 instance DisplayTreeNode a => Display (Tree a) where
-  display (Tree a kids) = displayTreeNode a (display <$> kids)
+  display (Tree a kids) = displayTreeNode a (kids <#> \kid -> Just kid /\ display kid)
 
 instance DisplayTreeNode a => DisplayS (Tooth a) where
-  displayS (Tooth a (i /\ kids)) = \inner -> displayTreeNode a (fromJust $ Array.insertAt i inner (display <$> kids))
+  displayS (Tooth a (i /\ kids)) = \inner -> displayTreeNode a (fromJust $ Array.insertAt i (Nothing /\ inner) (kids <#> \kid -> Just kid /\ display kid))
 
 instance DisplayTreeNode a => Display (Change a) where
   display (Shift (sh /\ th) ch) = 
@@ -418,7 +419,7 @@ instance DisplayTreeNode a => Display (Change a) where
       , El.π ")" ]
   display (InjectChange a kids) =
     El.ℓ [El.Classes [El.InjectChange]]
-      [displayTreeNode a (display <$> kids)]
+      [displayTreeNode a (kids <#> \kid -> Nothing /\ display kid)]
 
 -- | # Utilities
 

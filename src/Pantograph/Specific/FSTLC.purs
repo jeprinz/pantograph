@@ -166,15 +166,17 @@ instance DisplayTreeNode SN where
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
       StrInner s -> ass \[] -> El.ι [El.π $ quotes2 s]
-      Str -> ass \[str] -> El.ι [El.π "String ", str]
-      VarJg -> ass \[γ, x, α, loc] -> El.ι [El.π "Var ", γ, x, El.π " : ", α, El.π " ", loc]
-      TmJg -> ass \[γ, α] -> El.ι [γ, El.π " ⊢ ", α]
-      NeJg -> ass \[γ, α] -> El.ι [γ, El.π " ⊢ ", α, El.π " [neutral]"]
-      TyJg -> ass \[α] -> El.ι [El.π"⊨ ", α]
+      Str -> ass \[_ /\ str] -> El.ι [El.π "String ", str]
+      VarJg -> ass \[_ /\ γ, _ /\ x, _ /\ α, _ /\ loc] -> El.ι [El.π "Var ", γ, x, El.π " : ", α, El.π " ", loc]
+      TmJg -> ass \[_ /\ γ, _ /\ α] -> El.ι [γ, El.π " ⊢ ", α]
+      NeJg -> ass \[_ /\ γ, _ /\ α] -> El.ι [γ, El.π " ⊢ ", α, El.π " [neutral]"]
+      TyJg -> ass \[_ /\ α] -> El.ι [El.π"⊨ ", α]
       NilCtx -> ass \[] -> El.ι [El.π "∅"]
-      ConsCtx -> ass \[x, α, γ] -> El.ι [El.π "(", x, El.π " : ", α, El.π ")", El.π ", ", γ]
+      ConsCtx -> ass \[_ /\ x, _ /\ α, sγ /\ γ] -> case sγ of
+        Just (NilCtx % []) -> El.ι [El.π "(", x, El.π " : ", α, El.π ")"]
+        _ -> El.ι [El.π "(", x, El.π " : ", α, El.π ")", El.π ", ", γ]
       DataTySN dt -> ass \[] -> El.ι [El.π (pretty dt)]
-      ArrowTySN -> ass \[α, β] -> El.ι [El.π "(", α, El.π " → ", β, El.π ")"]
+      ArrowTySN -> ass \[_ /\ α, _ /\ β] -> El.ι [El.π "(", α, El.π " → ", β, El.π ")"]
       LocalLoc -> ass \[] -> El.ι [El.π "[local]"]
       NonlocalLoc -> ass \[] -> El.ι [El.π "[nonlocal]"]
 

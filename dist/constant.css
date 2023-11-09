@@ -2,10 +2,12 @@
   fonts
 */
 
-/* @font-face {
-  font-family: 'Iosevka Curly';
-  src: url(./assets/fonts/iosevka-curly.ttc) format('truetype');
-} */
+@font-face {
+  font-family: iosevka-curly;
+  src: url(./fonts/iosevka-curly.ttc);
+  font-style: normal;
+  font-weight: normal;
+}
 
 /* @font-face {
   font-family: 'FiraCode';
@@ -15,6 +17,10 @@
 /* variables */
 
 :root {
+  /* fonts */
+  /* --code-font: iosevka-curly; */
+  --code-font: monospace;
+
   /* colors */
   --color1: #2AEDFF;
   --color2: #cf6d27;
