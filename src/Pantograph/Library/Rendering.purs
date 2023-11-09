@@ -77,6 +77,8 @@ infixr 6 consConstArrangable as ⊕
   , "if":         ["keysymbol", "if"]                                 /\ "if"
   , "then":       ["keysymbol", "then"]                               /\ "then"
   , "else":       ["keysymbol", "else"]                               /\ "else"
+  , "/*":         ["keysymbol", "comment-left"] /\ ""
+  , "*/":         ["keysymbol", "comment-right"] /\ ""
   }
 
 -- special rendering

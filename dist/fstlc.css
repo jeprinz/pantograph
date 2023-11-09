@@ -10,6 +10,27 @@
   color: gray;
 }
 
+/* StrInner, StrEL */
+
+.StrInner {
+  display: inline;
+}
+
+.StrEL-anchor {
+  display: inline;
+}
+
+.Comment {
+  display: inline;
+  /* padding: 0 var(--it); */
+  /* margin: 0 var(--it); */
+  margin-right: var(--it);
+
+  background-color: rgba(50, 50, 50, 0.2);
+  font-family: Arial, Helvetica, sans-serif;
+  font-style: italic;
+}
+
 /* keysymbol */
 
 .keysymbol {
@@ -26,17 +47,7 @@
 }
 
 .StrInner,
-.StrEL-anchor~*.keysymbol.emptyString {
+.StrEL-anchor~* {
   color: green;
   text-decoration: underline;
-}
-
-/* StrInner, StrEL */
-
-.StrInner {
-  display: inline;
-}
-
-.StrEL-anchor {
-  display: inline;
 }

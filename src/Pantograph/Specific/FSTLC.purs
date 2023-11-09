@@ -270,12 +270,13 @@ instance PrettyTreeNode EL where
       DataTyEL dt -> ass \[] -> pretty dt
       ArrowTyEL -> ass \[α, β] -> parens $ α <+> "→" <+> β
       Format fmt -> ass \[e] -> case fmt of
-        Newline -> "<newline> " <> e
-        Indent -> "<indent> " <> e
+        Newline -> " ↪ " <> e
+        Indent -> " ⇥ " <> e
+        Comment str -> " /* " <> str <> " */ " <> e
 
 -- Format
 
-data Format = Newline | Indent
+data Format = Newline | Indent | Comment String
 
 derive instance Generic Format _
 instance Show Format where show = genericShow
@@ -283,8 +284,9 @@ instance Eq Format where eq = genericEq
 instance Ord Format where compare = genericCompare
 instance Pretty Format where
   pretty = case _ of
-    Newline -> "<newline>"
-    Indent -> "<indent>"
+    Newline -> "[newline]"
+    Indent -> "[indent]"
+    Comment str -> "[comment|" <> str <> "]"
 
 -- Language
 
@@ -624,46 +626,49 @@ getEditsAtSort (P.SN Str % [strInner]) Outside = P.Edits $ StringQuery.fuzzy
             , inside      = Just $ ex_str (sr_strInner string) } ]
   }
 getEditsAtSort (Tree (P.SN VarJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort (Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuzzy
+getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuzzy
   { toString: fst, maxPenalty
-  , getItems: const $ LibEdit.makeEditRows [
-      "lambda" /\ [ 
-      do
-        let γ = γ0
+  , getItems: \string -> LibEdit.makeEditRows [
+    
+      string /\ 
+      [ Just $ LibEdit.buildEdit _ {middle = Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth (Format (Comment string)) {sort} [] []}
+      ]
+    
+    , "lambda" /\ 
+      [ let γ = γ0
             β = α0
             α = sr_freshVar "α"
             x = sr_strInner ""
             xEx = ex_str x
-            αEx = reifyTypeSortAsTypeExpr α
+            αEx = reifyTypeSortAsTypeExpr α in
         Just $ P.Edit
           { sigma: Nothing
           , outerChange: Just $ P.SN TmJg %! [Supertype.inject γ, Plus /\ (P.SN ArrowTySN %- 1 /\ [α]) %!/ Supertype.inject β]
           , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
           , innerChange: Just $ P.SN TmJg %! [Plus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β]
           , inside: Nothing } 
-      ], 
-      "let" /\ [
-      do
-        let x = sr_strInner ""
+      ]
+
+    , "let" /\ 
+      [ let x = sr_strInner ""
             α = sr_freshVar "α"
             β = α0
             γ = γ0
             xEx = ex_str x
             αEx = reifyTypeSortAsTypeExpr α
-            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx in
         Just $ P.Edit
           { sigma: Nothing
           , outerChange: Nothing
           , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, a] []
           , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β] 
-          , inside: Nothing },
-      do
-        let x = sr_strInner ""
+          , inside: Nothing }
+      , let x = sr_strInner ""
             α = α0
             γ = γ0
             xEx = ex_str x
             αEx = reifyTypeSortAsTypeExpr α
-            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx
+            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx in
         Just $ P.Edit
           { sigma: Nothing
           , outerChange: Nothing
@@ -671,6 +676,7 @@ getEditsAtSort (Tree (P.SN TmJg) [γ0, α0]) Outside = P.Edits $ StringQuery.fuz
           , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject α] 
           , inside: Nothing } 
       ]
+
     ]
   }
 getEditsAtSort (Tree (P.SN NeJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
@@ -799,6 +805,9 @@ arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node =
     Indent -> do
       a /\ _ <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
       pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a ˜⊕ Nil
+    Comment str -> do
+      a /\ _ <- a
+      pure $ Array.fromFoldable $ π."/*" ⊕ [El.ℓ [El.Classes [El.ClassName "Comment"]] [display str]] ⊕ π."*/" ⊕ a ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
   GMB.errorR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
