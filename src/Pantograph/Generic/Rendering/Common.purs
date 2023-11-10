@@ -203,7 +203,8 @@ type BufferInfoSlot sn el = H.Slot (BufferInfoQuery sn el) BufferInfoOutput Buff
 newtype BufferInfoInput sn el ctx env = BufferInfoInput 
   { mbSort :: Maybe (Sort sn) }
 newtype BufferInfoQuery sn el a = BufferInfoQuery (Variant
-  ( "set mbSort" :: Maybe (Sort sn) /\ a ))
+  ( "set mbSort" :: Maybe (Sort sn) /\ a
+  , "set mbClipboard" :: Maybe (Clipboard sn el) /\ a ))
 type BufferInfoOutput = Void
 type BufferInfoSlotId = Unit
 

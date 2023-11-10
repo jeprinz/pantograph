@@ -40,7 +40,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 class 
     ( Eq sn, Show sn, PrettyTreeNode sn, DisplayTreeNode sn
-    , Eq el, Show el, PrettyTreeNode el ) <=
+    , Eq el, Ord el, Show el, PrettyTreeNode el ) <=
     Language sn el | sn -> el, el -> sn
   where
   getSortingRule :: el -> SortingRule sn
@@ -130,6 +130,9 @@ makeVarSort x = Tree (VarSN x) []
 
 freshVarSort :: forall sn. String -> Sort sn
 freshVarSort label = Tree (freshVarSortNode label) []
+
+freshVarSortFromRuleSortVar :: forall sn. RuleSortVar -> Sort sn
+freshVarSortFromRuleSortVar (MakeRuleSortVar label) = freshVarSort label
 
 freshVarSortNode :: forall sn. String -> SortNode sn
 freshVarSortNode label = VarSN (SortVar {label, uuid: unsafePerformEffect UUID.genUUID})
@@ -286,6 +289,8 @@ type SpecialEdits sn el =
   , cut :: ExprGyro sn el -> Maybe (Edit sn el)
   }
 
+-- Clipboard
+
 data Clipboard sn el
   = ExprClipboard (Expr sn el)
   | ExprNonEmptyPathClipboard (ExprNonEmptyPath sn el)
@@ -320,7 +325,7 @@ instance (Eq sn, Show sn, DisplayTreeNode sn) => Monoid (RuleSortVarSubst (SortC
 -- | You can only compose `RuleSortVarSubst (Sort sn)` if each `RuleSortVar`
 -- | maps to the same `Sort`.
 composeRuleSortVarSubstSort :: forall sn. Eq sn => RuleSortVarSubst (Sort sn) -> RuleSortVarSubst (Sort sn) -> Maybe (RuleSortVarSubst (Sort sn))
-composeRuleSortVarSubstSort (RuleSortVarSubst m1) (RuleSortVarSubst m2) = do
+composeRuleSortVarSubstSort (RuleSortVarSubst m1) (RuleSortVarSubst m2) =
   map RuleSortVarSubst $ sequence $ Map.unionWith (\s1 s2 -> if s1 == s2 then s1 else Nothing) (Just <$> m1) (Just <$> m2)
 
 emptyRuleSortVarSubst :: forall a. RuleSortVarSubst a

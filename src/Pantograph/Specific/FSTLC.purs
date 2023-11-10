@@ -627,9 +627,7 @@ getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | sort@(P.SN TmJg %
     { stringTaggedEdits: 
         StringTaggedArray.fuzzy
           { toString: fst, maxPenalty
-          , getItems: \string -> 
-              GMB.debugR (display "[FSTLC/getEditsAtExprCursor/getItems]") {string: display string} \_ ->
-              LibEdit.makeEditRows $ Array.catMaybes
+          , getItems: \string -> LibEdit.makeEditRows $ Array.catMaybes
               [ Just lambdaEditRow
               , Just letEditRow
               , commentEditRow string
@@ -682,7 +680,7 @@ getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | sort@(P.SN TmJg %
     ]
   commentEditRow string_ =
     case String.stripPrefix (String.Pattern "//") string_ <#> String.trim of
-      Nothing -> GMB.debugR (display "commentEditRow") {string_: display string_, stripped: display $ show $ String.stripPrefix (String.Pattern "//") string_} \_ -> Nothing
+      Nothing -> Nothing
       Just string -> Just
         let str = P.SN (StrInner Commentary string) % [] in
         string_ /\
@@ -692,7 +690,6 @@ getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | sort@(P.SN TmJg %
 -- getEditsAtExprCursor (Tree (P.SN TyJg) []) Outside = P.Edits $ StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 
 getEditsAtExprCursor cursor = 
-  GMB.debugR (display "getEditsAtExprCursor/default") {cursor: display $ show cursor} \_ ->
   P.Edits { stringTaggedEdits: StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] } }
 
 getShortcutEdit :: ExprGyro -> KeyInfo -> Maybe Edit

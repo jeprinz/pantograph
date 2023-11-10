@@ -130,18 +130,22 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
       )
     # on (Proxy :: Proxy "copy") (\k -> do
         hydExprGyro <- getHydratedExprGyro
-        pure $ Just $ k $ generalizeClipboard $ case hydExprGyro of
-          CursorGyro (Cursor cursor) -> ExprClipboard $ shrinkAnnExpr cursor.inside
-          SelectGyro (Select select) -> ExprNonEmptyPathClipboard $ shrinkAnnExprNonEmptyPath select.middle
+        let clipboard = generalizeClipboard $ case hydExprGyro of
+              CursorGyro (Cursor cursor) -> ExprClipboard $ shrinkAnnExpr cursor.inside
+              SelectGyro (Select select) -> ExprNonEmptyPathClipboard $ shrinkAnnExprNonEmptyPath select.middle
+        tell slotToken (Proxy :: Proxy "info") unit BufferInfoQuery (Proxy :: Proxy "set mbClipboard") (Just clipboard)
+        pure $ Just $ k clipboard
       )
     # on (Proxy :: Proxy "cut") (\k -> do
         hydExprGyro <- getHydratedExprGyro
         case specialEdits.cut (shrinkAnnExprGyro hydExprGyro) of
           Nothing -> pure unit
           Just edit -> modifyExprGyro $ applyEdit edit
-        pure $ Just $ k $ generalizeClipboard $ case hydExprGyro of
-          CursorGyro (Cursor cursor) -> ExprClipboard $ shrinkAnnExpr cursor.inside
-          SelectGyro (Select select) -> ExprNonEmptyPathClipboard $ shrinkAnnExprNonEmptyPath select.middle
+        let clipboard = generalizeClipboard $ case hydExprGyro of
+              CursorGyro (Cursor cursor) -> ExprClipboard $ shrinkAnnExpr cursor.inside
+              SelectGyro (Select select) -> ExprNonEmptyPathClipboard $ shrinkAnnExprNonEmptyPath select.middle
+        tell slotToken (Proxy :: Proxy "info") unit BufferInfoQuery (Proxy :: Proxy "set mbClipboard") (Just clipboard)
+        pure $ Just $ k clipboard
       )
     # on (Proxy :: Proxy "paste") (\(clipboard /\ a) -> do
         hydExprGyro <- getHydratedExprGyro

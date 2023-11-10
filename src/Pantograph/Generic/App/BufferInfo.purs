@@ -47,11 +47,16 @@ bufferInfoComponent :: forall sn el ctx env. Dynamics sn el ctx env => H.Compone
 bufferInfoComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInfoInput input) -> debug "[render:bufferInfo]" {} \_ -> HK.do
 
   mbSort /\ mbSortId <- HK.useState (Nothing :: Maybe (Sort sn))
+  mbClipboard /\ mbClipboardId <- HK.useState (Nothing :: Maybe (Clipboard sn el))
 
   let handleQuery :: forall a. BufferInfoQuery sn el a -> HK.HookM Aff (Maybe a)
       handleQuery (BufferInfoQuery query) = (query # _) $ case_
         # on (Proxy :: Proxy "set mbSort") (\(mbSort' /\ a) -> do
             HK.modify_ mbSortId (const mbSort')
+            pure (Just a) 
+          )
+        # on (Proxy :: Proxy "set mbClipboard") (\(mbClipboard' /\ a) -> do
+            HK.modify_ mbClipboardId (const mbClipboard')
             pure (Just a) 
           )
   HK.useQuery queryToken handleQuery 
@@ -63,5 +68,11 @@ bufferInfoComponent = HK.component \{queryToken, slotToken, outputToken} (Buffer
           [ El.ℓ [El.Classes [El.BufferInfoItemInner]]
             [ El.ℓ [El.Classes [El.BufferInfoItemTitle]] [display "sort"]
             , El.ℓ [El.Classes [El.BufferInfoItemValue]] [display sort] ] ]
+    ,
+      mbClipboard <#> \clipboard -> embedHtml mempty $
+        El.ℓ [El.Classes [El.BufferInfoItem]]
+          [ El.ℓ [El.Classes [El.BufferInfoItemInner]]
+            [ El.ℓ [El.Classes [El.BufferInfoItemTitle]] [display "clipboard"]
+            , El.ℓ [El.Classes [El.BufferInfoItemValue]] [displayClipboard clipboard] ] ]
     ]
 

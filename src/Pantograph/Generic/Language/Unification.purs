@@ -56,12 +56,37 @@ unifySort3 s1 s2 s3 = do
 --   -- map SortVarSubst $ sequence $ Map.unionWith ?a m1' m2'
 --   ?a
 
+{-
+TODO: this can result in a `SortVarSubst` as well as the `RuleSortVarSubst`. For
+example:
+```
+  s  = ?γ ⊢ ?α rs = ($x : $α), $γ ⊢ $α
+```
+We actually need to first substitute `?γ` for `(?x : ?α), ?γ' ⊢ ?β` in a
+`SortVarSubst`. These are fresh `SortVar`s, and other appearances of `?γ` need
+to know to be substituted as well.
+-}
+
 unifySortWithRuleSort :: forall sn el. Language sn el => Sort sn -> RuleSort sn -> Maybe (RuleSortVarSubst (Sort sn))
-unifySortWithRuleSort (Tree sn1 ss1) (Tree (InjectRuleSortNode sn2) ss2) = do
+-- unifySortWithRuleSort s rs = GMB.debugR (display "unifySortWithRuleSort") {s: display s, rs: display rs} \_ -> unifySortWithRuleSort' s rs
+unifySortWithRuleSort s rs = do
+  GMB.debugRM (display "unifySortWithRuleSort") {s: display s, rs: display rs}
+  r <- unifySortWithRuleSort' s rs
+  GMB.debugRM (display "unifySortWithRuleSort") {s: display s, rs: display rs, result: display r}
+  pure r
+
+unifySortWithRuleSort' :: forall sn el. Language sn el => Sort sn -> RuleSort sn -> Maybe (RuleSortVarSubst (Sort sn))
+unifySortWithRuleSort' (Tree sn1 ss1) (Tree (InjectRuleSortNode sn2) ss2) = do
     guard $ sn1 == sn2
-    Array.foldM composeRuleSortVarSubstSort emptyRuleSortVarSubst =<< traverse (uncurry unifySortWithRuleSort) (Array.zip ss1 ss2)
-unifySortWithRuleSort s (VarRuleSortNode x % []) = Just $ singletonRuleSortVarSubst x s
-unifySortWithRuleSort _ _ = Nothing
+    -- Array.foldM composeRuleSortVarSubstSort emptyRuleSortVarSubst =<< traverse (uncurry unifySortWithRuleSort) (Array.zip ss1 ss2)
+    GMB.debugRM (display "unifySortWithRuleSort'") {ss1: display ss1, ss2: display ss2}
+    sigmas <- traverse (uncurry unifySortWithRuleSort) (Array.zip ss1 ss2)
+    GMB.debugRM (display "unifySortWithRuleSort'") {sigmas: display sigmas}
+    r <- Array.foldM composeRuleSortVarSubstSort emptyRuleSortVarSubst sigmas
+    GMB.debugRM (display "unifySortWithRuleSort'") {sigmas: display sigmas, result: display r}
+    Just r
+unifySortWithRuleSort' s (VarRuleSortNode x % []) = Just $ singletonRuleSortVarSubst x s
+unifySortWithRuleSort' _ _ = Nothing
 
 unifyChangeWithRuleChange :: forall sn el. Language sn el => SortChange sn -> RuleSortChange sn -> Maybe (RuleSortVarSubst (SortChange sn))
 unifyChangeWithRuleChange ch (VarRuleSortNode x %! []) = Just $ singletonRuleSortVarSubst x ch
@@ -110,25 +135,35 @@ unifyChangeWithRuleChange _ _ = Nothing
 -- | You can only compose `RuleSortVarSubst (Sort sn)` if each `RuleSortVar`
 -- | maps to a `Sort` that is unifiable with all other `Sort`s that the
 -- | `RuleSortVar` is mapped to.
-composeRuleSortVarSubstSort' :: forall sn el. Language sn el => RuleSortVarSubst (Sort sn) -> RuleSortVarSubst (Sort sn) -> Maybe (Tuple (RuleSortVarSubst (Sort sn)) (SortVarSubst sn)) 
+composeRuleSortVarSubstSort' :: forall sn el. Language sn el => RuleSortVarSubst (Sort sn) -> RuleSortVarSubst (Sort sn) -> Maybe (RuleSortVarSubst (Sort sn) /\ SortVarSubst sn)
 composeRuleSortVarSubstSort' (RuleSortVarSubst m1) (RuleSortVarSubst m2) = do
   m <- sequence $ Map.unionWith (\s1_ s2_ -> s1_ >>= \(s1 /\ _) -> s2_ >>= \(s2 /\ _) -> unifySort s1 s2) (m1 <#> \s -> Just (s /\ mempty)) (m2 <#> \s -> Just (s /\ mempty))
   let m' = m <#> fst
   let sigma = List.fold $ Map.values $ map snd $ m
   Just $ RuleSortVarSubst m' /\ sigma
 
+-- | For all `RuleSortVar`s that are not substituted by `rsigma`, assign it to a
+-- | fresh `SortVar`.
+padRuleSortVarSubstWithFreshVarSorts :: forall sn el. Language sn el => el -> RuleSortVarSubst (Sort sn) -> RuleSortVarSubst (Sort sn)
+padRuleSortVarSubstWithFreshVarSorts el (RuleSortVarSubst m) =
+  let SortingRule rule = getSortingRule el in
+  RuleSortVarSubst $ Map.fromFoldable $ (Set.toUnfoldable rule.parameters :: List _) <#> \x -> x /\ case Map.lookup x m of
+    Nothing -> freshVarSortFromRuleSortVar x
+    Just s -> s
+
 generalizeExpr :: forall sn el. Language sn el => Expr sn el -> Expr sn el
-generalizeExpr (EN el _ _ % kids) = EN el rsigma' {} % kids''
+generalizeExpr (EN el _ _ % kids) = EN el rsigma'' {} % kids''
   where
   kids' = generalizeExpr <$> kids
   sorts = getExprSort <$> kids'
   SortingRule rule = getSortingRule el
-  rsigmas = map fromJust $ map (uncurry unifySortWithRuleSort) $ Array.zip sorts rule.kids
+  rsigmas = map (fromJust' "generalizeExpr/rsigmas") $ map (uncurry unifySortWithRuleSort) $ Array.zip sorts rule.kids
   f (rsigma1 /\ sigma) rsigma2_ =
     let rsigma2 = map (applySortVarSubst sigma) rsigma2_ in
-    fromJust $ composeRuleSortVarSubstSort' rsigma1 rsigma2
+    fromJust' "generalizeExpr/f" $ composeRuleSortVarSubstSort' rsigma1 rsigma2
   rsigma' /\ sigma = Array.foldl f (emptyRuleSortVarSubst /\ (mempty :: SortVarSubst sn)) rsigmas
-  kids'' = kids' <##> \(EN el' sigma' _) -> EN el' (sigma' <#> applySortVarSubst sigma) {}
+  rsigma'' = padRuleSortVarSubstWithFreshVarSorts el rsigma'
+  kids'' = kids' <##> \(EN el' rsigma' _) -> EN el' (rsigma' <#> applySortVarSubst sigma) {}
 
 generalizeExprPath :: forall sn el. Language sn el => ExprPath sn el -> ExprPath sn el
 generalizeExprPath path0 = go path0 (freshVarSort "inner") mempty
@@ -140,14 +175,19 @@ generalizeExprPath path0 = go path0 (freshVarSort "inner") mempty
       let 
         SortingRule rule = getSortingRule el
         kids' = generalizeExpr <$> kids
-        sorts = fromJust $ Array.insertAt i innerSort $ getExprSort <$> kids'
-        rsigmas = map fromJust $ map (uncurry unifySortWithRuleSort) $ Array.zip sorts rule.kids
+        sorts = fromJust' "generalizeExprPath/sorts" $ Array.insertAt i innerSort $ getExprSort <$> kids' 
+      in
+      GMB.debugR (display "generalizeExprPath/rsigmas") {sorts: display sorts, "rule.kids": display rule.kids} \_ ->
+      let
+        -- rsigmas = map (fromJust' "generalizeExprPath/rsigmas") $ map (uncurry unifySortWithRuleSort) $ Array.zip sorts rule.kids
+        rsigmas = map (\(s /\ rs) -> GMB.debugR (display "generalizeExprPath/rsigmas") {s: display s, rs: display rs} \_ -> fromJust $ unifySortWithRuleSort s rs) $ Array.zip sorts rule.kids
         f (rsigma1 /\ sigma) rsigma2_ =
           let rsigma2 = map (applySortVarSubst sigma) rsigma2_ in
-          fromJust $ composeRuleSortVarSubstSort' rsigma1 rsigma2
+          fromJust' "generalizeExprPath/f" $ composeRuleSortVarSubstSort' rsigma1 rsigma2
         rsigma' /\ sigma = Array.foldl f (emptyRuleSortVarSubst /\ (mempty :: SortVarSubst sn)) rsigmas
-        kids'' = kids' <##> \(EN el' sigma' _) -> EN el' (sigma' <#> applySortVarSubst sigma) {}
-        th' = EN el rsigma' {} %- i /\ kids''
+        rsigma'' = padRuleSortVarSubstWithFreshVarSorts el rsigma'
+        kids'' = kids' <##> \(EN el' rsigma' _) -> EN el' (rsigma' <#> applySortVarSubst sigma) {}
+        th' = EN el rsigma'' {} %- i /\ kids''
         sort = getExprToothOuterSort th'
       in
       go outer' sort (inner `consPath` th')

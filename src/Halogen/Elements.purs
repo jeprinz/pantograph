@@ -156,6 +156,7 @@ data ClassName
   | Select | OutsideSelect | InsideSelect
   -- BufferInfo
   | BufferInfo | BufferInfoItem | BufferInfoItemInner | BufferInfoItemTitle | BufferInfoItemValue
+  | ClipboardHole
   -- Tree
   | Change | ShiftChange | ShiftChangeInner | ReplaceChange | ReplaceChangeLeft 
   | MinusShift | PlusShift

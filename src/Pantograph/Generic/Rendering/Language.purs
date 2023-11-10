@@ -8,7 +8,7 @@ import Pantograph.Generic.Rendering.Hook.Keyboard
 import Prelude
 import Util
 
-import Control.Monad.Identity.Trans (runIdentityT)
+import Control.Monad.Identity.Trans (IdentityT, runIdentityT)
 import Control.Monad.Reader (ask, local)
 import Control.Monad.State (get)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
@@ -33,11 +33,26 @@ import Halogen.Utilities as HU
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Record as R
 import Text.Pretty (pretty)
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 
 displayAnnExpr :: forall sn el ctx env er. Rendering sn el ctx env => AnnExpr sn el er -> Html
 displayAnnExpr e = rmap runIdentityT $ El.ι $ fst $ snd (runRenderM :: Proxy sn /\ _) $ 
   renderAnnExpr mempty e \_ _ -> pure [El.Classes [El.Expr]]
+
+displayAnnExprPath :: forall sn el ctx env er. 
+  Rendering sn el ctx env => 
+  AnnExprPath sn el er ->
+  AnnExpr sn el er ->
+  RenderM sn el ctx env (Array (HH.HTML Void (IdentityT Aff Unit))) -> 
+  Html
+displayAnnExprPath p e renderInner = rmap runIdentityT $ El.ι $ fst $ snd (runRenderM :: Proxy sn /\ _) $ 
+  renderAnnExprPath mempty p e (\_ _ -> pure [El.Classes [El.Expr]]) renderInner
+
+displayClipboard :: forall sn el ctx env. Rendering sn el ctx env => Clipboard sn el -> Html
+displayClipboard (ExprClipboard e) = displayAnnExpr e
+displayClipboard (ExprNonEmptyPathClipboard p) = displayAnnExprPath (toPath p) (fromJust $ getDefaultExpr (getExprNonEmptyPathInnerSort p)) $ 
+  pure [El.ℓ [El.Classes [El.ClipboardHole]] []]
 
 -- sync
 
