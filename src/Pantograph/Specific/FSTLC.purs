@@ -14,7 +14,6 @@ import Data.Generic.Rep (class Generic)
 import Data.Lazy (defer, force)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
-import Data.Newtype as Newtype
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.String (CodePoint)
@@ -32,7 +31,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.KeyInfo (KeyInfo)
 import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
-import Pantograph.Generic.Dynamics as P
+import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprCursor, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprNonEmptyPathSortChange, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
 import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM, displayAnnExpr) as P
@@ -41,7 +40,7 @@ import Pantograph.Library.Edit as LibEdit
 import Pantograph.Library.Rendering (π, (˜⊕), (⊕))
 import Pantograph.Library.Step as LibStep
 import Record as R
-import Text.Pretty (class Pretty, parens, pretty, quotes, quotes2, (<+>))
+import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
 import Type.Proxy (Proxy(..))
 import Util (fromJust, (<$$>))
 
@@ -224,6 +223,7 @@ data EL
   | ArrowTyEL -- Ty Ty
   -- Format
   | Format Format
+  | Comment
 
 derive instance Generic EL _
 instance Show EL where show = genericShow
@@ -251,6 +251,7 @@ instance TreeNode EL where
       DataTyEL _ -> 0
       ArrowTyEL -> 2
       Format _ -> 1
+      Comment -> 2
 instance PrettyTreeNode EL where
   prettyTreeNode el =
     let ass = assertValidTreeKids "prettyTreeNode" el in
@@ -275,11 +276,11 @@ instance PrettyTreeNode EL where
       Format fmt -> ass \[e] -> case fmt of
         Newline -> " ↪ " <> e
         Indent -> " ⇥ " <> e
-        Comment str -> " /* " <> str <> " */ " <> e
+      Comment -> ass \[s, a] -> "/*" <> s <> "*/ " <> a
 
 -- Format
 
-data Format = Newline | Indent | Comment String
+data Format = Newline | Indent
 
 derive instance Generic Format _
 instance Show Format where show = genericShow
@@ -289,7 +290,6 @@ instance Pretty Format where
   pretty = case _ of
     Newline -> "[newline]"
     Indent -> "[indent]"
-    Comment str -> "[comment|" <> str <> "]"
 
 -- Language
 
@@ -402,6 +402,11 @@ getSortingRule =
 
     Format _ -> P.buildSortingRuleFromStrings ["sort"] \[sort] ->
       [ sort ] /\
+      ( sort )
+
+    Comment -> P.buildSortingRuleFromStrings ["x", "sort"] \[x, sort] ->
+      [ rs_str x
+      , sort ] /\
       ( sort )
 
 getChangingRule :: EL -> ChangingRule
@@ -692,7 +697,7 @@ getShortcutEdit (SelectGyro (Select {middle})) {key: "Backspace", mods: {special
   let ch = P.getExprNonEmptyPathSortChange middle in
   let {outerChange, innerChange} = splitExprPathChanges ch in
   Just $ LibEdit.buildEdit _
-    { outerChange = Just outerChange 
+    { outerChange = Just outerChange
     , innerChange = Just innerChange }
 -- indent
 getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Tab", mods: {special: false}} =
@@ -728,67 +733,67 @@ arrangeExpr node@(P.EN StrEL _ _) [] | P.SN Str % [P.SN (StrInner string) % []] 
 arrangeExpr node@(P.EN ZeroVar _ _) [] | _ % _ <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ π."Z" ⊕ Nil
 arrangeExpr node@(P.EN SucVar _ _) [x] | _ % _ <- P.getExprNodeSort node = do
-  x /\ _ <- x
-  pure $ Array.fromFoldable $ π."S" ⊕ x ˜⊕ Nil
+  x' /\ _ <- x
+  pure $ Array.fromFoldable $ π."S" ⊕ x' ˜⊕ Nil
 arrangeExpr node@(P.EN FreeVar _ _) [] | _ % _ <- P.getExprNodeSort node =
   pure $ Array.fromFoldable $ π."F" ⊕ Nil
 arrangeExpr node@(P.EN LamTm _ _) [x, α, b] | _ % _ <- P.getExprNodeSort node = do
-  x /\ _ <- x
-  α /\ _ <- α
-  b /\ _ <- b
-  pure $ Array.fromFoldable $ π."λ" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."." ⊕ " " ⊕ b ˜⊕ Nil
+  x' /\ _ <- x
+  α' /\ _ <- α
+  b' /\ _ <- b
+  pure $ Array.fromFoldable $ π."λ" ⊕ " " ⊕ x' ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α' ˜⊕ " " ⊕ π."." ⊕ " " ⊕ b' ˜⊕ Nil
 arrangeExpr node@(P.EN LetTm _ _) [x, α, a, b] | _ % _ <- P.getExprNodeSort node = do
-  x /\ _ <- x # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
-  α /\ _ <- α # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
-  a /\ aNode <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
-  b /\ _ <- b
+  x' /\ _ <- x # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
+  α' /\ _ <- α # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
+  a' /\ aNode <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
+  b' /\ _ <- b
   let
-    parensYes = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ π."(" ⊕ a ˜⊕ π.")" ⊕ " " ⊕ π."in" ⊕ " " ⊕ b ˜⊕ Nil
-    parensNo = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ a ˜⊕ " " ⊕ π."in" ⊕ " " ⊕ b ˜⊕ Nil
+    parensYes = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x' ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α' ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ π."(" ⊕ a' ˜⊕ π.")" ⊕ " " ⊕ π."in" ⊕ " " ⊕ b' ˜⊕ Nil
+    parensNo = defer \_ -> Array.fromFoldable $ π."let" ⊕ " " ⊕ x' ˜⊕ " " ⊕ π.":" ⊕ " " ⊕ α' ˜⊕ " " ⊕ π."=" ⊕ " " ⊕ a' ˜⊕ " " ⊕ π."in" ⊕ " " ⊕ b' ˜⊕ Nil
   pure <<< force $ case aNode of
     P.EN LetTm _ _ -> parensYes
     P.EN CallTm _ _ -> parensYes
     P.EN ErrorCallTm _ _ -> parensYes
     _ -> parensNo
 arrangeExpr node@(P.EN IfTm _ _) [a, b, c] | _ % _ <- P.getExprNodeSort node = do
-  a /\ _ <- a
-  b /\ _ <- b
-  c /\ _ <- c
-  pure $ Array.fromFoldable $ π."if" ⊕ " " ⊕ a ˜⊕ " " ⊕ π."then" ⊕ " " ⊕ b ˜⊕ " " ⊕ π."else" ⊕ " " ⊕ c ˜⊕ Nil
+  a' /\ _ <- a
+  b' /\ _ <- b
+  c' /\ _ <- c
+  pure $ Array.fromFoldable $ π."if" ⊕ " " ⊕ a' ˜⊕ " " ⊕ π."then" ⊕ " " ⊕ b' ˜⊕ " " ⊕ π."else" ⊕ " " ⊕ c' ˜⊕ Nil
 arrangeExpr node@(P.EN CallTm _ _) [ne] | _ % _ <- P.getExprNodeSort node = do
-  ne /\ neNode <- ne
+  ne' /\ neNode <- ne
   case neNode of
-    -- P.EN VarNe _ _ -> pure $ Array.fromFoldable $ ne ˜⊕ Nil
-    _ -> pure $ Array.fromFoldable $ π."(" ⊕ ne ˜⊕ π.")" ⊕ Nil
+    -- P.EN VarNe _ _ -> pure $ Array.fromFoldable $ ne' ˜⊕ Nil
+    _ -> pure $ Array.fromFoldable $ π."(" ⊕ ne' ˜⊕ π.")" ⊕ Nil
 arrangeExpr node@(P.EN ErrorCallTm _ _) [ne] | _ % _ <- P.getExprNodeSort node = do
-  ne /\ _ <- ne
-  pure $ Array.fromFoldable $ "ErrorCall " ⊕ ne ˜⊕ Nil
+  ne' /\ _ <- ne
+  pure $ Array.fromFoldable $ "ErrorCall " ⊕ ne' ˜⊕ Nil
 arrangeExpr node@(P.EN HoleTm _ _) [α] | _ % _ <- P.getExprNodeSort node = do
-  α /\ _ <- α
+  α' /\ _ <- α
   _countHoleTm <- modify (R.modify (Proxy :: Proxy "countHoleTm") (_ + 1)) <#> (_.countHoleTm >>> (_ - 1))
-  -- pure $ Array.fromFoldable $ π."(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "□", HH.sub_ [HH.text $ show countHoleTm]] :: Html] ⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ π.")" ⊕ Nil
-  pure $ Array.fromFoldable $ ["HoleTm-anchor"] ⊕ π."{{" ⊕ " " ⊕ π."box" ⊕ " " ⊕ π.":" ⊕ " " ⊕ α ˜⊕ " " ⊕ π."}}" ⊕ Nil
+  -- pure $ Array.fromFoldable $ π."(" ⊕ [HH.span [HP.classes [HH.ClassName "HoleTm"]] [HH.text "□", HH.sub_ [HH.text $ show countHoleTm]] :: Html] ⊕ " " ⊕ π.":" ⊕ " " ⊕ α' ˜⊕ π.")" ⊕ Nil
+  pure $ Array.fromFoldable $ ["HoleTm-anchor"] ⊕ π."{{" ⊕ " " ⊕ π."box" ⊕ " " ⊕ π.":" ⊕ " " ⊕ α' ˜⊕ " " ⊕ π."}}" ⊕ Nil
 arrangeExpr node@(P.EN ErrorBoundaryTm _ _) [a] | _ % _ <- P.getExprNodeSort node = do
-  a /\ _ <- a
-  pure $ Array.fromFoldable $ "ErrorBoundary " ⊕ a ˜⊕ Nil
+  a' /\ _ <- a
+  pure $ Array.fromFoldable $ "ErrorBoundary " ⊕ a' ˜⊕ Nil
 arrangeExpr node@(P.EN VarNe _ _) [_x] | P.SN VarJg % [γ, P.SN (StrInner string) % [], α, P.SN LocalLoc % []] <- P.getExprNodeSort node = 
   pure $ Array.fromFoldable $ π."#" ⊕ string ⊕ Nil
 arrangeExpr node@(P.EN VarNe _ _) [x] | P.SN VarJg % [γ, P.SN (StrInner string) % [], α, P.SN NonlocalLoc % []] <- P.getExprNodeSort node = 
   pure $ Array.fromFoldable $ "Nonlocal#" ⊕ string ⊕ Nil
 arrangeExpr node@(P.EN AppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node = do
-  f /\ _ <- f
-  a /\ aNode <- a
+  f' /\ _ <- f
+  a' /\ aNode <- a
   pure $ Array.fromFoldable $
     if argRequiresParens aNode
-      then f ˜⊕ " " ⊕ π."(" ⊕ a ˜⊕ π.")" ⊕ Nil
-      else f ˜⊕ " " ⊕ a ˜⊕ Nil
+      then f' ˜⊕ " " ⊕ π."(" ⊕ a' ˜⊕ π.")" ⊕ Nil
+      else f' ˜⊕ " " ⊕ a' ˜⊕ Nil
   where
   argRequiresParens :: AnnExprNode er -> Boolean
   argRequiresParens _ = false
 arrangeExpr node@(P.EN GrayAppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node = do
-  f /\ _ <- f
-  a /\ _ <- a
-  pure $ Array.fromFoldable $ f ˜⊕ " " ⊕ π."{" ⊕ a ˜⊕ π."}" ⊕ Nil
+  f' /\ _ <- f
+  a' /\ _ <- a
+  pure $ Array.fromFoldable $ f' ˜⊕ " " ⊕ π."{" ⊕ a' ˜⊕ π."}" ⊕ Nil
 
 -- -- if the reflected sort-type is a SortVar
 -- arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α@(P.VarSN _ % [])] <- P.getExprNodeSort node =
@@ -807,13 +812,13 @@ arrangeExpr node@(P.EN HoleTy _ _) [] | P.SN TyJg % [α] <- P.getExprNodeSort no
 
 arrangeExpr node@(P.EN (DataTyEL dt) _ _) [] | _ % _ <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ (["DataTy"] /\ pretty dt) ⊕ Nil
-arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort node = do
-  alpha /\ alphaNode <- alpha
-  beta /\ _ <- beta
+arrangeExpr node@(P.EN ArrowTyEL _ _) [α, β] | _ % _ <- P.getExprNodeSort node = do
+  α' /\ αNode <- α
+  β' /\ _ <- β
   pure $ Array.fromFoldable $
-    if domainRequiresParens alphaNode
-      then π."(" ⊕ alpha ˜⊕ π.")" ⊕ " " ⊕ π."->" ⊕ " " ⊕ beta ˜⊕ Nil
-      else alpha ˜⊕ " " ⊕ π."->" ⊕ " " ⊕ beta ˜⊕ Nil
+    if domainRequiresParens αNode
+      then π."(" ⊕ α' ˜⊕ π.")" ⊕ " " ⊕ π."->" ⊕ " " ⊕ β' ˜⊕ Nil
+      else α' ˜⊕ " " ⊕ π."->" ⊕ " " ⊕ β' ˜⊕ Nil
   where
   domainRequiresParens :: AnnExprNode er -> Boolean
   domainRequiresParens (P.EN ArrowTyEL _ _) = true
@@ -821,15 +826,16 @@ arrangeExpr node@(P.EN ArrowTyEL _ _) [alpha, beta] | _ % _ <- P.getExprNodeSort
 arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node = do
   case fmt of
     Newline -> do
-      a /\ _ <- a
+      a' /\ _ <- a
       indentLevel <- asks _.indentLevel
-      pure $ Array.fromFoldable $ ([El.whitespace " ↪", El.br :: Html] <> Array.replicate indentLevel (El.whitespace " ⇥" :: Html)) ⊕ a ˜⊕ Nil
+      pure $ Array.fromFoldable $ ([El.whitespace " ↪", El.br :: Html] <> Array.replicate indentLevel (El.whitespace " ⇥" :: Html)) ⊕ a' ˜⊕ Nil
     Indent -> do
-      a /\ _ <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
-      pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a ˜⊕ Nil
-    Comment str -> do
-      a /\ _ <- a
-      pure $ Array.fromFoldable $ π."/*" ⊕ [El.ℓ [El.Classes [El.ClassName "Comment"]] [display str]] ⊕ π."*/" ⊕ a ˜⊕ Nil
+      a' /\ _ <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
+      pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a' ˜⊕ Nil
+arrangeExpr (P.EN Comment _ _) [s, a] = do
+  s' /\ _ <- s
+  a' /\ _ <- a
+  pure $ Array.fromFoldable $ π."/*" ⊕ ["Comment-anchor"] ⊕ s' ˜⊕ π."*/" ⊕ a' ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
   GMB.errorR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
@@ -844,7 +850,7 @@ getInitialQuery _ = ""
 
 -- utilities
 
-splitExprPathChanges :: SplitChange
+splitExprPathChanges :: SortChange -> {outerChange :: SortChange, innerChange :: SortChange}
 splitExprPathChanges (P.SN TmJg %! [γ, α]) = 
 -- | type change goes up/out, context change goes down/in
   { outerChange: P.SN TmJg %! [Supertype.inject $ epR γ, α]
@@ -877,7 +883,7 @@ sucVar {y, β, pred} = GMB.errorR (display"[sucVar] impossible") {y: display y, 
 -- | and the priority order of the list isn't enough because `defaultUp` happens
 -- | on a term higher up in the tree.
 isUpInCall :: StepExpr -> Boolean
-isUpInCall (P.EN CallTm _ _ %. [P.Up /\ (P.SN NeJg %! [_γ, P.SN ArrowTySN %! [_α, _beta]]) %.| _]) = true
+isUpInCall (P.EN CallTm _ _ %. [P.Up /\ (P.SN NeJg %! [_γ, P.SN ArrowTySN %! [_α, _β]]) %.| _]) = true
 isUpInCall _ = false
 
 reifyTypeSortAsTypeExpr :: Sort -> Expr
