@@ -10,7 +10,7 @@ import Data.Array.NonEmpty as NonEmptyArray
 import Data.Display (display)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
-import Data.StringQuery as StringQuery
+import Data.StringTaggedArray as StringTaggedArray
 import Data.Tree (toPath)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested ((/\))
@@ -45,8 +45,8 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
   let
     toEditArray query = 
-      let Edits stringQuery = input.edits in
-      StringQuery.getPrioritizedItems query stringQuery <#> snd
+      let Edits {stringTaggedEdits} = input.edits in
+      StringTaggedArray.getPrioritizedItems query stringTaggedEdits <#> snd
 
     edits = toEditArray query
 

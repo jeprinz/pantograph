@@ -1,4 +1,4 @@
-module Data.StringQuery where
+module Data.StringTaggedArray where
 
 import Prelude
 
@@ -8,18 +8,18 @@ import Data.Newtype (class Newtype)
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
 
-newtype StringQuery a p = StringQuery
+newtype StringTaggedArray a p = StringTaggedArray
   { getItems :: String -> Array a
   , penalty :: String -> a -> p
   , maxPenalty :: p }
 
-derive instance Newtype (StringQuery a p) _
+derive instance Newtype (StringTaggedArray a p) _
 
-getUnprioritizedItems str (StringQuery q) = q.getItems str
+getUnprioritizedItems str (StringTaggedArray q) = q.getItems str
 
-getAnnotatedItems str (StringQuery q) = q.getItems str <#> \item -> item /\ q.penalty str item
+getAnnotatedItems str (StringTaggedArray q) = q.getItems str <#> \item -> item /\ q.penalty str item
 
-getPrioritizedItems str (StringQuery q) = StringQuery q #
+getPrioritizedItems str (StringTaggedArray q) = StringTaggedArray q #
   getAnnotatedItems str >>>
   -- sort by increasing penanty
   Array.sortBy (\(_ /\ p1) (_ /\ p2) -> compare p1 p2) >>>
@@ -28,7 +28,7 @@ getPrioritizedItems str (StringQuery q) = StringQuery q #
   -- erase penalties
   map fst
 
-fuzzy {maxPenalty, toString, getItems} = StringQuery
+fuzzy {maxPenalty, toString, getItems} = StringTaggedArray
   { getItems
   , penalty: \str a -> 
       let Fuzzy.FuzzyStr fuzzyStr = Fuzzy.matchStr true str (toString a) in

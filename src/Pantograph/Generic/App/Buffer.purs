@@ -32,8 +32,10 @@ import Halogen as H
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.Hooks as HK
+import Halogen.KeyInfo as KeyInfo
 import Pantograph.Generic.App.BufferInfo (bufferInfoComponent)
 import Pantograph.Generic.GlobalMessageBoard as GMB
+import Pantograph.Generic.Language.Common (getEditsAtExprCursor, getShortcutEdit)
 import Pantograph.Generic.Rendering.Hook.Keyboard as Keyboard
 import Record as R
 import Todo (todo)
@@ -110,7 +112,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     local = 
       { tokens
       , modifyExprGyro
-      , modifySyncedExprGyro }
+      , modifySyncedExprGyro
+      }
 
   let
     gyroHtmls /\ _ = snd (runRenderM :: Proxy sn /\ _) $ renderSyncExprGyro local initialSyncedExprGyro
@@ -130,7 +133,7 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
     # on (Proxy :: Proxy "keyboard") (\(keyboardEvent /\ a) -> do
         let
           event = KeyboardEvent.toEvent keyboardEvent
-          ki = Keyboard.getKeyInfo keyboardEvent
+          ki = KeyInfo.getKeyInfo keyboardEvent
 
         maybeEnabledToolbox <- request slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "get enabled")
         let 
@@ -231,41 +234,47 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const true
-
-          -- specialEdits
           
-          -- Backspace: special "delete" Edit at Cursor or Select
-          else if ki.key == "Backspace" then do
-            liftEffect $ Event.preventDefault event
-            hydExprGyro <- getHydratedExprGyro
-            let maybeEdit = case hydExprGyro of
-                  CursorGyro (Cursor cursor) -> specialEdits.deleteExpr $ getExprSort cursor.inside
-                  SelectGyro (Select select) -> specialEdits.deleteExprPath $ getExprNonEmptyPathSortChange select.middle
-            case maybeEdit of
+          -- -- Backspace: special "delete" Edit at Cursor or Select
+          -- else if ki.key == "Backspace" then do
+          --   liftEffect $ Event.preventDefault event
+          --   hydExprGyro <- getHydratedExprGyro
+          --   let maybeEdit = case hydExprGyro of
+          --         CursorGyro (Cursor cursor) -> specialEdits.deleteExpr $ getExprSort cursor.inside
+          --         SelectGyro (Select select) -> specialEdits.deleteExprPath $ getExprNonEmptyPathSortChange select.middle
+          --   case maybeEdit of
+          --     Nothing -> pure unit
+          --     Just edit -> modifyExprGyro $ applyEdit edit
+          
+          -- -- Enter: special "enter" Edit
+          -- else if ki.key == "Enter" then do
+          --   liftEffect $ Event.preventDefault event
+          --   hydExprGyro <- getHydratedExprGyro
+          --   fromMaybe (pure unit) do
+          --     edit <- case hydExprGyro of
+          --       CursorGyro (Cursor cursor) -> specialEdits.enter $ getExprSort cursor.inside
+          --       SelectGyro _ -> Nothing
+          --     Just $ modifyExprGyro $ applyEdit edit
+          
+          -- -- Tab: special "tab" Edit
+          -- else if ki.key == "Tab" then do
+          --   liftEffect $ Event.preventDefault event
+          --   hydExprGyro <- getHydratedExprGyro
+          --   fromMaybe (pure unit) do
+          --     edit <- case hydExprGyro of
+          --       CursorGyro (Cursor cursor) -> specialEdits.tab $ getExprSort cursor.inside
+          --       SelectGyro _ -> Nothing
+          --     Just $ modifyExprGyro $ applyEdit edit
+
+          else do
+            -- shortcuts
+            gyro <- getHydratedExprGyro
+            case getShortcutEdit (shrinkAnnExprGyro gyro) ki of
               Nothing -> pure unit
-              Just edit -> modifyExprGyro $ applyEdit edit
-          
-          -- Enter: special "enter" Edit
-          else if ki.key == "Enter" then do
-            liftEffect $ Event.preventDefault event
-            hydExprGyro <- getHydratedExprGyro
-            fromMaybe (pure unit) do
-              edit <- case hydExprGyro of
-                CursorGyro (Cursor cursor) -> specialEdits.enter $ getExprSort cursor.inside
-                SelectGyro _ -> Nothing
-              Just $ modifyExprGyro $ applyEdit edit
-          
-          -- Tab: special "tab" Edit
-          else if ki.key == "Tab" then do
-            liftEffect $ Event.preventDefault event
-            hydExprGyro <- getHydratedExprGyro
-            fromMaybe (pure unit) do
-              edit <- case hydExprGyro of
-                CursorGyro (Cursor cursor) -> specialEdits.tab $ getExprSort cursor.inside
-                SelectGyro _ -> Nothing
-              Just $ modifyExprGyro $ applyEdit edit
-
-          else pure unit
+              Just edit -> do
+                liftEffect $ Event.preventDefault event
+                modifyExprGyro $ applyEdit edit
+            pure unit
 
         pure $ Just a
       )
@@ -365,7 +374,7 @@ renderSyncExprCursor local cursor@(Cursor {outside, inside, orientation}) = do
             , outside: shrinkAnnExprPath outside
             , inside: shrinkAnnExpr inside
             , enabled: false
-            , edits: getEditsAtSort (getExprSort inside) orientation
+            , edits: getEditsAtExprCursor (shrinkAnnExprCursor cursor)
             , initialQuery: getInitialQuery cursor }
           previewInput position = PreviewInput 
             { ctx

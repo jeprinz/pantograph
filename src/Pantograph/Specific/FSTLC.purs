@@ -19,7 +19,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.String (CodePoint)
 import Data.String as String
-import Data.StringQuery as StringQuery
+import Data.StringTaggedArray as StringTaggedArray
 import Data.Supertype (inject)
 import Data.Supertype as Supertype
 import Data.Traversable (sequence)
@@ -29,11 +29,12 @@ import Data.Tuple.Nested (type (/\), (/\))
 import Halogen.Elements as El
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Halogen.KeyInfo (KeyInfo)
 import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
-import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
+import Pantograph.Generic.Dynamics as P
 import Pantograph.Generic.GlobalMessageBoard as GMB
-import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
+import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprCursor, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprNonEmptyPathSortChange, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
 import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM, displayAnnExpr) as P
 import Pantograph.Library.Change (getDiffChangingRule)
 import Pantograph.Library.Edit as LibEdit
@@ -49,7 +50,8 @@ instance P.Language SN EL where
   getChangingRule el = getChangingRule el
   topSort = topSort
   getDefaultExpr sr = getDefaultExpr sr
-  getEditsAtSort sr ori = getEditsAtSort sr ori
+  getEditsAtExprCursor c = getEditsAtExprCursor c
+  getShortcutEdit c ki = getShortcutEdit c ki
   specialEdits = specialEdits
   validGyro gyro = validGyro gyro
 
@@ -77,6 +79,7 @@ type SortChange = P.SortChange SN
 type RuleSort = P.RuleSort SN
 type Sort = P.Sort SN
 type Edit = P.Edit SN EL
+type ExprCursor = P.ExprCursor SN EL
 type AnnExprGyro er = P.AnnExprGyro SN EL er
 type AnnExprCursor er = P.AnnExprCursor SN EL er
 type Edits = P.Edits SN EL
@@ -301,38 +304,8 @@ getDefaultExpr _ = Nothing
 
 specialEdits :: SpecialEdits
 specialEdits = 
-  { deleteExpr: case _ of
-      P.SN Str % [strInner] -> Just $ LibEdit.buildEdit _
-        { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
-        , inside      = Just $ P.buildExpr StrEL {x: P.SN (StrInner "") % []} [] }
-      P.SN TmJg % [γ, α] -> Just $ LibEdit.buildEdit _ 
-        { inside = Just $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α] }
-      -- When you delete a type-Expr, you need to push an outward change that
-      -- replaces the type-sort that is reflected in the type-Expr's sort
-      -- (otherwise the type-Expr would just be filled to correspond to its
-      -- type-Sort again).
-      P.SN TyJg % [α] -> 
-        let α' = P.freshVarSort "deleted" in
-        Just $ LibEdit.buildEdit _
-          { outerChange = Just $ P.SN TyJg %! [α %!~> α']
-          , inside      = Just $ P.buildExpr HoleTy {α: α'} [] }
-      -- When you delete a string-Expr, you need to push an outward change the
-      -- replaces the StrInner-sort with the empty-string StrInner-sort.
-      _ -> Nothing
-  , copyExpr: const Nothing
-  , deleteExprPath: \ch ->
-      let {outerChange, innerChange} = splitExprPathChanges ch in
-      Just $ LibEdit.buildEdit _
-        { outerChange = Just outerChange 
-        , innerChange = Just innerChange }
+  { copyExpr: const Nothing
   , copyExprPath: const Nothing
-  , enter: \sort -> case sort of
-      -- P.SN TmJg % [_, _] -> Just $ LibEdit.makeMiddleChangeEdit $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []
-      P.SN TmJg % [_, _] -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []}
-      _ -> Nothing
-  , tab: \sort -> case sort of
-      P.SN TmJg % [_, _] -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Indent) {sort} [] []}
-      _ -> Nothing
   }
 
 validGyro :: forall er. AnnExprGyro er -> Boolean
@@ -615,18 +588,20 @@ steppingRules =
       P.buildStepExpr ErrorBoundaryTm {γ, α, β: delta} [a]
     _ -> Nothing
 
-getEditsAtSort :: Sort -> Orientation -> Edits
-getEditsAtSort (P.SN Str % [strInner]) Outside = P.Edits $ StringQuery.fuzzy 
-  { toString: fst, maxPenalty
-  , getItems: \string ->
-      [ Tuple string $
-        NonEmptyArray.singleton $
-          LibEdit.buildEdit _ 
-            { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner string) % [])]
-            , inside      = Just $ ex_str (sr_strInner string) } ]
+getEditsAtExprCursor :: ExprCursor -> Edits
+getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | P.SN Str % [strInner] <- P.getExprSort inside = P.Edits
+  { stringTaggedEdits: StringTaggedArray.fuzzy 
+      { toString: fst, maxPenalty
+      , getItems: \string ->
+          [ Tuple string $
+            NonEmptyArray.singleton $
+              LibEdit.buildEdit _ 
+                { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner string) % [])]
+                , inside      = Just $ ex_str (sr_strInner string) } ]
+      }
   }
-getEditsAtSort (Tree (P.SN VarJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside = 
+getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | P.SN VarJg % [] <- P.getExprSort inside = P.Edits {stringTaggedEdits: StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] }}
+getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | sort@(P.SN TmJg % [γ0, α0]) <- P.getExprSort inside =
   let
     lambdaEditRow = 
       "lambda" /\ 
@@ -672,20 +647,65 @@ getEditsAtSort sort@(Tree (P.SN TmJg) [γ0, α0]) Outside =
           , inside: Nothing } 
       ]
   in
-  P.Edits $ StringQuery.fuzzy
-  { toString: fst, maxPenalty
-  , getItems: \string -> LibEdit.makeEditRows
-      [ lambdaEditRow
-      , letEditRow
-      -- , string /\ [Just $ LibEdit.buildEdit _ {middle = Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth (Format (Comment string)) {sort} [] []}]
-      ]
-  }
+  P.Edits
+    { stringTaggedEdits: 
+        StringTaggedArray.fuzzy
+          { toString: fst, maxPenalty
+          , getItems: \string -> LibEdit.makeEditRows
+              [ lambdaEditRow
+              , letEditRow
+              -- , string /\ [Just $ LibEdit.buildEdit _ {middle = Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth (Format (Comment string)) {sort} [] []}]
+              ]
+          }
+    }
 
-getEditsAtSort (Tree (P.SN NeJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort (Tree (P.SN TyJg) []) Outside = P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
-getEditsAtSort sort orientation = 
-  GMB.debugR (display "getEditsAtSort/default") {sort: display $ show sort, orientation: display $ show orientation} \_ ->
-  P.Edits $ StringQuery.fuzzy { toString: fst, maxPenalty, getItems: const [] }
+-- getEditsAtExprCursor (Tree (P.SN NeJg) []) Outside = P.Edits $ StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] }
+-- getEditsAtExprCursor (Tree (P.SN TyJg) []) Outside = P.Edits $ StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] }
+
+getEditsAtExprCursor cursor = 
+  GMB.debugR (display "getEditsAtExprCursor/default") {cursor: display $ show cursor} \_ ->
+  P.Edits { stringTaggedEdits: StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] } }
+
+getShortcutEdit :: ExprGyro -> KeyInfo -> Maybe Edit
+-- delete at cursor
+getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Backspace", mods: {special: false}} =
+  case P.getExprSort inside of
+    P.SN Str % [strInner] -> Just $ LibEdit.buildEdit _
+      { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
+      , inside      = Just $ P.buildExpr StrEL {x: P.SN (StrInner "") % []} [] }
+    P.SN TmJg % [γ, α] -> Just $ LibEdit.buildEdit _ 
+      { inside = Just $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α] }
+    -- When you delete a type-Expr, you need to push an outward change that
+    -- replaces the type-sort that is reflected in the type-Expr's sort
+    -- (otherwise the type-Expr would just be filled to correspond to its
+    -- type-Sort again).
+    P.SN TyJg % [α] -> 
+      let α' = P.freshVarSort "deleted" in
+      Just $ LibEdit.buildEdit _
+        { outerChange = Just $ P.SN TyJg %! [α %!~> α']
+        , inside      = Just $ P.buildExpr HoleTy {α: α'} [] }
+    -- When you delete a string-Expr, you need to push an outward change the
+    -- replaces the StrInner-sort with the empty-string StrInner-sort.
+    _ -> Nothing
+-- delete at select
+getShortcutEdit (SelectGyro (Select {middle})) {key: "Backspace", mods: {special: false}} =
+  let ch = P.getExprNonEmptyPathSortChange middle in
+  let {outerChange, innerChange} = splitExprPathChanges ch in
+  Just $ LibEdit.buildEdit _
+    { outerChange = Just outerChange 
+    , innerChange = Just innerChange }
+-- indent
+getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Tab", mods: {special: false}} =
+  case P.getExprSort inside of
+    sort@(P.SN TmJg % [_, _]) -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Indent) {sort} [] []}
+    _ -> Nothing
+-- newline
+getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Enter", mods: {special: false}} =
+  case P.getExprSort inside of
+    sort@(P.SN TmJg % [_, _]) -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []}
+    _ -> Nothing
+-- 
+getShortcutEdit _ _ = Nothing
 
 maxPenalty :: Fuzzy.Distance
 maxPenalty = Fuzzy.Distance 1 0 0 0 0 0

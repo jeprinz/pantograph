@@ -16,6 +16,7 @@ import Halogen (liftEffect)
 import Halogen.Elements as El
 import Halogen.HTML (slot) as HH
 import Halogen.Hooks as HK
+import Halogen.KeyInfo as KeyInfo
 import Pantograph.Generic.Rendering.Hook.Keyboard as Keyboard
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
@@ -27,7 +28,7 @@ editorComponent = HK.component \{slotToken} (EditorInput input) -> Debug.trace "
   -- keyboard
 
   Keyboard.useKeyboardEffect \keyboardEvent -> do
-      let ki = Keyboard.getKeyInfo keyboardEvent
+      let ki = KeyInfo.getKeyInfo keyboardEvent
 
       terminalIsFocused <- map (fromJust' "editorComponent.useKeyboardEffect") $
         request slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "get inputIsFocused")

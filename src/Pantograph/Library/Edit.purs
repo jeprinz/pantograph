@@ -83,12 +83,8 @@ buildEdit f = identityEdit # Newtype.over Edit f
 
 identitySpecialEdits :: forall sn el. SpecialEdits sn el
 identitySpecialEdits = 
-  { deleteExpr: const Nothing
-  , copyExpr: const Nothing
-  , deleteExprPath: const Nothing
+  { copyExpr: const Nothing
   , copyExprPath: const Nothing
-  , enter: const Nothing
-  , tab: const Nothing
   }
 
 -- | ## Utilities

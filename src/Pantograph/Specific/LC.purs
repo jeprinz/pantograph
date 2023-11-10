@@ -17,7 +17,7 @@ module Pantograph.Specific.LC where
 -- import Data.SearchableArray as SearchableArray
 -- import Data.Show.Generic (genericShow)
 -- import Data.String as String
--- import Data.StringQuery as StringQuery
+-- import Data.StringTaggedArray as StringTaggedArray
 -- import Data.Tuple (fst)
 -- import Data.Tuple.Nested ((/\), type (/\))
 -- import Halogen.Elements as El
@@ -173,14 +173,14 @@ module Pantograph.Specific.LC where
     
 --     maxDistance = Fuzzy.Distance 1 0 0 0 0 0
 
---     getEditsAtSort' (Tree (PL.SN StringSort) []) _ = PL.Edits $ StringQuery.fuzzy 
+--     getEditsAtSort' (Tree (PL.SN StringSort) []) _ = PL.Edits $ StringTaggedArray.fuzzy 
 --       { toString: fst, maxPenalty: maxDistance
 --       , getItems: \str -> 
 --           [ str /\ 
 --             NonEmptyArray.singleton 
 --               (PL.Edit {outerChange: Nothing, middle: Nothing, innerChange: Nothing, inside: Just (term.string str)})]
 --       }
---     getEditsAtSort' (Tree (PL.SN TermSort) []) Outside = PL.Edits $ StringQuery.fuzzy 
+--     getEditsAtSort' (Tree (PL.SN TermSort) []) Outside = PL.Edits $ StringTaggedArray.fuzzy 
 --       { maxPenalty: maxDistance, toString: fst
 --       , getItems: const
 --           [ 
@@ -195,7 +195,7 @@ module Pantograph.Specific.LC where
 --               [ {outerChange: change.term, middle: [tooth.lam.bod (term.string "")], innerChange: change.term} ]
 --           ]
 --       }
---     getEditsAtSort' (Tree (PL.SN TermSort) []) Inside = PL.Edits $ StringQuery.fuzzy 
+--     getEditsAtSort' (Tree (PL.SN TermSort) []) Inside = PL.Edits $ StringTaggedArray.fuzzy 
 --       { maxPenalty: maxDistance, toString: fst
 --       , getItems: const
 --           [

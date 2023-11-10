@@ -17,7 +17,7 @@ import Data.Newtype (class Newtype)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.String as String
-import Data.StringQuery (StringQuery)
+import Data.StringTaggedArray (StringTaggedArray)
 import Data.Supertype (class Supertype)
 import Data.Supertype as Supertype
 import Data.Traversable (sequence, traverse)
@@ -28,6 +28,7 @@ import Data.UUID as UUID
 import Effect.Unsafe (unsafePerformEffect)
 import Halogen.Elements as El
 import Halogen.HTML as HH
+import Halogen.KeyInfo (KeyInfo)
 import Halogen.SpecialElements as El
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Prim.Row (class Union)
@@ -47,7 +48,8 @@ class
   topSort :: Sort sn
   getDefaultExpr :: Sort sn -> Maybe (Expr sn el)
   validGyro :: forall er. AnnExprGyro sn el er -> Boolean
-  getEditsAtSort :: Sort sn -> Orientation -> Edits sn el
+  getEditsAtExprCursor :: ExprCursor sn el -> Edits sn el
+  getShortcutEdit :: ExprGyro sn el -> KeyInfo -> Maybe (Edit sn el)
   specialEdits :: SpecialEdits sn el
 
 -- Sort
@@ -268,24 +270,18 @@ derive newtype instance (Eq sn, Eq el) => Eq (Edit sn el)
 
 -- Edits
 
-newtype Edits sn el = Edits (StringQuery (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance)
+newtype Edits sn el = Edits
+  { stringTaggedEdits :: StringTaggedArray (String /\ NonEmptyArray (Edit sn el)) Fuzzy.Distance
+  }
 
 -- | A collection of (optional) special edits that are applied in different
 -- | situations.
 type SpecialEdits sn el =
-  { -- delete an expr (this is applied to the cursor in order to delete)
-    deleteExpr :: Sort sn -> Maybe (Edit sn el)
-    -- copy an expr (this is applied to the expr in the clipboard)
-  , copyExpr :: Sort sn -> Maybe (Edit sn el)
-    -- delete a path (this is applied to the select in order to delete)
-  , deleteExprPath :: SortChange sn -> Maybe (Edit sn el)
+  { -- copy an expr (this is applied to the expr in the clipboard)
+    copyExpr :: Sort sn -> Maybe (Edit sn el)
     -- copy a path (this is applied to the path in the clipboard)
   , copyExprPath :: SortChange sn -> Maybe (Edit sn el)
-  -- 'enter' key
-  , enter :: Sort sn -> Maybe (Edit sn el)
-  -- 'tab' key
-  , tab :: Sort sn -> Maybe (Edit sn el) }
-
+  }
 -- RuleSortVar
 
 newtype RuleSortVar = MakeRuleSortVar String
