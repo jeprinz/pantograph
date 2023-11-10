@@ -11,8 +11,8 @@ body {
 
 .GlobalMessages {
   display: flex;
-  /* flex-direction: column; */
-  flex-direction: column-reverse;
+  flex-direction: column;
+  /* flex-direction: column-reverse; */
   gap: var(--it);
   /* width: calc(100% - 2*var(--it)); */
   /* padding: var(--it); */

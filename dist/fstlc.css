@@ -20,15 +20,8 @@
   display: inline;
 }
 
-.Comment {
+.Comment-anchor {
   display: inline;
-  /* padding: 0 var(--it); */
-  /* margin: 0 var(--it); */
-  margin-right: var(--it);
-
-  background-color: rgba(50, 50, 50, 0.2);
-  font-family: Arial, Helvetica, sans-serif;
-  font-style: italic;
 }
 
 /* keysymbol */
@@ -46,8 +39,29 @@
   color: gray;
 }
 
-.StrInner,
-.StrEL-anchor~* {
+.StrInner.Name,
+.StrEL-anchor.Name~* {
   color: green;
   text-decoration: underline;
 }
+
+
+.StrInner.Commentary,
+.StrEL-anchor.Commentary~* {
+  display: inline-block;
+  font-family: var(--text-font);
+  background-color: rgb(239, 239, 239);
+  padding: calc(0.5*var(--it));
+  margin: calc(0.5*var(--it));
+  text-decoration: none;
+}
+
+/* .Comment-anchor~.Expr>.StrEL-anchor~*,
+.Comment-anchor~.Preview>.Expr>.StrEL-anchor~* {
+  display: inline-block;
+  font-family: var(--text-font);
+  background-color: rgb(239, 239, 239);
+  padding: calc(0.5*var(--it));
+  margin: calc(0.5*var(--it));
+  text-decoration: none;
+} */

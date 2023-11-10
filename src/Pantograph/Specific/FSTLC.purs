@@ -41,6 +41,7 @@ import Pantograph.Library.Rendering (π, (˜⊕), (⊕))
 import Pantograph.Library.Step as LibStep
 import Record as R
 import Text.Pretty (class Pretty, parens, pretty, quotes, (<+>))
+import Todo (todo)
 import Type.Proxy (Proxy(..))
 import Util (fromJust, (<$$>))
 
@@ -110,7 +111,7 @@ type LocR = RuleSort
 
 data SN
   -- StrInner
-  = StrInner String
+  = StrInner StrClass String
   -- Str
   | Str -- StrInner
   -- Jg
@@ -136,7 +137,7 @@ instance TreeNode SN where
   validKidsCount sn = (go sn == _)
     where
     go = case _ of
-      StrInner _ -> 0
+      StrInner _ _ -> 0
       Str -> 1
       VarJg -> 4
       TmJg -> 2
@@ -152,7 +153,7 @@ instance PrettyTreeNode SN where
   prettyTreeNode sn = 
     let ass = assertValidTreeKids "prettyTreeNode" sn in
     case sn of
-      StrInner s -> ass \[] -> quotes s
+      StrInner _ s -> ass \[] -> quotes s
       Str -> ass \[str] -> quotes str
       VarJg -> ass \[γ, x, α, loc] -> γ <+> "⊢" <+> loc <+> x <+> ":" <+> α
       TmJg -> ass \[γ, α] -> γ <+> "⊢" <+> α
@@ -168,7 +169,7 @@ instance DisplayTreeNode SN where
   displayTreeNode sn = 
     let ass = assertValidTreeKids "displayTreeNode" sn in
     case sn of
-      StrInner s -> ass \[] -> El.element [El.Classes [El.ClassName "StrInner"]] [display if String.null s then "◌" else s]
+      StrInner c s -> ass \[] -> El.element [El.Classes [El.ClassName "StrInner", El.ClassName $ show c]] [display if String.null s then "◌" else s]
       Str -> ass \[_ /\ innerStr] -> El.ι [El.π "\"", innerStr, El.π "\""]
       VarJg -> ass \[_ /\ γ, _ /\ x, _ /\ α, _ /\ loc] -> El.ι [El.π "Var ", γ, x, El.π " : ", α, El.π " ", loc]
       TmJg -> ass \[_ /\ γ, _ /\ α] -> El.ι [γ, El.π " ⊢ ", α]
@@ -196,11 +197,20 @@ instance Pretty DataTy where
     UnitDataTy -> "unit"
     BoolDataTy -> "bool"
 
+-- StrClass
+
+data StrClass = Commentary | Name
+
+derive instance Generic StrClass _
+instance Eq StrClass where eq = genericEq
+instance Ord StrClass where compare = genericCompare
+instance Show StrClass where show = genericShow
+
 -- EL
 
 data EL
   -- Str
-  = StrEL
+  = StrEL StrClass
   -- Var
   | ZeroVar
   | SucVar -- Var
@@ -233,7 +243,7 @@ instance TreeNode EL where
   validKidsCount el = (go el == _)
     where
     go = case _ of
-      StrEL -> 0
+      StrEL _ -> 0
       ZeroVar -> 0
       SucVar -> 1
       FreeVar -> 0
@@ -256,7 +266,7 @@ instance PrettyTreeNode EL where
   prettyTreeNode el =
     let ass = assertValidTreeKids "prettyTreeNode" el in
     case el of
-      StrEL -> ass \[] -> "STR"
+      StrEL cls -> ass \[] -> "Str#" <> show cls
       ZeroVar -> ass \[] -> "Z"
       SucVar -> ass \[x] -> "S" <> x
       FreeVar -> ass \[] -> "F"
@@ -276,7 +286,7 @@ instance PrettyTreeNode EL where
       Format fmt -> ass \[e] -> case fmt of
         Newline -> " ↪ " <> e
         Indent -> " ⇥ " <> e
-      Comment -> ass \[s, a] -> "/*" <> s <> "*/ " <> a
+      Comment -> ass \[str, a] -> "/*" <> str <> "*/ " <> a
 
 -- Format
 
@@ -297,7 +307,7 @@ topSort :: Sort
 topSort = sr_jg_tm sr_ctx_nil (P.SN (DataTySN UnitDataTy) % [])
 
 getDefaultExpr :: Sort -> Maybe Expr
-getDefaultExpr (P.SN Str % [strInner]) = Just $ P.buildExpr StrEL {x: strInner} []
+getDefaultExpr (P.SN Str % [strInner@(P.SN (StrInner c _) % [])]) = Just $ P.buildExpr (StrEL c) {x: strInner} []
 getDefaultExpr (P.SN TmJg % [γ, α]) = Just $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α]
 getDefaultExpr (P.SN TyJg % [α]) = Just $ reifyTypeSortAsTypeExpr α
 getDefaultExpr _ = Nothing
@@ -322,7 +332,7 @@ validGyro _ = false
 getSortingRule :: EL -> SortingRule
 getSortingRule =
   case _ of
-    StrEL -> P.buildSortingRule (Proxy :: Proxy (x::StrInnerR)) \{x} ->
+    StrEL _ -> P.buildSortingRule (Proxy :: Proxy (x::StrInnerR)) \{x} ->
       [] /\
       ( rs_str x )
 
@@ -404,8 +414,8 @@ getSortingRule =
       [ sort ] /\
       ( sort )
 
-    Comment -> P.buildSortingRuleFromStrings ["x", "sort"] \[x, sort] ->
-      [ rs_str x
+    Comment -> P.buildSortingRuleFromStrings ["str", "sort"] \[str, sort] ->
+      [ rs_str str
       , sort ] /\
       ( sort )
 
@@ -488,8 +498,8 @@ steppingRules =
   -- {Term γ (+ <{α -> {> β<}}>)}↓{b} ~~> lam ~ : α . {Term (+ <{ ~ : α, {> γ <}}>) β}↓{b}
   wrapLambda = P.SteppingRule "wrapLambda" case _ of
     (P.Down /\ (P.SN TmJg %! [γ, Plus /\ (P.SN TmJg %- 1 /\ [α]) %!/ β])) %.| b -> Just $
-      let x = sr_strInner "" in
-      se_tm_lam x α (epR β) (epR γ) (se_str x) (inject (reifyTypeSortAsTypeExpr α)) b
+      let x = sr_strInner Name "" in
+      se_tm_lam x α (epR β) (epR γ) (se_str Name x) (inject (reifyTypeSortAsTypeExpr α)) b
     _ -> Nothing
 
   -- {Term γ (- <{α -> {> β <}}>)}↓{lam x : α . b} ~~> {Term (- x : α, γ) β}↓{b}
@@ -594,75 +604,83 @@ steppingRules =
     _ -> Nothing
 
 getEditsAtExprCursor :: ExprCursor -> Edits
-getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | P.SN Str % [strInner] <- P.getExprSort inside = P.Edits
+getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | P.SN Str % [strInner@(P.SN (StrInner c _) % [])] <- P.getExprSort inside = P.Edits
   { stringTaggedEdits: StringTaggedArray.fuzzy 
       { toString: fst, maxPenalty
       , getItems: \string ->
           [ Tuple string $
             NonEmptyArray.singleton $
               LibEdit.buildEdit _ 
-                { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner string) % [])]
-                , inside      = Just $ ex_str (sr_strInner string) } ]
+                { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner c string) % [])]
+                , inside      = Just $ ex_str c (sr_strInner c string) } ]
       }
   }
 getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | P.SN VarJg % [] <- P.getExprSort inside = P.Edits {stringTaggedEdits: StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] }}
 getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | sort@(P.SN TmJg % [γ0, α0]) <- P.getExprSort inside =
-  let
-    lambdaEditRow = 
-      "lambda" /\ 
-      [ let γ = γ0
-            β = α0
-            α = sr_freshVar "α"
-            x = sr_strInner ""
-            xEx = ex_str x
-            αEx = reifyTypeSortAsTypeExpr α in
-        Just $ P.Edit
-          { sigma: Nothing
-          , outerChange: Just $ P.SN TmJg %! [Supertype.inject γ, Plus /\ (P.SN ArrowTySN %- 1 /\ [α]) %!/ Supertype.inject β]
-          , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
-          , innerChange: Just $ P.SN TmJg %! [Plus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β]
-          , inside: Nothing } 
-      ]
-    letEditRow =
-      "let" /\ 
-      [ let x = sr_strInner ""
-            α = sr_freshVar "α"
-            β = α0
-            γ = γ0
-            xEx = ex_str x
-            αEx = reifyTypeSortAsTypeExpr α
-            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx in
-        Just $ P.Edit
-          { sigma: Nothing
-          , outerChange: Nothing
-          , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, a] []
-          , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β] 
-          , inside: Nothing }
-      , let x = sr_strInner ""
-            α = α0
-            γ = γ0
-            xEx = ex_str x
-            αEx = reifyTypeSortAsTypeExpr α
-            a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx in
-        Just $ P.Edit
-          { sigma: Nothing
-          , outerChange: Nothing
-          , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [a]
-          , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject α] 
-          , inside: Nothing } 
-      ]
-  in
   P.Edits
     { stringTaggedEdits: 
         StringTaggedArray.fuzzy
           { toString: fst, maxPenalty
-          , getItems: \string -> LibEdit.makeEditRows
-              [ lambdaEditRow
-              , letEditRow
-              -- , string /\ [Just $ LibEdit.buildEdit _ {middle = Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth (Format (Comment string)) {sort} [] []}]
+          , getItems: \string -> 
+              GMB.debugR (display "[FSTLC/getEditsAtExprCursor/getItems]") {string: display string} \_ ->
+              LibEdit.makeEditRows $ Array.catMaybes
+              [ Just lambdaEditRow
+              , Just letEditRow
+              , commentEditRow string
               ]
           }
     }
+  where
+  lambdaEditRow = 
+    "fun" /\ 
+    [ let γ = γ0
+          β = α0
+          α = sr_freshVar "α"
+          x = sr_strInner Name ""
+          xEx = ex_str Name x
+          αEx = reifyTypeSortAsTypeExpr α in
+      Just $ P.Edit
+        { sigma: Nothing
+        , outerChange: Just $ P.SN TmJg %! [Supertype.inject γ, Plus /\ (P.SN ArrowTySN %- 1 /\ [α]) %!/ Supertype.inject β]
+        , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LamTm {γ, x, α, β} [xEx, αEx] []
+        , innerChange: Just $ P.SN TmJg %! [Plus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β]
+        , inside: Nothing } 
+    ]
+  letEditRow =
+    "let" /\ 
+    [ let x = sr_strInner Name ""
+          α = sr_freshVar "α"
+          β = α0
+          γ = γ0
+          xEx = ex_str Name x
+          αEx = reifyTypeSortAsTypeExpr α
+          a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx in
+      Just $ P.Edit
+        { sigma: Nothing
+        , outerChange: Nothing
+        , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LetTm {x, α, β, γ} [xEx, αEx, a] []
+        , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject β] 
+        , inside: Nothing }
+    , let x = sr_strInner Name ""
+          α = α0
+          γ = γ0
+          xEx = ex_str Name x
+          αEx = reifyTypeSortAsTypeExpr α
+          a = ex_tm_hole (P.SN ConsCtx % [x, α, γ]) α αEx in
+      Just $ P.Edit
+        { sigma: Nothing
+        , outerChange: Nothing
+        , middle: Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth LetTm {x, α, β: α, γ} [xEx, αEx] [a]
+        , innerChange: Just $ P.SN TmJg %! [Minus /\ (P.SN ConsCtx %- 2 /\ [x, α]) %!/ Supertype.inject γ, Supertype.inject α] 
+        , inside: Nothing } 
+    ]
+  commentEditRow string_ =
+    case String.stripPrefix (String.Pattern "//") string_ <#> String.trim of
+      Nothing -> GMB.debugR (display "commentEditRow") {string_: display string_, stripped: display $ show $ String.stripPrefix (String.Pattern "//") string_} \_ -> Nothing
+      Just string -> Just
+        let str = P.SN (StrInner Commentary string) % [] in
+        string_ /\
+        [Just $ LibEdit.buildEdit _ {middle = Just $ P.singletonExprNonEmptyPath $ P.buildExprTooth Comment {str, sort} [P.buildExpr (StrEL Commentary) {x: str} []] []}]
 
 -- getEditsAtExprCursor (Tree (P.SN NeJg) []) Outside = P.Edits $ StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] }
 -- getEditsAtExprCursor (Tree (P.SN TyJg) []) Outside = P.Edits $ StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] }
@@ -675,9 +693,9 @@ getShortcutEdit :: ExprGyro -> KeyInfo -> Maybe Edit
 -- delete at cursor
 getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Backspace", mods: {special: false}} =
   case P.getExprSort inside of
-    P.SN Str % [strInner] -> Just $ LibEdit.buildEdit _
-      { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner "") % [])]
-      , inside      = Just $ P.buildExpr StrEL {x: P.SN (StrInner "") % []} [] }
+    P.SN Str % [strInner@(P.SN (StrInner c _) % [])] -> Just $ LibEdit.buildEdit _
+      { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner c "") % [])]
+      , inside      = Just $ P.buildExpr (StrEL c) {x: P.SN (StrInner c "") % []} [] }
     P.SN TmJg % [γ, α] -> Just $ LibEdit.buildEdit _ 
       { inside = Just $ P.buildExpr HoleTm {γ, α} [reifyTypeSortAsTypeExpr α] }
     -- When you delete a type-Expr, you need to push an outward change that
@@ -726,10 +744,10 @@ topEnv :: Record ENV
 topEnv = {countHoleTm: 0, countHoleTy: 0}
 
 arrangeExpr :: forall er a. AnnExprNode er -> Array (RenderM (a /\ AnnExprNode er)) -> RenderM (Array (ArrangeKid a))
-arrangeExpr node@(P.EN StrEL _ _) [] | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprNodeSort node = do
+arrangeExpr node@(P.EN (StrEL strClass) _ _) [] | P.SN Str % [P.SN (StrInner _ string) % []] <- P.getExprNodeSort node = do
   if String.null string 
-    then pure $ Array.fromFoldable $ ["StrEL-anchor"] ⊕ π."~" ⊕ Nil
-    else pure $ Array.fromFoldable $ ["StrEL-anchor"] ⊕ string ⊕ Nil
+    then pure $ Array.fromFoldable $ ["StrEL-anchor", show strClass] ⊕ π."~" ⊕ Nil
+    else pure $ Array.fromFoldable $ ["StrEL-anchor", show strClass] ⊕ [El.ι [display string]] ⊕ Nil
 arrangeExpr node@(P.EN ZeroVar _ _) [] | _ % _ <- P.getExprNodeSort node = do
   pure $ Array.fromFoldable $ π."Z" ⊕ Nil
 arrangeExpr node@(P.EN SucVar _ _) [x] | _ % _ <- P.getExprNodeSort node = do
@@ -776,9 +794,9 @@ arrangeExpr node@(P.EN HoleTm _ _) [α] | _ % _ <- P.getExprNodeSort node = do
 arrangeExpr node@(P.EN ErrorBoundaryTm _ _) [a] | _ % _ <- P.getExprNodeSort node = do
   a' /\ _ <- a
   pure $ Array.fromFoldable $ "ErrorBoundary " ⊕ a' ˜⊕ Nil
-arrangeExpr node@(P.EN VarNe _ _) [_x] | P.SN VarJg % [γ, P.SN (StrInner string) % [], α, P.SN LocalLoc % []] <- P.getExprNodeSort node = 
+arrangeExpr node@(P.EN VarNe _ _) [_x] | P.SN VarJg % [γ, P.SN (StrInner Name string) % [], α, P.SN LocalLoc % []] <- P.getExprNodeSort node = 
   pure $ Array.fromFoldable $ π."#" ⊕ string ⊕ Nil
-arrangeExpr node@(P.EN VarNe _ _) [x] | P.SN VarJg % [γ, P.SN (StrInner string) % [], α, P.SN NonlocalLoc % []] <- P.getExprNodeSort node = 
+arrangeExpr node@(P.EN VarNe _ _) [x] | P.SN VarJg % [γ, P.SN (StrInner Name string) % [], α, P.SN NonlocalLoc % []] <- P.getExprNodeSort node = 
   pure $ Array.fromFoldable $ "Nonlocal#" ⊕ string ⊕ Nil
 arrangeExpr node@(P.EN AppNe _ _) [f, a] | _ % _ <- P.getExprNodeSort node = do
   f' /\ _ <- f
@@ -832,10 +850,10 @@ arrangeExpr node@(P.EN (Format fmt) _ _) [a] | _ % _ <- P.getExprNodeSort node =
     Indent -> do
       a' /\ _ <- a # local (R.modify (Proxy :: Proxy "indentLevel") (_ + 1))
       pure $ Array.fromFoldable $ [El.whitespace " ⇥" :: Html] ⊕ a' ˜⊕ Nil
-arrangeExpr (P.EN Comment _ _) [s, a] = do
-  s' /\ _ <- s
+arrangeExpr (P.EN Comment _ _) [str, a] = do
+  str' /\ _ <- str
   a' /\ _ <- a
-  pure $ Array.fromFoldable $ π."/*" ⊕ ["Comment-anchor"] ⊕ s' ˜⊕ π."*/" ⊕ a' ˜⊕ Nil
+  pure $ Array.fromFoldable $ π."/*" ⊕ ["Comment-anchor"] ⊕ str' ˜⊕ π."*/" ⊕ a' ˜⊕ Nil
 arrangeExpr node mkids = do
   kidNodes <- snd <$$> sequence mkids
   GMB.errorR (display"[arrangeExpr] invalid") {node: display $ pretty node, kidNodes: display $ pretty kidNodes}
@@ -845,7 +863,7 @@ getBeginsLine (Cursor {outside}) | Just {inner: P.EN (Format Newline) _ _ %- 0 /
 getBeginsLine _ = false
 
 getInitialQuery :: forall er. AnnExprCursor er -> String
-getInitialQuery (Cursor {inside: e}) | P.SN Str % [P.SN (StrInner string) % []] <- P.getExprSort e = string
+getInitialQuery (Cursor {inside: e}) | P.SN Str % [P.SN (StrInner _ string) % []] <- P.getExprSort e = string
 getInitialQuery _ = ""
 
 -- utilities
@@ -908,7 +926,7 @@ alphabet = String.codePointFromChar <$> Enum.enumFromTo 'A' 'Z'
 
 sr_freshVar string = P.freshVarSort string
 
-sr_strInner string = P.makeSort (StrInner string) []
+sr_strInner strClass string = P.makeSort (StrInner strClass string) []
 sr_str strInner = P.makeSort Str [strInner]
 
 sr_jg_var γ x α loc = P.makeSort VarJg [γ, x, α, loc]
@@ -959,7 +977,7 @@ rs_loc_nonlocal = P.makeInjectRuleSort NonlocalLoc []
 --   ((Proxy :: Proxy "var_free") /\ \{x, α} -> P.buildExpr FreeVar {x, α} []) :
 --   nil
 
-ex_str x = P.buildExpr StrEL {x} [] 
+ex_str strClass x = P.buildExpr (StrEL strClass) {x} [] 
 
 ex_var_zero γ x α = P.buildExpr ZeroVar {γ, x, α} []
 ex_var_suc γ x α y β loc pred = P.buildExpr SucVar {γ, x, α, y, β, loc} [pred]
@@ -972,7 +990,7 @@ ex_tm_hole γ α αEx = P.buildExpr HoleTm {γ, α} [αEx]
 
 -- shallow StepExpr
 
-se_str x = P.buildStepExpr StrEL {x} [] 
+se_str strClass x = P.buildStepExpr (StrEL strClass) {x} [] 
 
 se_var_zero γ x α = P.buildStepExpr SucVar {γ, x, α, loc: sr_loc_nonlocal} []
 se_var_suc γ x α y β loc pred = P.buildStepExpr SucVar {γ, x, α, y, β, loc} [pred]

@@ -83,6 +83,8 @@ debug = log DebugGlobalMessageTag
 debugM = logM DebugGlobalMessageTag
 debugR = logR DebugGlobalMessageTag
 debugRM = logRM DebugGlobalMessageTag
+debugThis f a = debug (f a) \_ -> a
+debugThisR title f a = debugR title (f a) \_ -> a
 
 -- info
 

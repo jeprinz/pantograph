@@ -14,13 +14,11 @@ import Pantograph.Generic.Rendering
 import Prelude
 import Util
 
-import Bug (bug)
 import Control.Monad.Reader (ask)
 import Control.Monad.State (get)
 import Data.Array as Array
 import Data.CodePoint.Unicode as CodePoint
-import Data.List (List(..))
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String as String
 import Data.Tree.Traverse (traverseGyro)
 import Data.Tuple (snd)
@@ -165,8 +163,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const false
 
-          -- Enter|Spacebar: 
-          else if ki.key == "Enter" || ki.key == " " then do
+          -- Enter: submit Toolbox edit
+          else if ki.key == "Enter" then do
             liftEffect $ Event.preventDefault event
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "submit edit") $ unit
 
@@ -190,8 +188,8 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         else do
           if false then pure unit
 
-          -- alphaNum: open Toolbox and start query with this key
-          else if (not ki.mods.special) && (ki.point # maybe false CodePoint.isAlphaNum) then do
+          -- alphaNum|etc: open Toolbox and start query with this key
+          else if not ki.mods.special && maybe false (flip Array.any [CodePoint.isAlphaNum, flip Array.elem [codepoint."_", codepoint."/"]] <<< (#)) ki.point then do
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const true
@@ -229,43 +227,11 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
           else if ki.key == "ArrowDown" then do
             liftEffect $ Event.preventDefault event
             modifyHydratedExprGyro $ moveGyroNext `until` gyroIsValidCursorAndBeginsLine
-          -- Spacebar: open Toolbox (no initial query)
-          else if ki.key == " " then do
+          -- Shift+Enter: open Toolbox (no initial query)
+          else if ki.mods.shift && ki.key == "Enter" then do
             liftEffect $ Event.preventDefault event
             ensureExprGyroIsCursor
             tell slotToken (Proxy :: Proxy "toolbox") unit ToolboxQuery (Proxy :: Proxy "modify enabled") $ const true
-          
-          -- -- Backspace: special "delete" Edit at Cursor or Select
-          -- else if ki.key == "Backspace" then do
-          --   liftEffect $ Event.preventDefault event
-          --   hydExprGyro <- getHydratedExprGyro
-          --   let maybeEdit = case hydExprGyro of
-          --         CursorGyro (Cursor cursor) -> specialEdits.deleteExpr $ getExprSort cursor.inside
-          --         SelectGyro (Select select) -> specialEdits.deleteExprPath $ getExprNonEmptyPathSortChange select.middle
-          --   case maybeEdit of
-          --     Nothing -> pure unit
-          --     Just edit -> modifyExprGyro $ applyEdit edit
-          
-          -- -- Enter: special "enter" Edit
-          -- else if ki.key == "Enter" then do
-          --   liftEffect $ Event.preventDefault event
-          --   hydExprGyro <- getHydratedExprGyro
-          --   fromMaybe (pure unit) do
-          --     edit <- case hydExprGyro of
-          --       CursorGyro (Cursor cursor) -> specialEdits.enter $ getExprSort cursor.inside
-          --       SelectGyro _ -> Nothing
-          --     Just $ modifyExprGyro $ applyEdit edit
-          
-          -- -- Tab: special "tab" Edit
-          -- else if ki.key == "Tab" then do
-          --   liftEffect $ Event.preventDefault event
-          --   hydExprGyro <- getHydratedExprGyro
-          --   fromMaybe (pure unit) do
-          --     edit <- case hydExprGyro of
-          --       CursorGyro (Cursor cursor) -> specialEdits.tab $ getExprSort cursor.inside
-          --       SelectGyro _ -> Nothing
-          --     Just $ modifyExprGyro $ applyEdit edit
-
           else do
             -- shortcuts
             gyro <- getHydratedExprGyro
@@ -391,3 +357,8 @@ renderSyncExprCursor local cursor@(Cursor {outside, inside, orientation}) = do
   renderSyncExprPath local mempty outside inside $
     map wrapCursor $
       renderSyncExpr local outside inside
+
+codepoint =
+  { "_": fromJust $ Array.head $ String.toCodePointArray "_"
+  , "/": fromJust $ Array.head $ String.toCodePointArray "/"
+  }

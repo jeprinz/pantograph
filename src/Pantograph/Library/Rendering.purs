@@ -67,7 +67,7 @@ infixr 6 consConstArrangable as ⊕
   , "->":         ["keysymbol", "arrow-right"]                        /\ "→"
   , "?":          ["keysymbol", "interrogative"]                      /\ "?"
   , "box":        ["keysymbol", "box"]                                /\ "◌" -- "◯"
-  , "λ":          ["keysymbol", "lambda"]                             /\ "λ"
+  , "λ":          ["keysymbol", "lambda"]                             /\ "fun"
   , "~":          ["keysymbol", "emptyString"]                        /\ "◌" -- "◯" -- "~"
   , "let":        ["keysymbol", "let"]                                /\ "let"
   , "in":         ["keysymbol", "in"]                                 /\ "in"
@@ -78,7 +78,7 @@ infixr 6 consConstArrangable as ⊕
   , "then":       ["keysymbol", "then"]                               /\ "then"
   , "else":       ["keysymbol", "else"]                               /\ "else"
   , "/*":         ["keysymbol", "comment-left"] /\ ""
-  , "*/":         ["keysymbol", "comment-right"] /\ ""
+  , "*/":         ["keysymbol", "comment-right"] /\ " "
   }
 
 -- special rendering

@@ -43,19 +43,12 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
   query /\ queryStateId <- HK.useState input.initialQuery
 
-  let
-    toEditArray query = 
+  let 
+    edits =
       let Edits {stringTaggedEdits} = input.edits in
       StringTaggedArray.getPrioritizedItems query stringTaggedEdits <#> snd
 
-    edits = toEditArray query
-
-    getEditsAtSort = do
-      query <- HK.get queryStateId
-      pure $ toEditArray query
-
     normalizeSelect (ToolboxSelect rowIx colIx) = do
-      edits <- getEditsAtSort
       let editsLength = Array.length edits
       if editsLength == 0 
         then pure $ ToolboxSelect 0 0 
@@ -70,7 +63,6 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         false -> pure Nothing
         true -> do
           ToolboxSelect selectRowIndex' selectColIndex' <- HK.get selectStateId
-          edits <- getEditsAtSort
           pure $
             edits #
               (_ Array.!! selectRowIndex') >>>
@@ -82,7 +74,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         Just edit -> HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "preview edit") $ Just edit
 
     modifyEnabledToolbox f = do
-      enabled' <- HK.modify enabledStateId f
+      HK.modify_ enabledStateId f
       resetQuery
       getQueryElem >>= case _ of
         Nothing -> pure unit
@@ -105,10 +97,10 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
           HK.raise outputToken $ ToolboxOutput $ inj (Proxy :: Proxy "submit edit") edit
 
     modifyQuery f = do
-      query <- HK.modify queryStateId f
+      query' <- HK.modify queryStateId f
       getQueryElem >>= case _ of
         Nothing -> pure unit
-        Just queryElem -> liftEffect $ HTMLInputElement.setValue query $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
+        Just queryElem -> liftEffect $ HTMLInputElement.setValue query' $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
       resetSelect
 
     resetQuery = do
@@ -145,6 +137,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
             , HE.onValueInput \_ -> do
                 queryElem <- getQueryElem <#> fromJust
                 value <- liftEffect $ HTMLInputElement.value $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
+                GMB.debugRM (display "ToolboxInput/onValueInput") {value: display value}
                 HK.modify_ queryStateId (const value)
                 resetSelect
             ]
