@@ -281,7 +281,15 @@ type SpecialEdits sn el =
     copyExpr :: Sort sn -> Maybe (Edit sn el)
     -- copy a path (this is applied to the path in the clipboard)
   , copyExprPath :: SortChange sn -> Maybe (Edit sn el)
+
+  , paste :: ExprGyro sn el -> Clipboard sn el -> Maybe (Edit sn el)
+  , cut :: ExprGyro sn el -> Maybe (Edit sn el)
   }
+
+data Clipboard sn el
+  = ExprClipboard (Expr sn el)
+  | ExprNonEmptyPathClipboard (ExprNonEmptyPath sn el)
+
 -- RuleSortVar
 
 newtype RuleSortVar = MakeRuleSortVar String
@@ -403,13 +411,13 @@ derive newtype instance Show sn => Show (SortVarSubst sn)
 derive instance Functor SortVarSubst
 
 -- | `SortVarSubst` forms a `Semigroup` via composition.
-instance Language sn el => Semigroup (SortVarSubst sn) where
+instance (Show sn, PrettyTreeNode sn) => Semigroup (SortVarSubst sn) where
   append (SortVarSubst m1) sigma2@(SortVarSubst m2) = SortVarSubst (Map.union m1 (m2 <#> applySortVarSubst sigma2))
 
-instance Language sn el => Monoid (SortVarSubst sn) where
+instance (Show sn, PrettyTreeNode sn) => Monoid (SortVarSubst sn) where
   mempty = SortVarSubst Map.empty
 
-instance Language sn el => Pretty (SortVarSubst sn) where
+instance (Show sn, PrettyTreeNode sn) => Pretty (SortVarSubst sn) where
   pretty (SortVarSubst m) = "{" <> Array.intercalate ", " (items <#> \(x /\ s) -> pretty x <+> ":=" <+> pretty s) <> "}"
     where
     items = Map.toUnfoldable m :: Array _
@@ -417,43 +425,43 @@ instance Language sn el => Pretty (SortVarSubst sn) where
 class ApplySortVarSubst sn a b | a -> b where
   applySortVarSubst :: SortVarSubst sn -> a -> b
 
-instance Language sn el => ApplySortVarSubst sn SortVar (Sort sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn SortVar (Sort sn) where
   applySortVarSubst (SortVarSubst m) x = case Map.lookup x m of
     Nothing -> makeVarSort x
     Just s -> s
 
-instance Language sn el => ApplySortVarSubst sn (Sort sn) (Sort sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (Sort sn) (Sort sn) where
   applySortVarSubst sigma (Tree sn@(SN _) kids) = Tree sn (applySortVarSubst sigma <$> kids)
   applySortVarSubst sigma (Tree (VarSN x) _) = applySortVarSubst sigma x
 
-instance Language sn el => ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) where
   applySortVarSubst sigma (Tooth sn@(SN _) (i /\ kids)) = Tooth sn (i /\ (applySortVarSubst sigma <$> kids))
   applySortVarSubst sigma th@(Tooth (VarSN _) _) = GMB.errorR (display"[ApplySortVarSubst sn (SortTooth sn) (SortTooth sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, th: display $ pretty th}
 
-instance Language sn el => ApplySortVarSubst sn (SortChange sn) (SortChange sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (SortChange sn) (SortChange sn) where
   applySortVarSubst sigma (Shift (sign /\ tooth) kid) = Shift (sign /\ applySortVarSubst sigma tooth) (applySortVarSubst sigma kid)
   applySortVarSubst sigma (Replace old new) = Replace (applySortVarSubst sigma old) (applySortVarSubst sigma new)
   applySortVarSubst sigma (InjectChange sn@(SN _) kids) = InjectChange sn (applySortVarSubst sigma <$> kids)
   applySortVarSubst sigma (InjectChange (VarSN x) []) = Supertype.inject $ applySortVarSubst sigma x
   applySortVarSubst sigma ch@(InjectChange (VarSN _) _) = GMB.errorR (display"[ApplySortVarSubst sn (SortChange sn) (SortChange sn) / applySortVarSubst] invalid") {sigma: display $ pretty sigma, ch: display $ pretty ch}
 
-instance Language sn el => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (SortVarSubst sn) (SortVarSubst sn) where
   applySortVarSubst = append
 
-instance Language sn el => ApplySortVarSubst sn (RuleSortVarSubst (Sort sn)) (RuleSortVarSubst (Sort sn)) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (RuleSortVarSubst (Sort sn)) (RuleSortVarSubst (Sort sn)) where
   applySortVarSubst sigma (RuleSortVarSubst m) = RuleSortVarSubst $ m <#> applySortVarSubst sigma
 
-instance Language sn el => ApplySortVarSubst sn (AnnExprNode sn el er) (AnnExprNode sn el er) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (AnnExprNode sn el er) (AnnExprNode sn el er) where
   applySortVarSubst sigma (EN label sigma' er) = EN label (applySortVarSubst sigma sigma') er
 
-instance Language sn el => ApplySortVarSubst sn (AnnExpr sn el er) (AnnExpr sn el er) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (AnnExpr sn el er) (AnnExpr sn el er) where
   applySortVarSubst sigma = map (applySortVarSubst sigma)
 
-instance Language sn el => ApplySortVarSubst sn (AnnExprTooth sn el er) (AnnExprTooth sn el er) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (AnnExprTooth sn el er) (AnnExprTooth sn el er) where
   applySortVarSubst sigma = map (applySortVarSubst sigma)
 
-instance Language sn el => ApplySortVarSubst sn (AnnExprPath sn el er) (AnnExprPath sn el er) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (AnnExprPath sn el er) (AnnExprPath sn el er) where
   applySortVarSubst sigma = map (applySortVarSubst sigma)
 
-instance Language sn el => ApplySortVarSubst sn (AnnExprNonEmptyPath sn el er) (AnnExprNonEmptyPath sn el er) where
+instance (Show sn, PrettyTreeNode sn) => ApplySortVarSubst sn (AnnExprNonEmptyPath sn el er) (AnnExprNonEmptyPath sn el er) where
   applySortVarSubst sigma = map (applySortVarSubst sigma)

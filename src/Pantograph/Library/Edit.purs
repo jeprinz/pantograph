@@ -85,6 +85,8 @@ identitySpecialEdits :: forall sn el. SpecialEdits sn el
 identitySpecialEdits = 
   { copyExpr: const Nothing
   , copyExprPath: const Nothing
+  , cut: const Nothing
+  , paste: const (const Nothing)
   }
 
 -- | ## Utilities

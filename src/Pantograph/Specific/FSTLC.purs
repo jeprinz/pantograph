@@ -33,7 +33,7 @@ import Pantograph.Generic.App as App
 import Pantograph.Generic.Dynamics ((%.), (%.|))
 import Pantograph.Generic.Dynamics (class Dynamics, Direction(..), StepExpr(..), SteppingRule(..), buildStepExpr, fromStepExprToExpr) as P
 import Pantograph.Generic.GlobalMessageBoard as GMB
-import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Edit(..), Edits(..), Expr, ExprCursor, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprNonEmptyPathSortChange, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath) as P
+import Pantograph.Generic.Language (class Language, AnnExprCursor, AnnExprGyro, AnnExprNode(..), ChangingRule, Clipboard(..), Edit(..), Edits(..), Expr, ExprCursor, ExprGyro, ExprNode, ExprTooth, RuleSort, Sort, SortChange, SortNode(..), SortingRule, SpecialEdits, applyRuleSortVarSubst, applySortVarSubst, buildExpr, buildExprTooth, buildSortingRule, buildSortingRuleFromStrings, freshVarSort, getExprNodeSort, getExprNonEmptyPathInnerSort, getExprNonEmptyPathOuterSort, getExprNonEmptyPathSortChange, getExprPathChange, getExprSort, makeInjectRuleSort, makeSort, makeVarRuleSort, singletonExprNonEmptyPath, unifySort) as P
 import Pantograph.Generic.Rendering (class Rendering, ArrangeKid, EditorInput(..), RenderM, displayAnnExpr) as P
 import Pantograph.Library.Change (getDiffChangingRule)
 import Pantograph.Library.Edit as LibEdit
@@ -85,6 +85,7 @@ type AnnExprCursor er = P.AnnExprCursor SN EL er
 type Edits = P.Edits SN EL
 type SpecialEdits = P.SpecialEdits SN EL
 type ExprGyro = P.ExprGyro SN EL
+type Clipboard = P.Clipboard SN EL
 type SteppingRule = P.SteppingRule SN EL
 type ChangingRule = P.ChangingRule SN
 type SortingRule = P.SortingRule SN
@@ -316,6 +317,8 @@ specialEdits :: SpecialEdits
 specialEdits = 
   { copyExpr: const Nothing
   , copyExprPath: const Nothing
+  , cut: getDeleteEdit
+  , paste: getPasteEdit
   }
 
 validGyro :: forall er. AnnExprGyro er -> Boolean
@@ -603,6 +606,9 @@ steppingRules =
       P.buildStepExpr ErrorBoundaryTm {γ, α, β: delta} [a]
     _ -> Nothing
 
+maxPenalty :: Fuzzy.Distance
+maxPenalty = Fuzzy.Distance 1 0 0 0 0 0
+
 getEditsAtExprCursor :: ExprCursor -> Edits
 getEditsAtExprCursor (Cursor {inside, orientation: Outside}) | P.SN Str % [strInner@(P.SN (StrInner c _) % [])] <- P.getExprSort inside = P.Edits
   { stringTaggedEdits: StringTaggedArray.fuzzy 
@@ -690,8 +696,29 @@ getEditsAtExprCursor cursor =
   P.Edits { stringTaggedEdits: StringTaggedArray.fuzzy { toString: fst, maxPenalty, getItems: const [] } }
 
 getShortcutEdit :: ExprGyro -> KeyInfo -> Maybe Edit
--- delete at cursor
-getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Backspace", mods: {special: false}} =
+getShortcutEdit g {key: "Backspace", mods: {special: false}} | Just edit <- getDeleteEdit  g = Just edit
+getShortcutEdit g {key: "Tab",       mods: {special: false}} | Just edit <- getIndentEdit  g = Just edit
+getShortcutEdit g {key: "Enter",     mods: {special: false}} | Just edit <- getNewlineEdit g = Just edit
+getShortcutEdit _ _ = Nothing
+
+-- Common Edits
+
+getIndentEdit :: ExprGyro -> Maybe Edit
+getIndentEdit (CursorGyro (Cursor {inside, orientation: Outside})) =
+  case P.getExprSort inside of
+    sort@(P.SN TmJg % [_, _]) -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Indent) {sort} [] []}
+    _ -> Nothing
+getIndentEdit _ = Nothing
+
+getNewlineEdit :: ExprGyro -> Maybe Edit
+getNewlineEdit (CursorGyro (Cursor {inside, orientation: Outside})) =
+  case P.getExprSort inside of
+    sort@(P.SN TmJg % [_, _]) -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []}
+    _ -> Nothing
+getNewlineEdit _ = Nothing
+
+getDeleteEdit :: ExprGyro -> Maybe Edit
+getDeleteEdit (CursorGyro (Cursor {inside, orientation: Outside})) =
   case P.getExprSort inside of
     P.SN Str % [strInner@(P.SN (StrInner c _) % [])] -> Just $ LibEdit.buildEdit _
       { outerChange = Just $ P.SN Str %! [strInner %!~> (P.SN (StrInner c "") % [])]
@@ -711,27 +738,25 @@ getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Back
     -- replaces the StrInner-sort with the empty-string StrInner-sort.
     _ -> Nothing
 -- delete at select
-getShortcutEdit (SelectGyro (Select {middle})) {key: "Backspace", mods: {special: false}} =
+getDeleteEdit (SelectGyro (Select {middle})) =
   let ch = P.getExprNonEmptyPathSortChange middle in
   let {outerChange, innerChange} = splitExprPathChanges ch in
   Just $ LibEdit.buildEdit _
     { outerChange = Just outerChange
     , innerChange = Just innerChange }
--- indent
-getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Tab", mods: {special: false}} =
-  case P.getExprSort inside of
-    sort@(P.SN TmJg % [_, _]) -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Indent) {sort} [] []}
-    _ -> Nothing
--- newline
-getShortcutEdit (CursorGyro (Cursor {inside, orientation: Outside})) {key: "Enter", mods: {special: false}} =
-  case P.getExprSort inside of
-    sort@(P.SN TmJg % [_, _]) -> Just $ LibEdit.buildEdit _ {middle = Just $ singletonNonEmptyPath $ P.buildExprTooth (Format Newline) {sort} [] []}
-    _ -> Nothing
--- 
-getShortcutEdit _ _ = Nothing
+getDeleteEdit _ = Nothing
 
-maxPenalty :: Fuzzy.Distance
-maxPenalty = Fuzzy.Distance 1 0 0 0 0 0
+getPasteEdit :: ExprGyro -> Clipboard -> Maybe Edit
+getPasteEdit (CursorGyro (Cursor {inside})) (P.ExprNonEmptyPathClipboard middle) 
+  | insideSort <- P.getExprSort inside
+  , ch <- P.getExprNonEmptyPathSortChange middle
+  , {outerChange, innerChange} <- splitExprPathChanges ch
+  , Just (_ /\ sigma) <- P.unifySort insideSort (epL innerChange)
+  = Just $ LibEdit.buildEdit _
+      { sigma = Just sigma
+      , outerChange = Just $ P.applySortVarSubst sigma outerChange
+      , innerChange = Just $ P.applySortVarSubst sigma innerChange }
+getPasteEdit _ _ = Nothing
 
 -- Renderer
 

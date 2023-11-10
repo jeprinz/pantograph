@@ -171,7 +171,10 @@ newtype BufferInput sn el ctx env = BufferInput
   , expr :: Expr sn el }
 newtype BufferQuery sn el a = BufferQuery (Variant
   ( "set exprGyro" :: ExprGyro sn el /\ a
-  , "keyboard" :: KeyboardEvent.KeyboardEvent /\ a ))
+  , "keyboard" :: KeyboardEvent.KeyboardEvent /\ a
+  , "copy" :: Clipboard sn el -> a
+  , "cut" :: Clipboard sn el -> a
+  , "paste" :: Clipboard sn el /\ a ))
 newtype BufferOutput sn el = BufferOutput (Variant
   ( "write terminal" :: GlobalMessage ))
 type BufferSlotId = Unit
@@ -252,16 +255,6 @@ data PreviewPosition = LeftPreviewPosition | RightPreviewPosition
 derive instance Eq PreviewPosition
 derive instance Ord PreviewPosition
 
--- | # Clipboard
--- |
--- | TODO: description
-
-type ClipboardSlot sn el = H.Slot (ClipboardQuery sn el) (ClipboardOutput sn el) (ClipboardSlotId sn el)
-newtype ClipboardInput sn el = ClipboardInput {}
-data ClipboardQuery sn el a
-data ClipboardOutput sn el
-data ClipboardSlotId sn el
-
 -- | # Terminal
 -- |
 -- | TODO: description
@@ -270,8 +263,7 @@ type TerminalSlot = H.Slot TerminalQuery TerminalOutput TerminalSlotId
 newtype TerminalInput = TerminalInput {}
 newtype TerminalQuery a = TerminalQuery (Variant
   ( "write" :: GlobalMessage /\ a
-  , "toggle isOpen" :: Maybe Boolean /\ a
-  , "get inputIsFocused" :: Boolean -> a ))
+  , "toggle isOpen" :: Maybe Boolean /\ a ))
 type TerminalOutput = Void
 type TerminalSlotId = Unit
 

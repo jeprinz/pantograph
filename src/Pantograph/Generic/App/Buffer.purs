@@ -128,6 +128,28 @@ bufferComponent = HK.component \{queryToken, slotToken, outputToken} (BufferInpu
         HK.modify_ exprGyroStateId (const exprGyro')
         pure $ Just a
       )
+    # on (Proxy :: Proxy "copy") (\k -> do
+        hydExprGyro <- getHydratedExprGyro
+        pure $ Just $ k $ generalizeClipboard $ case hydExprGyro of
+          CursorGyro (Cursor cursor) -> ExprClipboard $ shrinkAnnExpr cursor.inside
+          SelectGyro (Select select) -> ExprNonEmptyPathClipboard $ shrinkAnnExprNonEmptyPath select.middle
+      )
+    # on (Proxy :: Proxy "cut") (\k -> do
+        hydExprGyro <- getHydratedExprGyro
+        case specialEdits.cut (shrinkAnnExprGyro hydExprGyro) of
+          Nothing -> pure unit
+          Just edit -> modifyExprGyro $ applyEdit edit
+        pure $ Just $ k $ generalizeClipboard $ case hydExprGyro of
+          CursorGyro (Cursor cursor) -> ExprClipboard $ shrinkAnnExpr cursor.inside
+          SelectGyro (Select select) -> ExprNonEmptyPathClipboard $ shrinkAnnExprNonEmptyPath select.middle
+      )
+    # on (Proxy :: Proxy "paste") (\(clipboard /\ a) -> do
+        hydExprGyro <- getHydratedExprGyro
+        case specialEdits.paste (shrinkAnnExprGyro hydExprGyro) clipboard of
+          Nothing -> pure unit
+          Just edit -> modifyExprGyro $ applyEdit edit
+        pure $ Just a
+      )
     # on (Proxy :: Proxy "keyboard") (\(keyboardEvent /\ a) -> do
         let
           event = KeyboardEvent.toEvent keyboardEvent

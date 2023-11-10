@@ -1,5 +1,6 @@
 module Pantograph.Generic.App.Editor (editorComponent) where
 
+import Data.Tuple.Nested
 import Pantograph.Generic.App.Buffer
 import Pantograph.Generic.App.Common
 import Pantograph.Generic.App.Terminal
@@ -12,6 +13,7 @@ import Util
 import Data.Maybe (Maybe(..))
 import Data.Variant (case_, on)
 import Debug as Debug
+import Effect.Ref as Ref
 import Halogen (liftEffect)
 import Halogen.Elements as El
 import Halogen.HTML (slot) as HH
@@ -25,24 +27,36 @@ import Web.UIEvent.KeyboardEvent as KeyboardEvent
 editorComponent :: forall sn el ctx env. Dynamics sn el ctx env => EditorComponent sn el ctx env
 editorComponent = HK.component \{slotToken} (EditorInput input) -> Debug.trace "[render:editor]" \_ -> HK.do
 
+  _ /\ clipboardRef <- HK.useRef (Nothing :: Maybe (Clipboard sn el))
+
   -- keyboard
 
   Keyboard.useKeyboardEffect \keyboardEvent -> do
       let ki = KeyInfo.getKeyInfo keyboardEvent
 
-      terminalIsFocused <- map (fromJust' "editorComponent.useKeyboardEffect") $
-        request slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "get inputIsFocused")
-      
       if false then pure unit
-      else if ki.mods.ctrl && ki.key == "`" then tell slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "toggle isOpen") Nothing
-      else if terminalIsFocused then pure unit else do
-        when (shouldPreventDefault ki) $
-          liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent keyboardEvent
-
-        if false then pure unit
-        else tell slotToken (Proxy :: Proxy "buffer") unit BufferQuery (Proxy :: Proxy "keyboard") keyboardEvent
-
-  -- buffer
+      -- Ctrl+`: toggle Terminal openc/closed
+      else if ki.mods.ctrl && ki.key == "`" then 
+        tell slotToken (Proxy :: Proxy "terminal") unit TerminalQuery (Proxy :: Proxy "toggle isOpen") Nothing
+      -- Cmd+c: copy
+      else if ki.mods.cmd && ki.key == "c" then
+        request slotToken (Proxy :: Proxy "buffer") unit BufferQuery (Proxy :: Proxy "copy") >>= case _ of
+          Nothing -> pure unit
+          Just clipboard -> liftEffect $ Ref.write (Just clipboard) clipboardRef
+      -- Cmd+x: cut
+      else if ki.mods.cmd && ki.key == "x" then
+        request slotToken (Proxy :: Proxy "buffer") unit BufferQuery (Proxy :: Proxy "cut") >>= case _ of
+          Nothing -> pure unit
+          Just clipboard -> liftEffect $ Ref.write (Just clipboard) clipboardRef
+      -- Cmd+v: paste
+      else if ki.mods.cmd && ki.key == "v" then do
+        mb_clipboard <- liftEffect $ Ref.read clipboardRef
+        case mb_clipboard of
+          Nothing -> pure unit
+          Just clipboard -> tell slotToken (Proxy :: Proxy "buffer") unit BufferQuery (Proxy :: Proxy "paste") clipboard
+      -- forward to active buffer
+      else
+        tell slotToken (Proxy :: Proxy "buffer") unit BufferQuery (Proxy :: Proxy "keyboard") keyboardEvent
 
   let bufferHtml = do
         let bufferInput = BufferInput 

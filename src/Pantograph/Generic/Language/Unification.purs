@@ -3,6 +3,7 @@ module Pantograph.Generic.Language.Unification where
 import Data.Tree
 import Data.Tuple.Nested
 import Pantograph.Generic.Language.Common
+import Pantograph.Generic.Language.Language
 import Prelude
 import Util
 
@@ -12,11 +13,11 @@ import Data.Display (display)
 import Data.List (List)
 import Data.List as List
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Set as Set
 import Data.Supertype as Supertype
 import Data.Traversable (sequence, traverse)
-import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple (Tuple(..), fst, snd, uncurry)
 import Halogen.Elements as El
 import Pantograph.Generic.GlobalMessageBoard as GMB
 import Text.Pretty (pretty)
@@ -25,7 +26,7 @@ import Todo (todo)
 -- | Try to unify `a₁ : Sort` and `a₂ : Sort`. If they can unify, then yield the
 -- | unified `a : Sort` and the unifying `σ : SortVarSubst` such that `a = σ a₁
 -- | = σ a₂`.
-unifySort :: forall sn el. Language sn el => Sort sn -> Sort sn -> Maybe (Sort sn /\ SortVarSubst sn)
+unifySort :: forall sn el. Eq sn => Show sn => PrettyTreeNode sn => Sort sn -> Sort sn -> Maybe (Sort sn /\ SortVarSubst sn)
 unifySort (Tree (SN sn1) ss1) (Tree (SN sn2) ss2) 
   | sn1 == sn2 = do
     ss /\ sigmas <- Array.unzip <$> uncurry unifySort `traverse` Array.zip ss1 ss2
@@ -105,3 +106,57 @@ unifyChangeWithRuleChange ch1@(sn1 %! kids1) ch2@(InjectRuleSortNode sn2 %! kids
   else do
     map Array.fold $ uncurry unifyChangeWithRuleChange `traverse` Array.zip kids1 kids2
 unifyChangeWithRuleChange _ _ = Nothing
+
+-- | You can only compose `RuleSortVarSubst (Sort sn)` if each `RuleSortVar`
+-- | maps to a `Sort` that is unifiable with all other `Sort`s that the
+-- | `RuleSortVar` is mapped to.
+composeRuleSortVarSubstSort' :: forall sn el. Language sn el => RuleSortVarSubst (Sort sn) -> RuleSortVarSubst (Sort sn) -> Maybe (Tuple (RuleSortVarSubst (Sort sn)) (SortVarSubst sn)) 
+composeRuleSortVarSubstSort' (RuleSortVarSubst m1) (RuleSortVarSubst m2) = do
+  m <- sequence $ Map.unionWith (\s1_ s2_ -> s1_ >>= \(s1 /\ _) -> s2_ >>= \(s2 /\ _) -> unifySort s1 s2) (m1 <#> \s -> Just (s /\ mempty)) (m2 <#> \s -> Just (s /\ mempty))
+  let m' = m <#> fst
+  let sigma = List.fold $ Map.values $ map snd $ m
+  Just $ RuleSortVarSubst m' /\ sigma
+
+generalizeExpr :: forall sn el. Language sn el => Expr sn el -> Expr sn el
+generalizeExpr (EN el _ _ % kids) = EN el rsigma' {} % kids''
+  where
+  kids' = generalizeExpr <$> kids
+  sorts = getExprSort <$> kids'
+  SortingRule rule = getSortingRule el
+  rsigmas = map fromJust $ map (uncurry unifySortWithRuleSort) $ Array.zip sorts rule.kids
+  f (rsigma1 /\ sigma) rsigma2_ =
+    let rsigma2 = map (applySortVarSubst sigma) rsigma2_ in
+    fromJust $ composeRuleSortVarSubstSort' rsigma1 rsigma2
+  rsigma' /\ sigma = Array.foldl f (emptyRuleSortVarSubst /\ (mempty :: SortVarSubst sn)) rsigmas
+  kids'' = kids' <##> \(EN el' sigma' _) -> EN el' (sigma' <#> applySortVarSubst sigma) {}
+
+generalizeExprPath :: forall sn el. Language sn el => ExprPath sn el -> ExprPath sn el
+generalizeExprPath path0 = go path0 (freshVarSort "inner") mempty
+  where
+  go :: ExprPath sn el -> Sort sn -> ExprPath sn el -> ExprPath sn el
+  go outer innerSort inner = case unconsPath outer of
+    Nothing -> inner
+    Just {outer: outer', inner: EN el _ _ %- i /\ kids} ->
+      let 
+        SortingRule rule = getSortingRule el
+        kids' = generalizeExpr <$> kids
+        sorts = fromJust $ Array.insertAt i innerSort $ getExprSort <$> kids'
+        rsigmas = map fromJust $ map (uncurry unifySortWithRuleSort) $ Array.zip sorts rule.kids
+        f (rsigma1 /\ sigma) rsigma2_ =
+          let rsigma2 = map (applySortVarSubst sigma) rsigma2_ in
+          fromJust $ composeRuleSortVarSubstSort' rsigma1 rsigma2
+        rsigma' /\ sigma = Array.foldl f (emptyRuleSortVarSubst /\ (mempty :: SortVarSubst sn)) rsigmas
+        kids'' = kids' <##> \(EN el' sigma' _) -> EN el' (sigma' <#> applySortVarSubst sigma) {}
+        th' = EN el rsigma' {} %- i /\ kids''
+        sort = getExprToothOuterSort th'
+      in
+      go outer' sort (inner `consPath` th')
+
+generalizeExprNonEmptyPath :: forall sn el. Language sn el => ExprNonEmptyPath sn el -> ExprNonEmptyPath sn el
+generalizeExprNonEmptyPath = fromPath "generalizeExprNonEmptyPath" <<< generalizeExprPath <<< toPath
+
+generalizeClipboard :: forall sn el. Language sn el => Clipboard sn el -> Clipboard sn el
+generalizeClipboard = case _ of
+  ExprClipboard expr -> ExprClipboard $ generalizeExpr expr
+  ExprNonEmptyPathClipboard path -> ExprNonEmptyPathClipboard $ generalizeExprNonEmptyPath path
+

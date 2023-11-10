@@ -64,10 +64,6 @@ terminalComponent = HK.component \{queryToken} (TerminalInput input) -> Debug.tr
         toggleOpenTerminal mb_isOpen
         pure (Just a)
       )
-    # on (Proxy :: Proxy "get inputIsFocused") (\k -> do
-        b <- liftEffect $ Ref.read terminalInputIsFocusedRef
-        pure (Just (k b))        
-      )
 
   Timer.useTimer (Milliseconds 1000.0) forceUpdate
 
