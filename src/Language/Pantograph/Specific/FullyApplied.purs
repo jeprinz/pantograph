@@ -16,6 +16,8 @@ import Data.Tuple (fst)
 import Data.Eq.Generic (genericEq)
 import Data.Expr (class IsExprLabel, (%), (%*), slot, (%$))
 import Data.Expr as Expr
+import Data.List.Rev as RevList
+import Data.List.Zip as ZipList
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (defer)
 import Data.List (List(..), (:))
@@ -100,6 +102,7 @@ data PreSortLabel
   -- Types
   | DataType DataType
   | Arrow {-Type-} {-Type-}
+  | List {-Type-}
   -- Locality
   | Local
   | NonLocal
@@ -124,6 +127,7 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (NonLocal /\ []) = "NonLocal"
   prettyExprF'_unsafe (DataType ty /\ []) = show ty
   prettyExprF'_unsafe (Arrow  /\ [a, b]) = a <> " -> " <> b
+  prettyExprF'_unsafe (List  /\ [t]) = "List" <+> t
 
 
   expectedKidsCount VarSort = 4
@@ -136,6 +140,7 @@ instance IsExprLabel PreSortLabel where
   expectedKidsCount NonLocal = 0
   expectedKidsCount (DataType _) = 0
   expectedKidsCount Arrow = 2
+  expectedKidsCount List = 1
 
 --------------------------------------------------------------------------------
 -- Shorter Aliases
@@ -174,6 +179,94 @@ type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
 -- RuleLabel
 --------------------------------------------------------------------------------
 
+data Constant
+    = ConstTrue
+    | ConstFalse
+    | ConstNot
+
+derive instance Generic Constant _
+instance Show Constant where show x = genericShow x
+instance Eq Constant where eq x = genericEq x
+instance Ord Constant where compare x y = genericCompare x y
+instance Enum Constant where
+  pred x = genericPred x
+  succ x = genericSucc x
+instance Bounded Constant where
+  bottom = genericBottom
+  top = genericTop
+instance Pretty Constant where
+  pretty = show
+
+constantType :: Constant -> Sort {-type-}
+constantType = case _ of
+    ConstTrue -> DataType Bool %|-* []
+    ConstFalse -> DataType Bool %|-* []
+    ConstNot -> Arrow %|-* [DataType Bool %|-* [], DataType Bool %|-* []]
+
+constantName :: Constant -> String
+constantName = case _ of
+    ConstTrue -> "true"
+    ConstFalse -> "false"
+    ConstNot -> "not"
+
+data InfixOperator
+    = OpPlus
+    | OpMinus
+    | OpTimes
+    | OpDivide
+    | OpPow
+    | OpLess
+    | OpGreater
+    | OpLessEq
+    | OpGreaterEq
+    | OpAnd
+    | OpOr
+
+derive instance Generic InfixOperator _
+instance Show InfixOperator where show x = genericShow x
+instance Eq InfixOperator where eq x = genericEq x
+instance Ord InfixOperator where compare x y = genericCompare x y
+instance Enum InfixOperator where
+  pred x = genericPred x
+  succ x = genericSucc x
+instance Bounded InfixOperator where
+  bottom = genericBottom
+  top = genericTop
+instance Pretty InfixOperator where
+  pretty = show
+
+infixTypes :: InfixOperator -> {left :: Sort, right :: Sort, output :: Sort}
+infixTypes op =
+    let int = DataType Int %|-* [] in
+    let bool = DataType Bool %|-* [] in
+    case op of
+    OpPlus -> {left : int, right : int, output : int}
+    OpMinus -> {left : int, right : int, output : int}
+    OpTimes -> {left : int, right : int, output : int}
+    OpDivide -> {left : int, right : int, output : int}
+    OpPow -> {left : int, right : int, output : int}
+    OpLess -> {left : int, right : int, output : bool}
+    OpGreater -> {left : int, right : int, output : bool}
+    OpLessEq -> {left : int, right : int, output : bool}
+    OpGreaterEq -> {left : int, right : int, output : bool}
+    OpAnd -> {left : bool, right : bool, output : bool}
+    OpOr -> {left : bool, right : bool, output : bool}
+
+infixName :: InfixOperator -> String
+infixName op =
+    case op of
+    OpPlus -> "+"
+    OpMinus -> "-"
+    OpTimes -> "*"
+    OpDivide -> "/"
+    OpPow -> "^"
+    OpLess -> "<"
+    OpGreater -> ">"
+    OpLessEq -> "<="
+    OpGreaterEq -> ">="
+    OpAnd -> "and"
+    OpOr -> "or"
+
 -- | Naming convention: <title>_<output sort>
 data RuleLabel
   = Zero
@@ -183,16 +276,24 @@ data RuleLabel
   | App
   | GreyedApp
   | FunctionCall
-  | Ref
+  | Var
   | FreeVar
   | TermHole
   | TypeHole
   | DataTypeRule DataType
   | ArrowRule
+  | ListRule
   | Newline -- TODO: is this really an acceptable way for newlines to work? Its broken for applications, isn't it?
   | If -- TODO: should this be generalized in any way? Maybe for any type? For now I'll just do if.
   | ErrorCall
   | ErrorBoundary
+  | ConstantRule Constant
+  | InfixRule InfixOperator
+  | EqualsRule
+  | NilRule
+  | ConsRule
+  | ListMatchRule
+  | IntegerLiteral
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -220,6 +321,8 @@ sortToType (Expr.Expr (Expr.MInj (Grammar.SInj (DataType dt))) []) =
     Grammar.makeLabel (DataTypeRule dt) [] % []
 sortToType (Expr.Expr (Expr.MInj (Grammar.SInj Arrow)) [a, b]) =
     Grammar.makeLabel ArrowRule ["a" /\ a, "b" /\ b] % [sortToType a, sortToType b]
+sortToType (Expr (MInj (Grammar.SInj List)) [ty]) =
+    Grammar.makeLabel ListRule ["type" /\ ty] % [sortToType ty]
 sortToType ty =
     Grammar.makeLabel TypeHole ["type" /\ ty] % []
 --    Smallstep.termToSSTerm $ assertI $ just "sortToType: invalid sort"
@@ -231,10 +334,11 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "↦" <+> b
   prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
+  prettyExprF'_unsafe_RuleLabel (ListRule /\ [t]) = "List" <+> t
   prettyExprF'_unsafe_RuleLabel (DataTypeRule dataType /\ []) = pretty dataType
   prettyExprF'_unsafe_RuleLabel (App /\ [f, a]) = P.parens $ f <+> a
   prettyExprF'_unsafe_RuleLabel (GreyedApp /\ [f, a]) = P.parens $ f <+> "<" <+> a <+> ">"
-  prettyExprF'_unsafe_RuleLabel (Ref /\ [x]) = "@" <> x
+  prettyExprF'_unsafe_RuleLabel (Var /\ [x]) = "@" <> x
   prettyExprF'_unsafe_RuleLabel (TermHole /\ [ty]) = "(? : " <> ty <> ")"
   prettyExprF'_unsafe_RuleLabel (TypeHole /\ []) = "?<type>"
   prettyExprF'_unsafe_RuleLabel (Newline /\ [a]) = "<newline> " <> a
@@ -243,6 +347,13 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (If /\ [c, t, e]) = "if" <+> c <+> "then" <+> t <+> "else" <+> e
   prettyExprF'_unsafe_RuleLabel (ErrorCall /\ [t]) = "{{" <+> t <+> "}}"
   prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
+  prettyExprF'_unsafe_RuleLabel (ConstantRule constant /\ []) = constantName constant
+  prettyExprF'_unsafe_RuleLabel (InfixRule op /\ [left, right]) = P.parens $ left <+> infixName op <+> right
+  prettyExprF'_unsafe_RuleLabel (NilRule /\ []) = "nil"
+  prettyExprF'_unsafe_RuleLabel (ConsRule /\ [x, xs]) = "cons" <+> x <+> xs
+  prettyExprF'_unsafe_RuleLabel (EqualsRule /\ [a, b]) = a <+> "==" <+> b
+  prettyExprF'_unsafe_RuleLabel (ListMatchRule /\ [l, n, x, xs, c]) = "match" <+> l <+> "with Nil -> " <+> n <+> " cons" <+> x <+> " " <+> xs <+> " -> " <+> c
+  prettyExprF'_unsafe_RuleLabel (IntegerLiteral /\ [lit]) = lit
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -301,7 +412,7 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( VarSort %|-* [CtxNilSort %|-* [], name, ty, NonLocal %|-* []] )
 
-  Ref -> Grammar.makeRule ["gamma", "x", "type", "locality"] \[gamma, x, ty, locality] ->
+  Var -> Grammar.makeRule ["gamma", "x", "type", "locality"] \[gamma, x, ty, locality] ->
     [ VarSort %|-* [gamma, x, ty, locality] ]
     /\ --------
     ( NeutralSort %|-* [gamma, ty] )
@@ -334,6 +445,11 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TypeSort %|-* [DataType dataType %|-* []] )
 
+  ListRule -> Grammar.makeRule ["type"] \[ty] ->
+    [TypeSort %|-* [ty]]
+    /\ -------
+    ( TypeSort %|-* [List %|-* [ty]] )
+
   ArrowRule -> Grammar.makeRule ["a", "b"] \[a, b] ->
     [TypeSort %|-* [a], TypeSort %|-* [b]]
     /\ --------
@@ -356,6 +472,48 @@ language = TotalMap.makeTotalMap case _ of
     /\
     ( TermSort %|-* [gamma, outsideType])
 
+  ConstantRule c -> Grammar.makeRule ["gamma"] \[gamma] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, constantType c])
+
+  InfixRule op ->
+    let {left, right, output} = infixTypes op in
+    Grammar.makeRule ["gamma"] \[gamma] ->
+    [ TermSort %|-* [gamma, left], TermSort %|-* [gamma, right] ]
+    /\ -------
+    ( TermSort %|-* [gamma, output])
+
+  EqualsRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    [ TermSort %|-* [gamma, ty], TermSort %|-* [gamma, ty] ]
+    /\ -------
+    ( TermSort %|-* [gamma, DataType Bool %|-* []])
+
+  NilRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, List %|-* [ty]])
+
+  ConsRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    [ TermSort %|-* [gamma, ty]
+    , TermSort %|-* [gamma, List %|-* [ty]]]
+    /\ -------
+    ( TermSort %|-* [gamma, List %|-* [ty]])
+
+  ListMatchRule -> Grammar.makeRule ["gamma", "type", "outTy", "consElemArg", "consListArg"] \[gamma, ty, outTy, consElemArg, consListArg] ->
+    [ TermSort %|-* [gamma, List %|-* [ty]]
+    , TermSort %|-* [gamma, outTy]
+    , TypeOfLabel SortString %* [consElemArg]
+    , TypeOfLabel SortString %* [consListArg]
+    , TermSort %|-* [CtxConsSort %|-* [consElemArg, ty, CtxConsSort %|-* [consListArg, List %|-* [ty], gamma]], outTy]]
+    /\ -------
+    ( TermSort %|-* [gamma, outTy])
+
+  IntegerLiteral -> Grammar.makeRule ["gamma", "n"] \[gamma, n] ->
+    [ TypeOfLabel SortInt %* [n] ]
+    /\ -------
+    ( TermSort %|-* [gamma, DataType Int %|-* []] )
+
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -365,7 +523,8 @@ language = TotalMap.makeTotalMap case _ of
 --------------------------------------------------------------------------------
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
+arrangeDerivTermSubs _ {renCtx, rule, sort, mb_parent, sigma, dzipper} =
+  case rule /\ sort of
   _ /\ (Expr.MInj (Grammar.SInj VarSort) %
     [ _gamma
     , Expr.MInj (Grammar.DataLabel (DataString str)) % []
@@ -375,11 +534,15 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
     let postfix = if locality == sor Local % [] then "" else "!" in
     [pure [nameElem (str <> postfix)]]
   -- term
-  Ref /\ _ ->
-    [Left (renCtx /\ 0)]
+  Var /\ _ ->
+    [Left (renCtx /\ 0), pure dot]
   Lam /\ _ ->
+    let maybeMapsTo = case dzipper of
+            Just (Zipper _ (_ % [_, _, (DerivLabel Lam _) % _])) -> [Rendering.spaceElem]
+            _ -> [mapstoElem] in
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [Rendering.lparenElem, lambdaElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [mapstoElem], Left (renCtx' /\ 2), pure [Rendering.rparenElem]]
+    [pure [lambdaElem], Left (renCtx /\ 0), pure [colonElem]
+        , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1), pure maybeMapsTo, Left (renCtx' /\ 2)]
   Let /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
@@ -387,10 +550,10 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
         , Left (renCtx /\ 3)]
   App /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [Left (renCtx' /\ 0), pure [Rendering.spaceElem], Left (renCtx' /\ 1)]
+    [Left (renCtx' /\ 0), Left (renCtx' /\ 1), pure dot]
   GreyedApp /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
+    [Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">"], pure dot]
   FunctionCall /\ _ ->
     [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.rparenElem]]
   -- types
@@ -402,7 +565,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
   -- format
   Newline /\ _ ->
     Array.concat
-      [ if renCtx.isInlined then [] else [pure (newlineIndentElem renCtx.indentationLevel)]
+      [ if renCtx.isInlined then [] else [pure [HH.div [classNames ["newline-symbol"]] [HH.text " ↪"]], pure (newlineIndentElem renCtx.indentationLevel)]
       , [Left (renCtx /\ 0)] ]
   -- hole
   TermHole /\ (Expr.MInj (Grammar.SInj TermSort) % [_gamma, ty])
@@ -418,6 +581,21 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma} = case rule /\ sort of
         pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem]), Left (renCtx' /\ 2)]
   ErrorCall /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
   ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
+  ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
+  InfixRule op /\ _ ->
+    [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
+  EqualsRule /\ _ ->
+    [Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text "==", Rendering.spaceElem], Left (renCtx /\ 1)]
+  ListRule /\ _ -> [pure [HH.text "List "], Left (renCtx /\ 0)]
+  NilRule /\ _ -> [pure [HH.text "nil"]]
+  ConsRule /\ _ -> [pure [HH.text "cons "], Left (renCtx /\ 0), pure [Rendering.spaceElem], Left (renCtx /\ 1)]
+  ListMatchRule /\ _ ->
+    let renCtx' = Base.incremementIndentationLevel renCtx in
+    [pure [HH.text "match "], Left (renCtx' /\ 0), pure [HH.text " with"], pure (newlineIndentElem renCtx.indentationLevel)
+        , pure [HH.text "Nil -> "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
+        , pure [HH.text "Cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
+        , pure [HH.text " -> "], Left (renCtx' /\ 4)]
+  IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
   _ -> bug $
     "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
     "  - rule = " <> pretty rule <> "\n" <>
@@ -441,6 +619,9 @@ errorLeftSide = Rendering.makePuncElem "errorLeft" "{{"
 errorRightSide = Rendering.makePuncElem "errorRight" "}}"
 
 typeElem = Rendering.makePuncElem "Type" "Type"
+
+appCircle = Rendering.makePuncElem "circle" " ⬤ "
+dot = [HH.div [classNames ["app-circle"]] [appCircle]]
 
 nameElem str = HH.span [classNames ["name"]] [HH.text str]
 dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
@@ -488,7 +669,7 @@ getVarEdits sort =
     Expr.matchExpr2 sort (sor TermSort %$ [slot, slot]) (\[ctx, ty] ->
             let wrapInRef index =
                  Expr.matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot , slot, slot, slot]) \[gamma, x, ty, locality] ->
-                 Grammar.makeLabel Ref [ "gamma" /\ gamma , "x" /\ x, "type" /\ ty, "locality" /\ locality]
+                 Grammar.makeLabel Var [ "gamma" /\ gamma , "x" /\ x, "type" /\ ty, "locality" /\ locality]
                  % [index]
             in
             let wrapArgs :: DerivTerm -> DerivTerm
@@ -543,15 +724,25 @@ splitChange c =
 makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
-    <> Array.mapMaybe identity [
+    <> Array.mapMaybe identity ([
         DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
-    ]
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule ConsRule) "cons" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule ListMatchRule) "match" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule EqualsRule) "==" cursorSort
+    ] <> ((Util.allPossible :: Array Constant) <#>
+             (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
+--         (\constant -> getWrapInAppEdit (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))
+    <> ((Util.allPossible :: Array InfixOperator) <#>
+     (\op -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (InfixRule op)) (infixName op) cursorSort))
+ )
 
 editsAtCursor cursorSort = Array.mapMaybe identity
     [
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
     , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
@@ -940,6 +1131,13 @@ clipboardSort _other = Expr.fromMetaVar (Expr.freshMetaVar "anySort")
 
 isValidCursorSort :: Sort -> Boolean
 isValidCursorSort (Expr.MInj (Grammar.SInj VarSort) % _) = false
+{-
+NOTE: this says you can't select integer textboxes.
+If we want to be able to, then I need to finish implementing things in Generic.
+It needs to have the correct sort on replace.
+The code for that is in computeEdits of Buffer.purs. Currently it just assumes that its a String textbox.
+-}
+isValidCursorSort (MInj (Grammar.TypeOfLabel SortInt) % _) = false
 isValidCursorSort _ = true
 
 isValidSelectionSorts :: {bottom :: Sort, top :: Sort} -> Boolean
@@ -964,14 +1162,14 @@ keyAction "Enter" cursorSort =
 keyAction _ _ = Nothing
 
 extraQueryEdits :: Sort -> String -> Array Edit
---extraQueryEdits cursorSort query
---    | Just [cursorCtx, cursorTy] <- matchExprImpl cursorSort (sor TermSort %$ [slot, slot]) =
---        case Int.fromString query of
---            Nothing -> []
---            Just n ->
---                let dterm = makeLabel IntegerLiteral ["gamma" /\ cursorCtx, "n" /\ MInj (DataLabel (DataInt n)) % []]
---                        % [DerivLiteral (DataInt n) % []] in
---                Array.mapMaybe identity [ DefaultEdits.makeSubEditFromTerm dterm (show n) cursorSort ]
+extraQueryEdits cursorSort query
+    | Just [cursorCtx, cursorTy] <- matchExprImpl cursorSort (sor TermSort %$ [slot, slot]) =
+        case Int.fromString query of
+            Nothing -> []
+            Just n ->
+                let dterm = makeLabel IntegerLiteral ["gamma" /\ cursorCtx, "n" /\ MInj (DataLabel (DataInt n)) % []]
+                        % [DerivLiteral (DataInt n) % []] in
+                Array.mapMaybe identity [ DefaultEdits.makeSubEditFromTerm dterm (show n) cursorSort ]
 extraQueryEdits _ _ = []
 --------------------------------------------------------------------------------
 -- EditorSpec

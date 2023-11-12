@@ -594,10 +594,10 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
         , pure [HH.text "Cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
         , pure [HH.text " -> "], Left (renCtx' /\ 4)]
   IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
---  _ -> bug $
---    "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
---    "  - rule = " <> pretty rule <> "\n" <>
---    "  - sort = " <> show sort
+  _ -> bug $
+    "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
+    "  - rule = " <> pretty rule <> "\n" <>
+    "  - sort = " <> show sort
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
@@ -780,7 +780,6 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         , getWrapInAppEdit "cons" cursorSort (newTermFromRule ConsRule)
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule ListMatchRule) "match" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule EqualsRule) "==" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule IntegerLiteral) "zero" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
 --        (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
         (\constant -> getWrapInAppEdit (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))
