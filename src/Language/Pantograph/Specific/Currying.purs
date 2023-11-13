@@ -61,7 +61,7 @@ import Util as Util
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Language.Pantograph.Lib.GreyedRules as GreyedRules
 import Data.Lazy as Lazy
-import Data.Tuple (fst)
+import Data.Tuple (fst, uncurry)
 import Data.Int as Int
 
 
@@ -129,7 +129,7 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (Local /\ []) = "Local"
   prettyExprF'_unsafe (NonLocal /\ []) = "NonLocal"
   prettyExprF'_unsafe (DataType ty /\ []) = show ty
-  prettyExprF'_unsafe (Arrow  /\ [a, b]) = a <> " -> " <> b
+  prettyExprF'_unsafe (Arrow  /\ [a, b]) = parens $ a <> " -> " <> b
   prettyExprF'_unsafe (List  /\ [t]) = "List" <+> t
 
 
@@ -515,6 +515,9 @@ language = TotalMap.makeTotalMap case _ of
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
+  let parentRule = case mb_parent of
+        Just (Tooth (DerivLabel rule _) _) -> Just rule
+        Nothing -> Nothing in
   let dotOrNot unit = case mb_parent of -- Used in Var and App cases
           Just (Tooth (DerivLabel App _) (ZipList.Path {left, right})) | RevList.length left == 0
             -> [HH.div [classNames ["app-circle"]] [appCircle]]
@@ -535,13 +538,13 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
     let maybeMapsTo = case dzipper of
             Just (Zipper _ (_ % [_, _, (DerivLabel Lam _) % _])) -> [Rendering.spaceElem]
             _ -> [mapstoElem] in
-    let renCtx' = Base.incremementIndentationLevel renCtx in
+    let renCtx' = if parentRule == Just Lam then renCtx else Base.incremementIndentationLevel renCtx in
     [pure [lambdaElem], Left (renCtx /\ 0), pure [colonElem]
         , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1), pure maybeMapsTo, Left (renCtx' /\ 2)]
   Let /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
     [pure [letElem], Left (renCtx' /\ 0), pure [colonElem], Left (renCtx' /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
---        , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
+        , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
         , Left (renCtx /\ 3)]
   App /\ _ ->
     let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
@@ -971,8 +974,6 @@ unWrapApp = Smallstep.makeUpRule
         Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
             inside))
 
--- TODO: I might want to make this do unification of inside and outside, and if is it a
--- "mereSubsituttion" change or something, then propagate it and unify the holes in the program.
 removeError :: StepRule
 removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
@@ -984,6 +985,23 @@ removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     else
         Nothing
 removeError _ = Nothing
+
+-- If the two sides of an error boundary unify, then remove the boundary automatically, propagating the diff
+{-
+This had some issues on the case of let f = lam x y . f x x, then wrap an app around the second x.
+-}
+removeErrorPermissive :: StepRule
+removeErrorPermissive (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
+    =
+    let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
+    let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
+    trace "GONNA DO IT:" \_ ->
+    if Maybe.isJust (unify insideType outsideType) then
+        pure $ wrapBoundary Up (diff insideType outsideType) t
+    else
+--        trace ("Didn't unify: insideType was: " <> pretty insideType <> " and outsideType was: " <> pretty outsideType) \_ ->
+        Nothing
+removeErrorPermissive _ = Nothing
 
 mergeErrors :: StepRule
 mergeErrors (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma1)) [
@@ -1002,7 +1020,9 @@ introErrorDownVar ((Smallstep.Boundary Down ch) % [
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     , not (isMerelyASubstitution c)
+--    , Just _ <- uncurry unify (endpoints c) -- This is an alternate idea for when to allow var boundaries through, we'll see if its a good plan
     =
+--        trace ("introErrorDownVar. c is: " <> pretty c) \_ ->
         pure $
             dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint c, "outsideType" /\ rEndpoint c]
             [wrapBoundary Down (csor TermSort % [gamma, inject (lEndpoint c)]) inside]
@@ -1014,6 +1034,7 @@ introErrorDown ((Smallstep.Boundary Down ch) % [
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     =
+--        trace "introErrorDown" \_ ->
         pure $
             dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint c, "outsideType" /\ rEndpoint c]
             [wrapBoundary Down (csor TermSort % [gamma, inject (lEndpoint c)]) inside]
@@ -1125,6 +1146,7 @@ stepRules = do
     , mergeErrorsDown
     , mergeErrorsUp
     , removeError
+--    , removeErrorPermissive
     ]
 --    <>
 --    (GreyedRules.createGreyedRules 2 Lam Nothing splitChange forgetSorts languageChanges)

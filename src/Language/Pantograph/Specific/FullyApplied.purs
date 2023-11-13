@@ -738,7 +738,7 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
  )
 
 editsAtCursor cursorSort = Array.mapMaybe identity
-    [
+    ([
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
@@ -751,7 +751,12 @@ editsAtCursor cursorSort = Array.mapMaybe identity
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
 --    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
-    ]
+    ]) <> (Array.concat ((Util.allPossible :: Array InfixOperator) <#>
+        (\op -> Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange
+            (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
+--       <> (Array.concat (() <#>
+--        (\op -> Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange
+--            (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 --------------------------------------------------------------------------------
 -- StepRules
