@@ -218,19 +218,33 @@ editorComponent = HK.component \tokens spec -> HK.do
         if false then
             setState $ SmallStepState {ssterm}
         else do
-            let final = SmallStep.stepRepeatedly ssterm spec.stepRules
-            setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper final)))
+            let preFinal = SmallStep.termToZipper $ SmallStep.stepRepeatedly ssterm spec.stepRules
+            -- re-infer, which will 1) unlink metavars that don't need to be linked and 2) fill holes with defaults where relevant
+            let forgottenFinal = map (forgetDerivLabelSorts spec.forgetSorts) preFinal
+            let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferZipper forgottenFinal
+            let forgottenFinalSort = (derivZipperTopSort forgottenFinal)
+            let expectedProgSort = spec.clipboardSort forgottenFinalSort
+            let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' forgottenFinalSort
+            let unifyingSub = Unification.composeSub unifyingSub'
+                    (Tuple.snd $ Util.fromJust' "gacct shouldn't fail" $ (Unification.unify expectedProgSort forgottenTopSort))
+            let final = subDerivZipper unifyingSub forgottenFinal -- This will also call fillDefaults
+            -- TODO: I think the problem here is that it sets the top level context to ?Gamma instead of startCtx
+            -- Can I re-use clipboardSort here?
+
+            setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper final))
 
     handleAction = case _ of
       WrapAction {topChange, dpath, botChange, sub, cursorGoesInside} -> getCursorState "handleAction" >>= \cursor -> do
         let up = hdzipperDerivPath cursor.hdzipper
         let dterm = hdzipperDerivTerm cursor.hdzipper
         let ssterm = setupSSTermFromWrapAction cursorGoesInside
-              (subDerivPath sub up)
-              topChange 
-              dpath 
-              botChange 
-              (subDerivTerm sub dterm)
+--              (subDerivPath sub up)
+              (map (subDerivLabel sub) up) -- NOTE: I am intentionally not calling subDerivPath, so that fillDefaults is not called
+              topChange
+              dpath
+              botChange
+--              (subDerivTerm sub dterm)
+              (map (subDerivLabel sub) dterm)
         doSmallstep ssterm
 
       FillAction {sub, dterm} -> getCursorState "handleAction" >>= \cursor -> do

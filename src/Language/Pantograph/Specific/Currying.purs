@@ -975,7 +975,7 @@ removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
     let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
     let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
-    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma in
+--    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma in
     if insideType == outsideType then
         pure t
     else

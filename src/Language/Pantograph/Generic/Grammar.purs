@@ -396,6 +396,9 @@ nonemptyPathInnerSort (Expr.Path teeth) = case teeth of
         Expr.subMetaExprPartially sigma (Util.fromJust' "nepis" $ Array.index hyps (ZipList.leftLength p))
     _ -> bug "path waas empty oor otherwise"
 
+derivZipperTopSort :: forall l r. IsRuleLabel l r => DerivZipper l r -> Sort l
+derivZipperTopSort (Expr.Zipper path dterm) = derivPathSort path (derivTermSort dterm)
+
 derivZipperSort :: forall l r. IsRuleLabel l r => DerivZipper l r -> Sort l
 derivZipperSort (Expr.Zipper _ dterm) = derivTermSort dterm
 
@@ -523,6 +526,14 @@ inferPath innerSort (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : th
     let sub12 = composeSub sub1 sub2
     sub3 <- inferPath (Expr.subMetaExprPartially sub12 (derivLabelSort l)) (subDerivPath sub12 (Expr.Path ths))
     pure $ composeSub sub12 sub3
+
+inferZipper :: forall l r. IsRuleLabel l r => DerivZipper l r -> Maybe (SortSub l)
+inferZipper (Expr.Zipper path term) = do
+    termSub <- infer term
+    let path' = map (subDerivLabel termSub) path -- NOTE: I am intentionally not calling subDerivPath, because I don't want to call fillDefaults
+--    let path' = map ?h path
+    pathSub <- inferPath (Expr.subMetaExprPartially termSub (derivTermSort term)) path'
+    pure $ composeSub termSub pathSub
 
 forgetDerivLabelSorts :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
     (DerivLabel l r -> Maybe (DerivLabel l r)) -> DerivLabel l r -> DerivLabel l r
