@@ -212,12 +212,9 @@ editorComponent = HK.component \tokens spec -> HK.do
       st <- getState
       assert (cursorState source st) pure
 
-    doSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
-    doSmallstep ssterm = do
-        -- NOTE: set to true to make it step one-by-one through smallstep
-        if false then
-            setState $ SmallStepState {ssterm}
-        else do
+    -- re-infers the sorts of the term, and sets back to cursor state
+    finalizeSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
+    finalizeSmallstep ssterm = do
             let preFinal = SmallStep.termToZipper $ SmallStep.stepRepeatedly ssterm spec.stepRules
             -- re-infer, which will 1) unlink metavars that don't need to be linked and 2) fill holes with defaults where relevant
             let forgottenFinal = map (forgetDerivLabelSorts spec.forgetSorts) preFinal
@@ -228,10 +225,17 @@ editorComponent = HK.component \tokens spec -> HK.do
             let unifyingSub = Unification.composeSub unifyingSub'
                     (Tuple.snd $ Util.fromJust' "gacct shouldn't fail" $ (Unification.unify expectedProgSort forgottenTopSort))
             let final = subDerivZipper unifyingSub forgottenFinal -- This will also call fillDefaults
-            -- TODO: I think the problem here is that it sets the top level context to ?Gamma instead of startCtx
-            -- Can I re-use clipboardSort here?
 
             setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper final))
+
+
+    doSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
+    doSmallstep ssterm = do
+        -- NOTE: set to true to make it step one-by-one through smallstep
+        if false then
+            setState $ SmallStepState {ssterm}
+        else do
+            finalizeSmallstep ssterm
 
     handleAction = case _ of
       WrapAction {topChange, dpath, botChange, sub, cursorGoesInside} -> getCursorState "handleAction" >>= \cursor -> do
@@ -653,11 +657,11 @@ editorComponent = HK.component \tokens spec -> HK.do
         SmallStepState ss -> do
           if key == " " then do
             case SmallStep.step ss.ssterm spec.stepRules of
-              Nothing -> setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper ss.ssterm)))
+              Nothing -> finalizeSmallstep ss.ssterm
               Just ssterm -> setState $ SmallStepState ss {ssterm = ssterm}
           else if key == "Enter" then do
             let final = SmallStep.stepRepeatedly ss.ssterm spec.stepRules
-            setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (SmallStep.termToZipper final)))
+            finalizeSmallstep final
           else
             pure unit
 

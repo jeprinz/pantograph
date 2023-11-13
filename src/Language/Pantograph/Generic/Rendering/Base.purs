@@ -176,7 +176,7 @@ type EditorSpec l r =
   , forgetSorts :: DerivLabel l r -> Maybe (DerivLabel l r)
     -- default is (const Nothing)
 
-  , clipboardSort :: Sort l -> Sort l
+  , clipboardSort :: Sort l -> Sort l -- NOTE: this is now not just used for the clipboard, but also the whole program
     -- default is identity
 
   -- Allow the language specific file to perform custom edits directly on a keypress instead of waiting for a query
@@ -459,7 +459,7 @@ isOpenBufferKey :: String -> Boolean
 isOpenBufferKey = (_ `Array.elem` ["Enter"])
 
 additionalQueryKeys :: Array CodePoint
-additionalQueryKeys = ["+", "-", ">", "<", "=", "*", "/", "^"] <#> \s ->
+additionalQueryKeys = ["+", "-", ">", "<", "=", "*", "/", "^", "%"] <#> \s ->
     Util.fromJust $ Array.index (String.toCodePointArray s) 0
 
 isQueryKey :: CodePoint -> Boolean

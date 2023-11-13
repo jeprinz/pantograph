@@ -217,6 +217,7 @@ data InfixOperator
     | OpMinus
     | OpTimes
     | OpDivide
+    | OpMod
     | OpPow
     | OpLess
     | OpGreater
@@ -247,6 +248,7 @@ infixTypes op =
     OpMinus -> {left : int, right : int, output : int}
     OpTimes -> {left : int, right : int, output : int}
     OpDivide -> {left : int, right : int, output : int}
+    OpMod -> {left : int, right : int, output : int}
     OpPow -> {left : int, right : int, output : int}
     OpLess -> {left : int, right : int, output : bool}
     OpGreater -> {left : int, right : int, output : bool}
@@ -262,6 +264,7 @@ infixName op =
     OpMinus -> "-"
     OpTimes -> "*"
     OpDivide -> "/"
+    OpMod -> "%"
     OpPow -> "^"
     OpLess -> "<"
     OpGreater -> ">"
@@ -537,8 +540,8 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
         , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1), pure maybeMapsTo, Left (renCtx' /\ 2)]
   Let /\ _ ->
     let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [letElem], Left (renCtx /\ 0), pure [colonElem], Left (renCtx' /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
-        , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
+    [pure [letElem], Left (renCtx' /\ 0), pure [colonElem], Left (renCtx' /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
+--        , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
         , Left (renCtx /\ 3)]
   App /\ _ ->
     let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
