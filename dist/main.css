@@ -495,3 +495,13 @@ console
   border-radius: 0.5em 0.5em / 0.2em;
   color: lightgrey;
 }
+
+.error {
+  border-bottom:1px solid red;
+  display: inline-block;
+}
+
+.grey {
+  /* color: lightgrey !important; */ /*The problem with this was that int literals were green anyway, overriding this.*/
+  opacity: 75%;
+}

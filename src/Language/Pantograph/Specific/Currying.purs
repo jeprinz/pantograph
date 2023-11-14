@@ -373,13 +373,6 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   -- TODO: This case should probably be in Generic.
   defaultDerivTerm' sort = bug $ "[defaultDerivTerm] no match: " <> pretty sort
 
-appRule :: Rule
-appRule = Grammar.makeRule ["gamma", "a", "b"] \[gamma, a, b] ->
-    [ TermSort %|-* [gamma, Arrow %|-* [a, b]]
-    , TermSort %|-* [gamma, a] ]
-    /\ --------
-    ( TermSort %|-* [gamma, b] )
-
 language :: Language
 language = TotalMap.makeTotalMap case _ of
 
@@ -400,9 +393,17 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TermSort %|-* [gamma, Arrow %|-* [a, b]])
 
-  App -> appRule
+  App -> Grammar.makeRule ["gamma", "a", "b"] \[gamma, a, b] ->
+    [ TermSort %|-* [gamma, Arrow %|-* [a, b]]
+    , TermSort %|-* [gamma, a] ]
+    /\ --------
+    ( TermSort %|-* [gamma, b] )
 
-  GreyApp -> GreyedRules.createGreyedConstruct appRule 0
+  GreyApp -> Grammar.makeRule ["gamma", "a", "b"] \[gamma, a, b] ->
+    [ TermSort %|-* [gamma, b]
+    , TermSort %|-* [gamma, a] ]
+    /\ --------
+    ( TermSort %|-* [gamma, b] )
 
   FreeVar -> Grammar.makeRule ["name", "type"] \[name, ty] ->
     []
@@ -513,15 +514,21 @@ language = TotalMap.makeTotalMap case _ of
 -- Rendering
 --------------------------------------------------------------------------------
 
+isAppOrGreyApp :: RuleLabel -> Boolean
+isAppOrGreyApp App = true
+isAppOrGreyApp GreyApp = true
+isAppOrGreyApp _ = false
+
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
+arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent} =
+  let renCtx = preRenCtx{cssClasses = Set.delete "error" preRenCtx.cssClasses } :: Base.RenderingContext in -- remove some things from css classes
   let parentRule = case mb_parent of
         Just (Tooth (DerivLabel rule _) _) -> Just rule
         Nothing -> Nothing in
   let dotOrNot = case mb_parent of -- Used in Var and App cases
-          Just (Tooth (DerivLabel App _) (ZipList.Path {left, right})) | RevList.length left == 0
-            -> [HH.div [classNames ["app-circle"]] [appCircle]]
-          _ -> [] in
+          Just (Tooth (DerivLabel label _) (ZipList.Path {left, right})) | RevList.length left == 0
+            -> isAppOrGreyApp label
+          _ -> false in
   let html = (
           case rule /\ sort of
           _ /\ (MInj (Grammar.SInj VarSort) %
@@ -547,16 +554,17 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
             [pure [letElem], Left (renCtx' /\ 0), pure [colonElem], Left (renCtx' /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
                 , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
                 , Left (renCtx /\ 3)]
-          App /\ _ ->
+          label /\ _ | isAppOrGreyApp label -> -- App and GreyApp
+            let isGrey = case label of
+                    GreyApp -> true
+                    _ -> false in
             let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
-                    Just (Tooth (DerivLabel App _) (ZipList.Path {left, right: _})) | RevList.length left == 0
-                      -> [] /\ []
+                    Just (Tooth (DerivLabel label _) (ZipList.Path {left, right: _})) | RevList.length left == 0
+                      , isAppOrGreyApp label -> [] /\ []
                     _ -> [Rendering.lparenElem] /\ [Rendering.rparenElem] in
             let renCtx' = Base.incremementIndentationLevel renCtx in
-            [pure leftParen, Left (renCtx' /\ 0), Left (renCtx' /\ 1), pure rightParen]
-          GreyApp /\ _ ->
-            let renCtx' = Base.incremementIndentationLevel renCtx in
-            [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
+            let renCtx'' = if isGrey then renCtx'{cssClasses = Set.insert "grey" (Set.singleton "error")} else renCtx' in
+            [pure leftParen, Left (renCtx' /\ 0) , Left (renCtx'' /\ 1), pure rightParen]
           DataTypeRule dataType /\ _ ->
             [pure [dataTypeElem (pretty dataType)]]
           ArrowRule /\ _ ->
@@ -607,7 +615,7 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
             "  - sort = " <> show sort
     )
     in
-    html <> [pure dotOrNot]
+    html <> [pure (if dotOrNot then [HH.div [classNames ["app-circle"]] [appCircle]] else [])]
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
@@ -946,21 +954,9 @@ unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
     ])
     = do
         let varName = Util.lookup' (RuleMetaVar "x") sigma
---        -- TODO: HERE IS WHERE I LEFT OFF: this match works, but match below fails. TODO: Get the second cslot, and debug matchChange on that!
---        -- TODO: Also, compare to what these output (including real case) when one Int is a metavar?!?
---        case (matchChange ch (TermSort %+- [{-gamma-}cSlot, cSlot])) of
---            Just ([] /\ [_, lad])  -> do
---                traceM ("here we go: " <> pretty lad)
---                traceM (pretty (matchChange lad (dMINUS Arrow [slot] cSlot [])))
---            _ -> pure unit
         restOfCh <- case unit of
                     _ | Just ([a] /\ [gamma, b]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
                         -> pure (csor TermSort % [minusChange (sor CtxConsSort) [varName, a] gamma [] , b])
---                    -- This is for dealing with the case where the user for some reason deletes some output arrows of a function type.
---                    _ | Just ([a, b, x] /\ [gamma]) <- matchChange ch
---                            (TermSort %+- [{-gamma-}cSlot, replaceChange ((InjectMatchLabel (sor Arrow)) % [{-a-}slot, {-b-}slot]) {-x-}slot])
---                      , (MV _ % _) <- x
---                        -> pure (csor TermSort % [minusChange (sor CtxConsSort) [varName, a] gamma [], replaceChange b x])
                     _ -> Nothing
         pure $
             Smallstep.wrapBoundary Smallstep.Down restOfCh $
@@ -989,6 +985,15 @@ wrapApp = Smallstep.makeUpRule
             dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
                 [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
 
+-- If the argument to a greyed app is merely a hole, get rid of it
+removeGreyedApp :: StepRule
+removeGreyedApp dterm = case dterm of
+    ((SSInj (DerivLabel GreyApp _)) % [
+        t1,
+        (SSInj (DerivLabel TermHole _)) % _
+        ]) -> pure t1
+    _ -> Nothing
+
 -- App up{t1}_(Term G (- A -> B)) t2 ~~> up{t1}_(Term G B)
 unWrapApp :: StepRule
 unWrapApp = Smallstep.makeUpRule
@@ -997,6 +1002,53 @@ unWrapApp = Smallstep.makeUpRule
     (\[t1, _t2] -> t1 /\ (\[_a] [gamma, b] inside -> pure $
         Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
             inside))
+
+
+makeAppGreyed :: StepRule
+makeAppGreyed ((SSInj (Grammar.DerivLabel App _)) % [
+        (Smallstep.Boundary Smallstep.Up ch) % [inside]
+        , arg
+    ])
+    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dMINUS Arrow [{-a-}slot] {-b-}cSlot []])
+    = do
+        pure $ Smallstep.wrapBoundary Up (csor TermSort % [gamma, b]) $
+            (Smallstep.SSInj (makeLabel GreyApp ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b])) % [
+                inside
+                , Smallstep.wrapBoundary Down (csor TermSort % [gamma, inject a]) arg
+            ]
+makeAppGreyed _ = Nothing
+
+--rehydrateApp :: StepRule
+--rehydrateApp ((SSInj (Grammar.DerivLabel GreyApp sigma)) % [
+--        (Smallstep.Boundary Smallstep.Up ch) % [inside]
+--        , arg
+--    ])
+--    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+--    =
+--        trace "Go' here" \_ ->
+--        if not (a == (Util.lookup' (Expr.RuleMetaVar "a") sigma)) then Nothing else pure $
+--            trace "Not here" \_ ->
+--            Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+--                (Smallstep.SSInj (makeLabel App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b])) % [
+--                    inside
+--                    , Smallstep.wrapBoundary Down (csor TermSort % [gamma, inject a]) arg
+--                ]
+--rehydrateApp _ = Nothing
+
+-- this is to simulate re-hydration of greyed apps. The actually rehydrate rule had a priority order issue.
+-- If an app is inside a grey app and the args are the same type and the App has a hole argument, merge them
+mergeAppGreyApp :: StepRule
+mergeAppGreyApp dterm = case dterm of
+    ((SSInj (DerivLabel GreyApp greySigma)) % [
+        (SSInj (DerivLabel App sigma)) % [
+            t1
+            , (SSInj (DerivLabel TermHole _) % _)
+            ]
+        , t2
+        ])
+    | Util.lookup' (RuleMetaVar "a") sigma == Util.lookup' (RuleMetaVar "a") greySigma
+        -> pure (SSInj (DerivLabel App sigma) % [t1, t2])
+    _ -> Nothing
 
 removeError :: StepRule
 removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
@@ -1165,8 +1217,12 @@ stepRules = do
     , introErrorDownVar
     , wrapLambda
     , unWrapLambda
+--    , rehydrateApp
+    , mergeAppGreyApp
     , wrapApp
-    , unWrapApp
+--    , unWrapApp
+    , makeAppGreyed
+    , removeGreyedApp
     , mergeErrorsDown
     , mergeErrorsUp
     , removeError

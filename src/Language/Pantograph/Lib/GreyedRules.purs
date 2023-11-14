@@ -130,6 +130,7 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange forgetSo
         ]
 
 
+-- NOTE: this function doesn't work right, because the child ends up as ?x instead of (Term ?gamma ?x)
 createGreyedConstruct :: forall l r.
     Grammar.Rule l -> Int -> Grammar.Rule l
 createGreyedConstruct (Grammar.Rule vars children conclusion) index =

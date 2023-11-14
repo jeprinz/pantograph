@@ -231,11 +231,6 @@ removeMarkers t = Bug.bug ("shouldn't happen in removeMarkers: t was " <> pretty
 termToZipper :: forall l r. IsRuleLabel l r => SSTerm l r -> Expr.Zipper (Grammar.DerivLabel l r)
 termToZipper term =
     let _change /\ term' = ssTermStripTopChange term in
-    -- NOTE: because a bunch of code is buggy, this just returns with the cursor at the top and forgets where the cursor is supposed to be.
-    -- Once Henry fixes the rendering code, then I can uncomment the real implementation below.
---    trace ("termToZipper given " <> pretty term) \_ ->
---     let res = Expr.Zipper (Expr.Path Nil) (assertJustExpr (removeMarkers term'))
---     in res
     case unwrapSSTerm term' of
        Left (path /\ (Expr.Expr (Marker 1) [innerTerm])) ->
            Expr.Zipper path (assertJustExpr innerTerm)
