@@ -12,6 +12,7 @@ import Halogen as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Log as Log
+import Web.DOM as DOM
 import Web.DOM.DOMTokenList as DOMTokenList
 import Web.DOM.Document as Document
 import Web.DOM.Element as Element

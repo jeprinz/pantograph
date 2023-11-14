@@ -47,7 +47,7 @@ import Language.Pantograph.Generic.ZipperMovement (normalizeZipperp)
 import Log (log, logM)
 import Text.Pretty (bullets, pretty)
 import Text.Pretty as P
-import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir, nextDir)
+import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir, nextDir, prevDir, MoveDir)
 import Type.Direction (_prev)
 import Util as Util
 import Web.DOM as DOM
@@ -59,6 +59,8 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
+import Web.DOM.Element as Element
+import Control.Monad.Trans.Class (lift)
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -134,6 +136,13 @@ editorComponent = HK.component \tokens spec -> HK.do
           Just hdpath -> do
             elem <- getElementByHoleyDerivPath hdpath
             liftEffect $ setClassName elem className true
+
+    -- Gets the coordinates of an element of the tree on the screen
+    getBoundingClientRectFromPath :: HoleyDerivPath l r -> HK.HookM Aff Element.DOMRect
+    getBoundingClientRectFromPath path = do
+        elem <- getElementByHoleyDerivPath path
+        rect <- H.liftEffect (Element.getBoundingClientRect elem)
+        pure rect
 
     ------------------------------------------------------------------------------
     -- manipulate state
@@ -281,12 +290,47 @@ editorComponent = HK.component \tokens spec -> HK.do
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         _ -> pure unit
 
+    moveCursorVertically verticalOrHorizontal = do -- true is up, false is down
+      getFacade >>= case _ of
+        CursorState {mode: BufferCursorMode} -> pure unit
+        CursorState cursor -> do
+            let getPos hdzipper = do
+                    getBoundingClientRectFromPath (hdzipperHoleyDerivPath hdzipper)
+--                    pure $ (pos.left + pos.right) / 2.0
+            startRect <- getPos cursor.hdzipper
+            let goUntil dir hdzipper check = do
+                    newPos <- getPos hdzipper
+                    if check newPos
+                        then pure $ hdzipper
+                        else case computeCursorMovement dir hdzipper of
+                                Nothing -> pure $ hdzipper
+                                Just newZipper -> goUntil dir newZipper check
+            finalZipper <- if verticalOrHorizontal
+                then do
+                    pos1 <- goUntil prevDir cursor.hdzipper (\newpos -> newpos.top + 4.0 < startRect.top)
+                    goUntil prevDir pos1 (\newpos -> newpos.left <= startRect.left + 4.0)
+                else do
+                    pos1 <- goUntil nextDir cursor.hdzipper (\newpos -> newpos.top > startRect.top + 4.0)
+                    rect1 <- getPos pos1
+                    pos2 <- goUntil nextDir pos1 (\newpos -> newpos.left + 4.0 >= startRect.left || newpos.top > rect1.top + 4.0)
+                    rect2 <- getPos pos2
+                    if rect2.top > rect1.top + 4.0
+                        then case computeCursorMovement prevDir pos2 of
+                            Nothing -> pure pos2
+                            Just x -> pure x
+                        else pure pos2
+            setFacade $ CursorState (cursorFromHoleyDerivZipper finalZipper)
+        _ -> pure unit
+
+    computeCursorMovement :: MoveDir -> HoleyDerivZipper l r -> Maybe (HoleyDerivZipper l r)
+    computeCursorMovement dir hdzipper = moveHDZUntil dir (isValidCursor spec.isValidCursorSort) hdzipper
+
     moveCursor dir = do
       -- Debug.traceM $ "[moveCursor] dir = " <> show dir
       getFacade >>= case _ of
         CursorState {mode: BufferCursorMode} -> pure unit
         CursorState cursor -> do
-          case moveHDZUntil dir (isValidCursor spec.isValidCursorSort) cursor.hdzipper of
+          case computeCursorMovement dir cursor.hdzipper of
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         -- TODO: if cursor is moved in select state, it should set the cursor to the right or left of the selection rather than what it does now.
@@ -548,12 +592,14 @@ editorComponent = HK.component \tokens spec -> HK.do
 
           else if cmdKey && key == "s" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            rect <- getBoundingClientRectFromPath (hdzipperHoleyDerivPath cursor.hdzipper)
             Debug.traceM $ pretty $ 
               "[print sort]" <> bullets
                 [ "path = " <> pretty path
                 , "dterm = " <> pretty dterm
                 , "sort = " <> pretty (derivTermSort dterm)
                 , "dlabel = " <> pretty (Expr.exprLabel dterm)
+                , "rect = " <> show rect
                 ]
           else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm
@@ -577,6 +623,10 @@ editorComponent = HK.component \tokens spec -> HK.do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- CursorState --> TopState
             setFacade $ TopState {dterm: Expr.unzipper (hdzipperDerivZipper cursor.hdzipper)}
+          else if key == "ArrowUp" then
+            moveCursorVertically true
+          else if key == "ArrowDown" then
+            moveCursorVertically false
           else if isJust (readMoveDir key) then
             assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
