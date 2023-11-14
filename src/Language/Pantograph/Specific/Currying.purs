@@ -518,92 +518,96 @@ arrangeDerivTermSubs _ {renCtx, rule, sort, sigma, dzipper, mb_parent} =
   let parentRule = case mb_parent of
         Just (Tooth (DerivLabel rule _) _) -> Just rule
         Nothing -> Nothing in
-  let dotOrNot unit = case mb_parent of -- Used in Var and App cases
+  let dotOrNot = case mb_parent of -- Used in Var and App cases
           Just (Tooth (DerivLabel App _) (ZipList.Path {left, right})) | RevList.length left == 0
             -> [HH.div [classNames ["app-circle"]] [appCircle]]
           _ -> [] in
-  case rule /\ sort of
-  _ /\ (MInj (Grammar.SInj VarSort) %
-    [ _gamma
-    , MInj (Grammar.DataLabel (DataString str)) % []
-    , _ty
-    , locality ]) ->
-    -- TODO: use locality in rendering?
-    let postfix = if locality == sor Local % [] then "" else "!" in
-    [pure [nameElem (str <> postfix)]]
-  -- term
-  Var /\ _ ->
-    [Left (renCtx /\ 0), pure (dotOrNot unit)]
-  Lam /\ _ ->
-    let maybeMapsTo = case dzipper of
-            Just (Zipper _ (_ % [_, _, (DerivLabel Lam _) % _])) -> [Rendering.spaceElem]
-            _ -> [mapstoElem] in
-    let renCtx' = if parentRule == Just Lam then renCtx else Base.incremementIndentationLevel renCtx in
-    [pure [lambdaElem], Left (renCtx /\ 0), pure [colonElem]
-        , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1), pure maybeMapsTo, Left (renCtx' /\ 2)]
-  Let /\ _ ->
-    let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [letElem], Left (renCtx' /\ 0), pure [colonElem], Left (renCtx' /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
-        , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
-        , Left (renCtx /\ 3)]
-  App /\ _ ->
-    let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
-            Just (Tooth (DerivLabel App _) (ZipList.Path {left, right: _})) | RevList.length left == 0
-              -> [] /\ []
-            _ -> [Rendering.lparenElem] /\ [Rendering.rparenElem] in
-    let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure leftParen, Left (renCtx' /\ 0), Left (renCtx' /\ 1), pure (dotOrNot unit), pure rightParen]
-  GreyApp /\ _ ->
-    let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
-  DataTypeRule dataType /\ _ ->
-    [pure [dataTypeElem (pretty dataType)]]
-  ArrowRule /\ _ ->
-    let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
-            Just (Tooth (DerivLabel ArrowRule _) (ZipList.Path {left, right: _})) | RevList.length left == 0
-              -> [Rendering.lparenElem] /\ [Rendering.rparenElem]
-            _ -> [] /\ [] in
-    let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure leftParen, Left (renCtx' /\ 0), pure [arrowElem], Left (renCtx' /\ 1), pure rightParen]
-  -- format
-  Newline /\ _ ->
-    Array.concat
-      [ if renCtx.isInlined then [] else [pure [HH.div [classNames ["newline-symbol"]] [HH.text " ↪"]], pure (newlineIndentElem renCtx.indentationLevel)]
-      , [Left (renCtx /\ 0)] ]
-  -- hole
-  TermHole /\ (MInj (Grammar.SInj TermSort) % [_gamma, _ty])
-    ->  [pure [Rendering.lbraceElem], Left (renCtx /\ 0), pure [colonElem]
-        , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1)
-        , pure [Rendering.rbraceElem]]
---  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
-  -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
-  TypeHole /\ _ | Just (MV mv % []) <- Map.lookup (RuleMetaVar "type") sigma ->
-    [pure [HH.text "?", HH.text (show (Base.getMetavarNumber renCtx mv))]]
-  TypeHole /\ _ -> [pure [HH.text ("error: " <> show (Map.lookup (RuleMetaVar "type") sigma))]]
-  If /\ _ ->
-    let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [ifElem, Rendering.spaceElem], Left (renCtx' /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem, Rendering.spaceElem]), Left (renCtx' /\ 1),
-        pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem, Rendering.spaceElem]), Left (renCtx' /\ 2)]
-  ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
-  ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
-  InfixRule op /\ _ ->
-    [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
-  EqualsRule /\ _ ->
-    [Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text "==", Rendering.spaceElem], Left (renCtx /\ 1)]
-  ListRule /\ _ -> [pure [HH.text "List "], Left (renCtx /\ 0)]
-  NilRule /\ _ -> [pure [HH.text "nil"]]
-  ConsRule /\ _ -> [pure [HH.text "cons"]]
-  ListMatchRule /\ _ ->
-    let renCtx' = Base.incremementIndentationLevel renCtx in
-    [pure [HH.text "match "], Left (renCtx' /\ 0), pure [HH.text " with"], pure (newlineIndentElem renCtx.indentationLevel)
-        , pure [HH.text "Nil -> "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
-        , pure [HH.text "Cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
-        , pure [HH.text " -> "], Left (renCtx' /\ 4)]
-  IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
-  _ -> bug $
-    "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
-    "  - rule = " <> pretty rule <> "\n" <>
-    "  - sort = " <> show sort
+  let html = (
+          case rule /\ sort of
+          _ /\ (MInj (Grammar.SInj VarSort) %
+            [ _gamma
+            , MInj (Grammar.DataLabel (DataString str)) % []
+            , _ty
+            , locality ]) ->
+            -- TODO: use locality in rendering?
+            let postfix = if locality == sor Local % [] then "" else "!" in
+            [pure [nameElem (str <> postfix)]]
+          -- term
+          Var /\ _ ->
+            [Left (renCtx /\ 0)]
+          Lam /\ _ ->
+            let maybeMapsTo = case dzipper of
+                    Just (Zipper _ (_ % [_, _, (DerivLabel Lam _) % _])) -> [Rendering.spaceElem]
+                    _ -> [mapstoElem] in
+            let renCtx' = if parentRule == Just Lam then renCtx else Base.incremementIndentationLevel renCtx in
+            [pure [lambdaElem], Left (renCtx /\ 0), pure [colonElem]
+                , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1), pure maybeMapsTo, Left (renCtx' /\ 2)]
+          Let /\ _ ->
+            let renCtx' = Base.incremementIndentationLevel renCtx in
+            [pure [letElem], Left (renCtx' /\ 0), pure [colonElem], Left (renCtx' /\ 1), pure [equalsElem], Left (renCtx' /\ 2), pure [inElem]
+                , pure (if renCtx.isInlined then [] else newlineIndentElem (renCtx.indentationLevel))
+                , Left (renCtx /\ 3)]
+          App /\ _ ->
+            let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
+                    Just (Tooth (DerivLabel App _) (ZipList.Path {left, right: _})) | RevList.length left == 0
+                      -> [] /\ []
+                    _ -> [Rendering.lparenElem] /\ [Rendering.rparenElem] in
+            let renCtx' = Base.incremementIndentationLevel renCtx in
+            [pure leftParen, Left (renCtx' /\ 0), Left (renCtx' /\ 1), pure rightParen]
+          GreyApp /\ _ ->
+            let renCtx' = Base.incremementIndentationLevel renCtx in
+            [pure [Rendering.lparenElem], Left (renCtx' /\ 0), pure [Rendering.spaceElem, HH.text "<"], Left (renCtx' /\ 1), pure [HH.text ">", Rendering.rparenElem]]
+          DataTypeRule dataType /\ _ ->
+            [pure [dataTypeElem (pretty dataType)]]
+          ArrowRule /\ _ ->
+            let leftParen /\ rightParen = case mb_parent of -- Used in Var and App cases
+                    Just (Tooth (DerivLabel ArrowRule _) (ZipList.Path {left, right: _})) | RevList.length left == 0
+                      -> [Rendering.lparenElem] /\ [Rendering.rparenElem]
+                    _ -> [] /\ [] in
+            let renCtx' = Base.incremementIndentationLevel renCtx in
+            [pure leftParen, Left (renCtx' /\ 0), pure [arrowElem], Left (renCtx' /\ 1), pure rightParen]
+          -- format
+          Newline /\ _ ->
+            Array.concat
+              [ if renCtx.isInlined then [] else [pure [HH.div [classNames ["newline-symbol"]] [HH.text " ↪"]], pure (newlineIndentElem renCtx.indentationLevel)]
+              , [Left (renCtx /\ 0)] ]
+          -- hole
+          TermHole /\ (MInj (Grammar.SInj TermSort) % [_gamma, _ty])
+            ->  [pure [Rendering.lbraceElem], Left (renCtx /\ 0), pure [colonElem]
+                , Left (renCtx{cssClasses = Set.singleton "typesubscript"} /\ 1)
+                , pure [Rendering.rbraceElem]]
+        --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
+          -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
+          TypeHole /\ _ | Just (MV mv % []) <- Map.lookup (RuleMetaVar "type") sigma ->
+            [pure [HH.text "?", HH.text (show (Base.getMetavarNumber renCtx mv))]]
+          TypeHole /\ _ -> [pure [HH.text ("error: " <> show (Map.lookup (RuleMetaVar "type") sigma))]]
+          If /\ _ ->
+            let renCtx' = Base.incremementIndentationLevel renCtx in
+            [pure [ifElem, Rendering.spaceElem], Left (renCtx' /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem, Rendering.spaceElem]), Left (renCtx' /\ 1),
+                pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem, Rendering.spaceElem]), Left (renCtx' /\ 2)]
+          ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
+          ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
+          InfixRule op /\ _ ->
+            [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
+          EqualsRule /\ _ ->
+            [Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text "==", Rendering.spaceElem], Left (renCtx /\ 1)]
+          ListRule /\ _ -> [pure [HH.text "List "], Left (renCtx /\ 0)]
+          NilRule /\ _ -> [pure [HH.text "nil"]]
+          ConsRule /\ _ -> [pure [HH.text "cons"]]
+          ListMatchRule /\ _ ->
+            let renCtx' = Base.incremementIndentationLevel renCtx in
+            [pure [HH.text "match "], Left (renCtx' /\ 0), pure [HH.text " with"], pure (newlineIndentElem renCtx.indentationLevel)
+                , pure [HH.text "Nil -> "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
+                , pure [HH.text "Cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
+                , pure [HH.text " -> "], Left (renCtx' /\ 4)]
+          IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
+          _ -> bug $
+            "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
+            "  - rule = " <> pretty rule <> "\n" <>
+            "  - sort = " <> show sort
+    )
+    in
+    html <> [pure dotOrNot]
 
 lambdaElem = Rendering.makePuncElem "lambda" "λ"
 mapstoElem = Rendering.makePuncElem "mapsto" "↦"
@@ -746,6 +750,19 @@ getVarWraps cursorSort
                 DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange (Grammar.matchStringLabel name) cursorSort application
     in List.concat (List.mapMaybe (\x -> x) edits)
 getVarWraps _ = Nil
+
+getAppliedWrapEdits :: String -> {-cursorSort-}Sort -> {-Term to be wrapped-}DerivTerm -> List Edit
+getAppliedWrapEdits name cursorSort dterm
+    | Just [cursorCtx, _cursorTy] <- matchExprImpl cursorSort (sor TermSort %$ [slot, slot])
+    , Just [dtermCtx, ty] <- matchExprImpl (derivTermSort dterm) (sor TermSort %$ [slot, slot])
+    , Just (_ /\ sub1) <- unify cursorCtx dtermCtx =
+    let meta = fromMetaVar (freshMetaVar "any") in do
+    case maximallyApplied cursorCtx meta ty dterm of
+        Just (application /\ sub) ->
+            DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange name cursorSort
+                (subDerivTerm (Unification.composeSub sub1 sub) application)
+        Nothing -> Nil
+getAppliedWrapEdits _ _ _ = Nil
 {-
 If not Arrow type, Nil
 If of arrow type, return path to that argument with rest of args applied, and getWraps of a single wrap
@@ -801,7 +818,6 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
     , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
-    , makeEditFromPath (newPathFromRule ArrowRule 1) "arrow" cursorSort
     , makeEditFromPath (newPathFromRule App 0) "app" cursorSort
 --    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
 
@@ -811,6 +827,11 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
         (\op -> Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange
             (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
     <> Array.fromFoldable (getVarWraps cursorSort)
+    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
+--    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "cons" cursorSort
+--        (maximallyApplied (newTermFromRule ConsRule)))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (newTermFromRule ConsRule))
+    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (newTermFromRule EqualsRule))
 
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
 --------------------------------------------------------------------------------
