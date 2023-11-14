@@ -810,6 +810,7 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         (\op -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (InfixRule op)) (infixName op) cursorSort))
     )
 
+editsAtCursor :: Sort -> Array Edit
 editsAtCursor cursorSort = Array.mapMaybe identity (
     [
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
@@ -831,7 +832,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
 --    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "cons" cursorSort
 --        (maximallyApplied (newTermFromRule ConsRule)))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (newTermFromRule ConsRule))
-    -- TODO: make it so "if" can be wrapped
+    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (newTermFromRule If))
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (newTermFromRule EqualsRule))
 
 
