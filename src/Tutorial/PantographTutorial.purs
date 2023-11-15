@@ -10,12 +10,13 @@ import Language.Pantograph.Generic.Rendering.Base as Base
 import Halogen.HTML.Events as HE
 import Type.Proxy (Proxy(..))
 import Bug as Bug
+import Data.Lazy (Lazy, force)
 
 data PantographLessonAction = Click | EditorOutput Unit
 
 pantographLesson :: forall l r. Grammar.IsRuleLabel l r =>
-    Base.EditorSpec l r -> (forall w i. HH.HTML w i) -> Lesson
-pantographLesson spec instructions =
+    Base.EditorSpec l r -> Lazy (Grammar.DerivTerm l r) -> (forall w i. HH.HTML w i) -> Lesson
+pantographLesson spec startTerm instructions =
     let editorComponent = Editor.editorComponent in
     let component _unit =
           H.mkComponent
@@ -31,7 +32,7 @@ pantographLesson spec instructions =
               [
               HH.div_ [HH.text (show state)]
               , HH.button [ HE.onClick \_ -> Click ] [ HH.text "Click here to solve this lesson" ]
-              , HH.slot (Proxy :: Proxy "editor") unit editorComponent spec EditorOutput
+              , HH.slot (Proxy :: Proxy "editor") unit editorComponent spec{dterm=force startTerm} EditorOutput
               ]
 
           handleAction = case _ of

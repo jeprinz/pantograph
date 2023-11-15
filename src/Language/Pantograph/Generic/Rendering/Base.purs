@@ -360,6 +360,9 @@ moveHDZUntil dir valid hdz =
             if valid hdz' then Just hdz' else moveHDZUntil dir valid hdz'
         Nothing -> Nothing
 
+hdzIsInnerHolePosition :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> Boolean
+hdzIsInnerHolePosition (HoleyDerivZipper _ isInner) = isInner
+
 hdzIsHolePosition :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> Boolean
 hdzIsHolePosition (HoleyDerivZipper (Expr.Zipper _path (Expr.Expr dlabel _)) isInner) =
 --    case derivLabelRule dlabel of

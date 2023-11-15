@@ -35,7 +35,7 @@ import Debug (trace, traceM)
 import Hole (hole)
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
-import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen', unifyLists, composeSub, composeSubs)
+import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen', unifyLists, composeSub, composeSubs, unify)
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, bullets, pretty)
 import Type.Direction (_down, _up)
@@ -43,10 +43,11 @@ import Type.Direction as Dir
 import Util as Util
 import Data.Foldable as Foldable
 import Data.Argonaut (stringify)
-import Data.Argonaut.Decode.Class (class DecodeJson)
+import Data.Argonaut.Decode.Class (class DecodeJson, decodeJson)
 import Data.Argonaut.Decode.Generic (genericDecodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
 import Data.Argonaut.Encode.Generic (genericEncodeJson)
+import Data.Argonaut.Parser (jsonParser)
 
 --------------------------------------------------------------------------------
 -- RuleLabel
@@ -603,6 +604,7 @@ forgetCollectDerivPath forgetSorts (Expr.Path teeth) =
 
 
 
+
 --------------------------------------------------------------------------------
 -------- Serialization: -----------------------------------------------------
 --------------------------------------------------------------------------------
@@ -622,6 +624,30 @@ printSerializedDerivZipper2 dzipper =
             DerivLiteral sd -> Right sd in
     let justLabels = map simplifyDerivLabel (Expr.unzipper dzipper) in
     stringify (encodeJson justLabels)
+
+decodeSerializedZipper2 :: forall l r. IsRuleLabel l r => (Sort l -> Sort l)  -> String -> DerivTerm l r
+decodeSerializedZipper2 clipboardSort string =
+    let unsimplifyDerivLabel :: Either r SortData -> DerivLabel l r
+        unsimplifyDerivLabel  = case _ of
+            Left r -> makeFreshLabel r
+            Right sd -> DerivLiteral sd
+    in
+    case jsonParser string of
+        Left err -> bug ("jsonParser failed: " <> err)
+        Right json ->
+            let simplifiedTree = decodeJson json :: Either _{-JsonEncodeError-} (Expr.Expr (Either r SortData)) in
+            case simplifiedTree of
+                Left err -> bug ("decodeJson failed:" <> show err)
+                Right tree ->
+                    let preDerivTerm = map unsimplifyDerivLabel tree in
+                    let unifyingSub' = Util.fromJust' "program didn't typecheck in deserialization" $ infer preDerivTerm in
+                    let forgottenFinalSort = (derivTermSort preDerivTerm) in
+                    let expectedProgSort = clipboardSort forgottenFinalSort in
+                    let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' forgottenFinalSort in
+                    let unifyingSub = composeSub unifyingSub'
+                            (snd $ Util.fromJust' "gacct shouldn't fail" $ (unify expectedProgSort forgottenTopSort)) in
+                    let final = subDerivTerm unifyingSub preDerivTerm in -- This will also call fillDefaults
+                    final
 
 printSerializedDerivZipper3 :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
 printSerializedDerivZipper3 dzipper =
