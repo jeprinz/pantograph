@@ -55,6 +55,10 @@ import Type.Direction as Dir
 import Type.Proxy (Proxy(..))
 import Util (fromJust')
 import Util as Util
+import Data.Argonaut.Decode.Class (class DecodeJson, decodeJson)
+import Data.Argonaut.Decode.Generic (genericDecodeJson)
+import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
+import Data.Argonaut.Encode.Generic (genericEncodeJson)
 
 --------------------------------------------------------------------------------
 -- Expr
@@ -78,6 +82,8 @@ instance Ord l => Ord (Expr l) where compare x y = genericCompare x y
 derive instance Functor Expr
 derive instance Foldable Expr
 derive instance Traversable Expr
+instance EncodeJson l => EncodeJson (Expr l) where encodeJson a = genericEncodeJson a
+instance DecodeJson l => DecodeJson (Expr l) where decodeJson a = genericDecodeJson a
 
 --------------------------------------------------------------------------------
 -- IsExprLabel
@@ -116,7 +122,7 @@ instance IsExprLabel l => Pretty (Expr l) where
 --------------------------------------------------------------------------------
 
 data MetaVar 
-  = MetaVar (Maybe String) UUID
+  = MetaVar (Maybe String) Int
   | RuleMetaVar String
 
 metaVarName :: MetaVar -> String
@@ -129,15 +135,26 @@ instance Show MetaVar where show x = genericShow x
 instance Eq MetaVar where eq x y = genericEq x y
 instance Ord MetaVar where compare x y = genericCompare x y
 instance Pretty MetaVar where
-  pretty (MetaVar Nothing uuid) = "?" <> String.take 2 (UUID.toString uuid)
-  pretty (MetaVar (Just str) uuid) = "?" <> str <> "#" <> String.take 2 (UUID.toString uuid)
+  pretty (MetaVar Nothing uuid) = "?" <> show uuid
+  pretty (MetaVar (Just str) uuid) = "?" <> str <> "#" <> show uuid
   pretty (RuleMetaVar str) = "??" <> str
+instance EncodeJson MetaVar where encodeJson a = genericEncodeJson a
+instance DecodeJson MetaVar where decodeJson a = genericDecodeJson a
+
+varMaker :: Util.Stateful Int
+varMaker = Util.stateful 0
+
+nextInt :: Unit -> Int
+nextInt _ =
+    let val = varMaker.get unit in
+    let _ = varMaker.set (val + 1) in
+    val
 
 freshMetaVar :: String -> MetaVar
-freshMetaVar str = MetaVar (Just str) (unsafePerformEffect (UUID.genUUID))
+freshMetaVar str = MetaVar (Just str) (nextInt unit)
 
 freshMetaVar' :: Unit -> MetaVar 
-freshMetaVar' _ = MetaVar Nothing (unsafePerformEffect (UUID.genUUID))
+freshMetaVar' _ = MetaVar Nothing (nextInt unit)
 
 freshenMetaVar :: MetaVar -> MetaVar
 freshenMetaVar (MetaVar (Just str) _) = freshMetaVar str
@@ -151,6 +168,8 @@ derive instance Functor Meta
 instance Show a => Show (Meta a) where show x = genericShow x
 instance Eq a => Eq (Meta a) where eq x y = genericEq x y
 instance Ord a => Ord (Meta a) where compare x y = genericCompare x y
+instance EncodeJson a => EncodeJson (Meta a) where encodeJson a = genericEncodeJson a
+instance DecodeJson a => DecodeJson (Meta a) where decodeJson a = genericDecodeJson a
 
 instance Pretty a => Pretty (Meta a) where
     pretty =
@@ -186,6 +205,8 @@ derive instance Traversable Tooth
 
 instance IsExprLabel l => Pretty (Tooth l) where
   pretty th = prettyTooth th "⌶"
+instance EncodeJson l => EncodeJson (Tooth l) where encodeJson a = genericEncodeJson a
+instance DecodeJson l => DecodeJson (Tooth l) where decodeJson a = genericDecodeJson a
 
 foldMapTooth :: forall l m. Monoid m => (l -> m) -> Tooth l -> m
 foldMapTooth f (l %< p) = f l <> foldMap (foldMap f) p
@@ -234,6 +255,8 @@ derive newtype instance (Eq l, Ord l) => Ord (Path dir l)
 derive instance Functor (Path dir)
 derive instance Foldable (Path dir)
 derive instance Traversable (Path dir)
+derive newtype instance EncodeJson l => EncodeJson (Path dir l)
+derive newtype instance DecodeJson l => DecodeJson (Path dir l)
 
 -- For getting the direction of a path as a value, without having to keep a
 -- value stored in the path that is maintained to correspond to the type's dir
@@ -344,6 +367,8 @@ derive instance Eq l => Eq (Zipper l)
 derive instance Ord l => Ord (Zipper l)
 instance Show l => Show (Zipper l) where show x = genericShow x
 derive instance Functor Zipper
+instance EncodeJson l => EncodeJson (Zipper l) where encodeJson a = genericEncodeJson a
+instance DecodeJson l => DecodeJson (Zipper l) where decodeJson a = genericDecodeJson a
 
 instance IsExprLabel l => Pretty (Zipper l) where
   pretty (Zipper path expr) = 

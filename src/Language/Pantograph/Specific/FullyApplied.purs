@@ -59,6 +59,10 @@ import Util (fromJust)
 import Util as Util
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Language.Pantograph.Lib.GreyedRules as GreyedRules
+import Data.Argonaut.Decode.Class (class DecodeJson)
+import Data.Argonaut.Decode.Generic (genericDecodeJson)
+import Data.Argonaut.Encode.Class (class EncodeJson)
+import Data.Argonaut.Encode.Generic (genericEncodeJson)
 
 {-
 This file is the start of the specific langauge that we will try to have working for the user study.
@@ -89,6 +93,8 @@ instance Bounded DataType where
   top = genericTop
 instance Pretty DataType where
   pretty = show
+instance EncodeJson DataType where encodeJson a = genericEncodeJson a
+instance DecodeJson DataType where decodeJson a = genericDecodeJson a
 
 data PreSortLabel
   -- Judgements
@@ -111,6 +117,8 @@ derive instance Generic PreSortLabel _
 instance Show PreSortLabel where show x = genericShow x
 instance Eq PreSortLabel where eq x = genericEq x
 instance Ord PreSortLabel where compare x y = genericCompare x y
+instance EncodeJson PreSortLabel where encodeJson a = genericEncodeJson a
+instance DecodeJson PreSortLabel where decodeJson a = genericDecodeJson a
 
 instance Pretty PreSortLabel where
   pretty = show
@@ -196,6 +204,8 @@ instance Bounded Constant where
   top = genericTop
 instance Pretty Constant where
   pretty = show
+instance EncodeJson Constant where encodeJson a = genericEncodeJson a
+instance DecodeJson Constant where decodeJson a = genericDecodeJson a
 
 constantType :: Constant -> Sort {-type-}
 constantType = case _ of
@@ -234,6 +244,8 @@ instance Bounded InfixOperator where
   top = genericTop
 instance Pretty InfixOperator where
   pretty = show
+instance EncodeJson InfixOperator where encodeJson a = genericEncodeJson a
+instance DecodeJson InfixOperator where decodeJson a = genericDecodeJson a
 
 infixTypes :: InfixOperator -> {left :: Sort, right :: Sort, output :: Sort}
 infixTypes op =
@@ -308,6 +320,8 @@ instance Bounded RuleLabel where
 
 instance Pretty RuleLabel where
   pretty = show
+instance EncodeJson RuleLabel where encodeJson a = genericEncodeJson a
+instance DecodeJson RuleLabel where decodeJson a = genericDecodeJson a
 
 --------------------------------------------------------------------------------
 -- Language

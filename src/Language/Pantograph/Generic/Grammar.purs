@@ -42,6 +42,11 @@ import Type.Direction (_down, _up)
 import Type.Direction as Dir
 import Util as Util
 import Data.Foldable as Foldable
+import Data.Argonaut (stringify)
+import Data.Argonaut.Decode.Class (class DecodeJson)
+import Data.Argonaut.Decode.Generic (genericDecodeJson)
+import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
+import Data.Argonaut.Encode.Generic (genericEncodeJson)
 
 --------------------------------------------------------------------------------
 -- RuleLabel
@@ -54,7 +59,8 @@ The knowledge of if a rule is a hole rule is used for two things:
 -}
 data IsHoleRule = Yes {-Has inner hole-}Boolean | No
 
-class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r) <= IsRuleLabel l r | r -> l where
+class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r,
+    EncodeJson l, EncodeJson r, DecodeJson l, DecodeJson r) <= IsRuleLabel l r | r -> l where
   prettyExprF'_unsafe_RuleLabel :: Partial => r /\ Array String -> String
   language :: Language l r
   isHoleRuleTotalMap :: TotalMap r IsHoleRule
@@ -270,12 +276,16 @@ derive instance Generic SortType _
 instance Show SortType where show x = genericShow x
 derive instance Eq SortType
 derive instance Ord SortType
+instance EncodeJson SortType where encodeJson a = genericEncodeJson a
+instance DecodeJson SortType where decodeJson a = genericDecodeJson a
 
 data SortData = DataString String | DataInt Int
 derive instance Generic SortData _
 instance Show SortData where show x = genericShow x
 derive instance Eq SortData
 derive instance Ord SortData
+instance EncodeJson SortData where encodeJson a = genericEncodeJson a
+instance DecodeJson SortData where decodeJson a = genericDecodeJson a
 
 typeOfSortData :: SortData -> SortType
 typeOfSortData = case _ of
@@ -294,6 +304,8 @@ derive instance Ord l => Ord (SortLabel l)
 derive instance Functor SortLabel
 derive instance Foldable SortLabel
 derive instance Traversable SortLabel
+instance EncodeJson l => EncodeJson (SortLabel l) where encodeJson a = genericEncodeJson a
+instance DecodeJson l => DecodeJson (SortLabel l) where decodeJson a = genericDecodeJson a
 
 freshMetaVarSort :: forall l. String -> Sort l
 freshMetaVarSort name = (Expr.MV (freshMetaVar name)) % []
@@ -588,3 +600,25 @@ forgetCollectDerivPath :: forall l r. IsRuleLabel l r =>
 forgetCollectDerivPath forgetSorts (Expr.Path teeth) =
     let teeth' /\ subs2 = List.unzip (map (forgetCollectDerivTooth forgetSorts) teeth) in
     Expr.Path teeth' /\ Map.unions subs2
+
+
+
+--------------------------------------------------------------------------------
+-------- Serialization: -----------------------------------------------------
+--------------------------------------------------------------------------------
+instance (EncodeJson l, EncodeJson r) => EncodeJson (DerivLabel l r) where encodeJson a = genericEncodeJson a
+instance (DecodeJson l, DecodeJson r) => DecodeJson (DerivLabel l r) where decodeJson a = genericDecodeJson a
+
+printSerializedDerivZipper :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
+printSerializedDerivZipper dzipper =
+    stringify (encodeJson dzipper)
+
+-- Possibly a smaller represrentation
+printSerializedDerivZipper2 :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
+printSerializedDerivZipper2 dzipper =
+    let simplifyDerivLabel :: DerivLabel l r -> Either r SortData
+        simplifyDerivLabel  = case _ of
+            DerivLabel r _ -> Left r
+            DerivLiteral sd -> Right sd in
+    let justLabels = map simplifyDerivLabel (Expr.unzipper dzipper) in
+    stringify (encodeJson justLabels)

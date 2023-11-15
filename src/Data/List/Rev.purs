@@ -22,6 +22,11 @@ import Data.Foldable (class Foldable, foldMap, foldl, foldr)
 import Data.List as List
 import Data.Traversable (class Traversable, sequence, traverse)
 import Data.Bifunctor
+import Data.Argonaut.Decode.Class (class DecodeJson, decodeJson)
+import Data.Argonaut.Decode.Generic (genericDecodeJson)
+import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
+import Data.Argonaut.Encode.Generic (genericEncodeJson)
+import Data.Generic.Rep (class Generic)
 
 newtype RevList a = Rev (List.List a)
 
@@ -50,6 +55,9 @@ instance Traversable RevList where
 
 derive newtype instance Semigroup (RevList a)
 derive newtype instance Monoid (RevList a)
+derive instance Generic (RevList a) _
+instance EncodeJson a => EncodeJson (RevList a) where encodeJson a = genericEncodeJson a
+instance DecodeJson a => DecodeJson (RevList a) where decodeJson a = genericDecodeJson a
 -- derive newtype instance (Applicative m, Plus m, Unify m a) => Unify m (RevList a)
 
 -- !TODO is this used anywhere?

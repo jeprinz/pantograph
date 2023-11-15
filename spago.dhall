@@ -13,6 +13,8 @@ to generate this file without the comments in this block.
 { name = "pantograph"
 , dependencies =
   [ "aff"
+  , "argonaut"
+  , "argonaut-generic"
   , "arrays"
   , "bifunctors"
   , "console"

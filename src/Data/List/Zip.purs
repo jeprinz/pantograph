@@ -18,6 +18,11 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Show.Generic (genericShow)
 import Data.Traversable (class Traversable, traverse)
 import Text.Pretty ((<+>))
+import Data.Argonaut.Decode.Class (class DecodeJson, decodeJson)
+import Data.Argonaut.Decode.Generic (genericDecodeJson)
+import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
+import Data.Argonaut.Encode.Generic (genericEncodeJson)
+import Bug
 
 newtype Tooth a = Zip {path :: Path a, focus :: a}
 
@@ -37,6 +42,8 @@ instance Traversable Tooth where
     <$> traverse f z.path
     <*> f z.focus
   sequence = traverse identity
+instance EncodeJson a => EncodeJson (Tooth a) where encodeJson a = genericEncodeJson a
+instance DecodeJson a => DecodeJson (Tooth a) where decodeJson a = bug "I hate typeclasses" -- genericDecodeJson a
 
 unzip (Zip z) = unpathAroundList (pure z.focus) z.path
 
@@ -53,6 +60,8 @@ derive instance Foldable Path
 derive instance Traversable Path
 instance Semigroup (Path a) where append (Path d1) (Path d2) = Path {left: d1.left <> d2.left, right: d1.right <> d2.right}
 instance Monoid (Path a) where mempty = Path {left: mempty, right: mempty}
+instance EncodeJson a => EncodeJson (Path a) where encodeJson a = genericEncodeJson a
+instance DecodeJson a => DecodeJson (Path a) where decodeJson a = genericDecodeJson a
 -- instance (Applicative m, Plus m, Unify m a) => Unify m (Path a) where unify (Path {left: l1, right: r1}) (Path {left: l2, right: r2}) = (\left right -> Path {left, right}) <$> unify l1 l2 <*> unify r1 r2
 
 -- !TODO is this used anywhere?
