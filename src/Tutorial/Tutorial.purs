@@ -23,10 +23,14 @@ import Util as Util
 import Debug (trace, traceM)
 import Halogen.Utilities (classNames)
 import Web.HTML.Common (AttrName(..))
---import Data.Coyoneda as Coyoneda
 
-runTutorial :: Effect Unit
-runTutorial = HA.runHalogenAff do
+{-
+This file defines a framework for Tutorials in general.
+A tutorial takes a list of Lessons.
+-}
+
+runTutorial :: Array Lesson -> Effect Unit
+runTutorial lessons = HA.runHalogenAff do
   Console.log "[runTutorial]"
   body <- HA.awaitBody
   VDomDriver.runUI (tutorialComponent lessons) unit body
@@ -34,8 +38,8 @@ runTutorial = HA.runHalogenAff do
 longString :: String
 longString = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
 
-lessons :: Array Lesson
-lessons = [
+exampleLessons :: Array Lesson
+exampleLessons = [
     {component: \_ -> exampleLesson, instructions: HH.text (longString <> longString <> longString)}
     , {component: \_ -> exampleLesson2, instructions: HH.text "lesson2"}
     , {component: \_ -> exampleLesson, instructions: HH.text "lesson3"}
@@ -45,6 +49,7 @@ lessons = [
 --------------------------------------------------------------------------------
 
 
+data LessonQuery :: forall k. k -> Type
 data LessonQuery a
 data LessonOutput = TaskCompleted
 data LessonInput = LessonInput

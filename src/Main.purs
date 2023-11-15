@@ -16,6 +16,7 @@ import Language.Pantograph.Generic.Rendering.Editor (editorComponent) as Renderi
 import Partial.Unsafe as Partial
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Grammar as Grammar
+import Tutorial.CurriedTutorial as CurriedTutorial
 
 -- Maybe in the future we can make a better way, but for now you can switch which thing gets run by uncommenting the correct main function
 
@@ -23,15 +24,15 @@ import Language.Pantograph.Generic.Grammar as Grammar
 --main :: Effect Unit
 --main = runEditorForLang FullyApplied.editorSpec
 
-main :: Effect Unit
-main = runEditorForLang Currying.editorSpec
+--main :: Effect Unit
+--main = runEditorForLang Currying.editorSpec
 
 --main :: Effect Unit
 --main = runEditorForLang Multary.editorSpec
 
--- Tutorial test
---main :: Effect Unit
---main = Tutorial.runTutorial
+-- Tutorial
+main :: Effect Unit
+main = Tutorial.runTutorial CurriedTutorial.lessons
 
 runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r -> Effect Unit
 runEditorForLang l = HA.runHalogenAff do
