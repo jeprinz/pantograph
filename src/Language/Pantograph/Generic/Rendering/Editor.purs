@@ -602,7 +602,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                 , "rect = " <> show rect
                 ]
           else if cmdKey && key == "p" then do
-            Debug.traceM $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
+            Debug.traceM $ printSerializedDerivZipper3 (hdzipperDerivZipper cursor.hdzipper)
             pure unit
           else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm

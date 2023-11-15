@@ -622,3 +622,7 @@ printSerializedDerivZipper2 dzipper =
             DerivLiteral sd -> Right sd in
     let justLabels = map simplifyDerivLabel (Expr.unzipper dzipper) in
     stringify (encodeJson justLabels)
+
+printSerializedDerivZipper3 :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
+printSerializedDerivZipper3 dzipper =
+    show dzipper

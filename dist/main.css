@@ -505,3 +505,7 @@ console
   /* color: lightgrey !important; */ /*The problem with this was that int literals were green anyway, overriding this.*/
   opacity: 75%;
 }
+
+.inline {
+  display: inline;
+}

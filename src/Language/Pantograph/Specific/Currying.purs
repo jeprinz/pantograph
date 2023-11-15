@@ -552,7 +552,9 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
             , locality ]) ->
             -- TODO: use locality in rendering?
             let postfix = if locality == sor Local % [] then "" else "!" in
-            [pure [nameElem (str <> postfix)]]
+            let classes = if locality == sor Local % [] then [] else ["error", "grey"] in
+            [pure [HH.div [classNames (["inline"] <> classes)] [nameElem str]]]
+--            [pure [nameElem (str <> postfix)]]
           -- term
           Var /\ _ ->
             [Left (renCtx /\ 0)]
