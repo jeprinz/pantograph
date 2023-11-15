@@ -11,8 +11,12 @@ import Halogen.HTML.Events as HE
 import Type.Proxy (Proxy(..))
 import Bug as Bug
 import Data.Lazy (Lazy, force)
+import Data.Maybe (Maybe(..))
+import Debug (traceM, trace)
 
-data PantographLessonAction = Click | EditorOutput Unit
+data PantographLessonAction = EditorOutput Unit
+
+_editorSlot = Proxy :: Proxy "lesson"
 
 pantographLesson :: forall l r. Grammar.IsRuleLabel l r =>
     Base.EditorSpec l r -> Lazy (Grammar.DerivTerm l r) -> (forall w i. HH.HTML w i) -> Lesson
@@ -22,23 +26,26 @@ pantographLesson spec startTerm instructions =
           H.mkComponent
             { initialState
             , render
-            , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+            , eval: H.mkEval H.defaultEval { handleAction = handleAction, handleQuery = handleQuery }
             }
           where
-          initialState _ = 0
+          initialState _ = unit
 
           render state =
             HH.div_
               [
-              HH.div_ [HH.text (show state)]
-              , HH.button [ HE.onClick \_ -> Click ] [ HH.text "Click here to solve this lesson" ]
-              , HH.slot (Proxy :: Proxy "editor") unit editorComponent spec{dterm=force startTerm} EditorOutput
+              HH.slot _editorSlot unit editorComponent spec{dterm=force startTerm} EditorOutput
               ]
 
           handleAction = case _ of
-            Click -> do
-                H.modify_ (\state -> state + 1)
-                H.raise TaskCompleted
             EditorOutput _unit2 -> Bug.bug "not yet implemented"
+
+          handleQuery :: forall a m. LessonQuery a -> H.HalogenM _ _ _ LessonOutput m (Maybe a)
+          handleQuery query =
+            case query of
+                ResetLessonQuery a -> do
+                    traceM "reset recieved in pantographLesson"
+                    H.tell _editorSlot unit (Editor.SetProgram (force startTerm) [])
+                    pure (Just a)
     in
     { instructions , component }

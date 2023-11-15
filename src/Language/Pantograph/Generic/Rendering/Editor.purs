@@ -61,10 +61,14 @@ import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
 import Web.DOM.Element as Element
 import Control.Monad.Trans.Class (lift)
+import Data.Traversable (sequence)
+
+data EditorQuery l r a =
+    SetProgram (DerivTerm l r) (Array (HoleyDerivPath l r)) a
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
-  H.Component q (EditorSpec l r) Unit Aff
+  H.Component (EditorQuery l r) (EditorSpec l r) Unit Aff
 editorComponent = HK.component \tokens spec -> HK.do
 
   ------------------------------------------------------------------------------
@@ -827,6 +831,16 @@ editorComponent = HK.component \tokens spec -> HK.do
       HK.unsubscribe kbdSubId
 
   ------------------------------------------------------------------------------
+  -- Query
+  ------------------------------------------------------------------------------
+
+  HK.useQuery tokens.queryToken case _ of
+    SetProgram newProg toBeMarked return -> do
+        setState $ TopState {dterm: newProg}
+        _ <- sequence (toBeMarked <#> \path -> setNodeElementStyle "" Nothing (Just path))
+        pure (Just return)
+
+  ------------------------------------------------------------------------------
   -- render
   ------------------------------------------------------------------------------
 
@@ -868,7 +882,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                   (defaultRenderingContext unit)
               ]
         SelectState _select -> hole "render SelectState"
-        TopState _top -> hole "render TopState"
+        TopState top -> [ renderDerivTerm locs false false (Expr.Zipper (Expr.Path Nil) top.dterm) (defaultRenderingContext unit) ]
         SmallStepState ss -> 
           [HH.div
             [ classNames ["smallstep-program"] ]

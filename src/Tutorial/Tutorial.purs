@@ -40,7 +40,7 @@ longString = "Lorem Ipsum is simply dummy text of the printing and typesetting i
 
 exampleLessons :: Array Lesson
 exampleLessons = [
-    {component: \_ -> exampleLesson, instructions: HH.text (longString <> longString <> longString)}
+    {component: \_ -> resettableComponent exampleLesson, instructions: HH.text (longString <> longString <> longString)}
     , {component: \_ -> exampleLesson2, instructions: HH.text "lesson2"}
     , {component: \_ -> exampleLesson, instructions: HH.text "lesson3"}
     , {component: \_ -> exampleLesson, instructions: HH.text "lesson4"}
@@ -49,8 +49,7 @@ exampleLessons = [
 --------------------------------------------------------------------------------
 
 
-data LessonQuery :: forall k. k -> Type
-data LessonQuery a
+data LessonQuery a = ResetLessonQuery a
 data LessonOutput = TaskCompleted
 data LessonInput = LessonInput
 
@@ -63,7 +62,7 @@ type Lesson = {
 -- I think that I will need to build cons and nil components to form a list. Each component can only have finite children seemingly.
 -- The list components will take a number as input, and decide which child to render based on that.
 
-type Slots = ( lesson :: H.Slot ResettableComponentQuery LessonOutput Int)
+type Slots = ( lesson :: H.Slot LessonQuery LessonOutput Int)
 _lesson = Proxy :: Proxy "lesson"
 
 data TutorialAction =
@@ -86,7 +85,8 @@ tutorialComponent lessons =
     initialState _ = {
         activeLesson : 0 :: Int
         , lessonsSolved : Array.replicate (Array.length lessons) false
-        , lessonComponents : map (\lesson -> resettableComponent (lesson.component unit)) lessons :: Array (H.Component ResettableComponentQuery LessonInput LessonOutput Aff)
+--        , lessonComponents : map (\lesson -> resettableComponent (lesson.component unit)) lessons :: Array (H.Component ResettableComponentQuery LessonInput LessonOutput Aff)
+        , lessonComponents : map (\lesson -> lesson.component unit) lessons
     }
 
     render :: _ -> H.ComponentHTML TutorialAction Slots Aff
@@ -136,7 +136,7 @@ tutorialComponent lessons =
         ResetLesson -> do
             state <- H.get
             H.put (state{lessonsSolved= Util.fromJust $ Array.updateAt state.activeLesson false state.lessonsSolved})
-            H.tell _lesson (state.activeLesson) Reset
+            H.tell _lesson (state.activeLesson) ResetLessonQuery
 
 
 data ExampleLessonAction = Click
@@ -189,13 +189,10 @@ exampleLesson2 =
     Click2 ->
         H.raise TaskCompleted
 
---data ResettableComponentQuery :: forall k. k -> Type -> Type
---data ResettableComponentQuery q a
---    = Reset a
-data ResettableComponentQuery a = Reset a
+--data ResettableComponentQuery a = Reset a
 
 resettableComponent ::
-    H.Component LessonQuery LessonInput LessonOutput Aff -> H.Component ResettableComponentQuery LessonInput LessonOutput Aff
+    H.Component LessonQuery LessonInput LessonOutput Aff -> H.Component LessonQuery LessonInput LessonOutput Aff
 resettableComponent component = H.unComponent
     (\{initialState, render, eval} -> H.mkComponent {
         render
@@ -214,7 +211,7 @@ resettableComponent component = H.unComponent
 --                    ) req
                     H.mkEval (H.defaultEval
                         {handleQuery = case _ of
-                            Reset a -> do
+                            ResetLessonQuery a -> do
                                 H.put (initialState LessonInput)
                                 pure (Just a)
                         }

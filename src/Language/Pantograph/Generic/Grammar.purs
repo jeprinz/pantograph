@@ -616,6 +616,7 @@ printSerializedDerivZipper dzipper =
     stringify (encodeJson dzipper)
 
 -- Possibly a smaller represrentation
+-- NOTE: this will forget everything except the RuleLabels.
 printSerializedDerivZipper2 :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
 printSerializedDerivZipper2 dzipper =
     let simplifyDerivLabel :: DerivLabel l r -> Either r SortData

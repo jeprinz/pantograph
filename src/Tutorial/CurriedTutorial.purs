@@ -25,7 +25,7 @@ lessons :: Array Lesson
 lessons = [
     pantographLesson Currying.editorSpec (prog test1) (HH.text "lesson 1111")
     , {component: \_ -> exampleLesson, instructions: HH.text (longString <> longString <> longString)}
-    , {component: \_ -> exampleLesson2, instructions: HH.text "lesson2"}
-    , {component: \_ -> exampleLesson, instructions: HH.text "lesson3"}
-    , {component: \_ -> exampleLesson, instructions: HH.text "lesson4"}
+--    , {component: \_ -> exampleLesson2, instructions: HH.text "lesson2"}
+--    , {component: \_ -> exampleLesson, instructions: HH.text "lesson3"}
+--    , {component: \_ -> exampleLesson, instructions: HH.text "lesson4"}
 ]

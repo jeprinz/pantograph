@@ -509,3 +509,7 @@ console
 .inline {
   display: inline;
 }
+
+.marked { /*Used for the Tutorial marking terms*/
+    background-color: yellow;
+}
