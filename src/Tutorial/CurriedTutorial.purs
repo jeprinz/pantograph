@@ -1,7 +1,7 @@
 module Tutorial.CurriedTutorial where
 
 import Prelude
-import Tutorial.Tutorial
+import Tutorial.Tutorial as Tutorial
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Editor as Editor
 import Language.Pantograph.Generic.Rendering.Base as Base
@@ -11,6 +11,7 @@ import Halogen.HTML as HH
 import Language.Pantograph.Specific.Currying as Currying
 import Effect (Effect)
 import Data.Lazy (Lazy, defer, force)
+import Tutorial.EditorTutorial2
 
 {-
 A specific tutorial for the Currying.purs language
@@ -28,9 +29,17 @@ prog str = defer (\_ -> Grammar.decodeSerializedZipper2 Currying.editorSpec.clip
 
 paths1 = defer $ \_ -> map (Grammar.deserializePath (force (prog test1))) ["[3,3,2,0]"]
 
-lessons :: Array Lesson
+--lessons :: Array Tutorial.Lesson
+--lessons = [
+--    pantographLesson Currying.editorSpec (prog test2) (defer \_ -> []) (HH.text "lesson 1111")
+--  ,  pantographLesson Currying.editorSpec (prog test1) (defer \_ -> []) (HH.text "lesson 222")
+----    , pantographLesson Currying.editorSpec (prog test1) paths1 (HH.text "lesson 333")
+--]
+
+lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
 lessons = [
-    pantographLesson Currying.editorSpec (prog test2) (defer \_ -> []) (HH.text "lesson 1111")
-  ,  pantographLesson Currying.editorSpec (prog test1) (defer \_ -> []) (HH.text "lesson 222")
---    , pantographLesson Currying.editorSpec (prog test1) paths1 (HH.text "lesson 333")
+--    defer \_ -> {program: prog test1, paths: force paths1, instructions: "lesson1"}
+    defer \_ -> {program: force (prog test1), paths: [], instructions: "lesson 1"}
+    , defer \_ -> {program: force (prog test2), paths: [], instructions: "lesson 2"}
+    , defer \_ -> {program: force (prog test1), paths: force paths1, instructions: "lesson 3"}
 ]

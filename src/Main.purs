@@ -4,6 +4,7 @@ import Language.Pantograph.Specific.FullyApplied as FullyApplied
 import Language.Pantograph.Specific.Currying as Currying
 --import Language.Pantograph.Specific.Multary as Multary
 import Tutorial.Tutorial as Tutorial
+import Tutorial.EditorTutorial2 as EditorTutorial2
 import Prelude
 
 import Bug.Assertion (assert, just)
@@ -32,7 +33,10 @@ import Tutorial.CurriedTutorial as CurriedTutorial
 
 -- Tutorial
 main :: Effect Unit
-main = Tutorial.runTutorial CurriedTutorial.lessons
+--main = Tutorial.runTutorial CurriedTutorial.lessons
+main = EditorTutorial2.runTutorial Currying.editorSpec CurriedTutorial.lessons
+
+
 
 --main = Tutorial.runTutorial Tutorial.exampleLessons
 
