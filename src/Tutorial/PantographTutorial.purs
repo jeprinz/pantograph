@@ -43,7 +43,7 @@ pantographLesson spec startTerm markedPaths instructions =
           render state =
             HH.div_
               [
-              HH.slot _editorSlot unit editorComponent spec{dterm=force startTerm} EditorOutput
+              HH.slot _editorSlot unit (editorComponent unit) spec{dterm=force startTerm} EditorOutput
               ]
 
           handleAction = case _ of

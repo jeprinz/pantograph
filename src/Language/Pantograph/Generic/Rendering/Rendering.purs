@@ -124,7 +124,7 @@ renderDerivTerm locs isCursor innerHoleIsCursor dzipper renCtx =
           (if isEmptyString dzipper then [emptyStringClassName] else [])
         ]
       , if not renCtx.isInteractive then [] else do
-        let elemId = fromPathToElementId (Expr.zipperPath dzipper)
+        let elemId = fromPathToElementId renCtx.pathIdPrefix (Expr.zipperPath dzipper)
         [ HP.id elemId
         , HE.onMouseDown (locs.onMouseDown (injectHoleyDerivZipper dzipper))
         , HE.onMouseOver (locs.onMouseOver (injectHoleyDerivZipper dzipper))
@@ -156,7 +156,7 @@ renderHoleInterior locs isCursor dzipper renCtx = do
     (Array.concat
       [ [classNames $ ["node", "holeInterior"] <> if isCursor then [cursorClassName] else []]
       , if not renCtx.isInteractive then [] else do
-        let elemId = fromHoleyDerivPathToElementId hdpath
+        let elemId = fromHoleyDerivPathToElementId renCtx.pathIdPrefix hdpath
         [ HP.id elemId
         , HE.onMouseDown (locs.onMouseDown (HoleyDerivZipper dzipper true))
         , HE.onMouseOver (locs.onMouseOver (HoleyDerivZipper dzipper true))
@@ -187,7 +187,7 @@ renderPath locs dzipper interior =
             (Array.concat
               [ [classNames ["node"]]
               , if not renCtx.isInteractive then [] else do
-                let elemId = fromPathToElementId (Expr.zipperPath dzipper2)
+                let elemId = fromPathToElementId renCtx.pathIdPrefix (Expr.zipperPath dzipper2)
                 [ HP.id elemId
                 , HE.onMouseDown (locs.onMouseDown (injectHoleyDerivZipper dzipper2))
                 , HE.onMouseOver (locs.onMouseOver (injectHoleyDerivZipper dzipper2))
@@ -256,7 +256,7 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
   let sort = getSortFromSub rule sigma
   let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sigma /\ kids)) \_ -> 
-        locs.spec.arrangeDerivTermSubs unit {mb_parent: Expr.zipperParent dzipper, renCtx: previewRenderingContext unit, rule, sort, sigma, dzipper: Just dzipper}
+        locs.spec.arrangeDerivTermSubs unit {mb_parent: Expr.zipperParent dzipper, renCtx: previewRenderingContext "shouldn't get used", rule, sort, sigma, dzipper: Just dzipper}
   let toothInteriorKidIx = ZipList.leftLength kidsPath
   let isToothInterior = case _ of
         Left (_renCtx' /\ i) -> i == toothInteriorKidIx
@@ -279,7 +279,7 @@ renderPreviewDerivTerm locs dzipper =
     (arrangeDerivTermSubs locs false
       dzipper 
       (Zippable.zipDowns dzipper <#> \kidDZipper _ -> renderPreviewDerivTerm locs kidDZipper) 
-      (previewRenderingContext unit))
+      (previewRenderingContext "shouldn't get used"))
 
 ------------------------------------------------------------------------------
 -- render small-step

@@ -71,8 +71,13 @@ data EditorQuery l r a =
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
-  H.Component (EditorQuery l r) (EditorSpec l r) Unit Aff
-editorComponent = HK.component \tokens spec -> HK.do
+  Unit -> H.Component (EditorQuery l r) (EditorSpec l r) Unit Aff
+editorComponent _unit =
+    let editorIdPrefixNum = editorPrefix.get unit in -- Because we are using HTML ids to identify elements of the editor in the DOM, we need a unique prefix for each editor component so the ids don't clash with one another. Yes, its stupid.
+    let _ = editorPrefix.set (editorIdPrefixNum + 1) in
+    let pathIdPrefix = "Editor" <> show editorIdPrefixNum <> "-" in
+    trace ("Editor number " <> show editorIdPrefixNum <> "getting created") \ _ ->
+    HK.component \tokens spec -> HK.do
 
   ------------------------------------------------------------------------------
   -- initialize state and refs
@@ -81,8 +86,6 @@ editorComponent = HK.component \tokens spec -> HK.do
   let
     initState = CursorState
       (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper mempty spec.dterm)))
-  let editorIdPrefix = editorPrefix.get unit -- Because we are using HTML ids to identify elements of the editor in the DOM, we need a unique prefix for each editor component so the ids don't clash with one another. Yes, its stupid.
-  let _ = editorPrefix.set (editorIdPrefix + 1)
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
@@ -109,7 +112,7 @@ editorComponent = HK.component \tokens spec -> HK.do
     ------------------------------------------------------------------------------
 
     getElementIdByHoleyDerivPath :: HoleyDerivPath l r -> HK.HookM Aff String
-    getElementIdByHoleyDerivPath = pure <<< fromHoleyDerivPathToElementId
+    getElementIdByHoleyDerivPath = pure <<< fromHoleyDerivPathToElementId pathIdPrefix
 
     getElementByHoleyDerivPath :: HoleyDerivPath l r -> HK.HookM Aff DOM.Element
     getElementByHoleyDerivPath hdzipper = do
@@ -880,20 +883,20 @@ editorComponent = HK.component \tokens spec -> HK.do
             HoleyDerivZipper _ false ->
               [ renderPath locs dzipper 
                     (renderDerivTerm locs true false dzipper)
-                  (defaultRenderingContext unit)
+                  (defaultRenderingContext pathIdPrefix)
               ]
             HoleyDerivZipper _ true ->
               [ renderPath locs dzipper
                     (renderDerivTerm locs false true dzipper)
-                  (defaultRenderingContext unit)
+                  (defaultRenderingContext pathIdPrefix)
               ]
         SelectState _select -> hole "render SelectState"
-        TopState top -> [ renderDerivTerm locs false false (Expr.Zipper (Expr.Path Nil) top.dterm) (defaultRenderingContext unit) ]
+        TopState top -> [ renderDerivTerm locs false false (Expr.Zipper (Expr.Path Nil) top.dterm) (defaultRenderingContext pathIdPrefix) ]
         SmallStepState ss -> 
           [HH.div
             [ classNames ["smallstep-program"] ]
             [ renderSSTerm locs ss.ssterm 
-                (defaultRenderingContext unit)
+                (defaultRenderingContext pathIdPrefix)
             ]]
      -- I've commented this out because I have no use for the console currently
 --    , HH.slot_ _consoleSlot unit consoleComponent unit

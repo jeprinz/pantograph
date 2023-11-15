@@ -33,10 +33,11 @@ import Tutorial.CurriedTutorial as CurriedTutorial
 -- Tutorial
 main :: Effect Unit
 main = Tutorial.runTutorial CurriedTutorial.lessons
+
 --main = Tutorial.runTutorial Tutorial.exampleLessons
 
 runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r -> Effect Unit
 runEditorForLang l = HA.runHalogenAff do
   Console.log "[main]"
   body <- HA.awaitBody
-  VDomDriver.runUI Rendering.editorComponent l body
+  VDomDriver.runUI (Rendering.editorComponent unit) l body

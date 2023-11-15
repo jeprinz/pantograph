@@ -31,6 +31,6 @@ paths1 = defer $ \_ -> map (Grammar.deserializePath (force (prog test1))) ["[3,3
 lessons :: Array Lesson
 lessons = [
     pantographLesson Currying.editorSpec (prog test2) (defer \_ -> []) (HH.text "lesson 1111")
-    , pantographLesson Currying.editorSpec (prog test1) (defer \_ -> []) (HH.text "lesson 222")
-    , pantographLesson Currying.editorSpec (prog test1) paths1 (HH.text "lesson 333")
+  ,  pantographLesson Currying.editorSpec (prog test1) (defer \_ -> []) (HH.text "lesson 222")
+--    , pantographLesson Currying.editorSpec (prog test1) paths1 (HH.text "lesson 333")
 ]

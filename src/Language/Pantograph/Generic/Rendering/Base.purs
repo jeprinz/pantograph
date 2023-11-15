@@ -69,6 +69,7 @@ type RenderingContext =
   , isInlined :: Boolean
   , metavarNumbers :: Util.Stateful (Map.Map Expr.MetaVar Int /\ Int)
   , cssClasses :: Set.Set String
+  , pathIdPrefix :: String
   }
 
 getMetavarNumber :: RenderingContext -> Expr.MetaVar -> Int
@@ -87,24 +88,26 @@ data Linebreak
   = IndentedLinebreak
   | UnindentedLinebreak
 
-defaultRenderingContext :: Unit -> RenderingContext
-defaultRenderingContext _unit =
+defaultRenderingContext :: String -> RenderingContext
+defaultRenderingContext pathIdPrefix =
   { indentationLevel: 0
   , isCursor: false
   , isInteractive: true
   , isInlined: false
   , metavarNumbers: Util.stateful (Map.empty /\ 0)
   , cssClasses: Set.empty
+  , pathIdPrefix
   }
 
-previewRenderingContext :: Unit -> RenderingContext
-previewRenderingContext _unit =
+previewRenderingContext :: String -> RenderingContext
+previewRenderingContext pathIdPrefix =
   { indentationLevel: 0
   , isCursor: false
   , isInteractive: false
   , isInlined: true
   , metavarNumbers: Util.stateful (Map.empty /\ 0)
   , cssClasses: Set.empty
+  , pathIdPrefix
   }
 
 type ArrangeDerivTermSubs l r =
@@ -409,19 +412,25 @@ defaultEditsAtHoleyDerivZipper topSort = case _ of
 _verbose_path_element_ids :: Boolean
 _verbose_path_element_ids = false
 
-fromHoleyDerivPathToElementId :: forall l r. IsRuleLabel l r => HoleyDerivPath l r -> String
-fromHoleyDerivPathToElementId
+fromHoleyDerivPathToElementIdImpl :: forall l r. IsRuleLabel l r => HoleyDerivPath l r -> String
+fromHoleyDerivPathToElementIdImpl
   | _verbose_path_element_ids = case _ of
-      HoleyDerivPath dpath false -> fromPathToElementId dpath
+      HoleyDerivPath dpath false -> fromPathToElementIdImpl dpath
       HoleyDerivPath dpath true -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> String.replaceAll (String.Pattern " ") (String.Replacement "_") (pretty l <> "@" <> show (ZipList.leftLength kidsZip)) <> "-" <> str
   | otherwise = case _ of
-      HoleyDerivPath dpath false -> fromPathToElementId dpath
+      HoleyDerivPath dpath false -> fromPathToElementIdImpl dpath
       HoleyDerivPath dpath true -> dpath # Expr.foldMapPath "holeInterior-PathNil" \(Expr.Tooth l kidsZip) str -> show (ZipList.leftLength kidsZip) <> "-" <> str
 
-fromPathToElementId :: forall l. Expr.IsExprLabel l => Expr.Path Up l -> String
-fromPathToElementId 
+fromPathToElementIdImpl :: forall l. Expr.IsExprLabel l => Expr.Path Up l -> String
+fromPathToElementIdImpl
   | _verbose_path_element_ids = Expr.foldMapPath "PathNil" \(Expr.Tooth l kidsZip) str -> String.replaceAll (String.Pattern " ") (String.Replacement "_") (pretty l <> "@" <> show (ZipList.leftLength kidsZip)) <> "-" <> str
   | otherwise = Expr.foldMapPath "PathNil" \(Expr.Tooth _ kidsZip) str -> show (ZipList.leftLength kidsZip) <> "-" <> str
+
+fromHoleyDerivPathToElementId :: forall l r. IsRuleLabel l r => String -> HoleyDerivPath l r -> String
+fromHoleyDerivPathToElementId prefix path = prefix <> (fromHoleyDerivPathToElementIdImpl path)
+
+fromPathToElementId :: forall l. Expr.IsExprLabel l => String -> Expr.Path Up l -> String
+fromPathToElementId prefix path = prefix <> (fromPathToElementIdImpl path)
 
 cursorClassName = "cursor" :: String
 highlightClassName = "highlight" :: String
