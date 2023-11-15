@@ -27,7 +27,6 @@ import Data.TotalMap (TotalMap)
 import Data.TotalMap as TotalMap
 import Data.Traversable (class Foldable, class Traversable)
 import Data.Traversable (sequence)
-import Data.Tuple (fst)
 import Data.Tuple (fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
@@ -611,9 +610,9 @@ forgetCollectDerivPath forgetSorts (Expr.Path teeth) =
 instance (EncodeJson l, EncodeJson r) => EncodeJson (DerivLabel l r) where encodeJson a = genericEncodeJson a
 instance (DecodeJson l, DecodeJson r) => DecodeJson (DerivLabel l r) where decodeJson a = genericDecodeJson a
 
-printSerializedDerivZipper :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
-printSerializedDerivZipper dzipper =
-    stringify (encodeJson dzipper)
+--printSerializedDerivZipper :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
+--printSerializedDerivZipper dzipper =
+--    stringify (encodeJson dzipper)
 
 -- Possibly a smaller represrentation
 -- NOTE: this will forget everything except the RuleLabels.
@@ -653,3 +652,34 @@ decodeSerializedZipper2 clipboardSort string =
 printSerializedDerivZipper3 :: forall l r. IsRuleLabel l r => DerivZipper l r -> String
 printSerializedDerivZipper3 dzipper =
     show dzipper
+
+
+{-
+Encodes a path as an array of integers, which represent a series of steps going down the expression from the top.
+Each number is which'th child counting from the left.
+-}
+serializePath :: forall l r. IsRuleLabel l r => DerivPath Dir.Up l r -> String
+serializePath (Expr.Path teeth) =
+    let nums = teeth <#> \(Expr.Tooth _ a) -> ZipList.leftLength a in
+    let numsGoingDown = Array.reverse $ Array.fromFoldable nums in
+    stringify (encodeJson numsGoingDown)
+
+{-
+Given a serialized path from the above function, and the term into which that path goes, output the DerivPath
+-}
+deserializePath :: forall l r. IsRuleLabel l r => DerivTerm l r -> String -> DerivPath Dir.Up l r
+deserializePath dterm string =
+    case jsonParser string of
+        Left err -> bug ("deserializePath jsonParse failed: " <> err)
+        Right json ->
+            let possiblyArray = decodeJson json :: Either _{-JsonEncodeError-} (Array Int) in
+            case possiblyArray of
+                Left err -> bug ("deserializePath decodeJson failed:" <> show err)
+                Right array ->
+                    let toTeeth :: List Int -> DerivZipper l r -> List (DerivTooth l r)
+                        toTeeth (Cons n rest) prog =
+                            let down = Util.index' (Expr.zipDowns prog) n in
+                            Cons (fst down) (toTeeth rest (snd down))
+                        toTeeth Nil _ = Nil
+                    in
+                    Expr.Path (List.reverse (toTeeth (List.fromFoldable array) (Expr.Zipper (Expr.Path Nil) dterm)))

@@ -63,6 +63,9 @@ import Web.DOM.Element as Element
 import Control.Monad.Trans.Class (lift)
 import Data.Traversable (sequence)
 
+editorPrefix :: Util.Stateful Int
+editorPrefix = Util.stateful 0
+
 data EditorQuery l r a =
     SetProgram (DerivTerm l r) (Array (HoleyDerivPath l r)) a
 
@@ -78,6 +81,8 @@ editorComponent = HK.component \tokens spec -> HK.do
   let
     initState = CursorState
       (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper mempty spec.dterm)))
+  let editorIdPrefix = editorPrefix.get unit -- Because we are using HTML ids to identify elements of the editor in the DOM, we need a unique prefix for each editor component so the ids don't clash with one another. Yes, its stupid.
+  let _ = editorPrefix.set (editorIdPrefix + 1)
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
@@ -604,6 +609,7 @@ editorComponent = HK.component \tokens spec -> HK.do
                 , "sort = " <> pretty (derivTermSort dterm)
                 , "dlabel = " <> pretty (Expr.exprLabel dterm)
                 , "rect = " <> show rect
+                , "serialized-path = " <> serializePath path
                 ]
           else if cmdKey && key == "p" then do
             Debug.traceM $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
@@ -837,7 +843,7 @@ editorComponent = HK.component \tokens spec -> HK.do
   HK.useQuery tokens.queryToken case _ of
     SetProgram newProg toBeMarked return -> do
         setState $ TopState {dterm: newProg}
-        _ <- sequence (toBeMarked <#> \path -> setNodeElementStyle "" Nothing (Just path))
+        _ <- sequence (toBeMarked <#> \path -> setNodeElementStyle "marked" Nothing (Just path))
         pure (Just return)
 
   ------------------------------------------------------------------------------
