@@ -836,17 +836,17 @@ editorComponent = HK.component \tokens spec -> HK.do
     ) \_ ->
 --    trace "render is being run" \_ ->
     HH.div [classNames ["editor"]]
-    [ HH.div
-      [ classNames ["status"] ]
-      [ HH.table_
-        [ HH.tr_ [HH.td_ [HH.text "mode"], HH.td_ [HH.text case currentState of
-            CursorState _ -> "cursor"
-            SelectState _ -> "cursor"
-            TopState _ -> "cursor"
-            SmallStepState _ -> "smallstep"] ]
-        ]
-      ]
-    , HH.div 
+    [ -- HH.div
+--      [ classNames ["status"] ]
+--      [ HH.table_
+--        [ HH.tr_ [HH.td_ [HH.text "mode"], HH.td_ [HH.text case currentState of
+--            CursorState _ -> "cursor"
+--            SelectState _ -> "cursor"
+--            TopState _ -> "cursor"
+--            SmallStepState _ -> "smallstep"] ]
+--        ]
+--      ],
+    HH.div
       [ classNames ["program"]
       , HE.onMouseLeave \event -> do
           H.liftEffect $ Event.stopPropagation $ MouseEvent.toEvent event
@@ -875,6 +875,7 @@ editorComponent = HK.component \tokens spec -> HK.do
             [ renderSSTerm locs ss.ssterm 
                 (defaultRenderingContext unit)
             ]]
-    , HH.slot_ _consoleSlot unit consoleComponent unit
+     -- I've commented this out because I have no use for the console currently
+--    , HH.slot_ _consoleSlot unit consoleComponent unit
     ]
 

@@ -550,8 +550,6 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
             , MInj (Grammar.DataLabel (DataString str)) % []
             , _ty
             , locality ]) ->
-            -- TODO: use locality in rendering?
-            let postfix = if locality == sor Local % [] then "" else "!" in
             let classes = if locality == sor Local % [] then [] else ["error", "grey"] in
             [pure [HH.div [classNames (["inline"] <> classes)] [nameElem str]]]
 --            [pure [nameElem (str <> postfix)]]
@@ -856,6 +854,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
 --    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "cons" cursorSort
 --        (maximallyApplied (newTermFromRule ConsRule)))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (newTermFromRule ConsRule))
+    <> (Array.fromFoldable $ getAppliedWrapEdits "match" cursorSort (newTermFromRule ListMatchRule))
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (newTermFromRule If))
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (newTermFromRule EqualsRule))
 

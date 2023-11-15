@@ -404,7 +404,7 @@ defaultEditsAtHoleyDerivZipper topSort = case _ of
 -}
 
 _verbose_path_element_ids :: Boolean
-_verbose_path_element_ids = true
+_verbose_path_element_ids = false
 
 fromHoleyDerivPathToElementId :: forall l r. IsRuleLabel l r => HoleyDerivPath l r -> String
 fromHoleyDerivPathToElementId
