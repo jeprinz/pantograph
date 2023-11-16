@@ -142,7 +142,6 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
             , HE.onValueInput \_ -> do
                 queryElem <- getQueryElem <#> fromJust
                 value <- liftEffect $ HTMLInputElement.value $ fromJust $ HTMLInputElement.fromHTMLElement queryElem
-                GMB.debugRM (display "ToolboxInput/onValueInput") {value: display value}
                 HK.modify_ queryStateId (const value)
                 resetSelect
             ]
