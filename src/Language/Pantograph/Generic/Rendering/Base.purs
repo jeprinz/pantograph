@@ -471,7 +471,7 @@ isOpenBufferKey :: String -> Boolean
 isOpenBufferKey = (_ `Array.elem` ["Enter"])
 
 additionalQueryKeys :: Array CodePoint
-additionalQueryKeys = ["+", "-", ">", "<", "=", "*", "/", "^", "%"] <#> \s ->
+additionalQueryKeys = ["+", "-", ">", "<", "=", "*", "/", "^", "%", "(", ")"] <#> \s ->
     Util.fromJust $ Array.index (String.toCodePointArray s) 0
 
 isQueryKey :: CodePoint -> Boolean

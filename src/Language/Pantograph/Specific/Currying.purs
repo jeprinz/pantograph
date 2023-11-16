@@ -853,7 +853,7 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "app" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "(" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
         , getWrapInAppEdit "cons" cursorSort (newTermFromRule ConsRule)
         , getWrapInAppEdit "head" cursorSort (newTermFromRule HeadRule)
@@ -878,7 +878,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
     , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
-    , makeEditFromPath (newPathFromRule App 0) "app" cursorSort
+    , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
 --    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
@@ -1026,6 +1026,7 @@ isNeutralFormWithoutCursor :: SSTerm -> Boolean
 isNeutralFormWithoutCursor t = case t of
     (SSInj (DerivLabel Var _)) % _ -> true
     (SSInj (DerivLabel App _)) % [left, _] -> isNeutralFormWithoutCursor left
+    (SSInj (DerivLabel GreyApp _)) % [left, _] -> isNeutralFormWithoutCursor left
     ((Boundary _ _) % [inside]) -> isNeutralFormWithoutCursor inside
     _ -> false
 
