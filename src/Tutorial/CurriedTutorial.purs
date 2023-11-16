@@ -76,23 +76,65 @@ lessons = [
             Notice that the base case has been left as a hole.
             """ )
             , HH.br[], HH.br[]
-            , (HH.text """
-            Rename the function to "genFib" by placing your cursor on the function name, typing a new name, and pressing enter.
+            , HH.ol_ [
+                (HH.li_ [HH.text """
+                Rename the function to "genFib" by placing your cursor on the function name, typing a new name, and pressing enter.
+                """ ])
+                , (HH.li_ [HH.text """
+                Next, add a second argument to the function. To do this, place your cursor on the body of
+                the function by clicking on the lambda. Then, insert a new lambda expression by typing "lambda" and pressing Enter.
+                """ ])
+                , (HH.li_ [HH.text """
+                Notice that a few things have happened automatically.
+                An argument has been added to the function signature, and
+                a new hole has been added at each of the call sites of the function.
+                Finish up the new version of the function by giving the newly added variable a name,
+                and filling that variable into the base case and recursive calls.
+                """ ])
+                , (HH.li_ [HH.text """
+                Finally, try filling in a value in the call at the end and running the program.
+                """ ])
+            ]
+        ])
+    , makeLesson
+        """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
+        []
+        (HH.div_ [
+            (HH.text """
+            Before you learn the other features of Pantograph, it may be useful to practice with what you have
+            learned so far. Starting with just a hole, write a function which takes the sum of its two inputs.
             """ )
             , HH.br[], HH.br[]
             , (HH.text """
-            Next, add a second argument to the function. To do this, place your cursor on the body of
-            the function by clicking on the lambda. Then, insert a new lambda expression by typing "lambda" and pressing Enter.
+            It may be useful to try the following things:
+            """ )
+            , HH.ul_ [
+                HH.li_ [HH.text """Query "let""""]
+                , HH.li_ [HH.text """Query "lambda""""]
+                , HH.li_ [HH.text """Query "+""""]
+                , HH.li_ [HH.text """Press Backspace to delete the term at the cursor"""]
+                , HH.li_ [HH.text """Press Enter on a term to insert a newline"""]
+                , HH.li_ [HH.text """Press Escape to exit any menus that you didn't want open"""]
+            ]
+        ])
+    , makeLesson
+        """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
+        []
+        (HH.div_ [
+            (HH.text """
+            In pantograph, the cursor goes on an expression. This is analgous the the cursor of a text editor which
+            goes between characters. But text editors would be far less useful without the ability to make a selction,
+            which goes between two cursor positions.
             """ )
             , HH.br[], HH.br[]
             , (HH.text """
-            Notice that some new holes have been added at each of the call sites of the function.
-            Finish up the new version of the function by giving the newly added variable a name,
-            and filling that variable into the base case and recursive calls.
+            In Pantograph, you can make a selection between two expressions by clicking and dragging the mouse from
+            one to the other. This selects the area inside one expression, but outside the other.
             """ )
             , HH.br[], HH.br[]
             , (HH.text """
-            Finally, try filling in a value in the call at the end and running the program.
+            Spend a moment on this example program making some selections.
+            But don't worry if the concept still seems confusing.
             """ )
         ])
     , makeLesson
