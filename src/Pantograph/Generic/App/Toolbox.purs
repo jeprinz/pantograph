@@ -43,12 +43,18 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
   query /\ queryStateId <- HK.useState input.initialQuery
 
-  let 
-    edits =
+  let
+    initialEdits =
       let Edits {stringTaggedEdits} = input.edits in
       StringTaggedArray.getPrioritizedItems query stringTaggedEdits <#> snd
 
+    getEdits = do
+      query' <- HK.get queryStateId
+      let Edits {stringTaggedEdits} = input.edits
+      pure $ StringTaggedArray.getPrioritizedItems query' stringTaggedEdits <#> snd
+
     normalizeSelect (ToolboxSelect rowIx colIx) = do
+      edits <- getEdits
       let editsLength = Array.length edits
       if editsLength == 0 
         then pure $ initialToolboxSelect 
@@ -63,10 +69,9 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
         false -> pure Nothing
         true -> do
           ToolboxSelect selectRowIndex' selectColIndex' <- HK.get selectStateId
-          pure $
-            edits #
-              (_ Array.!! selectRowIndex') >>>
-              map ((_ NonEmptyArray.!! selectColIndex') >>> fromJust' "getSelectedEdit")
+          getEdits <#>
+            ( (_ Array.!! selectRowIndex') >>>
+              map ((_ NonEmptyArray.!! selectColIndex') >>> fromJust' "getSelectedEdit") )
 
     freshenPreview = do
       getSelectedEdit >>= case _ of
@@ -142,7 +147,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
                 resetSelect
             ]
         , El.ℓ [El.Classes [El.EditRow]] $
-            edits # Array.mapWithIndex \rowIndex editRow ->
+            initialEdits # Array.mapWithIndex \rowIndex editRow ->
             El.ℓ [El.Classes $ if rowIndex == selectRowIndex then [El.SelectedEditRow] else [El.EditRow]]
               let 
                 colIndex = if rowIndex == selectRowIndex then selectColIndex else 0
