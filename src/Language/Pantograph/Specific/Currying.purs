@@ -308,6 +308,10 @@ data RuleLabel
   | EqualsRule
   | NilRule
   | ConsRule
+  | LengthRule
+  | HeadRule
+  | TailRule
+  | IndexRule
   | ListMatchRule
   | IntegerLiteral
 
@@ -365,8 +369,13 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (ErrorBoundary /\ [t]) = "{{" <+> t <+> "}}"
   prettyExprF'_unsafe_RuleLabel (ConstantRule constant /\ []) = constantName constant
   prettyExprF'_unsafe_RuleLabel (InfixRule op /\ [left, right]) = P.parens $ left <+> infixName op <+> right
-  prettyExprF'_unsafe_RuleLabel (NilRule /\ []) = "nil"
+  prettyExprF'_unsafe_RuleLabel (LengthRule /\ []) = "nil"
   prettyExprF'_unsafe_RuleLabel (ConsRule /\ []) = "cons"
+  prettyExprF'_unsafe_RuleLabel (NilRule /\ []) = "nil"
+  prettyExprF'_unsafe_RuleLabel (HeadRule /\ []) = "head"
+  prettyExprF'_unsafe_RuleLabel (TailRule /\ []) = "tail"
+  prettyExprF'_unsafe_RuleLabel (LengthRule /\ []) = "tail"
+  prettyExprF'_unsafe_RuleLabel (IndexRule /\ []) = "tail"
   prettyExprF'_unsafe_RuleLabel (EqualsRule /\ [a, b]) = a <+> "==" <+> b
   prettyExprF'_unsafe_RuleLabel (ListMatchRule /\ [l, n, x, xs, c]) = "match" <+> l <+> "with Nil -> " <+> n <+> " cons" <+> x <+> " " <+> xs <+> " -> " <+> c
   prettyExprF'_unsafe_RuleLabel (IntegerLiteral /\ [lit]) = lit
@@ -506,6 +515,26 @@ language = TotalMap.makeTotalMap case _ of
     /\ -------
     ( TermSort %|-* [gamma, Arrow %|-* [ty, Arrow %|-* [List %|-* [ty], List %|-* [ty]]]])
 
+  HeadRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, Arrow %|-* [List %|-* [ty], ty]])
+
+  TailRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, Arrow %|-* [List %|-* [ty], List %|-* [ty]]])
+
+  IndexRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, Arrow %|-* [List %|-* [ty], Arrow %|-* [DataType Int %|-* [], ty]]])
+
+  LengthRule -> Grammar.makeRule ["gamma", "type"] \[gamma, ty] ->
+    []
+    /\ -------
+    ( TermSort %|-* [gamma, Arrow %|-* [List %|-* [ty], DataType Int %|-* []]])
+
   ListMatchRule -> Grammar.makeRule ["gamma", "type", "outTy", "consElemArg", "consListArg"] \[gamma, ty, outTy, consElemArg, consListArg] ->
     [ TermSort %|-* [gamma, List %|-* [ty]]
     , TermSort %|-* [gamma, outTy]
@@ -616,6 +645,10 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
           ListRule /\ _ -> [pure [HH.text "List "], Left (renCtx /\ 0)]
           NilRule /\ _ -> [pure [HH.text "nil"]]
           ConsRule /\ _ -> [pure [HH.text "cons"]]
+          HeadRule /\ _ -> [pure [HH.text "head"]]
+          TailRule /\ _ -> [pure [HH.text "tail"]]
+          LengthRule /\ _ -> [pure [HH.text "length"]]
+          IndexRule /\ _ -> [pure [HH.text "index"]]
           ListMatchRule /\ _ ->
             let renCtx' = Base.incremementIndentationLevel renCtx in
             [pure [HH.text "match "], Left (renCtx' /\ 0), pure [HH.text " with"], pure (newlineIndentElem renCtx.indentationLevel)
@@ -823,6 +856,10 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "app" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
         , getWrapInAppEdit "cons" cursorSort (newTermFromRule ConsRule)
+        , getWrapInAppEdit "head" cursorSort (newTermFromRule HeadRule)
+        , getWrapInAppEdit "tail" cursorSort (newTermFromRule TailRule)
+        , getWrapInAppEdit "index" cursorSort (newTermFromRule IndexRule)
+        , getWrapInAppEdit "length" cursorSort (newTermFromRule LengthRule)
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule ListMatchRule) "match" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule EqualsRule) "==" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
@@ -854,6 +891,10 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
 --    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "cons" cursorSort
 --        (maximallyApplied (newTermFromRule ConsRule)))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (newTermFromRule ConsRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "head" cursorSort (newTermFromRule HeadRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "tail" cursorSort (newTermFromRule TailRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "index" cursorSort (newTermFromRule IndexRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "length" cursorSort (newTermFromRule LengthRule))
     <> (Array.fromFoldable $ getAppliedWrapEdits "match" cursorSort (newTermFromRule ListMatchRule))
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (newTermFromRule If))
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (newTermFromRule EqualsRule))

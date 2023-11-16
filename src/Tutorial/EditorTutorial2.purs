@@ -24,26 +24,31 @@ import Halogen.HTML.Properties as HP
 import Halogen.Utilities (classNames)
 import Data.Array as Array
 import Web.HTML.Common (AttrName(..))
+import Halogen.Component (ComponentSlot)
+import Unsafe.Coerce (unsafeCoerce)
 
 {-
 I was having issues with all the components reading keyboard input at the same time before, so now I'm going to do it
 with just a single editor and statefully setting the program
 -}
 
-_editorSlot = Proxy :: Proxy "lesson"
+type Slots l r = ( editor :: H.Slot (Editor.EditorQuery l r) (Base.EditorSpec l r) Unit)
+_editorSlot = Proxy :: Proxy "editor"
+
+--newtype MyHTML = MyHTML (forall w i. HH.HTML w i)
 
 type Lesson l r = {
     program:: Grammar.DerivTerm l r
     , paths:: Array (Grammar.DerivPath Dir.Up l r)
-    , instructions:: String -- (forall w i. HH.HTML w i)
+    , instructions:: HH.HTML Unit Unit -- forall w i. HH.HTML w i
 }
 
 data PantographLessonAction = EditorOutput Unit | Initialize | ResetLesson | PreviousLesson | NextLesson
 
-makePantographTutorial :: forall l r q output. Grammar.IsRuleLabel l r =>
+makePantographTutorial :: forall l r query input output. Grammar.IsRuleLabel l r =>
     Base.EditorSpec l r
     -> Array (Lazy (Lesson l r))
-    -> H.Component q Unit Unit Aff
+    -> H.Component query input output Aff
 makePantographTutorial spec lessons =
 --    let paths = defer \_ -> force markedPaths <#> \path -> (Base.HoleyDerivPath path false) in
 
@@ -63,7 +68,8 @@ makePantographTutorial spec lessons =
         activeLesson : 0
         , lessonsSolved : Array.replicate (Array.length lessons) false
         }
-
+--      render :: _ -> H.ComponentHTML PantographLessonAction ( editor :: H.Slot (Editor.EditorQuery l r) (Base.EditorSpec l r) Unit) Aff
+--      render :: _ -> H.ComponentHTML PantographLessonAction (Slots l r) Aff
       render state =
         let lesson = force (Util.index' lessons state.activeLesson) in
         HH.div [classNames["vertical-container"]]
@@ -85,8 +91,8 @@ makePantographTutorial spec lessons =
                 ]
 --                , HH.div [ classNames ["resize-handle--x"] ] []
                 , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside"] []
-                , HH.aside [ classNames ["padded"], HP.style "width: 19em; overflow: auto;"] [
-                    HH.div [HP.style "float:right"] [HH.text lesson.instructions] -- [lesson.instructions]
+                , HH.aside [ classNames ["padded"], HP.style "width: 25em; overflow: auto;"] [
+                    HH.div [HP.style "float:right"] [unsafeCoerce lesson.instructions]
                 ]
             ]
         ]
