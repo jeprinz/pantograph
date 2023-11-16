@@ -806,8 +806,10 @@ editorComponent _unit =
           SmallStepState _ -> pure unit
         setHighlightElement Nothing
       else do
-        stopprop
-        setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
+        if isValidCursor spec.isValidCursorSort hdzipper then do
+            stopprop
+            setHighlightElement (Just (hdzipperHoleyDerivPath hdzipper))
+            else pure unit
 
   ------------------------------------------------------------------------------
   -- locals

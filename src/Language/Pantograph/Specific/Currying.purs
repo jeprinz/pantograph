@@ -1107,6 +1107,25 @@ mergeAppGreyApp dterm = case dterm of
         -> pure (SSInj (DerivLabel App sigma) % [t1, t2])
     _ -> Nothing
 
+-- The other way around
+{-
+NOTE: There is an issue with the cursor getting in between the grey app and the app.
+This is not the only situation where something like that happens.
+I'm not quite sure what I should do about it.
+-}
+mergeAppGreyApp2 :: StepRule
+mergeAppGreyApp2 dterm = case dterm of
+    ((SSInj (DerivLabel App sigma)) % [
+        (SSInj (DerivLabel GreyApp greySigma)) % [
+            t1
+            , t2
+            ]
+        , (SSInj (DerivLabel TermHole _) % _)
+        ])
+    | Util.lookup' (RuleMetaVar "a") sigma == Util.lookup' (RuleMetaVar "a") greySigma
+        -> pure (SSInj (DerivLabel App sigma) % [t1, t2])
+    _ -> Nothing
+
 removeError :: StepRule
 removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
@@ -1276,6 +1295,7 @@ stepRules = do
     , unWrapLambda
 --    , rehydrateApp
     , mergeAppGreyApp
+    , mergeAppGreyApp2
     , wrapApp
 --    , unWrapApp
     , makeAppGreyed
