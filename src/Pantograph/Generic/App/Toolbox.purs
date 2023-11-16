@@ -39,7 +39,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
 
   enabled /\ enabledStateId <- HK.useState input.enabled
 
-  ToolboxSelect selectRowIndex selectColIndex /\ selectStateId <- HK.useState $ ToolboxSelect 0 0
+  ToolboxSelect selectRowIndex selectColIndex /\ selectStateId <- HK.useState $ initialToolboxSelect
 
   query /\ queryStateId <- HK.useState input.initialQuery
 
@@ -51,7 +51,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
     normalizeSelect (ToolboxSelect rowIx colIx) = do
       let editsLength = Array.length edits
       if editsLength == 0 
-        then pure $ ToolboxSelect 0 0 
+        then pure $ initialToolboxSelect 
         else do
           let rowIx' = rowIx `mod` editsLength
           let row = fromJust' "normalizeSelect" $ Array.index edits rowIx'
@@ -87,7 +87,7 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
       freshenPreview
 
     resetSelect = do
-      modifySelect $ const $ ToolboxSelect 0 0
+      modifySelect $ const $ initialToolboxSelect
 
     submitEdit = do
       getSelectedEdit >>= case _ of
@@ -161,6 +161,9 @@ toolboxComponent = HK.component \{outputToken, queryToken} (ToolboxInput input) 
                 (fst $ unwrap $ runM input.ctx input.env $
                   renderEdit {adjacentIndexedEdits, modifySelect, outside: shrinkAnnExprPath input.outside} (shrinkAnnExprPath input.outside) (shrinkAnnExpr input.inside) edit)]
         ]]
+
+initialToolboxSelect :: ToolboxSelect
+initialToolboxSelect = ToolboxSelect 0 0
 
 type RenderEditLocals sn el =
   { outside :: ExprPath sn el
