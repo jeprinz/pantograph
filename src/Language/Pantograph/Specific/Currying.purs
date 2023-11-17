@@ -906,9 +906,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
 --------------------------------------------------------------------------------
 
 startCtx :: Sort
-startCtx =
-    sor CtxConsSort % [nameSort "ten", sor (DataType Int) % []
-    , sor CtxNilSort %[]]
+startCtx = sor CtxNilSort % [] -- NOTE: If this was changed, the interpreter would have to reflect that
 
 -- down{i}_(VarSort (+ y : Y, ctx) x X locality) -> Suc down{i}_(VarSort ctx x X locality)
 insertSucRule :: StepRule
