@@ -14,6 +14,7 @@ import Data.Either (Either(..))
 import Data.Either as Either
 import Util as Util
 import Data.Int (pow)
+import Data.Lazy (Lazy, defer, force)
 
 data Value = IntVal Int | BoolVal Boolean | ListVal (List Value) | FunVal (Value -> Either Error Value)
 
@@ -43,15 +44,15 @@ assertValFun = case _ of
 
 data Error = HoleError | BoundaryError | FreeVarError
 
-eval :: (List (Either Error Value)) -> DerivTerm -> Either Error Value
+eval :: (List (Lazy (Either Error Value))) -> DerivTerm -> Either Error Value
 eval env ((Grammar.DerivLabel r _) % kids) =
     case r /\ kids of
-          Zero /\ [] -> Util.fromJust' "eval Zero case" $ List.head env
+          Zero /\ [] -> force $ Util.fromJust' "eval Zero case" $ List.head env
           Suc /\ [x] -> eval (Util.fromJust (List.tail env)) x
-          Lam /\ [_name, _ty, t] -> pure $ FunVal (\x -> eval (Right x : env) t)
+          Lam /\ [_name, _ty, t] -> pure $ FunVal (\x -> eval (pure (Right x) : env) t)
           Let /\ [_name, _ty, def, body] -> do
-            let vDef = eval (Right (IntVal 1111) : env) def
-            eval (vDef : env) body
+            let vDef = eval ((defer \_ -> vDef) : env) def
+            eval (pure vDef : env) body
           App /\ [t1, t2] -> do
             v1 <- eval env t1
             v2 <- eval env t2
@@ -87,7 +88,7 @@ eval env ((Grammar.DerivLabel r _) % kids) =
             vLi <- eval env li
             case assertValList vLi of
                 Nil -> eval env nilCase
-                v : vs -> eval (Right v : Right (ListVal vs) : env) consCase
+                v : vs -> eval (pure (Right v) : pure (Right (ListVal vs)) : env) consCase
           IntegerLiteral /\ [Grammar.DerivLiteral (Grammar.DataInt n) % []] -> pure (IntVal n)
           _ -> bug ("eval case fail: rule was " <> show r)
 eval _ _ = bug "eval case shouldn't happen"
