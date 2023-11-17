@@ -43,13 +43,14 @@ type Lesson l r = {
     , instructions:: HH.HTML Unit Unit -- forall w i. HH.HTML w i
 }
 
-data PantographLessonAction = EditorOutput Unit | Initialize | ResetLesson | PreviousLesson | NextLesson
+data PantographLessonAction = EditorOutput Unit | Initialize | ResetLesson | PreviousLesson | NextLesson | RunProgram
 
 makePantographTutorial :: forall l r query input output. Grammar.IsRuleLabel l r =>
     Base.EditorSpec l r
     -> Array (Lazy (Lesson l r))
+    -> (Grammar.DerivTerm l r -> String)
     -> H.Component query input output Aff
-makePantographTutorial spec lessons =
+makePantographTutorial spec lessons interpereter =
 --    let paths = defer \_ -> force markedPaths <#> \path -> (Base.HoleyDerivPath path false) in
 
       H.mkComponent
@@ -67,6 +68,7 @@ makePantographTutorial spec lessons =
       initialState _ = {
         activeLesson : 0
         , lessonsSolved : Array.replicate (Array.length lessons) false
+        , output : ""
         }
 --      render :: _ -> H.ComponentHTML PantographLessonAction ( editor :: H.Slot (Editor.EditorQuery l r) (Base.EditorSpec l r) Unit) Aff
 --      render :: _ -> H.ComponentHTML PantographLessonAction (Slots l r) Aff
@@ -91,8 +93,15 @@ makePantographTutorial spec lessons =
                 ]
 --                , HH.div [ classNames ["resize-handle--x"] ] []
                 , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside"] []
-                , HH.aside [ classNames ["padded"], HP.style "width: 25em; overflow: auto;"] [
-                    HH.div [HP.style "float:right"] [unsafeCoerce lesson.instructions]
+                , HH.aside [ classNames [], HP.style "width: 25em; overflow: auto;"] [
+                    HH.div [classNames ["vertical-contaioner"]] [
+                        HH.div [HP.style "height: 3em"] [
+                            HH.button [ HE.onClick \_ -> RunProgram ] [ HH.text "Run" ]
+                            , HH.text state.output
+                        ]
+                        , HH.div [ classNames ["horizontal-bar"], HP.style "height: 2px;" ] []
+                        , HH.div [HP.style "float:right", classNames ["padded"]] [unsafeCoerce lesson.instructions]
+                    ]
                 ]
             ]
         ]
@@ -115,9 +124,19 @@ makePantographTutorial spec lessons =
             setLesson
         ResetLesson -> do
             setLesson
+        RunProgram -> do
+            mprog <- H.request _editorSlot unit (Editor.GetProgram)
+            state <- H.get
+            case mprog of
+                Just prog ->
+                    H.modify_ \state ->
+                        state {output = interpereter prog}
+                Nothing -> pure unit
 
-runTutorial :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r -> Array (Lazy (Lesson l r)) -> Effect Unit
-runTutorial spec lessons = HA.runHalogenAff do
+runTutorial :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r
+    -> Array (Lazy (Lesson l r)) -> (Grammar.DerivTerm l r -> String) -> Effect Unit
+runTutorial spec lessons interpereter = HA.runHalogenAff do
   Console.log "[runTutorial]"
   body <- HA.awaitBody
-  VDomDriver.runUI (makePantographTutorial spec lessons) unit body
+  VDomDriver.runUI (makePantographTutorial spec lessons interpereter) unit body
+

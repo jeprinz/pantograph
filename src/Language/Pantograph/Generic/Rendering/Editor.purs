@@ -68,6 +68,7 @@ editorPrefix = Util.stateful 0
 
 data EditorQuery l r a =
     SetProgram (DerivTerm l r) (Array (HoleyDerivPath l r)) a
+    | GetProgram (DerivTerm l r -> a)
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
@@ -850,6 +851,9 @@ editorComponent _unit =
         setState $ TopState {dterm: newProg}
         _ <- sequence (toBeMarked <#> \path -> setNodeElementStyle "marked" Nothing (Just path))
         pure (Just return)
+    GetProgram return -> do
+        st <- getState
+        pure (Just (return (stateToDerivTerm st)))
 
   ------------------------------------------------------------------------------
   -- render

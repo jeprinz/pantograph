@@ -18,6 +18,7 @@ import Partial.Unsafe as Partial
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Grammar as Grammar
 import Tutorial.CurriedTutorial as CurriedTutorial
+import Language.Pantograph.Specific.CurryingInterpereter as CurryingInterpereter
 
 -- Maybe in the future we can make a better way, but for now you can switch which thing gets run by uncommenting the correct main function
 
@@ -34,7 +35,7 @@ import Tutorial.CurriedTutorial as CurriedTutorial
 -- Tutorial
 main :: Effect Unit
 --main = Tutorial.runTutorial CurriedTutorial.lessons
-main = EditorTutorial2.runTutorial Currying.editorSpec CurriedTutorial.lessons
+main = EditorTutorial2.runTutorial Currying.editorSpec CurriedTutorial.lessons CurryingInterpereter.interpereter
 
 
 

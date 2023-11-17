@@ -47,6 +47,7 @@ import Util as Util
 import Data.Tuple (snd)
 import Data.Set as Set
 import Data.String.CodePoints (CodePoint)
+import Bug as Bug
 
 type EditorHTML l r = 
   HH.ComponentHTML 
@@ -211,7 +212,18 @@ data State l r
   = CursorState (Cursor l r)
   | SelectState (Select l r)
   | TopState (Top l r)
-  | SmallStepState (SmallStepState l r) 
+  | SmallStepState (SmallStepState l r)
+
+stateToDerivTerm :: forall l r. IsRuleLabel l r => State l r -> DerivTerm l r
+stateToDerivTerm = case _ of
+    CursorState {hdzipper} ->
+        let Expr.Zipper path term = hdzipperDerivZipper hdzipper in
+        Expr.unPath path term
+    SelectState {dzipperp} ->
+        let Expr.Zipper path term = Expr.unzipperp dzipperp in
+        Expr.unPath path term
+    TopState {dterm} -> dterm
+    SmallStepState _ -> Bug.bug "couldn't get term in smallstep state"
 
 derive instance Generic (State l r) _
 instance (Show l, Show r) => Show (State l r) where show x = genericShow x

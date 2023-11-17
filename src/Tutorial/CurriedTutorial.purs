@@ -16,6 +16,7 @@ import Tutorial.EditorTutorial2
 {-
 A specific tutorial for the Currying.purs language
 -}
+
 prog :: String -> Grammar.DerivTerm Currying.PreSortLabel Currying.RuleLabel
 prog str = Grammar.decodeSerializedZipper2 Currying.editorSpec.clipboardSort str
 
@@ -184,7 +185,7 @@ lessons = [
                 Click on the parenthesis around an application to select it.
                 """ ])
                 , (HH.li_ [HH.text """
-                Click and drag from the "sqaure" application to the "squareOrTriple" application.
+                Click and drag from the "square" application to the "squareOrTriple" application.
                 """ ])
                 , (HH.li_ [HH.text """
                 Cut with Ctrl-x, and paste on the term "10"

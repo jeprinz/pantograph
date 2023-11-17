@@ -83,7 +83,11 @@ eval env ((Grammar.DerivLabel r _) % kids) =
           HeadRule /\ [] -> pure $ FunVal (\xs -> pure (Util.fromJust (List.head (assertValList xs))))
           TailRule /\ [] -> pure $ FunVal (\xs -> pure (ListVal (Util.fromJust (List.tail (assertValList xs)))))
           IndexRule /\ [] -> pure $ FunVal (\xs -> pure (FunVal (\n -> pure (Util.fromJust (List.index (assertValList xs) (assertValInt n))))))
---          ListMatchRule /\ [] -> ?h
+          ListMatchRule /\ [li, nilCase, _, _, consCase] -> do
+            vLi <- eval env li
+            case assertValList vLi of
+                Nil -> eval env nilCase
+                v : vs -> eval (v : (ListVal vs) : env) consCase
           IntegerLiteral /\ [Grammar.DerivLiteral (Grammar.DataInt n) % []] -> pure (IntVal n)
           _ -> bug ("eval case fail: rule was " <> show r)
 eval _ _ = bug "eval case shouldn't happen"
@@ -108,3 +112,18 @@ evalInfix = case _ of
     OpGreaterEq -> \x y -> BoolVal (assertValInt x >= assertValInt y)
     OpAnd -> \x y -> BoolVal (assertValBool x && assertValBool y)
     OpOr -> \x y -> BoolVal (assertValBool x || assertValBool y)
+
+printValue :: Value -> String
+printValue val = case val of
+    BoolVal x -> show x
+    IntVal x -> show x
+    ListVal x -> List.foldr (\x xs -> "(cons " <> (printValue x) <> " " <> xs <> ")") "nil" x
+    FunVal _ -> "<function>"
+
+interpereter :: Grammar.DerivTerm PreSortLabel RuleLabel -> String
+interpereter dterm = case eval Nil dterm of
+    Left error -> case error of
+        HoleError -> "Error: hole"
+        BoundaryError -> "Error: type boundary"
+        FreeVarError -> "Error: unbound variable"
+    Right res -> printValue res
