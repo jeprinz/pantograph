@@ -43,14 +43,14 @@ assertValFun = case _ of
 
 data Error = HoleError | BoundaryError | FreeVarError
 
-eval :: (List Value) -> DerivTerm -> Either Error Value
+eval :: (List (Either Error Value)) -> DerivTerm -> Either Error Value
 eval env ((Grammar.DerivLabel r _) % kids) =
     case r /\ kids of
-          Zero /\ [] -> pure $ Util.fromJust' "eval Zero case" $ List.head env
+          Zero /\ [] -> Util.fromJust' "eval Zero case" $ List.head env
           Suc /\ [x] -> eval (Util.fromJust (List.tail env)) x
-          Lam /\ [_name, _ty, t] -> pure $ FunVal (\x -> eval (x : env) t)
+          Lam /\ [_name, _ty, t] -> pure $ FunVal (\x -> eval (Right x : env) t)
           Let /\ [_name, _ty, def, body] -> do
-            vDef <- eval env def
+            let vDef = eval (Right (IntVal 1111) : env) def
             eval (vDef : env) body
           App /\ [t1, t2] -> do
             v1 <- eval env t1
@@ -67,9 +67,9 @@ eval env ((Grammar.DerivLabel r _) % kids) =
           Newline /\ [t] -> eval env t
           If /\ [cond, thenn, elsee] -> do
             vCond <- eval env cond
-            vThenn <- eval env thenn
-            vElsee <- eval env elsee
-            pure $ if (assertValBool vCond) then vThenn else vElsee
+--            vThenn <- eval env thenn
+--            vElsee <- eval env elsee
+            if (assertValBool vCond) then eval env thenn else eval env elsee
           ErrorBoundary /\ [] -> Left BoundaryError
           ConstantRule constant /\ [] -> pure $ evalConst constant
           InfixRule infixOperator /\ [t1, t2] -> do
@@ -87,7 +87,7 @@ eval env ((Grammar.DerivLabel r _) % kids) =
             vLi <- eval env li
             case assertValList vLi of
                 Nil -> eval env nilCase
-                v : vs -> eval (v : (ListVal vs) : env) consCase
+                v : vs -> eval (Right v : Right (ListVal vs) : env) consCase
           IntegerLiteral /\ [Grammar.DerivLiteral (Grammar.DataInt n) % []] -> pure (IntVal n)
           _ -> bug ("eval case fail: rule was " <> show r)
 eval _ _ = bug "eval case shouldn't happen"
