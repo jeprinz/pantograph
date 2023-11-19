@@ -77,8 +77,11 @@ eval env ((Grammar.DerivLabel r _) % kids) =
             v1 <- eval env t1
             v2 <- eval env t2
             pure $ evalInfix infixOperator v1 v2
---          EqualsRule /\ [t1, t2] -> BoolVal (eqValue (eval env t1) (eval env t2))
---          NilRule /\ [] -> ListVal Nil
+          EqualsRule /\ [t1, t2] -> do
+            v1 <- eval env t1
+            v2 <- eval env t2
+            pure $ BoolVal (eqValue v1 v2)
+          NilRule /\ [] -> pure $ ListVal Nil
           ConsRule /\ [] -> pure $ FunVal (\x -> pure (FunVal (\xs -> pure (ListVal (x : assertValList xs)))))
           LengthRule /\ [] -> pure $ FunVal (\xs -> pure (IntVal (List.length (assertValList xs))))
           HeadRule /\ [] -> pure $ FunVal (\xs -> pure (Util.fromJust (List.head (assertValList xs))))

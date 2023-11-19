@@ -77,7 +77,7 @@ makePantographTutorial spec lessons interpereter =
         HH.div [classNames["vertical-container"]]
             [
             HH.div [classNames["horizontal-container", "padded"], HP.style "height: 2em"] [
-                HH.text ("2: Lesson number " <> show state.activeLesson)
+                HH.text ("Pantograph: Lesson number " <> show state.activeLesson)
                 , HH.button [ HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
                 , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
                 , HH.button [ HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
