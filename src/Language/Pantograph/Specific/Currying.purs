@@ -863,7 +863,6 @@ editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule ListMatchRule) "match" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule EqualsRule) "==" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
---        (\constant -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (ConstantRule constant)) (constantName constant) cursorSort))
         (\constant -> getWrapInAppEdit (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))
        <> ((Util.allPossible :: Array InfixOperator) <#>
         (\op -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (InfixRule op)) (infixName op) cursorSort))
@@ -888,8 +887,6 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
             (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
     <> Array.fromFoldable (getVarWraps cursorSort)
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
---    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "cons" cursorSort
---        (maximallyApplied (newTermFromRule ConsRule)))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (newTermFromRule ConsRule))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "head" cursorSort (newTermFromRule HeadRule))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "tail" cursorSort (newTermFromRule TailRule))
@@ -898,6 +895,8 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     <> (Array.fromFoldable $ getAppliedWrapEdits "match" cursorSort (newTermFromRule ListMatchRule))
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (newTermFromRule If))
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (newTermFromRule EqualsRule))
+    <> (Array.concat ((Util.allPossible :: Array Constant) <#>
+        (\constant -> Array.fromFoldable (getAppliedWrapEdits (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))))
 
 
 --    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
