@@ -1280,26 +1280,23 @@ introDownErrorNeutral _ = Nothing
 
 -- Don't allow a down boundary to propagate up from a neutral form
 introUpErrorNeutral :: StepRule
-introUpErrorNeutral sterm =
-    case sterm of
-    (SSInj label@(DerivLabel parentRule _) % kids)
---    | Just [_gamma, outsideTy] <- matchExprImpl (Smallstep.ssTermSort outside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
-    -> do
-        (gamma /\ c /\ inside /\ insideTy) /\ i <- flip Util.findWithIndex kids \i -> case _ of
-            (Boundary Up ch % [inside])
-                | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
-                , not ((parentRule == App || parentRule == GreyApp) && i == 0)
-                , not (isMerelyASubstitution c)
-                , isNeutralFormWithCursor inside
-                , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
-                -> pure $ gamma /\ c /\ inside /\ insideTy
-            _ -> Nothing
-        let outsideTy = lEndpoint c
-        pure $
-            (SSInj label % Util.fromJust (Array.updateAt i
-                (wrapBoundary Up (csor TermSort % [gamma, inject outsideTy]) $
-                    dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ outsideTy] [inside]) kids))
-    _ -> Nothing
+introUpErrorNeutral (label % kids) = do
+    (gamma /\ c /\ inside /\ insideTy) /\ i <- flip Util.findWithIndex kids \i -> case _ of
+        (Boundary Up ch % [inside])
+            | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
+            , case label of
+                SSInj (DerivLabel parentRule _) -> not ((parentRule == App || parentRule == GreyApp) && i == 0)
+                _ -> true
+            , isNeutralFormWithoutCursor inside
+            , not (isMerelyASubstitution c)
+            , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
+            -> pure $ gamma /\ c /\ inside /\ insideTy
+        _ -> Nothing
+    let outsideTy = lEndpoint c
+    pure $
+        (label % Util.fromJust (Array.updateAt i
+            (wrapBoundary Up (csor TermSort % [gamma, inject outsideTy]) $
+                dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ outsideTy] [inside]) kids))
 
 languageChanges :: LanguageChanges
 languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of

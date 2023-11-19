@@ -282,9 +282,9 @@ stepSomebody (t : ts) rules = case step t rules of
 
 extraRules :: forall l r. IsRuleLabel l r => List (StepRule l r) -> List (StepRule l r)
 extraRules rules =
-    (stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : Nil)
+    (passThroughRule : combineUpRule : combineDownRule : Nil)
     <> rules
-    <> (Nil)
+    <> (stepUpThroughCursor : stepDownThroughCursor : Nil)
 
 -- when outputs `Nothing`, then done.
 step :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
