@@ -280,10 +280,16 @@ stepSomebody (t : ts) rules = case step t rules of
  Just t' -> Just (t' : ts)
  Nothing -> (:) <$> pure t <*> stepSomebody ts rules
 
+extraRules :: forall l r. IsRuleLabel l r => List (StepRule l r) -> List (StepRule l r)
+extraRules rules =
+    (stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : Nil)
+    <> rules
+    <> (Nil)
+
 -- when outputs `Nothing`, then done.
 step :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
 step t@(Expr.Expr l kids) rules =
- let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
+ let fullRules = extraRules rules in
  case doAnyApply t fullRules of
      Nothing -> do
          kids' <- stepSomebody (List.fromFoldable kids) rules
@@ -294,7 +300,7 @@ stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l 
 stepRepeatedly t rules =
 --    trace "start" \_ ->
 --    let res = stepRepeatedly' t rules
-    let fullRules = stepUpThroughCursor : stepDownThroughCursor : passThroughRule : combineUpRule : combineDownRule : rules in
+    let fullRules = extraRules rules in
     let res = fst $ fastStepImpl fullRules infinity t
     in
 --    trace ("after stepping res is: \n" <> pretty res) \_ ->

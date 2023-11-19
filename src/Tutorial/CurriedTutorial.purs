@@ -278,8 +278,7 @@ lessons = [
                 and replace it with "true".
                 """ ])
                 , (HH.li_ [HH.text """
-                Finally, use a selection to delete the old out of place argument.
-                Now the argument order at the call site has been swapped to match the new definition.
+                Finally, delete the body of g and replace it with something of the right type.
                 """ ])
             ]
             , HH.br[], HH.br[]

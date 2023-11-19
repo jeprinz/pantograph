@@ -108,18 +108,19 @@ threeCaseUnionMaybe join m1 m2 = Map.mapMaybe (\x -> x) $ threeCaseUnion (\x -> 
     (\x y -> join (Just x) (Just y)) m1 m2
 
 
-findWithIndex :: forall t out. (t -> Maybe out) -> Array t -> Maybe (out /\ Int)
+findWithIndex :: forall t out. (Int -> t -> Maybe out) -> Array t -> Maybe (out /\ Int)
 findWithIndex f l =
---    foldl
---        (\acc x ->
---            case f x of
---                Just y -> Just (y /\ i)
---                Nothing -> acc (i + 1))
---        (\_ -> Nothing) l 0
-    do -- stupid implementation calls f an extra time
-    i <- Array.findIndex (Maybe.isJust <<< f) l
-    res <- Array.findMap f l
-    pure $ res /\ i
+--    do -- stupid implementation calls f an extra time
+--    i <- Array.findIndex (Maybe.isJust <<< (f i)) l
+--    res <- Array.findMap f l
+--    pure $ res /\ i
+    let impl :: Int -> Maybe (out /\ Int)
+        impl i = case Array.index l i of
+            Nothing -> Nothing
+            Just x -> case f i x of
+                Nothing -> impl (i + 1)
+                Just res -> Just (res /\ i)
+    in impl 0
 
 assertSingleton :: forall t. Array t -> t
 assertSingleton [x] = x

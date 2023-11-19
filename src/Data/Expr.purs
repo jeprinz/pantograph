@@ -799,10 +799,10 @@ matchExpr e eMatch f = unsafePartial f (fromJust' "in matchExpr, expressions did
 matchExprMaybe :: forall l out. IsExprLabel l => Expr l -> Expr (MatchLabel l) -> (Partial => Array (Expr l) -> out) -> Maybe out
 matchExprMaybe e eMatch f = unsafePartial f <$> matchExprImpl e eMatch
 
-matchExprs :: forall l out. IsExprLabel l => Expr l -> Array (Expr (MatchLabel l) /\ (Partial => Array (Expr l) -> out)) -> out
-matchExprs e cases = fst <<< fromJust' "matchExprs - didn't match any cases" $ Util.findWithIndex
-  (\(eMatch /\ f) -> f <$> matchExprImpl e eMatch)
-  (rmap unsafePartial <$> cases)
+--matchExprs :: forall l out. IsExprLabel l => Expr l -> Array (Expr (MatchLabel l) /\ (Partial => Array (Expr l) -> out)) -> out
+--matchExprs e cases = fst <<< fromJust' "matchExprs - didn't match any cases" $ Util.findWithIndex
+--  (\(eMatch /\ f) -> f <$> matchExprImpl e eMatch)
+--  (rmap unsafePartial <$> cases)
 
 -- I couldn't get matchExprs to work, so I have this for now:
 matchExpr2 :: forall l out. IsExprLabel l => Expr l
