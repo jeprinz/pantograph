@@ -102,7 +102,7 @@ makeLabel ruleLabel values =
     let Rule vars _ _ = TotalMap.lookup ruleLabel language in
     let sigma = Map.fromFoldable (lmap RuleMetaVar <$> values) in
     assert (equal "makeLabel" 
-      ( "Given substitution must have same vars as quantified in rule:" <> 
+      (\_ -> "Given substitution must have same vars as quantified in rule:" <>
         bullets ["ruleLabel = " <> pretty ruleLabel, "value keys = " <> pretty values] )
       vars (Map.keys sigma)) \_ ->
     DerivLabel ruleLabel sigma
@@ -375,15 +375,18 @@ derivTermRuleLabel :: forall l r. DerivTerm l r -> Maybe r
 derivTermRuleLabel (dl % _) = derivLabelRule dl
 
 derivToothSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
-derivToothSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
-  Expr.Tooth (DerivLabel r sub) _ -> getSortFromSub r sub
+derivToothSort =
+--  assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
+  case _ of
+      Expr.Tooth (DerivLabel r sub) _ -> getSortFromSub r sub
+      _ -> bug "derivToothSort"
 
--- NOTE: This function can't be written how we currently have teeth defined. There simply isn't the information available.
-derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
-derivToothInteriorSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
-  Expr.Tooth (DerivLabel r sort) kidsPath -> do
-    let Rule _mvars hyps _con = TotalMap.lookup r language
-    assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
+---- NOTE: This function can't be written how we currently have teeth defined. There simply isn't the information available.
+--derivToothInteriorSort :: forall l r. IsRuleLabel l r => DerivTooth l r -> Sort l
+--derivToothInteriorSort = assertInterface_ (Expr.wellformedTooth "derivToothSort") (Expr.wellformedExpr "derivToothSort") case _ of
+--  Expr.Tooth (DerivLabel r sort) kidsPath -> do
+--    let Rule _mvars hyps _con = TotalMap.lookup r language
+--    assert (just "derivToothInteriorSort" $ hyps Array.!! ZipList.leftLength kidsPath) identity
 
 -- | Get the top sort of a path (given its bottom sort)
 derivPathSort :: forall l r. IsRuleLabel l r => DerivPath Dir.Up l r -> Sort l -> Sort l

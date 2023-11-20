@@ -860,10 +860,9 @@ editorComponent _unit =
   ------------------------------------------------------------------------------
 
   HK.pure $
-    log "editorComponent.render" (P.bullets
-      [ "currentState = " <> pretty currentState ]
-    ) \_ ->
---    trace "render is being run" \_ ->
+--    log "editorComponent.render" (P.bullets
+--      [ "currentState = " <> pretty currentState ]
+--    ) \_ ->
     HH.div [classNames ["editor"]]
     [ -- HH.div
 --      [ classNames ["status"] ]

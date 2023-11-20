@@ -162,3 +162,8 @@ allPossible :: forall a. -- https://stackoverflow.com/questions/74462784/purescr
 allPossible = unfoldr (\b -> b >>= next) $ Just bottom
   where
     next a = Just $ Tuple a $ succ a
+
+traceAfter :: forall b. String -> (Unit -> b) -> b
+traceAfter a k =
+    let res = k unit in
+    trace a (\_ -> res)

@@ -1145,15 +1145,23 @@ removeError _ _ = Nothing
 -- If the two sides of an error boundary unify, then remove the boundary automatically, propagating the diff
 {-
 This had some issues on the case of let f = lam x y . f x x, then wrap an app around the second x.
+
+A problem: if I have something like
+let f : Int -> ? = ...
+let g : Int = ...
+in f g
+And I delete the type of g, it should put g in a type boundary. Its not acceptable if it just immediately
+deletes the boundary.
 -}
 removeErrorPermissive :: StepRule
 removeErrorPermissive _ (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
     let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
     let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
+    let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma in
     trace "GONNA DO IT:" \_ ->
     if Maybe.isJust (unify insideType outsideType) then
-        pure $ wrapBoundary Up (diff insideType outsideType) t
+        pure $ wrapBoundary Up (csor TermSort % [inject gamma, diff outsideType insideType]) t
     else
 --        trace ("Didn't unify: insideType was: " <> pretty insideType <> " and outsideType was: " <> pretty outsideType) \_ ->
         Nothing

@@ -243,16 +243,16 @@ bufferComponent = HK.component \tokens input -> HK.do
         true -> pure $ Just a
 
   HK.pure $
-    log "bufferComponent.render"
-      (bullets
-          [ "input.hzdipper = " <> pretty input.hdzipper
-          , "isEnabled = " <> show currentBufferState.isEnabled
-          , "bufferString = " <> show currentBufferState.bufferString
-          , "bufferFocus = " <> show currentBufferState.bufferFocus
-          , "normalBufferFocus = " <> show currentBufferState.normalBufferFocus
-          , "mb_oldString = " <> show currentBufferState.mb_oldString
-          ])
-      \_ ->
+--    log "bufferComponent.render"
+--      (bullets
+--          [ "input.hzdipper = " <> pretty input.hdzipper
+--          , "isEnabled = " <> show currentBufferState.isEnabled
+--          , "bufferString = " <> show currentBufferState.bufferString
+--          , "bufferFocus = " <> show currentBufferState.bufferFocus
+--          , "normalBufferFocus = " <> show currentBufferState.normalBufferFocus
+--          , "mb_oldString = " <> show currentBufferState.mb_oldString
+--          ])
+--      \_ ->
       HH.div
         [ classNames ["subnode", "buffer"]
         ] $ 
