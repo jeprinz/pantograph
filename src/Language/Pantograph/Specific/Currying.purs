@@ -83,7 +83,6 @@ We should think about how it will be run.
 
 data DataType
     = Bool
-    | String
     | Int
 
 derive instance Generic DataType _
@@ -872,7 +871,6 @@ editsAtCursor :: Sort -> Array Edit
 editsAtCursor cursorSort = Array.mapMaybe identity (
     [
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
-    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule String)) "String" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
     , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
@@ -1268,10 +1266,13 @@ introErrorDownVar _ _ = Nothing
 
 -- Don't allow a down boundary to propagate into a neutral form
 introDownErrorNeutral :: StepRule
-introDownErrorNeutral _ (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
+introDownErrorNeutral parentTooth (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     , isNeutralFormWithCursor inside
     , not (isMerelyASubstitution c)
+    , case parentTooth of
+        Just (SSInj (DerivLabel parentLabel _) /\ _ /\ 0) -> not (parentLabel == App || parentLabel == GreyApp)
+        _ -> true
     , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
     = pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ rEndpoint c]
         [wrapBoundary Down (csor TermSort % [gamma, inject insideTy]) inside]
