@@ -237,7 +237,7 @@ editorComponent _unit =
     -- re-infers the sorts of the term, and sets back to cursor state
     finalizeSmallstep :: SmallStep.SSTerm l r -> HK.HookM Aff Unit
     finalizeSmallstep ssterm = do
-            let preFinal = SmallStep.termToZipper $ SmallStep.stepRepeatedly ssterm spec.stepRules
+            let preFinal = SmallStep.termToZipper $ SmallStep.stepRepeatedly Nothing ssterm spec.stepRules
             -- re-infer, which will 1) unlink metavars that don't need to be linked and 2) fill holes with defaults where relevant
             let forgottenFinal = map (forgetDerivLabelSorts spec.forgetSorts) preFinal
             let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferZipper forgottenFinal
@@ -414,7 +414,7 @@ editorComponent _unit =
         let generalizingChange = spec.generalizeDerivation (derivTermSort dterm)
 --        traceM ("genCh is : " <> pretty generalizingChange <> " and unifiedDTerm is " <> pretty unifiedDTerm)
         let generalizedDTerm = SmallStep.assertJustExpr
-                (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down generalizingChange
+                (SmallStep.stepRepeatedly Nothing (SmallStep.wrapBoundary SmallStep.Down generalizingChange
                     (SmallStep.termToSSTerm dterm)) spec.stepRules)
         let forgottenDTerm = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDTerm
         let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
@@ -431,7 +431,7 @@ editorComponent _unit =
     genAndCopyClipPath dpath = do
         let generalizingChange = spec.generalizeDerivation (nonemptyUpPathTopSort dpath)
         let _upChange /\ generalizedDPath /\ _downChange = SmallStep.ssTermToChangedPath
-                (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down generalizingChange
+                (SmallStep.stepRepeatedly Nothing (SmallStep.wrapBoundary SmallStep.Down generalizingChange
                     (SmallStep.wrapPath dpath (SmallStep.Marker 0 % []))) spec.stepRules)
         let forgottenDPath = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDPath
         let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferPath (nonemptyPathInnerSort forgottenDPath) forgottenDPath
@@ -559,7 +559,7 @@ editorComponent _unit =
                 -- First, specialize the path using the specializingChange from EditorSpec, which generally is used for putting the path into the cursor's context and thus updating variables that appear in the path
                 let specializingChange = spec.specializeDerivation (nonemptyUpPathTopSort clipDPath) (derivTermSort dterm)
                 let _upChange /\ specializedClipDPath /\ _downChange = SmallStep.ssTermToChangedPath
-                        (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
+                        (SmallStep.stepRepeatedly Nothing (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.wrapPath clipDPath (SmallStep.Marker 0 % []))) spec.stepRules)
                 -- call splitChange to get the expected sort that the path should unify with, and the changes that will be sent up and down
                 let pathChange = (SmallStep.getPathChange2 specializedClipDPath spec.forgetSorts)
@@ -589,7 +589,7 @@ editorComponent _unit =
                 -- First, specialize the term
                 let specializingChange = spec.specializeDerivation (derivTermSort clipDTerm) (derivTermSort dterm)
                 let _  /\ specializedDTerm = SmallStep.ssTermToChangedTerm
-                        (SmallStep.stepRepeatedly (SmallStep.wrapBoundary SmallStep.Down specializingChange
+                        (SmallStep.stepRepeatedly Nothing (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.termToSSTerm clipDTerm)) spec.stepRules)
                 -- Then, unify to make sure the types line up
                 case Unification.unify (derivTermSort specializedDTerm) (derivTermSort dterm) of
@@ -723,11 +723,11 @@ editorComponent _unit =
         ------------------------------------------------------------------------
         SmallStepState ss -> do
           if key == " " then do
-            case SmallStep.step ss.ssterm spec.stepRules of
+            case SmallStep.step Nothing ss.ssterm spec.stepRules of
               Nothing -> finalizeSmallstep ss.ssterm
               Just ssterm -> setState $ SmallStepState ss {ssterm = ssterm}
           else if key == "Enter" then do
-            let final = SmallStep.stepRepeatedly ss.ssterm spec.stepRules
+            let final = SmallStep.stepRepeatedly Nothing ss.ssterm spec.stepRules
             finalizeSmallstep final
           else
             pure unit

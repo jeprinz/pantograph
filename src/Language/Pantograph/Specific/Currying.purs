@@ -962,7 +962,7 @@ nonlocalBecomesLocal = Smallstep.makeDownRule
             (dTERM Zero ["gamma" /\ rEndpoint ctx, "x" /\ a, "type" /\ ty] []))
 
 passThroughArrow :: StepRule
-passThroughArrow dterm =
+passThroughArrow _ dterm =
     case dterm of
     ((Smallstep.Boundary Smallstep.Down ch) % [
         (SSInj (Grammar.DerivLabel ArrowRule _sigma)) % [da, db]
@@ -1002,7 +1002,7 @@ wrapLambda = Smallstep.makeDownRule
 
 -- down{Lam x : A. t}_(Term G (- A -> B)) ~~> down{t}_(Term (-x : A, G) B)
 unWrapLambda :: StepRule
-unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
+unWrapLambda _ (Expr (Smallstep.Boundary Smallstep.Down ch) [
         Expr (SSInj (Grammar.DerivLabel Lam sigma)) [_name, _ty, body]
     ])
     = do
@@ -1015,7 +1015,7 @@ unWrapLambda (Expr (Smallstep.Boundary Smallstep.Down ch) [
             Smallstep.wrapBoundary Smallstep.Down restOfCh $
                 body
 
-unWrapLambda _ = Nothing
+unWrapLambda _ _ = Nothing
 
 -- TODO: its not clear to me that I've correctly thought through how this will work when
 -- there are boundaries inside the input term
@@ -1050,7 +1050,7 @@ wrapApp = Smallstep.makeUpRule
 
 -- If the argument to a greyed app is merely a hole, get rid of it
 removeGreyedApp :: StepRule
-removeGreyedApp dterm = case dterm of
+removeGreyedApp _ dterm = case dterm of
     ((SSInj (DerivLabel GreyApp _)) % [
         t1,
         (SSInj (DerivLabel TermHole _)) % _
@@ -1068,7 +1068,7 @@ unWrapApp = Smallstep.makeUpRule
 
 
 makeAppGreyed :: StepRule
-makeAppGreyed ((SSInj (Grammar.DerivLabel App _)) % [
+makeAppGreyed _ ((SSInj (Grammar.DerivLabel App _)) % [
         (Smallstep.Boundary Smallstep.Up ch) % [inside]
         , arg
     ])
@@ -1079,7 +1079,7 @@ makeAppGreyed ((SSInj (Grammar.DerivLabel App _)) % [
                 inside
                 , Smallstep.wrapBoundary Down (csor TermSort % [gamma, inject a]) arg
             ]
-makeAppGreyed _ = Nothing
+makeAppGreyed _ _ = Nothing
 
 --rehydrateApp :: StepRule
 --rehydrateApp ((SSInj (Grammar.DerivLabel GreyApp sigma)) % [
@@ -1101,7 +1101,7 @@ makeAppGreyed _ = Nothing
 -- this is to simulate re-hydration of greyed apps. The actually rehydrate rule had a priority order issue.
 -- If an app is inside a grey app and the args are the same type and the App has a hole argument, merge them
 mergeAppGreyApp :: StepRule
-mergeAppGreyApp dterm = case dterm of
+mergeAppGreyApp _ dterm = case dterm of
     ((SSInj (DerivLabel GreyApp greySigma)) % [
         (SSInj (DerivLabel App sigma)) % [
             t1
@@ -1120,7 +1120,7 @@ This is not the only situation where something like that happens.
 I'm not quite sure what I should do about it.
 -}
 mergeAppGreyApp2 :: StepRule
-mergeAppGreyApp2 dterm = case dterm of
+mergeAppGreyApp2 _ dterm = case dterm of
     ((SSInj (DerivLabel App sigma)) % [
         (SSInj (DerivLabel GreyApp greySigma)) % [
             t1
@@ -1133,7 +1133,7 @@ mergeAppGreyApp2 dterm = case dterm of
     _ -> Nothing
 
 removeError :: StepRule
-removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
+removeError _ (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
     let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
     let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
@@ -1142,14 +1142,14 @@ removeError (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
         pure t
     else
         Nothing
-removeError _ = Nothing
+removeError _ _ = Nothing
 
 -- If the two sides of an error boundary unify, then remove the boundary automatically, propagating the diff
 {-
 This had some issues on the case of let f = lam x y . f x x, then wrap an app around the second x.
 -}
 removeErrorPermissive :: StepRule
-removeErrorPermissive (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
+removeErrorPermissive _ (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [t])
     =
     let insideType = Util.lookup' (Expr.RuleMetaVar "insideType") sigma in
     let outsideType = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma in
@@ -1159,10 +1159,10 @@ removeErrorPermissive (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)
     else
 --        trace ("Didn't unify: insideType was: " <> pretty insideType <> " and outsideType was: " <> pretty outsideType) \_ ->
         Nothing
-removeErrorPermissive _ = Nothing
+removeErrorPermissive _ _ = Nothing
 
 mergeErrors :: StepRule
-mergeErrors (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma1)) [
+mergeErrors _ (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma1)) [
         Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma2)) [t]
     ])
     =
@@ -1170,7 +1170,7 @@ mergeErrors (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma1)) [
     let outsideOutside = Util.lookup' (Expr.RuleMetaVar "outsideType") sigma1 in
     let gamma = Util.lookup' (Expr.RuleMetaVar "gamma") sigma1 in
     pure $ dTERM ErrorBoundary ["gamma" /\ gamma, "insideType" /\ insideInside, "outsideType" /\ outsideOutside] [t]
-mergeErrors _ = Nothing
+mergeErrors _ _ = Nothing
 
 --introErrorDown :: StepRule
 --introErrorDown ((Smallstep.Boundary Down ch) % [
@@ -1187,7 +1187,7 @@ mergeErrors _ = Nothing
 -- I might fix that by altering it so that it actually takes a form with the boundary as a child and
 -- works on that.
 introErrorUp :: StepRule
-introErrorUp ((Smallstep.Boundary Up ch) % [
+introErrorUp _ ((Smallstep.Boundary Up ch) % [
         inside
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
@@ -1196,10 +1196,10 @@ introErrorUp ((Smallstep.Boundary Up ch) % [
             wrapBoundary Up (csor TermSort % [gamma, inject (lEndpoint c)]) $
             dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ rEndpoint c, "outsideType" /\ lEndpoint c]
                 [inside]
-introErrorUp _ = Nothing
+introErrorUp _ _ = Nothing
 
 mergeErrorsUp :: StepRule
-mergeErrorsUp (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [
+mergeErrorsUp _ (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [
         Expr.Expr (Boundary Up ch) [t]
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
@@ -1210,10 +1210,10 @@ mergeErrorsUp (Expr.Expr (SSInj (Grammar.DerivLabel ErrorBoundary sigma)) [
         wrapBoundary Up (csor TermSort % [gamma, inject outsideOutside]) $
         dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma,
             "insideType" /\ insideInside, "outsideType" /\ outsideOutside] [t]
-mergeErrorsUp _ = Nothing
+mergeErrorsUp _ _ = Nothing
 
 mergeErrorsDown :: StepRule
-mergeErrorsDown (Expr.Expr (Boundary Down ch) [
+mergeErrorsDown _ (Expr.Expr (Boundary Down ch) [
         Expr.Expr (SSInj (DerivLabel ErrorBoundary sigma)) [t]
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
@@ -1223,19 +1223,19 @@ mergeErrorsDown (Expr.Expr (Boundary Down ch) [
     pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma,
             "insideType" /\ insideInside, "outsideType" /\ outsideOutside]
         [wrapBoundary Down (csor TermSort % [gamma, inject insideInside]) t]
-mergeErrorsDown _ = Nothing
+mergeErrorsDown _ _ = Nothing
 
 fallbackDownError :: StepRule
-fallbackDownError (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
+fallbackDownError _ (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
     = trace "fallbackDownError called" \_ ->
         pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ rEndpoint c]
         [wrapBoundary Down (csor TermSort % [gamma, inject insideTy]) inside]
-fallbackDownError _ = Nothing
+fallbackDownError _ _ = Nothing
 
 fallbackUpError :: StepRule
-fallbackUpError sterm =
+fallbackUpError _ sterm =
     case sterm of
     (SSInj label@(DerivLabel _ _) % kids)
 --    | Just [_gamma, outsideTy] <- matchExprImpl (Smallstep.ssTermSort outside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
@@ -1255,7 +1255,7 @@ fallbackUpError sterm =
     _ -> Nothing
 
 introErrorDownVar :: StepRule
-introErrorDownVar ((Smallstep.Boundary Down ch) % [
+introErrorDownVar _ ((Smallstep.Boundary Down ch) % [
         inside @((SSInj (DerivLabel Var _)) % _)
     ])
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
@@ -1264,22 +1264,22 @@ introErrorDownVar ((Smallstep.Boundary Down ch) % [
         pure $
             dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ lEndpoint c, "outsideType" /\ rEndpoint c]
             [wrapBoundary Down (csor TermSort % [gamma, inject (lEndpoint c)]) inside]
-introErrorDownVar _ = Nothing
+introErrorDownVar _ _ = Nothing
 
 -- Don't allow a down boundary to propagate into a neutral form
 introDownErrorNeutral :: StepRule
-introDownErrorNeutral (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
+introDownErrorNeutral _ (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- Only do the down rule if there is a regular derivterm below, if we did this on markers and Boundaries it might create a problem
     | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])
     , isNeutralFormWithCursor inside
     , not (isMerelyASubstitution c)
     , Just [_gamma, insideTy] <- matchExprImpl (Smallstep.ssTermSort inside) (sor TermSort %$ [{-gamma-}slot, {-insideTy-}slot])
     = pure $ dTERM ErrorBoundary ["gamma" /\ rEndpoint gamma, "insideType" /\ insideTy, "outsideType" /\ rEndpoint c]
         [wrapBoundary Down (csor TermSort % [gamma, inject insideTy]) inside]
-introDownErrorNeutral _ = Nothing
+introDownErrorNeutral _ _ = Nothing
 
 -- Don't allow a down boundary to propagate up from a neutral form
 introUpErrorNeutral :: StepRule
-introUpErrorNeutral (label % kids) = do
+introUpErrorNeutral _ (label % kids) = do
     (gamma /\ c /\ inside /\ insideTy) /\ i <- flip Util.findWithIndex kids \i -> case _ of
         (Boundary Up ch % [inside])
             | Just ([] /\ [gamma, c]) <- matchChange ch (TermSort %+- [{-gamma-}cSlot, {-c-}cSlot])

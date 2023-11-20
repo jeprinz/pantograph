@@ -62,7 +62,7 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange forgetSo
 --        let metadUpChange = map MInj upChange in
         [
         -- delete regular rule / replace with greyed if any other children are non-default derivations
-            case _ of
+            \_parentTooth -> case _ of
                 ((Smallstep.Boundary Smallstep.Down c) % [
                     dterm@((SSInj label@(Grammar.DerivLabel l sub)) % kids)
                 ]) | l == regularRuleLabel -> do
@@ -104,7 +104,7 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange forgetSo
             Nothing -> []
         <> [
             -- insert regular rule
-            \sterm -> case sterm of
+            \ _parentTooth sterm -> case sterm of
                 ((Smallstep.Boundary Smallstep.Down c) % [
                     kid
                 ]) -> do

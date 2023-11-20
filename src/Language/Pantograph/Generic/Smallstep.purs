@@ -46,7 +46,7 @@ import Partial.Unsafe (unsafeCrashWith)
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, braces, brackets, pretty)
 import Type.Direction as Dir
-import Util (lookup', fromJust', assertSingleton, Hole)
+import Util (lookup', fromJust', assertSingleton, Hole, fromJust)
 import Utility ((<$$>))
 import Data.Traversable (sequence)
 
@@ -63,6 +63,11 @@ instance Pretty Direction where
 data StepExprLabel l r = SSInj (Grammar.DerivLabel l r) | {-Marks e.g. where the cursor is, the Int is the number of kids-} Marker Int
     | Boundary Direction (Grammar.SortChange l) -- (Expr.MetaChange l)
 type SSTerm l r = Expr.Expr (StepExprLabel l r)
+--type SSTooth l r = Expr.Tooth (StepExprLabel l r)
+type SSTooth l r = (StepExprLabel l r) /\ (Array (SSTerm l r)) /\ Int -- A representation of a tooth where the int is the slot where the term goes.
+
+getTooths :: forall l r. SSTerm l r -> Array (Maybe (SSTooth l r) /\ SSTerm l r)
+getTooths (l % kids) = Array.mapWithIndex (\i a -> Just (l /\ fromJust (Array.deleteAt i kids) /\ i) /\ a) kids
 
 ssTermNoBoundary :: forall l r. SSTerm l r -> Boolean
 ssTermNoBoundary (slabel % kids) =
@@ -94,7 +99,7 @@ ssTermSort t@(Marker _ % _) = Bug.bug ("Couldn't find sort of SSTerm " <> show t
 dTERM :: forall l r. IsRuleLabel l r => r -> Array (String /\ Grammar.Sort l) -> Array (SSTerm l r) -> SSTerm l r
 dTERM ruleLabel values kids = (SSInj (Grammar.makeLabel ruleLabel values)) % kids
 
-type StepRule l r = SSTerm l r -> Maybe (SSTerm l r)
+type StepRule l r = Maybe (SSTooth l r) -> SSTerm l r -> Maybe (SSTerm l r)
 
 derive instance Generic (StepExprLabel l r) _
 instance (Show l, Show r) => Show (StepExprLabel l r) where show x = genericShow x
@@ -274,10 +279,10 @@ doAnyApply t (r : rs) = case r t of
  Just t' -> Just t'
  Nothing -> doAnyApply t rs
 
-stepSomebody :: forall l r. IsRuleLabel l r => List (SSTerm l r) -> List (StepRule l r) -> Maybe (List (SSTerm l r))
+stepSomebody :: forall l r. IsRuleLabel l r => List (Maybe (SSTooth l r) /\ SSTerm l r) -> List (StepRule l r) -> Maybe (List (SSTerm l r))
 stepSomebody Nil _ = Nothing
-stepSomebody (t : ts) rules = case step t rules of
- Just t' -> Just (t' : ts)
+stepSomebody ((parentTooth /\ t) : ts) rules = case step parentTooth t rules of
+ Just t' -> Just (t' : map snd ts)
  Nothing -> (:) <$> pure t <*> stepSomebody ts rules
 
 extraRules :: forall l r. IsRuleLabel l r => List (StepRule l r) -> List (StepRule l r)
@@ -287,34 +292,35 @@ extraRules rules =
     <> (stepUpThroughCursor : stepDownThroughCursor : Nil)
 
 -- when outputs `Nothing`, then done.
-step :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
-step t@(Expr.Expr l kids) rules =
+step :: forall l r. IsRuleLabel l r => Maybe (SSTooth l r) -> SSTerm l r -> List (StepRule l r) -> Maybe (SSTerm l r)
+step parentTooth t@(Expr.Expr l kids) rules =
  let fullRules = extraRules rules in
- case doAnyApply t fullRules of
+ let kidsWithTeeth = getTooths t in
+ case doAnyApply t (map (\rule -> rule parentTooth) fullRules) of
      Nothing -> do
-         kids' <- stepSomebody (List.fromFoldable kids) rules
+         kids' <- stepSomebody (List.fromFoldable kidsWithTeeth) rules
          pure $ Expr.Expr l (Array.fromFoldable kids')
-     Just t' -> Just t'
+     Just t' -> Just t
 
-stepRepeatedly :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
-stepRepeatedly t rules =
+stepRepeatedly :: forall l r. IsRuleLabel l r => Maybe (SSTooth l r) -> SSTerm l r -> List (StepRule l r) -> SSTerm l r
+stepRepeatedly parentTooth t rules =
 --    trace "start" \_ ->
 --    let res = stepRepeatedly' t rules
     let fullRules = extraRules rules in
-    let res = fst $ fastStepImpl fullRules infinity t
+    let res = fst $ fastStepImpl fullRules infinity parentTooth t
     in
 --    trace ("after stepping res is: \n" <> pretty res) \_ ->
     res
 
 
-stepRepeatedly' :: forall l r. IsRuleLabel l r => SSTerm l r -> List (StepRule l r) -> SSTerm l r
-stepRepeatedly' t rules =
+stepRepeatedly' :: forall l r. IsRuleLabel l r => Maybe (SSTooth l r) -> SSTerm l r -> List (StepRule l r) -> SSTerm l r
+stepRepeatedly' parentTooth t rules =
 --    trace ("stepRepeatedly: " <> pretty t) \_ ->
-    case step t rules of
+    case step parentTooth t rules of
     Nothing ->
         t
     Just t' ->
-        stepRepeatedly' t' rules
+        stepRepeatedly' parentTooth t' rules
 
 --------------------------------------------------------------------------------
 ------------- Fast smallstep -----------------------------------------------
@@ -329,26 +335,28 @@ infinity :: Int
 infinity = 999999999
 
 fastStepImpl :: forall l r. IsRuleLabel l r =>
-    List (StepRule l r) -> Int -> SSTerm l r -> SSTerm l r /\ Boolean
-fastStepImpl fullRules assumeStepWithin0 t0 =
-    let fastStepTCO assumeStepWithin outChanged t =
+    List (StepRule l r) -> Int -> Maybe (SSTooth l r) -> SSTerm l r -> SSTerm l r /\ Boolean
+fastStepImpl fullRules assumeStepWithin0 parentTooth0 t0 =
+    let fastStepTCO assumeStepWithin outChanged parentTooth t =
 --            trace (pretty t) \_ ->
             if assumeStepWithin == 0 then t /\ false else
-            let t' /\ changed = case doAnyApply t fullRules of
+            let t' /\ changed = case doAnyApply t (map (\rule -> rule parentTooth) fullRules) of
                     Just t' -> {- trace (pretty t) \_ -> -} t' /\ true
                     Nothing -> t /\ false
             in
-            let l % kids = t' in
+            let l % _kids = t' in
             let howFarToLookIntoKids = max (assumeStepWithin - 1) (if changed || outChanged then 2 else 0) in
             let kids' /\ didKidTopLevelChange =
-                    let kids' /\ vals = Array.unzip (map (fastStepImpl fullRules howFarToLookIntoKids) kids) in
+                    let kidsWithTeeth = getTooths t' in
+                    let kids' /\ vals = Array.unzip (map (\(tooth /\ kid) -> fastStepImpl fullRules howFarToLookIntoKids tooth kid) kidsWithTeeth) in
+--                    let kids' /\ vals = Array.unzip (map (fastStepImpl fullRules howFarToLookIntoKids ?h) kids) in
                     kids' /\ Array.any identity vals
             in
             if changed || didKidTopLevelChange
-                then fastStepTCO 2 true (l % kids')
+                then fastStepTCO 2 true parentTooth (l % kids')
                 else l % kids' /\ (changed || outChanged)
     in
-        fastStepTCO assumeStepWithin0 false t0
+        fastStepTCO assumeStepWithin0 false parentTooth0 t0
 
 -------------- Default rules --------------------------------------------
 type SSChangeSort l = Expr.Expr (Expr.Meta (Expr.ChangeLabel (Expr.Meta (Grammar.SortLabel l))))
@@ -382,18 +390,18 @@ getFirst (x : xs) f = case f x of
  Just a -> Just (Nil /\ a /\ xs)
 
 stepDownThroughCursor :: forall l r. StepRule l r
-stepDownThroughCursor prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Marker 1) [kid]]) =
+stepDownThroughCursor _ prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (Marker 1) [kid]]) =
     Just $ Expr.Expr (Marker 1) [Expr.Expr (Boundary Down ch) [kid]]
-stepDownThroughCursor _ = Nothing
+stepDownThroughCursor _ _ = Nothing
 
 stepUpThroughCursor :: forall l r. StepRule l r
-stepUpThroughCursor prog@(Expr.Expr (Marker 1) [Expr.Expr (Boundary Up ch) [kid]]) =
+stepUpThroughCursor _ prog@(Expr.Expr (Marker 1) [Expr.Expr (Boundary Up ch) [kid]]) =
     Just $ Expr.Expr (Boundary Up ch) [Expr.Expr (Marker 1) [kid]]
-stepUpThroughCursor _ = Nothing
+stepUpThroughCursor _ _ = Nothing
 
 -- Down rule that steps boundary through form - defined generically for every typing rule!
 defaultDown :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
-defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids]) =
+defaultDown lang _ prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids]) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let sort = Grammar.getSortFromSub ruleLabel sub in
  if not ((fst (endpoints ch)) == sort)
@@ -405,18 +413,18 @@ defaultDown lang prog@(Expr.Expr (Boundary Down ch) [Expr.Expr (SSInj (Grammar.D
      let kidGSorts' = map (Expr.subMetaExpr sub') kidGSorts
      let kidsWithBoundaries = Array.zipWith (\ch' kid -> wrapBoundary Down ch' kid) kidGSorts' kids
      pure $ wrapBoundary Up chBackUp $ Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub'))) kidsWithBoundaries
-defaultDown _ _ = Nothing
+defaultDown _ _ _ = Nothing
 
 isRule :: forall l r. IsRuleLabel l r => r -> SSTerm l r -> Boolean
 isRule r (Expr.Expr (SSInj (Grammar.DerivLabel r' _)) _) | r == r' = true
 isRule _ _ = false
 
-unless :: forall l r. (SSTerm l r -> Boolean) -> StepRule l r -> StepRule l r
-unless f r t =
-    if f t then Nothing else r t
+--unless :: forall l r. (SSTerm l r -> Boolean) -> StepRule l r -> StepRule l r
+--unless f r t =
+--    if f t then Nothing else r t
 
 defaultUp :: forall l r. Expr.IsExprLabel l => Grammar.IsRuleLabel l r => SSChLanguage l r -> StepRule l r
-defaultUp lang (Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids) =
+defaultUp lang _ (Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids) =
  let (SSChangeRule metaVars kidGSorts parentGSort) = TotalMap.lookup ruleLabel lang in
  let findUpBoundary = case _ of
          Expr.Expr (Boundary Up ch) [kid] /\ sort1 -> Just (ch /\ kid /\ sort1)
@@ -437,25 +445,25 @@ defaultUp lang (Expr.Expr (SSInj (Grammar.DerivLabel ruleLabel sub)) kids) =
          (Expr.Expr
              (SSInj (Grammar.DerivLabel ruleLabel (map (snd <<< endpoints) sub')))
              (Array.fromFoldable leftKids <> [wrapBoundary Down chBackDown kid] <> Array.fromFoldable rightKids))
-defaultUp _ _ = Nothing
+defaultUp _ _ _ = Nothing
 
 passThroughRule :: forall l r. IsRuleLabel l r => StepRule l r
-passThroughRule (Expr.Expr (Boundary Down downCh) [Expr.Expr (Boundary Up upCh) [kid]]) =
+passThroughRule _ (Expr.Expr (Boundary Down downCh) [Expr.Expr (Boundary Up upCh) [kid]]) =
     let hypotenuse = fromJust' "This shouldn't happen [passThroughRule]" $ lub downCh upCh in
     let upCh' = compose (invert downCh) hypotenuse in
     let downCh' = compose (invert upCh) hypotenuse in
     pure $ wrapBoundary Up upCh' (wrapBoundary Down downCh' kid)
-passThroughRule _ = Nothing
+passThroughRule _  _ = Nothing
 
 combineDownRule :: forall l r. IsRuleLabel l r => StepRule l r
-combineDownRule (Expr.Expr (Boundary Down c1) [Expr.Expr (Boundary Down c2) [kid]]) =
+combineDownRule _ (Expr.Expr (Boundary Down c1) [Expr.Expr (Boundary Down c2) [kid]]) =
         pure $ wrapBoundary Down (compose c2 c1) kid
-combineDownRule _ = Nothing
+combineDownRule _ _ = Nothing
 
 combineUpRule :: forall l r. IsRuleLabel l r => StepRule l r
-combineUpRule (Expr.Expr (Boundary Up c1) [Expr.Expr (Boundary Up c2) [kid]]) =
+combineUpRule _ (Expr.Expr (Boundary Up c1) [Expr.Expr (Boundary Up c2) [kid]]) =
         pure $ wrapBoundary Up (compose c1 c2) kid
-combineUpRule _ = Nothing
+combineUpRule _ _ = Nothing
 
 -------------- Other typechange related functions ---------------------
 
@@ -522,7 +530,7 @@ makeDownRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
     -> SSMatchTerm l r -- match the expression within the boundary
     -> (Partial => Array (Grammar.Sort l) -> Array (Grammar.SortChange l) -> Array (SSTerm l r) -> Maybe (SSTerm l r))
     -> StepRule l r
-makeDownRule changeMatch derivMatch output term
+makeDownRule changeMatch derivMatch output _label term
     = case term of
       (Expr.Expr (Boundary Down inputCh) [inputDeriv]) -> do
 --        traceM ("Calling matchChange with " <> pretty inputCh <> " and " <> pretty changeMatch)
@@ -542,7 +550,7 @@ makeUpRule :: forall l r. IsExprLabel l => IsRuleLabel l r =>
                 -> SSTerm l r -- Here is the term inside the boundary
                 -> Maybe (SSTerm l r) {- This is the output term finally output by the rule -})))
     -> StepRule l r
-makeUpRule changeMatch derivMatch output term = do
+makeUpRule changeMatch derivMatch output _label term = do
     derivMatches <- Expr.matchDiffExprs compareMatchLabel term derivMatch
     let possibleUpBoundary /\ restOfOutput = unsafePartial output derivMatches
     case possibleUpBoundary of
