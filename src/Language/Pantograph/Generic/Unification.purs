@@ -119,13 +119,19 @@ unify e1@(Expr.Expr l1 kids1) e2@(Expr.Expr l2 kids2) =
             pure (Expr.Expr (Expr.MInj l) (Array.fromFoldable kids') /\ sub)
         _ /\ _ -> Nothing
 
+-- TODO: A really simple optimization is to unifyp the rest of the list first and only apply the subs to e1 and e2
 unifyLists :: forall l. Expr.IsExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
 unifyLists Nil Nil = Just (Nil /\ Map.empty)
 unifyLists (e1 : es1) (e2 : es2) = do
     e /\ sub <- unify e1 e2
-    let es1' = map (Expr.subMetaExprPartially sub) es1
-    let es2' = map (Expr.subMetaExprPartially sub) es2
-    es /\ sub2 <- unifyLists es1' es2'
+--    let es1' = map (Expr.subMetaExprPartially sub) es1
+--    let es2' = map (Expr.subMetaExprPartially sub) es2
+--    es /\ sub2 <- unifyLists es1' es2'
+--    pure $ (e : es) /\ composeSub sub sub2
+    es /\ sub <- unifyLists es1 es2
+    let e1' = Expr.subMetaExprPartially sub e1
+    let e2' = Expr.subMetaExprPartially sub e2
+    e /\ sub2 <- unify e1' e2'
     pure $ (e : es) /\ composeSub sub sub2
 unifyLists _ _ = Bug.bug "[unifyLists] shouldn't happen"
 
