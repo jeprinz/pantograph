@@ -123,7 +123,7 @@ unify e1@(Expr.Expr l1 kids1) e2@(Expr.Expr l2 kids2) =
 unifyLists :: forall l. Expr.IsExprLabel l => List (Expr.MetaExpr l) -> List (Expr.MetaExpr l) -> Maybe (List (Expr.MetaExpr l) /\ Sub l)
 unifyLists Nil Nil = Just (Nil /\ Map.empty)
 unifyLists (e1 : es1) (e2 : es2) = do
-    e /\ sub <- unify e1 e2
+--    e /\ sub <- unify e1 e2
 --    let es1' = map (Expr.subMetaExprPartially sub) es1
 --    let es2' = map (Expr.subMetaExprPartially sub) es2
 --    es /\ sub2 <- unifyLists es1' es2'

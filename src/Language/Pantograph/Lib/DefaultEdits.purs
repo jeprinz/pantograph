@@ -74,7 +74,7 @@ makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Ma
 makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorSort = do
     action <- makeActionFromPath false forgetSorts splitChange path name cursorSort
     pure $ { label : name
-    , action : defer \_ -> action
+    , action : defer \_ -> action -- TODO: Maybe I should find a way to use Lazy correctly here? And only the the necessary computation before it?
     }
 
 makeActionFromPath :: forall l r. Grammar.IsRuleLabel l r =>

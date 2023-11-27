@@ -195,7 +195,7 @@ renderPath locs dzipper interior =
               ])
             (arrangeNodeSubs locs false (injectHoleyDerivZipper dzipper2)
               (arrangeDerivTermSubs locs false
-                (Expr.Zipper (Expr.zipperPath dzipper2) (Expr.unTooth th (Expr.zipperExpr dzipper)))
+                dzipper2
                 ( Array.fromFoldable $
                   ZipList.unpathAround interior do
                     let kidZippers = Expr.zipDownsTooth dzipper2 th
