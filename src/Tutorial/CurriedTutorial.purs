@@ -42,9 +42,13 @@ lessons = [
             , HH.br []
             , HH.br []
             , (HH.text """
-            Try mousing over the program, and clicking on things.
+            Take a few seconds to try mousing over the program, and clicking on things.
             Instead of a typical text cursor which goes in between characters, in Pantograph
             the cursor goes onto entire expressions.
+            """)
+            , HH.br []
+            , (HH.text """
+            Then, click "Next Lesson"
             """)
         ])
     , makeLesson
@@ -94,7 +98,7 @@ lessons = [
                 """ ])
                 , (HH.li_ [HH.text """
                 Finish up the new version of the function by giving the newly added variable a name,
-                and filling that variable into the base case and recursive calls.
+                and filling that variable into the holes in the base case and recursive calls.
                 """ ])
                 , (HH.li_ [HH.text """
                 Finally, try filling in a value in the call at the end and running the program.
@@ -121,7 +125,7 @@ lessons = [
                 HH.li_ [HH.text """Query "let""""]
                 , HH.li_ [HH.text """Query "lambda""""]
                 , HH.li_ [HH.text """Query "+""""]
---                , HH.li_ [HH.text """Press Backspace to delete the term at the cursor"""]
+                , HH.li_ [HH.text """Press Backspace to delete the term at the cursor"""]
                 , HH.li_ [HH.text """Press Enter on a term to insert a newline"""]
                 , HH.li_ [HH.text """Press Escape to exit any menus that you didn't want open"""]
             ]
@@ -142,8 +146,10 @@ lessons = [
             """ )
             , HH.br[], HH.br[]
             , (HH.text """
-            Spend a moment on this example program making some selections.
-            But don't worry if the concept still seems confusing.
+--            Spend a moment on this example program making some selections.
+--            But don't worry if the concept still seems confusing.
+            Spend a few seconds making selections on this example program. In the next few lessons,
+            we will go over specific examples using selections.
             """ )
         ])
     , makeLesson
@@ -182,10 +188,11 @@ lessons = [
             , HH.ol_ [
                 (HH.li_ [HH.text """
                 Familiarize yourself with where to click to select each function application.
-                Click on the parenthesis around an application to select it.
+                Click on the "("s in the bottom line of the program to select different function calls.
                 """ ])
                 , (HH.li_ [HH.text """
-                Click and drag from the "square" application to the "squareOrTriple" application.
+                Click and drag from the "square" application to the "squareOrTriple" application,
+                by dragging from one "(" to the other "(".
                 """ ])
                 , (HH.li_ [HH.text """
                 Cut with Ctrl-x, and paste on the term "10"
@@ -225,6 +232,9 @@ lessons = [
                 Add the second application back by placing your cursor on the whole application "(area {☐ : Int})"
                 and querying "(".
                 """ ])
+                , (HH.li_ [HH.text """
+                Put "5" and "10" back into the holes, and click Run.
+                """ ])
             ]
         ])
     , makeLesson
@@ -248,7 +258,8 @@ lessons = [
                 Cut and paste the "5" from the old position into the new hole.
                 """ ])
                 , (HH.li_ [HH.text """
-                Finally, use a selection to delete the old out of place argument.
+                Finally, use a selection to delete the old out of place argument
+                (Click and drag from one dot to the other).
                 Now the argument order at the call site has been swapped to match the new definition.
                 """ ])
             ]
@@ -276,13 +287,17 @@ lessons = [
                 the definition of g, since 10 is not a boolean.
                 """ ])
                 , (HH.li_ [HH.text """
-                Finally, delete the body of g and replace it with something of the right type.
+                Boundaries are themselves terms. Click on the "{{" to place your cursor on the boundary, and click inside to
+                place your cursor on the term inside.
+                """ ])
+                , (HH.li_ [HH.text """
+                Finally, delete the boundary in the body of g and fill something of the right type in the hole.
                 """ ])
             ]
-            , HH.br[], HH.br[]
-            , (HH.text """
-            TODO: Find a nicer example than just "f" and "g".
-            """ )
+--            , HH.br[], HH.br[]
+--            , (HH.text """
+--            TODO: Find a nicer example than just "f" and "g".
+--            """ )
         ])
     , makeLesson
         """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["g"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ErrorBoundary"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ErrorBoundary"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
