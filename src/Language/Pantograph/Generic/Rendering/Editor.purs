@@ -190,6 +190,14 @@ editorComponent _unit =
     setFacade :: State l r -> HK.HookM Aff Unit
     setFacade st = do
       -- Debug.traceM $ "[setFacade] st = " <> pretty st
+      case st of -- If the buffer was enabled, we need to disable it when we move the facade.
+        CursorState _ -> do
+            state <- getState
+            case state of
+                CursorState _ ->
+                    HK.tell tokens.slotToken bufferSlot unit $ SetBufferEnabledQuery false Nothing
+                _ -> pure unit
+        _ -> pure unit
       unsetFacadeElements
       setFacade' st
 
