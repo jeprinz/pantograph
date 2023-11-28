@@ -271,6 +271,10 @@ body {
   border-radius: 0.2em;
 }
 
+.buffer-results {
+  background-color: white;
+}
+
 .subnode.buffer>.buffer-inner>.buffer-results>.buffer-result {
   /* min-width: 200px; */
   white-space: nowrap;

@@ -46,6 +46,7 @@ lessons = [
             the cursor goes onto entire expressions.
             """)
             , HH.br []
+            , HH.br []
             , (HH.text """
             Then, click "Next Lesson"
             """)

@@ -281,7 +281,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                       flip Array.mapWithIndex currentBufferState.edits \i {lazy_preview} -> 
                         HH.div 
                           [ classNames $ ["buffer-result"] <> if i == currentBufferState.normalBufferFocus then ["buffer-focus"] else []
-                          , HE.onMouseOver \event -> do
+                          , HE.onMouseMove \event -> do
                               liftEffect $ Event.preventDefault $ MouseEvent.toEvent event
                               void $ modify _ {bufferFocus = i}
                           , HE.onMouseDown \event -> do
