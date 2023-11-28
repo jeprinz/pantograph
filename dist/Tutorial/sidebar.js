@@ -49,8 +49,6 @@ $(document.body).on('mousedown', '.resize-handle--x', null, (event) => {
   resizeData.parentElement = handleElement.parentElement;
   resizeData.maxWidth = $(handleElement.parentElement).innerWidth() - resizeData.handleWidth;
   resizeData.tracking = true;
-
-  console.log('tracking started');
 });
 
 $(window).on('mousemove', null, null, (event) => {
@@ -65,7 +63,5 @@ $(window).on('mousemove', null, null, (event) => {
 $(window).on('mouseup', null, null, (event) => {
   if (resizeData.tracking) {
     resizeData.tracking = false;
-
-    console.log('tracking stopped');
   }
 });
