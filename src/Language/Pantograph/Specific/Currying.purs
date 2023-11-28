@@ -67,6 +67,7 @@ import Data.Argonaut.Decode.Class (class DecodeJson)
 import Data.Argonaut.Decode.Generic (genericDecodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson)
 import Data.Argonaut.Encode.Generic (genericEncodeJson)
+import Halogen.HTML.Properties as HP
 
 
 {-
@@ -677,8 +678,8 @@ arrowElem = Rendering.makePuncElem "arrow" "→"
 ifElem = Rendering.makePuncElem "if" "if"
 thenElem = Rendering.makePuncElem "then" "then"
 elseElem = Rendering.makePuncElem "else" "else"
-errorLeftSide = Rendering.makePuncElem "errorLeft" "{{"
-errorRightSide = Rendering.makePuncElem "errorRight" "}}"
+errorLeftSide = HH.div [classNames ["subnode", "punctuation"], HP.style "color: red; margin: 2px; line-height: 12px"] [HH.text "⦃"] --⦃⦄
+errorRightSide = HH.div [classNames ["subnode", "punctuation"], HP.style "color: red; margin: 2px; line-height: 12px"] [HH.text "⦄"]
 
 typeElem = Rendering.makePuncElem "Type" "Type"
 

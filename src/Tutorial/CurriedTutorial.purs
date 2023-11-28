@@ -276,7 +276,7 @@ lessons = [
             , HH.ol_ [
                 (HH.li_ [HH.text """
                 Delete the Int in the input type of f. Fill the new type "Bool" into the hole,
-                Notice that a boundary "{{...}}" has been placed around g
+                Notice that a boundary "⦃...⦄" has been placed around g
                 at the call site. A boundary represents a location in your program where the types don't match up.
                 """ ])
                 , (HH.li_ [HH.text """
@@ -287,7 +287,7 @@ lessons = [
                 the definition of g, since 10 is not a boolean.
                 """ ])
                 , (HH.li_ [HH.text """
-                Boundaries are themselves terms. Click on the "{{" to place your cursor on the boundary, and click inside to
+                Boundaries are themselves terms. Click on the "⦃" to place your cursor on the boundary, and click inside to
                 place your cursor on the term inside.
                 """ ])
                 , (HH.li_ [HH.text """
@@ -309,7 +309,7 @@ lessons = [
             """ )
             , HH.ol_ [
                 (HH.li_ [HH.text """
-                Select the boundary by clicking and dragging from 10 to the "{{" brackets.
+                Select the boundary by clicking and dragging from 10 to the "⦃" brackets.
                 """ ])
                 , (HH.li_ [HH.text """
                 Press Backspace.
