@@ -6,7 +6,6 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Editor as Editor
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Bug as Bug
-import Tutorial.PantographTutorial
 import Halogen.HTML as HH
 import Language.Pantograph.Specific.Currying as Currying
 import Effect (Effect)
