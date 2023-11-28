@@ -155,13 +155,16 @@ body {
 .node.holeInterior.highlight>.subnode.holeInterior-inner>.subnode,
 .node.empty-string.cursor>.subnode.empty-string>.subnode,
 .node.empty-string.highlight>.subnode.empty-string>.subnode {
-  display: none;
+/*  display: none; */
+  visibility: hidden
 }
 
 .node.holeInterior.cursor>.subnode.holeInterior-inner::before,
 .node.holeInterior.highlight>.subnode.holeInterior-inner::before,
 .node.empty-string.cursor>.subnode.empty-string::before,
 .node.empty-string.highlight>.subnode.empty-string::before {
+  display: inline-block;
+  width: 0px;
   content: '|';
 }
 
@@ -516,4 +519,8 @@ console
 
 .marked { /*Used for the Tutorial marking terms*/
     background-color: yellow;
+}
+
+.square {
+  line-height: 12px;
 }

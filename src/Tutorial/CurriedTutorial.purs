@@ -317,8 +317,8 @@ lessons = [
             ]
             , HH.br[], HH.br[]
             , (HH.text """
-            Deleting a boundary tells Pantograph to fix the error by forcing the term to have the type
-            that is inside the boundary.
+            Deleting a boundary tells Pantograph to fix the error by altering the program around the boundary
+            to have the type of the term inside.
             """ )
         ])
     , makeLesson
