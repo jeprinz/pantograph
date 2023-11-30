@@ -520,7 +520,7 @@ console
   color: lightgrey;
 }
 
-.node.grey.error {
+.grey.error {
   position: relative;
   display: inline-block;
   border-radius: 0;
@@ -533,7 +533,7 @@ console
   text-decoration: none;
 }
 
-.node.grey.error:after {
+.grey.error:after {
   content: "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
   font-size: 0.6em;
   font-weight: 700;
