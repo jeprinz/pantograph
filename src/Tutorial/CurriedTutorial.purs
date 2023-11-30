@@ -146,8 +146,6 @@ lessons = [
             """ )
             , HH.br[], HH.br[]
             , (HH.text """
---            Spend a moment on this example program making some selections.
---            But don't worry if the concept still seems confusing.
             Spend a few seconds making selections on this example program. In the next few lessons,
             we will go over specific examples using selections.
             """ )

@@ -66,7 +66,7 @@ makePantographTutorial spec lessons interpereter =
       editorComponent = Editor.editorComponent unit
       convertPaths markedPaths = markedPaths <#> \path -> (Base.HoleyDerivPath path false)
       initialState _ = {
-        activeLesson : 12--0
+        activeLesson : 0
         , lessonsSolved : Array.replicate (Array.length lessons) false
         , output : ""
         }
