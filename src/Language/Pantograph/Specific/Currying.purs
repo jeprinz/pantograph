@@ -656,7 +656,7 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
                   [ HH.div_ [HH.text $ "[type error]"]
 --                  , HH.div_ [HH.text $ "inside  type: " <> pretty insideType]
                   , HH.div_ [HH.text $ "inside  type: ", renderTerm (Zipper (Path Nil) (sortToType insideType)) renCtx]
-                  , HH.div_ [HH.text $ "outside  type: ", renderTerm (Zipper (Path Nil) (sortToType outsideType)) renCtx]
+                  , HH.div_ [HH.text $ "outside type: ", renderTerm (Zipper (Path Nil) (sortToType outsideType)) renCtx]
 --                  , HH.div_ [HH.text $ "outside type: " <> pretty outsideType]
                   ]
                 ]
