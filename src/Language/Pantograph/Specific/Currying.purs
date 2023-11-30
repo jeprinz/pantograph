@@ -564,7 +564,7 @@ isAppOrGreyApp GreyApp = true
 isAppOrGreyApp _ = false
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent} =
+arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent, renderTerm} =
   let renCtx = preRenCtx{cssClasses = Set.delete "error" preRenCtx.cssClasses } :: Base.RenderingContext in -- remove some things from css classes
   let parentRule = case mb_parent of
         Just (Tooth (DerivLabel rule _) _) -> Just rule
@@ -654,8 +654,10 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
             [ pure 
                 [ HH.div [HP.classes [HH.ClassName "error-info ErrorBoundary-info"]] 
                   [ HH.div_ [HH.text $ "[type error]"]
-                  , HH.div_ [HH.text $ "inside  type: " <> pretty insideType]
-                  , HH.div_ [HH.text $ "outside type: " <> pretty outsideType]
+--                  , HH.div_ [HH.text $ "inside  type: " <> pretty insideType]
+                  , HH.div_ [HH.text $ "inside  type: ", renderTerm (Zipper (Path Nil) (sortToType insideType)) renCtx]
+                  , HH.div_ [HH.text $ "outside  type: ", renderTerm (Zipper (Path Nil) (sortToType outsideType)) renCtx]
+--                  , HH.div_ [HH.text $ "outside type: " <> pretty outsideType]
                   ]
                 ]
             , pure [errorLeftSide]

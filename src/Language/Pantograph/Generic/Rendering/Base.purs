@@ -119,6 +119,7 @@ type ArrangeDerivTermSubs l r =
   , sigma :: (Expr.MetaVarSub (Sort l)) -- The substitution on the DerivLabel
   , sort :: Sort l
   , dzipper :: Maybe (DerivZipper l r)
+  , renderTerm :: DerivZipper l r -> RenderingContext -> EditorHTML l r
   } ->
   Array (PreKid l r)
 

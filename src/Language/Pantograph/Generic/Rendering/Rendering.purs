@@ -64,7 +64,8 @@ arrangeDerivTermSubs locs innerHoleIsCursor dzipper@(Expr.Zipper dpath dterm) ki
   label@(DerivLabel rule sigma) % kids -> do
     let sort = getSortFromSub rule sigma
     let subCtxSymElems = locs.spec.arrangeDerivTermSubs unit
-            {mb_parent: Expr.zipperParent dzipper, renCtx, rule, sort, sigma, dzipper: Just dzipper}
+            {mb_parent: Expr.zipperParent dzipper, renCtx, rule, sort, sigma, dzipper: Just dzipper,
+                renderTerm: renderDerivTerm locs false false}
     let kidCtxElems' =
             if hasInnerHole rule then
                 [renderHoleInterior locs innerHoleIsCursor dzipper] <> kidCtxElems
@@ -256,7 +257,8 @@ renderPreviewDerivTooth locs up dtooth@(Expr.Tooth dl kidsPath) dterm = do
   let kids = Array.fromFoldable $ ZipList.unpathAround dterm kidsPath
   let sort = getSortFromSub rule sigma
   let subCtxSymElems = assert (wellformedExprF "renderPreviewDerivTooth" pretty (DerivLabel rule sigma /\ kids)) \_ -> 
-        locs.spec.arrangeDerivTermSubs unit {mb_parent: Expr.zipperParent dzipper, renCtx: previewRenderingContext "shouldn't get used", rule, sort, sigma, dzipper: Just dzipper}
+        locs.spec.arrangeDerivTermSubs unit {mb_parent: Expr.zipperParent dzipper, renCtx: previewRenderingContext "shouldn't get used", rule, sort, sigma, dzipper: Just dzipper,
+                    renderTerm: renderDerivTerm locs false false}
   let toothInteriorKidIx = ZipList.leftLength kidsPath
   let isToothInterior = case _ of
         Left (_renCtx' /\ i) -> i == toothInteriorKidIx
@@ -314,7 +316,8 @@ renderSSTerm locs term renCtx = case term of
       [classNames ["node", "smallstep"]]
       let kidElems = (if hasInnerHole rule then [\_ -> HH.div_ [interrogativeElem, colonElem]] else []) <> (renderSSTerm locs <$> kids) in
       (Array.concat $ unsafePartial $ locs.spec.arrangeDerivTermSubs unit
-            {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma, dzipper: Nothing } <#> case _ of
+            {mb_parent: Nothing, renCtx, rule, sort: getSortFromSub rule sigma, sigma, dzipper: Nothing,
+                renderTerm: renderDerivTerm locs false false} <#> case _ of
         Left (renCtx' /\ kidIx) -> assert (just "renderSSTerm" (Array.index kidElems kidIx)) \kid -> [applyCssClasses renCtx'.cssClasses (kid renCtx')]
         Right elems -> elems)
   -- TODO for Henry from Jacob: make this work with any number of kids n, instead of just 0 and 1. Or maybe it doesn't matter.
