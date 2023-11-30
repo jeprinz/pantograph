@@ -520,15 +520,36 @@ console
   color: lightgrey;
 }
 
-.error {
-  border-bottom: 1px solid var(--error-color);
+.node.grey.error {
+  position: relative;
   display: inline-block;
+  border-radius: 0;
+
+  /* border-bottom: 1px solid var(--error-color); */
+
+  /* box-shadow: 0 1px 0 0 var(--error-color); */
+  /* background-color: rgba(0, 0, 0, 0.1); */
+
+  text-decoration: none;
 }
 
-.grey {
+.node.grey.error:after {
+  content: "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
+  font-size: 0.6em;
+  font-weight: 700;
+  font-family: Times New Roman, Serif;
+  color: red;
+  width: 100%;
+  position: absolute;
+  top: 12px;
+  left: -1px;
+  overflow: hidden;
+}
+
+.node.grey {
   /* color: lightgrey !important; */
   /*The problem with this was that int literals were green anyway, overriding this.*/
-  opacity: 75%;
+  /* opacity: 75%; */
 }
 
 .inline {
