@@ -155,7 +155,7 @@ body {
 .node.holeInterior.highlight>.subnode.holeInterior-inner>.subnode,
 .node.empty-string.cursor>.subnode.empty-string>.subnode,
 .node.empty-string.highlight>.subnode.empty-string>.subnode {
-/*  display: none; */
+  /*  display: none; */
   visibility: hidden
 }
 
@@ -254,6 +254,20 @@ body {
 
 .subnode.punctuation.arrow {
   margin: 0 0.4em;
+}
+
+.app-circle {
+  display: inline;
+  cursor: pointer;
+  border-radius: 0.5em 0.5em / 0.2em;
+  color: lightgrey;
+  font-size: 10px;
+}
+
+.subnode.punctuation.circle {
+  display: inline-block;
+  position: relative;
+  top: -2px;
 }
 
 /* 
@@ -489,14 +503,6 @@ console
   border-radius: 0.5em 0.5em / 0.2em;
 }
 
-.app-circle {
-  display: inline;
-  cursor: pointer;
-  border-radius: 0.5em 0.5em / 0.2em;
-  color: lightgrey;
-  font-size: 10px;
-}
-
 .newline-symbol {
   display: inline;
   border-radius: 0.5em 0.5em / 0.2em;
@@ -504,12 +510,13 @@ console
 }
 
 .error {
-  border-bottom:1px solid red;
+  border-bottom: 1px solid red;
   display: inline-block;
 }
 
 .grey {
-  /* color: lightgrey !important; */ /*The problem with this was that int literals were green anyway, overriding this.*/
+  /* color: lightgrey !important; */
+  /*The problem with this was that int literals were green anyway, overriding this.*/
   opacity: 75%;
 }
 
@@ -517,8 +524,9 @@ console
   display: inline;
 }
 
-.marked { /*Used for the Tutorial marking terms*/
-    background-color: yellow;
+.marked {
+  /*Used for the Tutorial marking terms*/
+  background-color: yellow;
 }
 
 .square {
