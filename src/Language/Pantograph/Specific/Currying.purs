@@ -876,7 +876,7 @@ makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 editsAtHoleInterior :: Sort -> Array Edit
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity ([
-        DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "If" cursorSort
+        DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "if" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "(" cursorSort

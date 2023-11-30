@@ -90,7 +90,7 @@ arrangeNodeSubs :: forall l r. IsRuleLabel l r =>
 arrangeNodeSubs locs isCursor hdzipper subElems =
   Array.concat
   [ if not isCursor then [] else 
-    trace "here we are" \_ -> [ HH.slot bufferSlot unit bufferComponent
+    [ HH.slot bufferSlot unit bufferComponent
         { hdzipper
         , edits: editsAtHoleyDerivZipper locs.spec hdzipper <#>
             \edit -> 
