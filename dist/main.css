@@ -1,3 +1,10 @@
+:root {
+  --hole-color: red;
+  --error-color: red;
+  --name-color: green;
+  --type-metavar: purple;
+}
+
 /* 
   fonts
 */
@@ -139,6 +146,10 @@ body {
   /* box-shadow: inset 0 0 0 2px rgb(255, 139, 50); */
 }
 
+.node.holeInterior+.subnode.punctuation.colon {
+  color: var(--hole-color);
+}
+
 /* OLD version, which put an orange cursor around inner hole */
 /* .node.holeInterior.cursor {
   box-shadow: -3px 0 orange, 3px 0 orange;
@@ -189,7 +200,7 @@ body {
 
 .subnode.string-inner {
   white-space: pre;
-  color: green;
+  color: var(--name-color);
   /* background-color: rgb(227, 227, 227); */
 }
 
@@ -510,7 +521,7 @@ console
 }
 
 .error {
-  border-bottom: 1px solid red;
+  border-bottom: 1px solid var(--error-color);
   display: inline-block;
 }
 
@@ -529,6 +540,40 @@ console
   background-color: yellow;
 }
 
-.square {
+.subnode.punctuation.square {
   line-height: 12px;
+  color: var(--hole-color);
 }
+
+.name {
+  color: var(--name-color);
+}
+
+.subnode.punctuation.lbrace,
+.subnode.punctuation.rbrace {
+  color: var(--hole-color);
+}
+
+.TypeHoleMV {
+  color: var(--type-metavar)
+}
+
+/* error-info */
+
+.error-info {
+  display: none;
+  position: absolute;
+  white-space: pre-wrap;
+
+  background-color: white;
+  border: 1px solid var(--error-color);
+  box-shadow: 2px 2px 8px 0 black;
+}
+
+.node.highlight>.error-info {
+  display: inline-block;
+  margin-top: 1.5em;
+  padding: 0.2em;
+}
+
+.error-info.ErrorBoundary-info {}

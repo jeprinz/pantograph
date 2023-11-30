@@ -1,41 +1,48 @@
 module Language.Pantograph.Specific.Currying where
 
-import Language.Pantograph.Generic.Grammar
 import Data.Expr
-import Language.Pantograph.Generic.ChangeAlgebra
-import Language.Pantograph.Generic.Smallstep (wrapBoundary, Direction(..))
 import Data.Tuple.Nested
+import Language.Pantograph.Generic.ChangeAlgebra
+import Language.Pantograph.Generic.Grammar
 import Prelude
 
 import Bug (bug)
 import Bug.Assertion (assert, assertI, just)
 import Control.Plus (empty)
+import Data.Argonaut.Decode.Class (class DecodeJson)
+import Data.Argonaut.Decode.Generic (genericDecodeJson)
+import Data.Argonaut.Encode.Class (class EncodeJson)
+import Data.Argonaut.Encode.Generic (genericEncodeJson)
 import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
-import Data.List.Zip as ZipList
 import Data.Enum (class Enum)
-import Data.List.Rev as RevList
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
 import Data.Expr (class IsExprLabel, (%), (%*), slot, (%$))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
+import Data.Int as Int
 import Data.Lazy (defer)
+import Data.Lazy as Lazy
 import Data.List (List(..), (:))
 import Data.List as List
+import Data.List.Rev as RevList
+import Data.List.Zip as ZipList
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
 import Data.Ord.Generic (genericCompare)
+import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
-import Data.Map as Map
-import Data.Set as Set
+import Data.Tuple (fst, uncurry)
 import Data.Variant (Variant)
 import Debug (traceM, trace)
 import Debug as Debug
 import Effect.Exception.Unsafe (unsafeThrow)
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint, lEndpoint)
@@ -48,26 +55,20 @@ import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Console (logConsole)
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
+import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm)
 import Language.Pantograph.Generic.Smallstep ((%+-), dPLUS, dMINUS, (%#))
 import Language.Pantograph.Generic.Smallstep (StepExprLabel(..), cSlot, dTERM)
+import Language.Pantograph.Generic.Smallstep (wrapBoundary, Direction(..))
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Generic.Unification (unify)
 import Language.Pantograph.Generic.Unification as Unification
+import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
+import Language.Pantograph.Lib.GreyedRules as GreyedRules
 import Text.Pretty (class Pretty, parens, pretty, (<+>))
 import Text.Pretty as P
 import Type.Direction (Up)
-import Util (fromJust)
+import Util (fromJust, index', lookup')
 import Util as Util
-import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
-import Language.Pantograph.Lib.GreyedRules as GreyedRules
-import Data.Lazy as Lazy
-import Data.Tuple (fst, uncurry)
-import Data.Int as Int
-import Data.Argonaut.Decode.Class (class DecodeJson)
-import Data.Argonaut.Decode.Generic (genericDecodeJson)
-import Data.Argonaut.Encode.Class (class EncodeJson)
-import Data.Argonaut.Encode.Generic (genericEncodeJson)
-import Halogen.HTML.Properties as HP
 
 
 {-
@@ -630,13 +631,36 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
         --  TypeHole /\ _ -> [Left (renCtx /\ 0), pure [colonElem, typeElem]]
           -- only has inner hole? So messes up keyboard cursor movement. TODO: fix.
           TypeHole /\ _ | Just (MV mv % []) <- Map.lookup (RuleMetaVar "type") sigma ->
-            [pure [HH.text "?", HH.text (show (Base.getMetavarNumber renCtx mv))]]
+            [pure [HH.span [HP.classes [HH.ClassName "TypeHoleMV"]] [HH.text "?", HH.text (show (Base.getMetavarNumber renCtx mv))]]]
           TypeHole /\ _ -> [pure [HH.text ("error: " <> show (Map.lookup (RuleMetaVar "type") sigma))]]
           If /\ _ ->
             let renCtx' = Base.incremementIndentationLevel renCtx in
             [pure [ifElem, Rendering.spaceElem], Left (renCtx' /\ 0), pure ((newlineIndentElem renCtx.indentationLevel) <> [thenElem, Rendering.spaceElem]), Left (renCtx' /\ 1),
                 pure ((newlineIndentElem renCtx.indentationLevel) <> [elseElem, Rendering.spaceElem]), Left (renCtx' /\ 2)]
-          ErrorBoundary /\ _ -> [pure [errorLeftSide], Left (renCtx /\ 0), pure [errorRightSide]]
+          {-
+            ErrorBoundary -> Grammar.makeRule ["gamma", "insideType", "outsideType"] \[gamma, insideType, outsideType] ->
+            [TermSort %|-* [gamma, insideType]]
+            /\ -------
+            ( TermSort %|-* [gamma, outsideType])
+          -}
+          ErrorBoundary /\ _ -> 
+            let 
+              Grammar.Rule ruleParams ruleKids ruleParent = TotalMap.lookup rule language
+              matchRuleMetaVarName y (RuleMetaVar x) = x == y
+              matchRuleMetaVarName _ _ = false
+              insideType = sigma # lookup' (ruleParams # Set.filter (matchRuleMetaVarName "insideType") >>> (Set.toUnfoldable :: _ -> Array _) >>> flip index' 0)
+              outsideType = sigma # lookup' (ruleParams # Set.filter (matchRuleMetaVarName "outsideType") >>> (Set.toUnfoldable :: _ -> Array _) >>> flip index' 0)
+            in
+            [ pure 
+                [ HH.div [HP.classes [HH.ClassName "error-info ErrorBoundary-info"]] 
+                  [ HH.div_ [HH.text $ "[type error]"]
+                  , HH.div_ [HH.text $ "inside  type: " <> pretty insideType]
+                  , HH.div_ [HH.text $ "outside type: " <> pretty outsideType]
+                  ]
+                ]
+            , pure [errorLeftSide]
+            , Left (renCtx /\ 0)
+            , pure [errorRightSide] ]
           ConstantRule constant /\ _ -> [pure [HH.text (constantName constant)]]
           InfixRule op /\ _ ->
             [pure [Rendering.lparenElem], Left (renCtx /\ 0), pure [Rendering.spaceElem, HH.text (infixName op), Rendering.spaceElem], Left (renCtx /\ 1), pure [Rendering.rparenElem]]
