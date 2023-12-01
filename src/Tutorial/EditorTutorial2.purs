@@ -100,13 +100,13 @@ makePantographTutorial spec lessons interpereter =
 --                , HH.div [ classNames ["resize-handle--x"] ] []
                 , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside"] []
                 , HH.aside [ classNames [], HP.style "width: 25em; overflow: auto;"] [
-                    HH.div [classNames ["vertical-contaioner"]] [
+                    HH.div [classNames ["vertical-container"]] [
                         HH.div [HP.style "height: 3em"] [
                             HH.button [ HE.onClick \_ -> RunProgram, HP.style "margin: 10px" ] [ HH.text "Run" ]
                             , HH.span [HP.style "font-family: monospace; font-size: 12pt"] [HH.text state.output]
                         ]
                         , HH.div [ classNames ["horizontal-bar"], HP.style "height: 2px;" ] []
-                        , HH.div [HP.style "float:right", classNames ["padded"]] [unsafeCoerce lesson.instructions]
+                        , HH.div [HP.style "float:right", classNames ["padded", "lessonInstructions"]] [unsafeCoerce lesson.instructions]
                     ]
                 ]
             ]

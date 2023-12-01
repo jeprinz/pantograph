@@ -3,21 +3,41 @@
   --error-color: red;
   --name-color: green;
   --type-metavar: purple;
+  /* --code-font-family: 'Nova Mono'; */
+  --code-font-family: monospace;
 }
 
 /* 
   fonts
 */
 
-/* @font-face {
-  font-family: 'Iosevka Curly';
-  src: url(./assets/fonts/iosevka-curly.ttc) format('truetype');
-} */
+@font-face {
+  font-family: 'Neuton';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Neuton Regular'), local('Neuton-Regular'), url(http://themes.googleusercontent.com/static/fonts/neuton/v5/2yfL00UA7vu40fNHPnbJgw.ttf) format('truetype');
+}
 
-/* @font-face {
-  font-family: 'FiraCode';
-  src: url(./assets/fonts/FiraCode-Regular.ttf) format('truetype');
-} */
+@font-face {
+  font-family: 'Cutive Mono';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Cutive Mono'), local('CutiveMono-Regular'), url(http://themes.googleusercontent.com/static/fonts/cutivemono/v1/N5odNRruTwjvCM8y77PhQZ0EAVxt0G0biEntp43Qt6E.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Monoton';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Monoton'), local('Monoton-Regular'), url(http://themes.googleusercontent.com/static/fonts/monoton/v3/ceRJlaOl8VqdbfWAlFaxNQ.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Nova Mono';
+  font-style: normal;
+  font-weight: 400;
+  src: local('NovaMono'), url(http://themes.googleusercontent.com/static/fonts/novamono/v4/pN6VVBY03b9QLz-7i6Kl0aCWcynf_cDxXwCLxiixG1c.ttf) format('truetype');
+}
 
 /* 
   html
@@ -37,6 +57,8 @@ body {
 .editor {
   padding: 1em;
   font-size: 12pt;
+
+  font-family: var(--code-font-family);
 }
 
 /* 
@@ -86,8 +108,7 @@ body {
   user-select: none;
   /* Standard syntax */
 
-  /* font-family: 'Iosevka Curly'; */
-  font-family: monospace;
+  font-family: var(--code-font-family);
 
   margin-bottom: 1em;
   padding: 0.5em 0;
@@ -537,7 +558,7 @@ console
   content: "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
   font-size: 0.6em;
   font-weight: 700;
-  font-family: Times New Roman, Serif;
+  font-family: monospace;
   color: red;
   width: 100%;
   position: absolute;
@@ -598,3 +619,10 @@ console
 }
 
 .error-info.ErrorBoundary-info {}
+
+
+.PantographHeader {}
+
+.PantographTitle {}
+
+.PantographControls {}
