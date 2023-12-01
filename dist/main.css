@@ -196,6 +196,7 @@ body {
 .node.empty-string.cursor>.subnode.empty-string::before,
 .node.empty-string.highlight>.subnode.empty-string::before {
   display: inline-block;
+  color: black;
   width: 0px;
   content: '|';
 }
@@ -226,7 +227,8 @@ body {
 }
 
 .subnode.string-inner.empty-string {
-  color: gray;
+  /*color: gray;*/
+  color: var(--hole-color);
   /*
   font-style: italic;
   padding: 0 0.4em;
