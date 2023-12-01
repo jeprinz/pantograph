@@ -76,16 +76,17 @@ makePantographTutorial spec lessons interpereter =
         let lesson = force (Util.index' lessons state.activeLesson) in
         HH.div [classNames["vertical-container"]]
             [
-            HH.div [classNames["horizontal-container", "padded"],
+            HH.div [classNames["PantographHeader", "horizontal-container", "padded"],
                 HP.style "height: 1.4em; justify-content: space-between"] [
-                HH.div [] [
-                    HH.b [HP.style "margin-right: 20px"] [HH.text "Pantograph"]
-                    , HH.text ("Lesson " <> show (state.activeLesson + 1))
+                HH.div [ classNames ["PantographTitle"] ] [
+                    HH.div_ [HH.text "Pantograph"],
+                    HH.div_ [HH.text "/"],
+                    HH.div_ [HH.text $ "Lesson " <> show (state.activeLesson + 1)]
                 ]
-                , HH.div [] [
-                    HH.button [ HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
-                    , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
-                    , HH.button [ HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
+                , HH.div [ classNames ["PantographControls"] ] [
+                    HH.button [ classNames ["TutorialControlButton"], HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
+                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
+                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
                 ]
 --                , HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
             ]
@@ -100,13 +101,13 @@ makePantographTutorial spec lessons interpereter =
 --                , HH.div [ classNames ["resize-handle--x"] ] []
                 , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside"] []
                 , HH.aside [ classNames [], HP.style "width: 25em; overflow: auto;"] [
-                    HH.div [classNames ["vertical-contaioner"]] [
+                    HH.div [classNames ["vertical-container"]] [
                         HH.div [HP.style "height: 3em"] [
-                            HH.button [ HE.onClick \_ -> RunProgram, HP.style "margin: 10px" ] [ HH.text "Run" ]
+                            HH.button [ classNames ["TutorialControlButton"], HE.onClick \_ -> RunProgram, HP.style "margin: 10px" ] [ HH.text "Run" ]
                             , HH.span [HP.style "font-family: monospace; font-size: 12pt"] [HH.text state.output]
                         ]
-                        , HH.div [ classNames ["horizontal-bar"], HP.style "height: 2px;" ] []
-                        , HH.div [HP.style "float:right", classNames ["padded"]] [unsafeCoerce lesson.instructions]
+                        -- , HH.div [ classNames ["horizontal-bar"], HP.style "height: 2px;" ] []
+                        , HH.div [HP.style "float:right", classNames ["padded", "lessonInstructions"]] [unsafeCoerce lesson.instructions]
                     ]
                 ]
             ]

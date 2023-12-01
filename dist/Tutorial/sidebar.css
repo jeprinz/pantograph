@@ -4,6 +4,28 @@ html {
   height: 100%;
 }
 
+@font-face {
+  font-family: 'Corben';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Corben Regular'), local('Corben-Regular'), url(http://themes.googleusercontent.com/static/fonts/corben/v5/aAJbkLknKhfXxsbVwcGZiA.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Neuton';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Neuton Regular'), local('Neuton-Regular'), url(http://themes.googleusercontent.com/static/fonts/neuton/v5/2yfL00UA7vu40fNHPnbJgw.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Abril Fatface';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Abril Fatface'), local('AbrilFatface-Regular'), url(http://themes.googleusercontent.com/static/fonts/abrilfatface/v5/X1g_KwGeBV3ajZIXQ9VnDibsRidxnYrfzLNRqJkHfFo.ttf) format('truetype');
+}
+
+
 /*
 body {
   box-sizing: border-box;
@@ -53,8 +75,8 @@ body {
   */
 }
 
-.sidebar-container > aside,
-.sidebar-container > main {
+.sidebar-container>aside,
+.sidebar-container>main {
   /* padding: 10px; */
   /* overflow: auto; */
 }
@@ -122,4 +144,15 @@ body {
     border-right-style: solid;
   }
   */
+}
+
+.lessonInstructions {
+  font-family: 'Corben';
+}
+
+.lessonInstructions h1 {
+  font-size: 1.4em;
+  margin: 0;
+  margin-bottom: 1em;
+  border-top: 2px solid black;
 }
