@@ -104,6 +104,16 @@ lEndpoint = fst <<< endpoints
 rEndpoint :: forall l. IsExprLabel l => Change l -> Expr l
 rEndpoint = snd <<< endpoints
 
+lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
+lub c1 c2 =
+    case c1 /\ c2 of
+        (CInj l1) % kids1 /\ Expr (CInj l2) kids2 | l1 == l2 -> Expr (CInj l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
+        _ | isId c1 -> pure c2
+        _ | isId c2 -> pure c1
+        _ -> trace ("WARNING: I think that this case probably shouldn't happen if I figured out the right way to code lub. It was: " <> pretty c1 <> " " <> pretty c2) \_ -> Nothing
+
+
+
 
 -- least upper bound
 -- actually, I'm not sure we need this.
@@ -111,37 +121,37 @@ rEndpoint = snd <<< endpoints
 -- if you have changes where Plus and Minus DONT cancel each other out, then changes form a category without inverses.
 -- this function returns the unique limit where it exists in that category, and returns Nothing if there is no unique solution.
 -- TODO: There might be a simpler way to define this function, which is that it's output either only has + or only has -    ???
-lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
-lub c1 c2 =
---    trace ("lub called with: c1 is " <> pretty c1 <> " and c2 is " <> pretty c2) \_ ->
---    assert (wellformedExpr "lub.c1" c1) \_ ->
---    assert (wellformedExpr "lub.c2" c2) \_ ->
---    trace ("got here") \_ ->
-    case c1 /\ c2 of
-        Expr (CInj l1) kids1 /\ Expr (CInj l2) kids2 | l1 == l2 -> Expr (CInj l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
-        _ | Just out <- plusLub c1 c2 -> pure out
-        _ | Just out <- plusLub c2 c1 -> pure out
-        _ | Just out <- minusLub c1 c2 -> pure out
-        _ | Just out <- minusLub c2 c1 -> pure out
-        _ | isId c1 -> pure c2
-        _ | isId c2 -> pure c1
-        -- TODO: I think that probably there is no reason for lub to ever fail.
-        _ -> trace "WARNING: I think that this case probably shouldn't happen if I figured out the right way to code lub" \_ -> Nothing
-
-plusLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
-plusLub c1 c2 | c1 == c2 = Just c1
-plusLub (Expr (Plus th) [c1]) c2 = Expr (Plus th) <<< Array.singleton <$> (plusLub c1 c2)
-plusLub c1@(Expr (Replace e1 e2) []) c2 | isId c2 = Just c1
-plusLub _ _ = Nothing
-
-minusLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
-minusLub c1 c2 | c1 == c2 = Just c1
-minusLub (Expr (Minus th@(Tooth l1 p)) [c1]) (Expr (CInj l2) kids)
-    | l1 == l2
-    , Array.length kids == 1 + ZipList.leftLength p + ZipList.rightLength p =
-    Expr (Minus th) <<< Array.singleton <$> (minusLub c1 (fromJust' "minusLub" $ Array.index kids (ZipList.leftLength p)))
-minusLub c1@(Expr (Replace e1 e2) []) c2 | isId c2 = Just c1
-minusLub _ _ = Nothing
+--lub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
+--lub c1 c2 =
+----    trace ("lub called with: c1 is " <> pretty c1 <> " and c2 is " <> pretty c2) \_ ->
+----    assert (wellformedExpr "lub.c1" c1) \_ ->
+----    assert (wellformedExpr "lub.c2" c2) \_ ->
+----    trace ("got here") \_ ->
+--    case c1 /\ c2 of
+--        Expr (CInj l1) kids1 /\ Expr (CInj l2) kids2 | l1 == l2 -> Expr (CInj l1) <$> sequence (Array.zipWith lub kids1 kids2) -- Oh no I've become a haskell programmer
+--        _ | Just out <- plusLub c1 c2 -> pure out
+--        _ | Just out <- plusLub c2 c1 -> pure out
+--        _ | Just out <- minusLub c1 c2 -> pure out
+--        _ | Just out <- minusLub c2 c1 -> pure out
+--        _ | isId c1 -> pure c2
+--        _ | isId c2 -> pure c1
+--        -- TODO: I think that probably there is no reason for lub to ever fail.
+--        _ -> trace "WARNING: I think that this case probably shouldn't happen if I figured out the right way to code lub" \_ -> Nothing
+--
+--plusLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
+--plusLub c1 c2 | c1 == c2 = Just c1
+--plusLub (Expr (Plus th) [c1]) c2 = Expr (Plus th) <<< Array.singleton <$> (plusLub c1 c2)
+--plusLub c1@(Expr (Replace e1 e2) []) c2 | isId c2 = Just c1
+--plusLub _ _ = Nothing
+--
+--minusLub :: forall l. IsExprLabel l => Change l -> Change l -> Maybe (Change l)
+--minusLub c1 c2 | c1 == c2 = Just c1
+--minusLub (Expr (Minus th@(Tooth l1 p)) [c1]) (Expr (CInj l2) kids)
+--    | l1 == l2
+--    , Array.length kids == 1 + ZipList.leftLength p + ZipList.rightLength p =
+--    Expr (Minus th) <<< Array.singleton <$> (minusLub c1 (fromJust' "minusLub" $ Array.index kids (ZipList.leftLength p)))
+--minusLub c1@(Expr (Replace e1 e2) []) c2 | isId c2 = Just c1
+--minusLub _ _ = Nothing
 
 matchingEndpoints :: forall l. IsExprLabel l => String -> String -> Change l -> Change l -> Assertion Unit
 matchingEndpoints source message c1 c2 = makeAssertionBoolean

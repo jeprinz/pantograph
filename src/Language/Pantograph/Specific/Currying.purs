@@ -1267,6 +1267,8 @@ fallbackDownError _ (Expr.Expr (Boundary Down ch) [ inside@(SSInj _ % _) ]) -- O
         [wrapBoundary Down (csor TermSort % [gamma, inject insideTy]) inside]
 fallbackDownError _ _ = Nothing
 
+-- Example of when this can be called: on Lesson 1, delete the type Int -> Int. Then, delete the boundary
+-- around fibonacci in the definition.
 fallbackUpError :: StepRule
 fallbackUpError _ sterm =
     case sterm of
