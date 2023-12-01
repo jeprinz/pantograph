@@ -1,8 +1,8 @@
 :root {
-  --hole-color: red;
+  --hole-color: #8425b8;
   --error-color: red;
   --name-color: green;
-  --type-metavar: purple;
+  --type-metavar: #8425b8;
 }
 
 /* 
@@ -549,7 +549,7 @@ console
 .node.grey {
   /* color: lightgrey !important; */
   /*The problem with this was that int literals were green anyway, overriding this.*/
-  /* opacity: 75%; */
+  opacity: 75%;
 }
 
 .inline {
