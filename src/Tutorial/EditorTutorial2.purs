@@ -76,13 +76,14 @@ makePantographTutorial spec lessons interpereter =
         let lesson = force (Util.index' lessons state.activeLesson) in
         HH.div [classNames["vertical-container"]]
             [
-            HH.div [classNames["horizontal-container", "padded"],
+            HH.div [classNames["PantographHeader", "horizontal-container", "padded"],
                 HP.style "height: 1.4em; justify-content: space-between"] [
-                HH.div [] [
-                    HH.b [HP.style "margin-right: 20px"] [HH.text "Pantograph"]
-                    , HH.text ("Lesson " <> show (state.activeLesson + 1))
+                HH.div [ classNames ["PantographTitle"] ] [
+                    HH.div_ [HH.text "Pantograph"],
+                    HH.div_ [HH.text "/"],
+                    HH.div_ [HH.text $ "Lesson " <> show (state.activeLesson + 1)]
                 ]
-                , HH.div [] [
+                , HH.div [ classNames ["PantographControls"] ] [
                     HH.button [ HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
                     , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
                     , HH.button [ HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]

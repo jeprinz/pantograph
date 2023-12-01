@@ -621,8 +621,44 @@ console
 .error-info.ErrorBoundary-info {}
 
 
-.PantographHeader {}
+.PantographHeader {
+  background-color: black;
+  color: white;
 
-.PantographTitle {}
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
 
-.PantographControls {}
+.PantographTitle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1em;
+}
+
+.PantographControls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.PantographControls button {
+  display: block;
+  background-color: white;
+  color: black;
+  outline: none;
+  border: none;
+}
+
+.PantographControls button:hover {
+  outline: 2px solid blue;
+  cursor: pointer;
+}
+
+.PantographControls button:disabled {
+  background-color: gray;
+  outline: none;
+  cursor: default;  
+}
