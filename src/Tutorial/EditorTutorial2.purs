@@ -84,9 +84,9 @@ makePantographTutorial spec lessons interpereter =
                     HH.div_ [HH.text $ "Lesson " <> show (state.activeLesson + 1)]
                 ]
                 , HH.div [ classNames ["PantographControls"] ] [
-                    HH.button [ HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
-                    , HH.button [ HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
-                    , HH.button [ HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
+                    HH.button [ classNames ["TutorialControlButton"], HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
+                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
+                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
                 ]
 --                , HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
             ]
@@ -103,10 +103,10 @@ makePantographTutorial spec lessons interpereter =
                 , HH.aside [ classNames [], HP.style "width: 25em; overflow: auto;"] [
                     HH.div [classNames ["vertical-container"]] [
                         HH.div [HP.style "height: 3em"] [
-                            HH.button [ HE.onClick \_ -> RunProgram, HP.style "margin: 10px" ] [ HH.text "Run" ]
+                            HH.button [ classNames ["TutorialControlButton"], HE.onClick \_ -> RunProgram, HP.style "margin: 10px" ] [ HH.text "Run" ]
                             , HH.span [HP.style "font-family: monospace; font-size: 12pt"] [HH.text state.output]
                         ]
-                        , HH.div [ classNames ["horizontal-bar"], HP.style "height: 2px;" ] []
+                        -- , HH.div [ classNames ["horizontal-bar"], HP.style "height: 2px;" ] []
                         , HH.div [HP.style "float:right", classNames ["padded", "lessonInstructions"]] [unsafeCoerce lesson.instructions]
                     ]
                 ]

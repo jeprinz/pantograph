@@ -644,21 +644,30 @@ console
   gap: 0.4em;
 }
 
-.PantographControls button {
-  display: block;
+.TutorialControlButton {
+  display: inline-block;
   background-color: white;
   color: black;
   outline: none;
-  border: none;
+  border: 4px inset black;
 }
 
-.PantographControls button:hover {
-  outline: 2px solid blue;
+.TutorialControlButton:hover {
+  border: 4px inset blue;
   cursor: pointer;
 }
 
-.PantographControls button:disabled {
+.TutorialControlButtonDummy:hover {
+  border: 4px inset black;
+  cursor: default;
+}
+
+.TutorialControlButton:disabled {
   background-color: gray;
   outline: none;
-  cursor: default;  
+}
+
+.TutorialControlButton:disabled:hover {
+  border: 4px inset black;
+  cursor: default;
 }

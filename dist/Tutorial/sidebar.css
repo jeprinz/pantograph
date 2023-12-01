@@ -149,3 +149,10 @@ body {
 .lessonInstructions {
   font-family: 'Corben';
 }
+
+.lessonInstructions h1 {
+  font-size: 1.4em;
+  margin: 0;
+  margin-bottom: 1em;
+  border-top: 2px solid black;
+}
