@@ -46,10 +46,12 @@ lessons = [
             , HH.br []
             , HH.br []
             , (HH.text """
-            Take a few seconds to try mousing over the program, and clicking on things.
-            Instead of a typical text cursor which goes in between characters, in Pantograph
-            the cursor goes onto entire expressions.
+            Just like a text editor, you can navigate in Pantograph using a cursor.
+            Try clicking on different parts of the program.
             """)
+            , HH.br []
+            , HH.br []
+            , HH.text "Unlike a text editor, the Pantograph cursor goes around entire expressions."
             , HH.br []
             , HH.br []
             , HH.text "Then, click the ", renderDummyButton "Next Lesson", HH.text " button above."
