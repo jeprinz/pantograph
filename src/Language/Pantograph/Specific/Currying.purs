@@ -446,10 +446,10 @@ language = TotalMap.makeTotalMap case _ of
     /\ --------
     ( TermSort %|-* [gamma, ty] )
 
-  Newline -> Grammar.makeRule ["s"] \[s] ->
-    [ s ]
+  Newline -> Grammar.makeRule ["gamma", "type"] \[g, t] ->
+    [ TermSort %|-* [g, t] ]
     /\ --------
-    ( s )
+    ( TermSort %|-* [g, t] )
 
   Let -> Grammar.makeRule ["x", "a", "b", "gamma"] \[x, a, b, gamma] ->
     [ TypeOfLabel SortString %* [x]
