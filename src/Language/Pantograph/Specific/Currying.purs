@@ -1357,6 +1357,9 @@ languageChanges :: LanguageChanges
 languageChanges = Grammar.defaultLanguageChanges language # TotalMap.mapWithKey case _ of
   _ -> identity
 
+alternateDesign :: Boolean -- A version of the editor where it doesn't automatically insert lambdas and apps
+alternateDesign = false
+
 stepRules :: List StepRule
 stepRules = do
   let chLang = Smallstep.langToChLang language
@@ -1373,7 +1376,12 @@ stepRules = do
     , introDownErrorNeutral
     , introUpErrorNeutral
 --    , introErrorDownVar
-    , wrapLambda
+    , removeError
+--    , removeErrorPermissive
+    ]
+    <> (if alternateDesign then [] else
+    [
+    wrapLambda
     , unWrapLambda
 --    , rehydrateApp
     , mergeAppGreyApp
@@ -1382,9 +1390,7 @@ stepRules = do
 --    , unWrapApp
     , makeAppGreyed
     , removeGreyedApp
-    , removeError
---    , removeErrorPermissive
-    ]
+    ])
 --    <>
 --    (GreyedRules.createGreyedRules 2 Lam Nothing splitChange forgetSorts languageChanges)
     <> [
