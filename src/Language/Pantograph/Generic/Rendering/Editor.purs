@@ -7,6 +7,7 @@ import Prelude
 
 import Bug (bug)
 import Bug.Assertion (assert, just)
+import Control.Monad.Trans.Class (lift)
 import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), either)
 import Data.Either.Nested (type (\/))
@@ -18,6 +19,7 @@ import Data.List (List(..))
 import Data.Maybe (Maybe(..), isJust)
 import Data.Maybe as Maybe
 import Data.String as String
+import Data.Traversable (sequence)
 import Data.Tuple as Tuple
 import Data.Tuple.Nested ((/\))
 import Data.Variant (case_)
@@ -51,6 +53,7 @@ import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, 
 import Type.Direction (_prev)
 import Util as Util
 import Web.DOM as DOM
+import Web.DOM.Element as Element
 import Web.DOM.NonElementParentNode as NonElementParentNode
 import Web.Event.Event as Event
 import Web.HTML as HTML
@@ -59,9 +62,6 @@ import Web.HTML.Window as Window
 import Web.UIEvent.KeyboardEvent as KeyboardEvent
 import Web.UIEvent.KeyboardEvent.EventTypes as EventTypes
 import Web.UIEvent.MouseEvent as MouseEvent
-import Web.DOM.Element as Element
-import Control.Monad.Trans.Class (lift)
-import Data.Traversable (sequence)
 
 editorPrefix :: Util.Stateful Int
 editorPrefix = Util.stateful 0
@@ -624,6 +624,7 @@ editorComponent _unit =
                 , "serialized-path = " <> serializePath path
                 ]
           else if cmdKey && key == "p" then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             Debug.traceM $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
             pure unit
           else if isOpenBufferKey key then do
