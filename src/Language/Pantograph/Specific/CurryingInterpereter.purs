@@ -93,6 +93,7 @@ eval env ((Grammar.DerivLabel r _) % kids) =
                 Nil -> eval env nilCase
                 v : vs -> eval (pure (Right v) : pure (Right (ListVal vs)) : env) consCase
           IntegerLiteral /\ [Grammar.DerivLiteral (Grammar.DataInt n) % []] -> pure (IntVal n)
+          Comment /\ [_, a] -> eval env a
           _ -> bug ("eval case fail: rule was " <> show r)
 eval _ _ = bug "eval case shouldn't happen"
 
