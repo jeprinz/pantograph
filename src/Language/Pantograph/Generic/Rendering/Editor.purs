@@ -510,7 +510,8 @@ editorComponent _unit =
         -- CursorState where mode = BufferCursorMode
         ------------------------------------------------------------------------
         CursorState {mode: BufferCursorMode} -> do
-          if key == "Enter" || key == " " then do
+          -- if key == "Enter" || key == " " then do
+          if key == "Enter" then do
             -- exit BufferCursorMode
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             HK.tell tokens.slotToken bufferSlot unit SubmitBufferQuery
@@ -655,8 +656,8 @@ editorComponent _unit =
             assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
               (if shiftKey then moveSelect else moveCursor) dir
-          else if key == " " then do
-            moveToNextHole
+          -- else if key == " " then do
+          --   moveToNextHole
           else pure unit
         ------------------------------------------------------------------------
         -- SelectState

@@ -315,6 +315,7 @@ data RuleLabel
   | IndexRule
   | ListMatchRule
   | IntegerLiteral
+  | Comment
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -380,6 +381,7 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (EqualsRule /\ [a, b]) = a <+> "==" <+> b
   prettyExprF'_unsafe_RuleLabel (ListMatchRule /\ [l, n, x, xs, c]) = "match" <+> l <+> "with Nil -> " <+> n <+> " cons" <+> x <+> " " <+> xs <+> " -> " <+> c
   prettyExprF'_unsafe_RuleLabel (IntegerLiteral /\ [lit]) = lit
+  prettyExprF'_unsafe_RuleLabel (Comment /\ [c, a]) = "/* " <> c <> " */ " <> a
   prettyExprF'_unsafe_RuleLabel other = bug ("[prettyExprF'...] the input was: " <> show other)
 
   language = language
@@ -550,6 +552,12 @@ language = TotalMap.makeTotalMap case _ of
     /\ -------
     ( TermSort %|-* [gamma, DataType Int %|-* []] )
 
+  Comment -> Grammar.makeRule ["c", "gamma", "type"] \[c, g, t] ->
+    [ TypeOfLabel SortString %* [c]
+    , TermSort %|-* [g, t] ]
+    /\ --------
+    ( TermSort %|-* [g, t] )
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -623,6 +631,14 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
             Array.concat
               [ if renCtx.isInlined then [] else [pure [HH.div [classNames ["newline-symbol"]] [HH.text " ↪"]], pure (newlineIndentElem renCtx.indentationLevel)]
               , [Left (renCtx /\ 0)] ]
+          -- comment
+          -- Comment /\ _ | Just (MInj (DataLabel (DataString c)) % _) <- Map.lookup (RuleMetaVar "c") sigma ->
+          Comment /\ _ ->
+            Array.concat
+              [ [ pure [HH.span [classNames ["Comment_anchor"]] []]
+                , Left (renCtx /\ 0) ]
+              , if renCtx.isInlined then [] else [pure (newlineIndentElem renCtx.indentationLevel)]
+              , [Left (renCtx /\ 1)] ]
           -- hole
           TermHole /\ (MInj (Grammar.SInj TermSort) % [_gamma, _ty])
             ->  [pure [Rendering.lbraceElem], Left (renCtx /\ 0), pure [colonElem]
@@ -741,7 +757,7 @@ getFreeVar ctx fvName fvType = matchExpr2 ctx
 
 -- returns a list of all indices in the context
 getIndices :: Sort -> List DerivTerm
-getIndices ctx = matchExpr2 ctx
+getIndices ctx = Debug.trace ("ctx: " <> show ctx) \_ -> matchExpr2 ctx
     (sor CtxConsSort %$ [slot, slot, slot]) (\[name, ty, ctx'] ->
         -- new var
         (Grammar.makeLabel Zero ["gamma" /\ ctx', "x" /\ name, "type" /\ ty] % [])
@@ -900,9 +916,11 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
+    -- , DefaultEdits.makeChangeEditFromTerm (newTermFromRule Comment) "Comment" cursorSort
     , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
+    , makeEditFromPath (newPathFromRule Comment 1) "comment" cursorSort
 --    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
 
 --    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort

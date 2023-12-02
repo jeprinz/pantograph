@@ -5,6 +5,7 @@
   --type-metavar: purple;
   /* --code-font-family: 'Nova Mono'; */
   --code-font-family: monospace;
+  --comment-color: lightgray;
 }
 
 /* 
@@ -37,6 +38,14 @@
   font-style: normal;
   font-weight: 400;
   src: local('NovaMono'), url(http://themes.googleusercontent.com/static/fonts/novamono/v4/pN6VVBY03b9QLz-7i6Kl0aCWcynf_cDxXwCLxiixG1c.ttf) format('truetype');
+}
+
+
+@font-face {
+  font-family: 'Corben';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Corben Regular'), local('Corben-Regular'), url(http://themes.googleusercontent.com/static/fonts/corben/v5/aAJbkLknKhfXxsbVwcGZiA.ttf) format('truetype');
 }
 
 /* 
@@ -670,4 +679,15 @@ console
 .TutorialControlButton:disabled:hover {
   border: 4px inset black;
   cursor: default;
+}
+
+
+.Comment_anchor+.node,
+.Comment_anchor+.node>.subnode.string-inner {
+  display: inline-block;
+  font-family: 'Corben';
+  padding: 0.2em 0.2em;
+  color: black;
+  background-color: var(--comment-color);
+  font-style: italic;
 }
