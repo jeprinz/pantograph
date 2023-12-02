@@ -757,7 +757,7 @@ getFreeVar ctx fvName fvType = matchExpr2 ctx
 
 -- returns a list of all indices in the context
 getIndices :: Sort -> List DerivTerm
-getIndices ctx = Debug.trace ("ctx: " <> show ctx) \_ -> matchExpr2 ctx
+getIndices ctx = matchExpr2 ctx
     (sor CtxConsSort %$ [slot, slot, slot]) (\[name, ty, ctx'] ->
         -- new var
         (Grammar.makeLabel Zero ["gamma" /\ ctx', "x" /\ name, "type" /\ ty] % [])
