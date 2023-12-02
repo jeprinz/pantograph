@@ -1,8 +1,8 @@
 :root {
-  --hole-color: red;
+  --hole-color: #8425b8;
   --error-color: red;
   --name-color: green;
-  --type-metavar: purple;
+  --type-metavar: #8425b8;
   /* --code-font-family: 'Nova Mono'; */
   --code-font-family: monospace;
   --comment-color: lightgray;
@@ -205,6 +205,7 @@ body {
 .node.empty-string.cursor>.subnode.empty-string::before,
 .node.empty-string.highlight>.subnode.empty-string::before {
   display: inline-block;
+  color: black;
   width: 0px;
   content: '|';
 }
@@ -235,7 +236,8 @@ body {
 }
 
 .subnode.string-inner.empty-string {
-  color: gray;
+  /*color: gray;*/
+  color: var(--hole-color);
   /*
   font-style: italic;
   padding: 0 0.4em;
@@ -579,7 +581,7 @@ console
 .node.grey {
   /* color: lightgrey !important; */
   /*The problem with this was that int literals were green anyway, overriding this.*/
-  /* opacity: 75%; */
+  opacity: 75%;
 }
 
 .inline {
