@@ -1,10 +1,11 @@
 :root {
-  --hole-color: #8425b8;
+  --hole-color: #bc33ce;
   --error-color: red;
   --name-color: green;
   --type-metavar: #8425b8;
   /* --code-font-family: 'Nova Mono'; */
   --code-font-family: monospace;
+  --pantograph-font-family: 'Nova Mono';
   --comment-color: lightgray;
 }
 
@@ -68,6 +69,14 @@ body {
   font-size: 12pt;
 
   font-family: var(--code-font-family);
+}
+
+code {
+  font-family: var(--code-font-family);
+  background-color: rgb(216, 216, 216);
+  display: inline-block;
+  border-radius: 0.2em;
+  padding: 0 0.2em;
 }
 
 /* 
@@ -258,7 +267,8 @@ body {
 }
 
 .subnode.punctuation.lambda {
-  margin-right: 0.2em;
+  margin-right: 0.4em;
+  font-weight: bold;
 }
 
 .subnode.punctuation.mapsto {
@@ -281,6 +291,19 @@ body {
 
 .subnode.punctuation.let {
   margin-right: 0.4em;
+  font-weight: bold;
+}
+
+.subnode.punctuation.if {
+  font-weight: bold;
+}
+
+.subnode.punctuation.then {
+  font-weight: bold;
+}
+
+.subnode.punctuation.else {
+  font-weight: bold;
 }
 
 .subnode.punctuation.equals {
@@ -639,6 +662,7 @@ console
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  font-family: var(--pantograph-font-family);
 }
 
 .PantographTitle {
@@ -654,6 +678,22 @@ console
   align-items: center;
   gap: 0.4em;
 }
+
+
+.Comment_anchor+.node,
+.Comment_anchor+.node>.subnode.string-inner {
+  display: inline-block;
+  font-family: 'Corben';
+  padding: 0 0.2em;
+  margin: 0.4em 0;
+  color: black;
+  background-color: var(--comment-color);
+  /* font-style: italic; */
+}
+
+
+/* tutorial */
+
 
 .TutorialControlButton {
   display: inline-block;
@@ -683,14 +723,20 @@ console
   cursor: default;
 }
 
-
-.Comment_anchor+.node,
-.Comment_anchor+.node>.subnode.string-inner {
-  display: inline-block;
-  font-family: 'Corben';
-  padding: 0 0.2em;
-  margin: 0.4em 0;
+.TutorialTask {
+  border-radius: 0.5em 0.5em / 0.2em;
+  margin: 0.6em 0;
+  padding: 0.4em 0.4em;
   color: black;
   background-color: var(--comment-color);
-  font-style: italic;
+  width: fit-content;
+
+  display: flex;
+  flex-direction: row;
+  gap: 0.5em;
+}
+
+.TutorialWord-Pantograph {
+  /* font-size: 1.2em; */
+  font-family: var(--pantograph-font-family);
 }

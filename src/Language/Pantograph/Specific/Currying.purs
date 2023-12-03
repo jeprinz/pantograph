@@ -356,7 +356,7 @@ sortToType ty =
 instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
   prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = pretty Suc <> x
-  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "↦" <+> b
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "fun" <+> x <+> ":" <+> ty <+> "=>" <+> b
   prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
   prettyExprF'_unsafe_RuleLabel (ListRule /\ [t]) = "List" <+> t
@@ -702,9 +702,9 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
           ListMatchRule /\ _ ->
             let renCtx' = Base.incremementIndentationLevel renCtx in
             [pure [HH.text "match "], Left (renCtx' /\ 0), pure [HH.text " with"], pure (newlineIndentElem renCtx.indentationLevel)
-                , pure [HH.text "nil ↦ "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
+                , pure [HH.text "nil => "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
                 , pure [HH.text "cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
-                , pure [HH.text " ↦ "], Left (renCtx' /\ 4)]
+                , pure [HH.text " => "], Left (renCtx' /\ 4)]
           IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
           _ -> bug $
             "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
@@ -714,8 +714,8 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
     in
     html <> [pure (if dotOrNot then [HH.div [classNames ["app-circle"]] [appCircle]] else [])]
 
-lambdaElem = Rendering.makePuncElem "lambda" "λ"
-mapstoElem = Rendering.makePuncElem "mapsto" "↦"
+lambdaElem = Rendering.makePuncElem "lambda" "fun"
+mapstoElem = Rendering.makePuncElem "mapsto" "=>"
 refElem = Rendering.makePuncElem "ref" "#"
 zeroVarElem = Rendering.makePuncElem "zeroVar" "Z"
 sucVarElem = Rendering.makePuncElem "sucVar" "S"
@@ -901,7 +901,7 @@ editsAtHoleInterior :: Sort -> Array Edit
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity ([
         DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "if" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "fun" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "(" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
@@ -925,7 +925,8 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
-    , makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
+    -- , DefaultEdits.makeChangeEditFromTerm (newTermFromRule Comment) "Comment" cursorSort
+    , makeEditFromPath (newPathFromRule Lam 2) "fun" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
 --    , makeEditFromPath (newPathFromRule Comment 1) "comment" cursorSort
