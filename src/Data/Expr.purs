@@ -654,15 +654,22 @@ subMetaExpr sigma = assertInput_ (wellformedExpr "subMetaExpr") go
     MV mx % [] -> assert (hasKey "subMetaExpr" mx sigma) identity
     MInj l % kids -> l % (go <$> kids)
 
+--subMetaExprPartially :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
+--subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially") go
+--  where
+--  go :: Partial => _
+--  go = case _ of
+--    MV mx % [] -> case Map.lookup mx sigma of
+--      Nothing -> (MV mx) % []
+--      Just mexpr -> mexpr
+--    MInj l % kids -> (MInj l) % (go <$> kids)
+
 subMetaExprPartially :: forall l. IsExprLabel l => MetaVarSub (MetaExpr l) -> MetaExpr l -> MetaExpr l
-subMetaExprPartially sigma = assertInput_ (wellformedExpr "subMetaExprPartially") go
-  where
-  go :: Partial => _
-  go = case _ of
-    MV mx % [] -> case Map.lookup mx sigma of
+subMetaExprPartially sigma = case _ of
+    MV mx % _ -> case Map.lookup mx sigma of
       Nothing -> (MV mx) % []
       Just mexpr -> mexpr
-    MInj l % kids -> (MInj l) % (go <$> kids)
+    MInj l % kids -> (MInj l) % (subMetaExprPartially sigma <$> kids)
 
 --    Minus [kid] -> ?h
 --    CInj kids -> ?h

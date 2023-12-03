@@ -509,25 +509,6 @@ Inputs a term, and checks if it typechecks up to unification of metavariables. I
 To do regular typechecking, then check if the sub is empty.
 -}
 
-inferTermsImpl :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
-    SortSub l -> List (DerivTerm l r) -> Maybe (SortSub l)
-inferTermsImpl subSoFar Nil = Just subSoFar
-inferTermsImpl subSoFar (t : ts) = do
-    sub1 <- inferImpl subSoFar t
-    sub2 <- inferTermsImpl sub1 (map (subDerivTerm sub1) ts)
-    pure $ sub2
-
-inferImpl :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
-    SortSub l -> DerivTerm l r -> Maybe (SortSub l)
-inferImpl subSoFar (l % kids) = do
-    sub1 <- inferTermsImpl subSoFar (List.fromFoldable kids)
---    let allSubsSoFar = composeSub subSoFar sub1
-    let inferredKidSorts = map (Expr.subMetaExprPartially sub1 <<< derivTermSort) kids
-    let expectedKidSorts = map (Expr.subMetaExprPartially sub1) (kidSorts l)
-    _ /\ sub2 <- unifyLists (List.fromFoldable inferredKidSorts) (List.fromFoldable expectedKidSorts)
-    let allSubs = composeSub sub1 sub2
-    pure $ allSubs
-
 inferTerms :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
     List (DerivTerm l r) -> Maybe (SortSub l)
 inferTerms Nil = Just Map.empty

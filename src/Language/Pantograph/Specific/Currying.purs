@@ -1091,6 +1091,17 @@ wrapApp = Smallstep.makeUpRule
             dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
                 [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
 
+wrapApp' :: StepRule
+wrapApp' _ ((Smallstep.Boundary Smallstep.Up ch) % [inside])
+    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    =
+    if not (isNeutralFormWithoutCursor inside) then Nothing else
+    pure $
+    Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+        dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
+            [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]
+wrapApp' _ _ = Nothing
+
 -- If the argument to a greyed app is merely a hole, get rid of it
 removeGreyedApp :: StepRule
 removeGreyedApp _ dterm = case dterm of
