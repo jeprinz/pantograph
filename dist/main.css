@@ -297,7 +297,7 @@ code {
 .subnode.punctuation.if,
 .subnode.punctuation.then,
 .subnode.punctuation.else,
-.subnode.punctuation.in {
+.subnode.punctuation.inLet {
   font-weight: bold;
 }
 

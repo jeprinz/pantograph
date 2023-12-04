@@ -636,7 +636,7 @@ editorComponent _unit =
               _ -> pure Nothing
             -- activate buffer
             setBufferEnabled true mb_str
-          else if (isQueryKey <$> keyCodePoint) == Just true then do
+          else if not cmdKey && (isQueryKey <$> keyCodePoint) == Just true then do
             -- assert: key is a single alpha char
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
