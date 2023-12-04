@@ -13,6 +13,7 @@ module Data.List.Rev
   , length
   , null
   , unzip
+  , zipWith
   ) where
 
 import Prelude
@@ -27,6 +28,7 @@ import Data.Argonaut.Decode.Generic (genericDecodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
 import Data.Argonaut.Encode.Generic (genericEncodeJson)
 import Data.Generic.Rep (class Generic)
+import Data.Tuple (Tuple)
 
 newtype RevList a = Rev (List.List a)
 
@@ -93,4 +95,9 @@ length = unwrap >>> List.length
 
 null = unwrap >>> List.null
 
+unzip :: forall t56 t57. RevList (Tuple t56 t57) -> Tuple (RevList t56) (RevList t57)
 unzip = (bimap wrap wrap) <<< List.unzip <<< unwrap
+
+zipWith :: forall a4045 a46 b47. (a46 -> b47 -> a4045) -> RevList a46 -> RevList b47 -> RevList a4045
+zipWith f l1 l2 = wrap (List.zipWith f (unwrap l1) (unwrap l2))
+

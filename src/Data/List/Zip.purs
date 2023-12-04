@@ -155,3 +155,7 @@ foldrAround f b mid (Path d) = foldr f (mid (foldr f b d.left)) d.right
 -- left outside, right inside
 foldlAround :: forall a b. (b -> a -> b) -> b -> (b -> b) -> Path a -> b
 foldlAround f b mid (Path d) = foldl f (mid (foldl f b d.right)) d.left
+
+zipWith :: forall a4045 a46 b47. (a46 -> b47 -> a4045) -> Path a46 -> Path b47 -> Path a4045
+zipWith f (Path {left: left1, right: right1}) (Path {left: left2, right: right2})
+    = Path {left: Rev.zipWith f left1 left2, right: List.zipWith f right1 right2}
