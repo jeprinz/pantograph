@@ -209,7 +209,11 @@ lessons =
       defer \_ -> HH.div_
         [ HH.h1_ [HH.text "Selections"]
         , HH.p_ $ parseMd """
+          So far you've been editing with only the cursor.
           
+          #br#br
+
+          In #Pantograph you can make a *selection* by dragging over a region.
           """
         ]
   ]

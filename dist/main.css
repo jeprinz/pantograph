@@ -366,6 +366,7 @@ code {
 
 .subnode.buffer>.buffer-inner>.buffer-input {
   outline: none;
+  border: none;
 }
 
 /* placeholder-cursor */
