@@ -20,10 +20,9 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Editor as Editor
 import Language.Pantograph.Specific.Currying as Currying
-import Language.Pantograph.Generic.Rendering.Rendering as Rendering
-import Unsafe.Coerce (unsafeCoerce)
-import Data.Expr as Expr
-import Data.List (List(..))
+import Util (fromJust')
+
+type HTML = HH.HTML Unit Unit
 
 {-
 A specific tutorial for the Currying.purs language
@@ -32,7 +31,7 @@ A specific tutorial for the Currying.purs language
 prog :: String -> Grammar.DerivTerm Currying.PreSortLabel Currying.RuleLabel
 prog str = Grammar.decodeSerializedZipper2 Currying.editorSpec.clipboardSort str
 
-makeLesson :: String -> Array String -> Lazy (HH.HTML Unit Unit) -> Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel)
+makeLesson :: String -> Array String -> Lazy HTML -> Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel)
 makeLesson progString paths instructions = defer \_ ->
     let program = prog progString in
     {
@@ -60,45 +59,45 @@ italic = HH.i_ <<< pure <<< text
 bold = HH.b [] <<< pure <<< text
 text = HH.text
 
-type MdMatch = (String -> Maybe (Int /\ (Array (HH.HTML Unit Unit) -> Array (HH.HTML Unit Unit)) /\ String))
 
--- parseMd' :: String -> Array (HH.HTML Unit Unit)
--- parseMd' = go [] <<< CodeUnits.toCharArray
---   where
---   go :: Array Char -> Array Char -> Array (HH.HTML Unit Unit)
---   go = ?a 
+data MatchMd 
+  = ReplaceMatchMd String HTML
+  | FunctionMatchMd String (String -> HTML)
 
+tryMatchMd :: MatchMd -> String -> Maybe (HTML /\ String)
+tryMatchMd (ReplaceMatchMd label html) str = do
+  str' <- String.stripPrefix (String.Pattern ("♯" <> label)) str
+  pure $ html /\ str'
+tryMatchMd (FunctionMatchMd label toHtml) str = do
+  str' <- String.stripPrefix (String.Pattern ("♯" <> label <> "⦃")) str
+  let i = String.indexOf (String.Pattern "⦄") str' # fromJust' "no closing \"⦄\""
+  let {before, after} = String.splitAt i str'
+  let str'' = String.drop 1 after
+  pure $ toHtml before /\ str''
 
-parseMd :: String -> Array (HH.HTML Unit Unit)
-parseMd str = case matches # map (\m -> m str) >>> Array.catMaybes >>> Array.sortBy (\(i /\ _) (j /\ _) -> compare i j) >>> Array.head of
-  Nothing -> if String.null str then [] else [text str]
-  Just (_ /\ f /\ str') -> f (parseMd str')
+parseMd :: String -> Array HTML
+parseMd = go [] []
   where
-  makeEnclosedMatch str_start toHtml str_end = \str -> do
-    i <- String.indexOf (String.Pattern str_start) str
-    let {before: str_before, after: str_after_before_} = String.splitAt i str
-    let str_after_before = String.drop (String.length str_start) str_after_before_
-    j <- String.indexOf (String.Pattern str_end) str_after_before
-    let {before: str_match, after: str_after_match} = String.splitAt j str_after_before
-    let str' = String.drop (String.length str_end) str_after_match
-    pure $ i /\ ( (Array.cons (toHtml str_match)) >>> (if String.null str_before then identity else Array.cons (text str_before)) ) /\ str'
+  go :: Array HTML -> Array Char -> String -> Array HTML
+  go htmls work str = case matches # map (flip tryMatchMd str) >>> Array.catMaybes >>> Array.head of
+    Nothing -> case CodeUnits.uncons str of
+      Nothing -> force htmls_work
+      Just {head: c, tail: str'} -> go htmls (Array.snoc work c) str'
+    Just (html /\ str') -> go (force htmls_work `Array.snoc` html) [] str'
+    where
+    htmls_work = defer \_ -> htmls # if Array.null work then identity else (_ `Array.snoc` text (CodeUnits.fromCharArray work))
 
-  makeReplaceMatch str_marker html = \str -> do
-    i <- String.indexOf (String.Pattern str_marker) str
-    let {before, after: after_} = String.splitAt i str
-    let after = String.drop (String.length str_marker) after_
-    pure $ i /\ ( (Array.cons html) >>> (if String.null before then identity else Array.cons (text before)) ) /\ after
-
-  matches :: Array MdMatch
-  matches =
-    [ makeReplaceMatch "#br" HH.br_
-    , makeReplaceMatch "#Pantograph" $ HH.span [classNames ["TutorialWord-Pantograph"]] [text "Pantograph"]
-    , makeEnclosedMatch "*" bold "*"
-    , makeEnclosedMatch "~" italic "~"
-    , makeEnclosedMatch "`" (HH.code_ <<< pure <<< text) "`"
-    , makeEnclosedMatch "#button[" dummyButton "]"
-    , makeEnclosedMatch "#dataTyHole[" dummyDataTyHole "]"
-    , makeEnclosedMatch "#task[" (HH.div [classNames ["TutorialTask"]] <<< Array.cons (bold "Task:") <<< pure <<< text) "]"
+  matches :: Array MatchMd
+  matches = 
+    [ ReplaceMatchMd "br" HH.br_
+    , ReplaceMatchMd "Pantograph" $ HH.span [classNames ["TutorialWord-Pantograph"]] [text "Pantograph"]
+    , FunctionMatchMd "bold" $ bold
+    , FunctionMatchMd "italic" $ italic
+    , FunctionMatchMd "code" $ HH.code_ <<< pure <<< text
+    , FunctionMatchMd "button" $ dummyButton
+    , FunctionMatchMd "dataTyHole" $ dummyDataTyHole
+    , FunctionMatchMd "greyError" $ HH.div [classNames ["Tutorial-greyError"], HP.style "display: inline-block"] <<< pure <<< HH.div [classNames ["inline", "grey", "error"], HP.style "display: inline-block"] <<< pure <<< HH.span [classNames [], HP.style "display: inline-block"] <<< pure <<< text
+    , FunctionMatchMd "task" $ HH.div [classNames ["TutorialTask"]] <<< Array.cons (bold "Task:") <<< pure <<< text
     ]
 
 lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
@@ -110,26 +109,26 @@ lessons =
       defer \_ -> HH.div_
         [ HH.h1_ [HH.text "Introduction"]
         , HH.p_ $ parseMd """
-          This tutorial is an introduction to a new *structure editor*: #Pantograph.
+          This tutorial is an introduction to a new ♯bold⦃structure editor⦄: ♯Pantograph.
           Although the code looks like text, it actually isn't.
 
-          #task[Hover over the program to reveal its structure.]
-          #task[Click to place the cursor.]
+          ♯task⦃Hover over the program to reveal its structure.⦄
+          ♯task⦃Click to place the cursor.⦄
 
-          #Pantograph helps you *write* and *modify* your program while ~never breaking its structure~.
-          In other words, Pantograph prevents *syntax errors* and *type errors*.
+          ♯Pantograph helps you ♯bold⦃write⦄ and ♯bold⦃modify⦄ your program while ♯italic⦃never breaking its structure⦄.
+          In other words, Pantograph prevents ♯bold⦃syntax errors⦄ and ♯bold⦃type errors⦄.
 
-          #br#br
+          ♯br♯br
 
           During this tutorial, remember these tips:
           """
         , HH.ul_
-            [ HH.li_ $ parseMd """ Read the *instructions* fully. """
-            , HH.li_ $ parseMd """ Press "Ctrl+Z" to undo the last edit. """
-            , HH.li_ $ parseMd """ Press "Escape" to *escape* a menu. """
-            , HH.li_ $ parseMd """Click #button[Reset] if you get *stuck*.""" ]
+            [ HH.li_ $ parseMd """ Read the ♯bold⦃instructions⦄ fully. """
+            , HH.li_ $ parseMd """ Press "Ctrl+Z" to ♯bold⦃undo⦄ the last edit. """
+            , HH.li_ $ parseMd """ Press "Escape" to ♯bold⦃escape⦄ a menu. """
+            , HH.li_ $ parseMd """Click ♯button⦃Reset⦄ if you get ♯bold⦃stuck⦄.""" ]
         , HH.p_ $ parseMd """
-          Click #button[Next Lesson] to move on.
+          Click ♯button⦃Next Lesson⦄ to move on.
           """
         ]
   , 
@@ -139,18 +138,18 @@ lessons =
       defer \_ -> HH.div_
         [ HH.h1_ [HH.text "Filling a Hole"]
         , HH.p_ $ parseMd """
-          A *hole* is a placeholder term, displayed as #dataTyHole[T], where `T` is the type of the hole.
-          #br
-          To *fill in a hole*,
-          move the cursor to the `▪` inside the hole,
+          A ♯bold⦃hole⦄ is a placeholder term, displayed as ♯dataTyHole⦃T⦄, where ♯code⦃T⦄ is the type of the hole.
+          ♯br
+          To ♯bold⦃fill in a hole⦄,
+          move the cursor to the ♯code⦃▪⦄ inside the hole,
           then write the value to fill,
           and finally press "Enter".
           
-          #task[Fill each hole.]
+          ♯task⦃Fill each hole.⦄
 
-          As you type, #Pantograph will list all the possible terms you could fill the hole with.
-          Observe that #Pantograph will ~only~ let you fill a hole with something of the ~correct type~.
-          Values of the ~wrong type~ won't appear in the list.
+          As you type, ♯Pantograph will list all the possible terms you could fill the hole with.
+          Observe that ♯Pantograph will ♯italic⦃only⦄ let you fill a hole with something of the ♯italic⦃correct type⦄.
+          Values of the ♯italic⦃wrong type⦄ won't appear in the list.
           """
         ]
   ,
@@ -160,24 +159,24 @@ lessons =
       defer \_ -> HH.div_
         [ HH.h1_ [HH.text "Basic Editing"]
         , HH.p_ $ parseMd """
-          In this lesson, we will edit `fib` to take its base case as an additional ~input~.
+          In this lesson, we will edit ♯code⦃fib⦄ to take its base case as an additional ♯italic⦃input⦄.
           
-          #br#br
+          ♯br♯br
 
-          To *delete a term*, press "Delete". This replaces the term with a hole.
-          #task[Delete the base case value.]
+          To ♯bold⦃delete a term⦄, press "Delete". This replaces the term with a hole.
+          ♯task⦃Delete the base case value.⦄
 
-          #br
+          ♯br
 
-          To *add an argument* to a function, write "fun" at the function body and then press "Enter".
-          #task[Add an argument to fib.]
-          When you do this, #Pantograph automatically updates `fib`'s type and each `fib` call.
+          To ♯bold⦃add an argument⦄ to a function, write "fun" at the function body and then press "Enter".
+          ♯task⦃Add an argument to fib.⦄
+          When you do this, ♯Pantograph automatically updates ♯code⦃fib⦄'s type and each ♯code⦃fib⦄ call.
 
-          #br#br
+          ♯br♯br
 
-          To *name or rename a variable*, write the new name at the variable and then press "Enter".
-          #task[Name the new argument "m".]
-          #task[Fill in all holes in fib with m.]
+          To ♯bold⦃name or rename a variable⦄, write the new name at the variable and then press "Enter".
+          ♯task⦃Name the new argument "m".⦄
+          ♯task⦃Fill in all holes in fib with m.⦄
           """
         ]
   ,
@@ -190,23 +189,23 @@ lessons =
           So far, you have learned how to:
           """
         , HH.ul_
-            [ HH.li_ $ parseMd """ *Fill in a hole*: write the value in the hole """
-            , HH.li_ $ parseMd """ *Delete a term*: press "Delete" """
-            , HH.li_ $ parseMd """ *Add a function argument*: write "fun" at the function body """
-            , HH.li_ $ parseMd """ *Name a variable*: write the variable's new name at the variable """
+            [ HH.li_ $ parseMd """ ♯bold⦃Fill in a hole⦄: write the value in the hole """
+            , HH.li_ $ parseMd """ ♯bold⦃Delete a term⦄: press "Delete" """
+            , HH.li_ $ parseMd """ ♯bold⦃Add a function argument⦄: write "fun" at the function body """
+            , HH.li_ $ parseMd """ ♯bold⦃Name a variable⦄: write the variable's new name at the variable """
             ]
         , HH.p_ $ parseMd """
           In addition to adding a function argument with "fun", you can also insert other constructs.
           """
         , HH.ul_
-            [ HH.li_ $ parseMd """ *Add a new definition*: write "let" """
+            [ HH.li_ $ parseMd """ ♯bold⦃Add a new definition⦄: write "let" """
             ]
         , HH.p_ $ parseMd """
-          Using your knowledge so far, write the function `plus` from scratch:
-          #task[Add a new defintion called "plus"]
-          #task[At the body of plus (after the "="), add two function arguments named "x" and "y".]
-          #task[Fill the hole with "+". Pantograph will automatically create holes for its two arguments.]
-          #task[Fill the two arguments of + with x and y]
+          Using your knowledge so far, write the function ♯code⦃plus⦄ from scratch:
+          ♯task⦃Add a new defintion called "plus"⦄
+          ♯task⦃At the body of plus (after the "="), add two function arguments named "x" and "y".⦄
+          ♯task⦃Fill the hole with "+". Pantograph will automatically create holes for its two arguments.⦄
+          ♯task⦃Fill the two arguments of + with x and y⦄
           """
         ]
   , 
@@ -216,20 +215,20 @@ lessons =
       defer \_ -> HH.div_
         [ HH.h1_ [HH.text "Selections"]
         , HH.p_ $ parseMd """
-          So far you've been editing with only the *cursor*.
+          So far you've been editing with only the ♯bold⦃cursor⦄.
           
-          #br#br
+          ♯br♯br
 
-          In #Pantograph you can make a *selection* by dragging over a region.
-          #task[Select triple's function argument x by dragging from the "fun x" to the "(3 * x)"]
-          #task[Select max's function arguments x and y by dragging from the "fun x" to the "if (x > y)"]
-          #task[Select the definition of triple by dragging from the "let triple" to the "let square"]
-          #task[Select the definitions of triple and square by dragging from the "let triple" to the "let max"]
+          In ♯Pantograph you can make a ♯bold⦃selection⦄ by dragging over a region.
+          ♯task⦃Select triple's function argument x by dragging from the "fun x" to the "(3 * x)"⦄
+          ♯task⦃Select max's function arguments x and y by dragging from the "fun x" to the "if (x > y)"⦄
+          ♯task⦃Select the definition of triple by dragging from the "let triple" to the "let square"⦄
+          ♯task⦃Select the definitions of triple and square by dragging from the "let triple" to the "let max"⦄
 
-          #br
+          ♯br
 
           Try making some other selections to get a feel for it.
-          Observe that you can only make selections between ~terms~.
+          Observe that you can only make selections between ♯italic⦃terms⦄.
           """
         ]
   , 
@@ -239,17 +238,17 @@ lessons =
       defer \_ -> HH.div_
         [ HH.h1_ [HH.text "Rearranging Definitions"]
         , HH.p_ $ parseMd """
-          Use a selection and cut + paste to rearrange the definitions of `triple` and `square`.
-          #task[Select the definition of triple by dragging from the "let triple" to the "let square".]
-          #task[Cut (ctrl+x) the definition of triple.]
-          ~Observe~ that since `triple` is now undefined, the `triple` call in `(max (triple y) (square y))` is underlined.
-          #task[Move the cursor between the definitions of square and max (right before "let max").]
-          #task[Paste (ctrl+v) the definition of triple.]
-          ~Observe~ that since `triple` is now defined again, the `triple` call is not underlined anymore.
+          Use a selection and cut + paste to rearrange the definitions of ♯code⦃triple⦄ and ♯code⦃square⦄.
+          ♯task⦃Select the definition of triple by dragging from the "let triple" to the "let square".⦄
+          ♯task⦃Cut (ctrl+x) the definition of triple.⦄
+          ♯italic⦃Observe⦄ that since ♯code⦃triple⦄ is now undefined, the ♯code⦃triple⦄ call in ♯code⦃(max (triple y) (square y))⦄ is ♯greyError⦃underlined⦄.
+          ♯task⦃Move the cursor between the definitions of square and max (right before "let max").⦄
+          ♯task⦃Paste (ctrl+v) the definition of triple.⦄
+          ♯italic⦃Observe⦄ that since ♯code⦃triple⦄ is now defined again, the ♯code⦃triple⦄ call is not underlined anymore.
           
-          #br#br
+          ♯br♯br
           
-          #task[Rearrange the definitions of square and max.]
+          ♯task⦃Rearrange the definitions of square and max.⦄
           """
         ]
   ]

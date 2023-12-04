@@ -737,3 +737,8 @@ console
   /* font-size: 1.2em; */
   font-family: var(--pantograph-font-family);
 }
+
+.Tutorial-greyError>div::after {
+  font-size: 1em !important;
+  top: 1.3em !important;
+}
