@@ -16,28 +16,28 @@
   font-family: 'Neuton';
   font-style: normal;
   font-weight: 400;
-  src: local('Neuton Regular'), local('Neuton-Regular'), url(http://themes.googleusercontent.com/static/fonts/neuton/v5/2yfL00UA7vu40fNHPnbJgw.ttf) format('truetype');
+  src: local('Neuton Regular'), local('Neuton-Regular');
 }
 
 @font-face {
   font-family: 'Cutive Mono';
   font-style: normal;
   font-weight: 400;
-  src: local('Cutive Mono'), local('CutiveMono-Regular'), url(http://themes.googleusercontent.com/static/fonts/cutivemono/v1/N5odNRruTwjvCM8y77PhQZ0EAVxt0G0biEntp43Qt6E.ttf) format('truetype');
+  src: local('Cutive Mono'), local('CutiveMono-Regular');
 }
 
 @font-face {
   font-family: 'Monoton';
   font-style: normal;
   font-weight: 400;
-  src: local('Monoton'), local('Monoton-Regular'), url(http://themes.googleusercontent.com/static/fonts/monoton/v3/ceRJlaOl8VqdbfWAlFaxNQ.ttf) format('truetype');
+  src: local('Monoton'), local('Monoton-Regular');
 }
 
 @font-face {
   font-family: 'Nova Mono';
   font-style: normal;
   font-weight: 400;
-  src: local('NovaMono'), url(http://themes.googleusercontent.com/static/fonts/novamono/v4/pN6VVBY03b9QLz-7i6Kl0aCWcynf_cDxXwCLxiixG1c.ttf) format('truetype');
+  src: local('NovaMono');
 }
 
 
@@ -45,7 +45,7 @@
   font-family: 'Corben';
   font-style: normal;
   font-weight: 400;
-  src: local('Corben Regular'), local('Corben-Regular'), url(http://themes.googleusercontent.com/static/fonts/corben/v5/aAJbkLknKhfXxsbVwcGZiA.ttf) format('truetype');
+  src: local('Corben Regular'), local('Corben-Regular');
 }
 
 /* 
