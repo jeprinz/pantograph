@@ -676,7 +676,7 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
             in
             [ pure 
                 [ HH.div [HP.classes [HH.ClassName "error-info ErrorBoundary-info"]] 
-                  [ HH.div_ [HH.text $ "[type error]"]
+                  [ HH.div_ [HH.text $ "[type boundary]"]
                   , HH.div_ [HH.text $ "  actual type: ", renderTerm (Zipper (Path Nil) (sortToType insideType)) renCtx]
                   , HH.div_ [HH.text $ "expected type: ", renderTerm (Zipper (Path Nil) (sortToType outsideType)) renCtx]
                   ]
