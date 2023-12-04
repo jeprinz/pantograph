@@ -291,18 +291,13 @@ code {
 
 .subnode.punctuation.let {
   margin-right: 0.4em;
-  font-weight: bold;
 }
 
-.subnode.punctuation.if {
-  font-weight: bold;
-}
-
-.subnode.punctuation.then {
-  font-weight: bold;
-}
-
-.subnode.punctuation.else {
+.subnode.punctuation.let,
+.subnode.punctuation.if,
+.subnode.punctuation.then,
+.subnode.punctuation.else,
+.subnode.punctuation.in {
   font-weight: bold;
 }
 
