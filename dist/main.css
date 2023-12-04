@@ -701,6 +701,7 @@ console
   color: black;
   outline: none;
   border: 4px inset black;
+  border-radius: 0.5em 0.5em / 0.2em;
 }
 
 .TutorialControlButton:hover {

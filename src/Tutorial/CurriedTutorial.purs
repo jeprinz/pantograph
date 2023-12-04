@@ -114,11 +114,11 @@ lessons =
 
           #br#br
 
-          During this tutorial, remember:
+          During this tutorial, remember these tips:
           """
         , HH.ul_
             [ HH.li_ $ parseMd """Read the *instructions* fully."""
-            , HH.li_ $ parseMd """Press "Escape" to leave a menu."""
+            , HH.li_ $ parseMd """Press "Escape" to *escape* a menu."""
             , HH.li_ $ parseMd """Click #button[Reset] if you get *stuck*.""" ]
         , HH.p_ $ parseMd """
           Click #button[Next Lesson] to move on.
@@ -140,9 +140,9 @@ lessons =
           
           #task[Fill each hole.]
 
-          As you type, #Pantograph will show you all the possible terms you could fill the hole with.
+          As you type, #Pantograph will list all the possible terms you could fill the hole with.
           Observe that #Pantograph will ~only~ let you fill a hole with something of the ~correct type~.
-          Values of the ~wrong type~ won't appear in the menu when you start typing.
+          Values of the ~wrong type~ won't appear in the list.
           """
         ]
   ,
