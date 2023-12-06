@@ -84,6 +84,7 @@ eval env ((Grammar.DerivLabel r _) % kids) =
           NilRule /\ [] -> pure $ ListVal Nil
           ConsRule /\ [] -> pure $ FunVal (\x -> pure (FunVal (\xs -> pure (ListVal (x : assertValList xs)))))
           LengthRule /\ [] -> pure $ FunVal (\xs -> pure (IntVal (List.length (assertValList xs))))
+          AppendRule /\ [] -> pure $ FunVal (\xs -> pure (FunVal (\ys -> pure (ListVal (assertValList xs <> assertValList ys)))))
           HeadRule /\ [] -> pure $ FunVal (\xs -> pure (Util.fromJust (List.head (assertValList xs))))
           TailRule /\ [] -> pure $ FunVal (\xs -> pure (ListVal (Util.fromJust (List.tail (assertValList xs)))))
           IndexRule /\ [] -> pure $ FunVal (\xs -> pure (FunVal (\n -> pure (Util.fromJust (List.index (assertValList xs) (assertValInt n))))))
