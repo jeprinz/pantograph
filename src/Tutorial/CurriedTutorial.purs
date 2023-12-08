@@ -224,16 +224,11 @@ lessons = -- Array.reverse
           
           ♯br♯br
 
-          In ♯Pantograph you can make a ♯bold⟦selection⟧ by dragging over a region.
-          ♯task⟦Select triple's function argument x by dragging from the "fun x" to the "(3 * x)"⟧
-          ♯task⟦Select max's function arguments x and y by dragging from the "fun x" to the "if (x > y)"⟧
-          ♯task⟦Select the definition of triple by dragging from the "let triple" to the "let square"⟧
-          ♯task⟦Select the definitions of triple and square by dragging from the "let triple" to the "let max"⟧
+          In ♯Pantograph you can also make a ♯bold⟦selection⟧ by dragging over a region.
 
-          ♯br
+          ♯br♯br
 
           Try making some other selections to get a feel for it.
-          Observe that you can only make selections between ♯italic⟦terms⟧.
           """
         ]
   , 
