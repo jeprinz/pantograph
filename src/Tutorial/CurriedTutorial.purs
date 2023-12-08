@@ -207,13 +207,10 @@ lessons = -- Array.reverse
           """
         , HH.ul_
             [ HH.li_ $ parseMd """ ♯bold⟦Add a new definition⟧: write "let" """
+            , HH.li_ $ parseMd """ ♯bold⟦Fill a hole with "+"⟧: write "+" """"
             ]
         , HH.p_ $ parseMd """
-          Using your knowledge so far, write the function ♯code⟦plus⟧ from scratch:
-          ♯task⟦Add a new defintion called "plus"⟧
-          ♯task⟦At the body of plus (after the "="), add two function arguments named "x" and "y".⟧
-          ♯task⟦Fill the hole with "+". Pantograph will automatically create holes for its two arguments.⟧
-          ♯task⟦Fill the two arguments of + with x and y⟧
+          Using your knowledge so far, write the function ♯code⟦plus⟧, which takes two inputs and uses "+" to add them together, from scratch.
           """
         ]
   , 
