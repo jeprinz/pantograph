@@ -76,7 +76,7 @@ arrangeDerivTermSubs locs innerHoleIsCursor dzipper@(Expr.Zipper dpath dterm) ki
       Right elems -> elems
   DerivLiteral (DataString str) % [] ->
     [ if String.null str 
-        then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.div [classNames ["subnode"]] [HH.text "☐"]]
+        then HH.div [classNames ["subnode", "string-inner", "empty-string"]] [HH.div [classNames ["subnode"]] [HH.text "▪"]]
         else HH.div [classNames ["subnode", "string-inner"]] [HH.text str] ]
   DerivLiteral (DataInt n) % [] ->
     [ HH.div [classNames ["subnode", "string-inner"]] [HH.text (show n)] ]

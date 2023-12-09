@@ -80,7 +80,7 @@ makePantographTutorial spec lessons interpereter =
                 HP.style "height: 1.4em; justify-content: space-between"] [
                 HH.div [ classNames ["PantographTitle"] ] [
                     HH.div_ [HH.text "Pantograph"],
-                    HH.div_ [HH.text "/"],
+                    HH.div_ [HH.text "|"],
                     HH.div_ [HH.text $ "Lesson " <> show (state.activeLesson + 1)]
                 ]
                 , HH.div [ classNames ["PantographControls"] ] [
@@ -100,7 +100,7 @@ makePantographTutorial spec lessons interpereter =
                 ]
 --                , HH.div [ classNames ["resize-handle--x"] ] []
                 , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside"] []
-                , HH.aside [ classNames [], HP.style "width: 25em; overflow: auto;"] [
+                , HH.aside [ classNames [], HP.style "width: 650px; overflow: auto;"] [
                     HH.div [classNames ["vertical-container"]] [
                         HH.div [HP.style "height: 3em"] [
                             HH.button [ classNames ["TutorialControlButton"], HE.onClick \_ -> RunProgram, HP.style "margin: 10px" ] [ HH.text "Run" ]
