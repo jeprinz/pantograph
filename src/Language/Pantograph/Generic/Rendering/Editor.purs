@@ -77,6 +77,7 @@ editorComponent _unit =
     let editorIdPrefixNum = editorPrefix.get unit in -- Because we are using HTML ids to identify elements of the editor in the DOM, we need a unique prefix for each editor component so the ids don't clash with one another. Yes, its stupid.
     let _ = editorPrefix.set (editorIdPrefixNum + 1) in
     let pathIdPrefix = "Editor" <> show editorIdPrefixNum <> "-" in
+    -- let pathIdPrefix = "TEST" in
     HK.component \tokens spec -> HK.do
 
   ------------------------------------------------------------------------------

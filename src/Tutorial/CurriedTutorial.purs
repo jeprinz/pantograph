@@ -1,28 +1,21 @@
 module Tutorial.CurriedTutorial where
 
-import Data.Tuple.Nested
 import Prelude
-import Tutorial.EditorTutorial2
+import Tutorial.Markdown
 
-import Bug (bug)
-import Bug as Bug
 import Data.Array as Array
+import Data.Bifunctor (bimap)
+import Data.Expr as Expr
 import Data.Lazy (Lazy, defer, force)
-import Data.Maybe (Maybe(..))
-import Data.String as String
-import Data.String.CodeUnits as CodeUnits
-import Debug as Debug
-import Effect (Effect)
+import Data.List (List(..))
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Halogen.Utilities (classNames)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Base
-import Language.Pantograph.Generic.Rendering.Editor as Editor
+import Language.Pantograph.Generic.Rendering.Rendering as Rendering
 import Language.Pantograph.Specific.Currying as Currying
-import Util (fromJust')
-
-type HTML = HH.HTML Unit Unit
+import Tutorial.EditorTutorial2 (Lesson)
+import Unsafe.Coerce (unsafeCoerce)
 
 {-
 A specific tutorial for the Currying.purs language
@@ -30,6 +23,19 @@ A specific tutorial for the Currying.purs language
 
 prog :: String -> Grammar.DerivTerm Currying.PreSortLabel Currying.RuleLabel
 prog str = Grammar.decodeSerializedZipper2 Currying.editorSpec.clipboardSort str
+
+renderProgram :: String -> HH.HTML Unit Unit
+renderProgram program =
+  HH.div [classNames ["program"]] $ 
+  pure $
+  bimap (const unit) (const unit) $ 
+  Rendering.renderDerivTerm
+    (Base.trivialEditorLocals Currying.editorSpec)
+    false
+    false
+    (Expr.Zipper (Expr.Path Nil) (Grammar.decodeSerializedZipper2 Currying.editorSpec.clipboardSort program))
+    (Base.defaultRenderingContext "TEST")
+    { isInteractive = false }
 
 makeLesson :: String -> Array String -> Lazy HTML -> Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel)
 makeLesson progString paths instructions = defer \_ ->
@@ -40,65 +46,14 @@ makeLesson progString paths instructions = defer \_ ->
         , instructions: force instructions
     }
 
-dummyButton :: forall w2 i3. String -> HH.HTML w2 i3
-dummyButton s = HH.button [classNames ["TutorialControlButton TutorialControlButtonDummy"]] [HH.text s]
-
-dummyDataTyHole :: forall w2 i3. String -> HH.HTML w2 i3
-dummyDataTyHole str_dataty =
-  HH.code_
-    [HH.div [classNames ["node"]]
-      [ HH.div [classNames ["subnode", "punctuation", "lbrace"]] [HH.text "{"]
-      , HH.div [classNames ["node", "holeInterior"]] [HH.div [classNames ["node", "holeInterior-inner"]] [HH.div [classNames ["subnode", "punctuation", "square"]] [HH.text "▪"]]]
-      , HH.div [classNames ["subnode", "punctuation", "colon"]] [HH.text ":"]
-      , HH.div [classNames ["node", "typesubscript"]]
-          [ HH.div [classNames ["node"]] [HH.span [classNames ["datatype"]] [HH.text str_dataty]] ]
-      , HH.div [classNames ["subnode", "punctuation", "rbrace"]] [HH.text "}"]
-      ]]
-
-italic = HH.i_ <<< pure <<< text
-bold = HH.b [] <<< pure <<< text
-text = HH.text
-
-
-data MatchMd 
-  = ReplaceMatchMd String HTML
-  | FunctionMatchMd String (String -> HTML)
-
-tryMatchMd :: MatchMd -> String -> Maybe (HTML /\ String)
-tryMatchMd (ReplaceMatchMd label html) str = do
-  str' <- String.stripPrefix (String.Pattern ("♯" <> label)) str
-  pure $ html /\ str'
-tryMatchMd (FunctionMatchMd label toHtml) str = do
-  str' <- String.stripPrefix (String.Pattern ("♯" <> label <> "⟦")) str
-  let i = String.indexOf (String.Pattern "⟧") str' # fromJust' "no closing \"⟧\""
-  let {before, after} = String.splitAt i str'
-  let str'' = String.drop 1 after
-  pure $ toHtml before /\ str''
-
-parseMd :: String -> Array HTML
-parseMd = go [] []
-  where
-  go :: Array HTML -> Array Char -> String -> Array HTML
-  go htmls work str = case matches # map (flip tryMatchMd str) >>> Array.catMaybes >>> Array.head of
-    Nothing -> case CodeUnits.uncons str of
-      Nothing -> force htmls_work
-      Just {head: c, tail: str'} -> go htmls (Array.snoc work c) str'
-    Just (html /\ str') -> go (force htmls_work `Array.snoc` html) [] str'
-    where
-    htmls_work = defer \_ -> htmls # if Array.null work then identity else (_ `Array.snoc` text (CodeUnits.fromCharArray work))
-
-  matches :: Array MatchMd
-  matches = 
-    [ ReplaceMatchMd "br" HH.br_
-    , ReplaceMatchMd "Pantograph" $ HH.span [classNames ["TutorialWord-Pantograph"]] [text "Pantograph"]
-    , FunctionMatchMd "bold" $ bold
-    , FunctionMatchMd "italic" $ italic
-    , FunctionMatchMd "code" $ HH.code_ <<< pure <<< text
-    , FunctionMatchMd "button" $ dummyButton
-    , FunctionMatchMd "dataTyHole" $ dummyDataTyHole
-    , FunctionMatchMd "greyError" $ HH.div [classNames ["Tutorial-greyError"], HP.style "display: inline-block"] <<< pure <<< HH.div [classNames ["inline", "grey", "error"], HP.style "display: inline-block"] <<< pure <<< HH.span [classNames [], HP.style "display: inline-block"] <<< pure <<< text
-    , FunctionMatchMd "task" $ HH.div [classNames ["TutorialTask"]] <<< Array.cons (bold "Task:") <<< pure <<< text
-    ]
+makeLesson' :: String -> Array String -> Lazy (HH.HTML Unit Unit) -> Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel)
+makeLesson' progString paths instructions = defer \_ ->
+    let program = prog progString in
+    {
+        program
+        , paths: map (Grammar.deserializePath program) paths
+        , instructions: force instructions
+    }
 
 selectionsWarning :: String
 selectionsWarning = 
@@ -134,7 +89,7 @@ editActions =
   ]
 
 lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
-lessons = -- Array.reverse 
+lessons = Array.drop 15 -- Array.reverse
   [
     makeLesson
       """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fib"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpLessEq"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
@@ -412,7 +367,7 @@ lessons = -- Array.reverse
       """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
       [] $
       defer \_ -> HH.div_ $
-        [ HH.h1_ [HH.text "Checkpoint"]
+        [ HH.h1_ [HH.text "Checkpoint before Exercises"]
         , HH.p_ $ parseMd """
           You now know the basics of editing with ♯Pantograph!
           Take a moment to experiment with this novel style of editing.
@@ -452,18 +407,26 @@ lessons = -- Array.reverse
         ] <> editActions
   , 
     makeLesson
-      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["reverse"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
+      """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
       [] $
       defer \_ -> HH.div_ $
-        [ HH.h1_ [HH.text "Problem: reverse"]
-        , HH.p_ $ parseMd """
-          Implement ♯code⟦reverse⟧, a function that reverses a list of integers.
-
-          ♯br♯br
-
-          Example behavior: ♯code⟦reverse (cons 0 (cons 1 (cons 2 nil))) = (cons 2 (cons 1 (cons 0)))⟧
-          """
-        ] <> editActions
+        [ HH.h1_ [HH.text "Checkpoint before Problems"] ]
+  , 
+    makeLesson'
+      """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
+      []
+      (defer \_ ->
+          (HH.div_ [
+          HH.h1_ [HH.text "Problem: tail-recursive reverse"],
+          (HH.text """
+          First, input this program:
+          """ )
+          , renderProgram """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["reverse"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["list"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["xs"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"AppendRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
+          , HH.br[], HH.br[]
+          , (HH.text """
+          Then, alter the function to make it tail recursive by adding an accumulator argument.
+          """ )
+      ]))
   , 
     makeLesson
       """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["range"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
@@ -472,11 +435,11 @@ lessons = -- Array.reverse
         [ HH.h1_ [HH.text "Problem: range"]
         , HH.p_ $ parseMd """
           Implement ♯code⟦range⟧, a function that, given ♯italic⟦n⟧, computes the list of integers from ♯italic⟦0⟧ to ♯italic⟦n - 1⟧.
-
-          ♯br♯br
-
+          """
+        , HH.p_ $ parseMd """
           Example behavior: ♯code⟦range 3 = (cons 0 (cons 1 (cons 2 nil)))⟧
           """
+        , renderProgram """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["range"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
         ] <> editActions
   
   , 
@@ -564,3 +527,6 @@ lessons = -- Array.reverse
           """
         ] <> editActions
   ]
+
+allHTMListhesame :: forall a b c d. HH.HTML a b -> HH.HTML c d
+allHTMListhesame x = unsafeCoerce x

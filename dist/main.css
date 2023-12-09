@@ -5,7 +5,7 @@
   --type-metavar: #8425b8;
   /* --code-font-family: 'Nova Mono'; */
   --code-font-family: monospace;
-  --pantograph-font-family: 'Nova Mono';
+  --pantograph-font-family: 'Nova Mono', inherit;
   --comment-color: lightgray;
 }
 
