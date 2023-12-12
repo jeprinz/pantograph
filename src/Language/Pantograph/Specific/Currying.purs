@@ -819,27 +819,28 @@ getVarEdits sort =
         -- If its not a TermSort, then there are no var edits
         slot \[_] -> Nil
 
-{-
-TODO: the problem causing bugs is that this returns a thing with gamma just a metavariable when it should be a specific gamma
--}
 getWrapInAppEdit :: String -> {-cursorSort-}Sort -> DerivTerm -> Maybe Edit
 getWrapInAppEdit name cursorSort dterm =
     matchExpr2 cursorSort (sor TermSort %$ [slot, slot]) (\[cursorCtx, cursorTy] ->
             matchExpr (Grammar.derivTermSort dterm) (sor TermSort %$ [slot, slot]) \[gamma, ty] ->
-            do
-            _ /\ sub <- unify gamma cursorCtx
-            let cursorCtx' = subMetaExprPartially sub cursorCtx
-            let cursorTy' = subMetaExprPartially sub cursorTy
-            let ty' = subMetaExprPartially sub ty
-            let dterm' = subDerivTerm sub dterm
-            application /\ sub2 <- maximallyApplied cursorCtx' cursorTy' ty' dterm'
-            pure {
-                label: name
-                , action: pure $ defer \_ -> Edit.FillAction {
-                    sub: Unification.composeSub sub sub2
-                    , dterm: application
+            let action = do
+                    _ /\ sub <- unify gamma cursorCtx
+                    let cursorCtx' = subMetaExprPartially sub cursorCtx
+                    let cursorTy' = subMetaExprPartially sub cursorTy
+                    let ty' = subMetaExprPartially sub ty
+                    let dterm' = subDerivTerm sub dterm
+                    application /\ sub2 <- maximallyApplied cursorCtx' cursorTy' ty' dterm'
+                    pure $ defer \_ -> Edit.FillAction {
+                            sub: Unification.composeSub sub sub2
+                            , dterm: application
+                        }
+            in
+                pure {
+                    label: name
+                    , action: case action of
+                        Just action -> Right action
+                        Nothing -> Left "Not well-typed"
                 }
-            }
         )
         slot \[_] -> Nothing
 
