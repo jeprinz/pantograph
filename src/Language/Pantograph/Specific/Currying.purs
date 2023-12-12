@@ -677,8 +677,8 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
             [ pure 
                 [ HH.div [HP.classes [HH.ClassName "error-info ErrorBoundary-info"]] 
                   [ HH.div_ [HH.text $ "[type boundary]"]
-                  , HH.div_ [HH.text $ "  actual type: ", renderTerm (Zipper (Path Nil) (sortToType insideType)) renCtx]
-                  , HH.div_ [HH.text $ "expected type: ", renderTerm (Zipper (Path Nil) (sortToType outsideType)) renCtx]
+                  , HH.div_ [HH.text $ "inside  type: ", renderTerm (Zipper (Path Nil) (sortToType insideType)) renCtx]
+                  , HH.div_ [HH.text $ "outside type: ", renderTerm (Zipper (Path Nil) (sortToType outsideType)) renCtx]
                   ]
                 ]
             , pure [errorLeftSide]
@@ -922,7 +922,8 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     [
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
-    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
+--    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
+    , makeEditFromPath (newPathFromRule ListRule 0) "List" cursorSort
     -- , DefaultEdits.makeChangeEditFromTerm (newTermFromRule Comment) "Comment" cursorSort
     , makeEditFromPath (newPathFromRule Lam 2) "fun" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort

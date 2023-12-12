@@ -168,7 +168,7 @@ code {
 }
 
 .node.cursor {
-  box-shadow: -3px 0 blue, 3px 0 blue;
+  box-shadow: -3.5px 0 blue, 3.5px 0 blue;
 }
 
 .subnode.holeExterior-inner {
@@ -210,11 +210,22 @@ code {
 }
 
 .node.holeInterior.cursor>.subnode.holeInterior-inner::before,
+.node.empty-string.cursor>.subnode.empty-string::before {
+    display: inline-block;
+    color: blue;
+    width: 0px;
+    content: '|';
+    font-weight: bolder;
+/*    text-shadow:
+        0px 0 blue, 0 1px blue, 1px 0 blue, 0 -1px blue,
+        -1px -1px blue, 1px 1px blue, -1px 1px blue, 1px -1px blue; */
+    text-shadow: 1.5px 0px 0px blue;
+}
+
 .node.holeInterior.highlight>.subnode.holeInterior-inner::before,
-.node.empty-string.cursor>.subnode.empty-string::before,
 .node.empty-string.highlight>.subnode.empty-string::before {
   display: inline-block;
-  color: black;
+  color: grey;
   width: 0px;
   content: '|';
 }

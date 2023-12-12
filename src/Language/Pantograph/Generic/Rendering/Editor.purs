@@ -642,7 +642,7 @@ editorComponent _unit =
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- activate buffer
             setBufferEnabled true (Just key)
-          else if key == "Backspace" then do
+          else if key == "Backspace" || key == "Delete" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- replace dterm with default deriv, and propagate change up from onDelete
             deleteTermAtCursor path dterm
