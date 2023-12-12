@@ -85,8 +85,8 @@ makePantographTutorial spec lessons interpereter =
                 ]
                 , HH.div [ classNames ["PantographControls"] ] [
                     HH.button [ classNames ["TutorialControlButton"], HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
-                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous lesson" ]
-                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next lesson" ]
+                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == 0), HE.onClick \_ -> PreviousLesson ] [ HH.text "Previous Lesson" ]
+                    , HH.button [ classNames ["TutorialControlButton"], HP.disabled (state.activeLesson == Array.length lessons - 1) ,  HE.onClick \_ -> NextLesson ] [ HH.text "Next Lesson" ]
                 ]
 --                , HH.text (if Util.index' state.lessonsSolved state.activeLesson then "SOLVED" else "NOT YET SOLVED")
             ]
