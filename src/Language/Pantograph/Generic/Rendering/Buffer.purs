@@ -37,6 +37,7 @@ import Web.Event.Event as Event
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.MouseEvent as MouseEvent
+import Data.Either (Either(..))
 
 type BufferPreState l r =
   { isEnabled :: Boolean
@@ -60,7 +61,7 @@ computeEdits input {bufferString, mb_oldString} =
     Just oldString -> do
       [ { edit: 
             { label: bufferString
-            , action: defer \_ -> ReplaceAction
+            , action: pure $ defer \_ -> ReplaceAction
                 -- !TODO compute actual change
                 -- OLD: Expr.injectExprChange sort
                 { topChange: 
@@ -178,15 +179,18 @@ bufferComponent = HK.component \tokens input -> HK.do
   let submitBuffer _ = do
         st <- get
         case st.isEnabled /\ st.focussedEdit of
-          true /\ Just {edit} -> do
-            void $ modify _
-              { isEnabled = false -- disable buffer
-              , bufferFocus = 0 -- reset bufferFocus
-              }
-            setPreview Nothing
-            -- output edit action
-            HK.raise tokens.outputToken $ ActionOutput (force edit.action)
-            pure true
+          true /\ Just {edit} ->
+            case edit.action of
+                Right action -> do
+                    void $ modify _
+                      { isEnabled = false -- disable buffer
+                      , bufferFocus = 0 -- reset bufferFocus
+                      }
+                    setPreview Nothing
+                    -- output edit action
+                    HK.raise tokens.outputToken $ ActionOutput (force action)
+                    pure true
+                Left _ -> pure false
           _ -> pure false
 
   let modifyBufferFocus f = do
@@ -278,7 +282,7 @@ bufferComponent = HK.component \tokens input -> HK.do
                   Nothing -> pure $
                     HH.div
                       [ classNames ["buffer-results"] ] $
-                      flip Array.mapWithIndex currentBufferState.edits \i {lazy_preview} -> 
+                      flip Array.mapWithIndex currentBufferState.edits \i {edit, lazy_preview} ->
                         HH.div 
                           [ classNames $ ["buffer-result"] <> if i == currentBufferState.normalBufferFocus then ["buffer-focus"] else []
                           , HE.onMouseMove \event -> do
@@ -289,11 +293,12 @@ bufferComponent = HK.component \tokens input -> HK.do
                               void $ modify _ {bufferFocus = i}
                               void $ submitBuffer unit
                           ]
-                          (case force lazy_preview of
-                            FillEditPreview html -> [html]
-                            WrapEditPreview {before, after} -> before <> [placeholderCursorNodeElem] <> after
-                            ReplaceEditPreview html -> [html]
-                          )
-                ]
+                          (case edit.action of
+                              Right _ ->
+                                      (case force lazy_preview of
+                                        FillEditPreview html -> [html]
+                                        WrapEditPreview {before, after} -> before <> [placeholderCursorNodeElem] <> after
+                                        ReplaceEditPreview html -> [html])
+                              Left errorMessage -> [HH.text (edit.label <> ": " <> errorMessage)])]
           ]
         ]

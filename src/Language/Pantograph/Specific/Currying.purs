@@ -801,17 +801,20 @@ getVarEdits sort =
             let indices = getIndices cursorCtx in
             let makeEdit index =
                     matchExpr (Grammar.derivTermSort index) (sor VarSort %$ [slot, slot, slot, slot]) \[_ctx2, name, _varTy, _locality] ->
-                    do
-                        let ref /\ ty = wrapInRef index
-                        application /\ sub <- maximallyApplied cursorCtx cursorTy ty ref
-                        pure {
-                            label: Grammar.matchStringLabel name
-                            , action: defer \_ -> Edit.FillAction {
+                    let maybeAction = do
+                            let ref /\ ty = wrapInRef index
+                            application /\ sub <- maximallyApplied cursorCtx cursorTy ty ref
+                            pure $ defer \_ -> Edit.FillAction {
                                 sub , dterm: application
                             }
-                        }
+                    in {
+                        label: Grammar.matchStringLabel name
+                        , action: case maybeAction of
+                            Just action -> Right action
+                            Nothing -> Left "Not well-typed"
+                    }
             in
-            List.mapMaybe makeEdit indices
+            map makeEdit indices
         )
         -- If its not a TermSort, then there are no var edits
         slot \[_] -> Nil
@@ -832,7 +835,7 @@ getWrapInAppEdit name cursorSort dterm =
             application /\ sub2 <- maximallyApplied cursorCtx' cursorTy' ty' dterm'
             pure {
                 label: name
-                , action: defer \_ -> Edit.FillAction {
+                , action: pure $ defer \_ -> Edit.FillAction {
                     sub: Unification.composeSub sub sub2
                     , dterm: application
                 }

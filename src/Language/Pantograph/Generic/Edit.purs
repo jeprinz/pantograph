@@ -17,6 +17,7 @@ import Data.List as List
 import Data.List.Zip as ZipList
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Data.Either (Either(..))
 import Data.TotalMap as TotalMap
 import Data.Traversable (sequence)
 import Data.Tuple (fst)
@@ -33,7 +34,7 @@ import Util (fromJust')
 
 type Edit l r =
   { label :: String
-  , action :: Lazy (Action l r)
+  , action :: (Either String (Lazy (Action l r))) -- The String is an error message if the edit isn't possible
   }
 
 data Action l r

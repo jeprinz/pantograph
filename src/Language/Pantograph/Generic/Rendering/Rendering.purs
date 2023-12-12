@@ -212,10 +212,14 @@ renderPreview :: forall l r. IsRuleLabel l r =>
   HoleyDerivZipper l r ->
   Edit l r ->
   Lazy (EditPreviewHTML l r)
-renderPreview locs hdzipper edit = edit.action <#> case _ of
-  FillAction {dterm} -> FillEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
-  ReplaceAction {dterm} -> ReplaceEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm) 
-  WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath locs (hdzipperDerivPath hdzipper) dpath (hdzipperDerivTerm hdzipper)
+renderPreview locs hdzipper edit = defer \_ ->
+    case edit.action of
+        Left errorMsg -> WrapEditPreview {before: [], after: []} -- This is a hack, there should be some kind of
+            -- preview designed for error situations.
+        Right action -> case force action of
+              FillAction {dterm} -> FillEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm)
+              ReplaceAction {dterm} -> ReplaceEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm)
+              WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath locs (hdzipperDerivPath hdzipper) dpath (hdzipperDerivTerm hdzipper)
 
 renderPreviewDerivPath :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->

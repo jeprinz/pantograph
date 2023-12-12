@@ -36,6 +36,7 @@ import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit as Edit
 import Type.Direction as Dir
 import Data.Maybe as Maybe
+import Data.Either (Either(..))
 import Data.Tuple (uncurry)
 
 -- Makes edits which around any holes in the given term
@@ -58,15 +59,20 @@ makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange na
                 then dzipper List.: rest
                 else rest
     in
-    flip List.mapMaybe (getPaths (Expr.Zipper (Expr.Path List.Nil) dterm)) \(Expr.Zipper path inside) ->
-        do
-        _ <- case path of -- cancel if the path is empty
-                Expr.Path List.Nil -> Nothing
-                _ -> Maybe.Just unit
-        _ <- if isValidSelectionSorts {bottom: Grammar.derivTermSort inside, top: nonemptyUpPathTopSort path}
-                    then Just unit else Nothing
-        makeEditFromPath forgetSorts splitChange (path /\ (Grammar.nonemptyPathInnerSort path))
-            name cursorSort
+    let edits = (flip List.mapMaybe (getPaths (Expr.Zipper (Expr.Path List.Nil) dterm)) \(Expr.Zipper path inside) ->
+            do
+            _ <- case path of -- cancel if the path is empty
+                    Expr.Path List.Nil -> Nothing
+                    _ -> Maybe.Just unit
+            _ <- if isValidSelectionSorts {bottom: Grammar.derivTermSort inside, top: nonemptyUpPathTopSort path}
+                        then Just unit else Nothing
+            makeEditFromPath forgetSorts splitChange (path /\ (Grammar.nonemptyPathInnerSort path))
+                name cursorSort)
+    in if List.length edits == 0 then List.singleton { -- If no edits, then output a single error edit
+            label: name
+            , action: Left "no arguments of correct type"
+        }
+        else edits
 
 -- Makes an edit that inserts a path, and propagates the context change downwards and type change upwards
 makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Maybe (DerivLabel l r)) -> Base.SplitChangeType l
@@ -74,7 +80,7 @@ makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Ma
 makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorSort = do
     action <- makeActionFromPath false forgetSorts splitChange path name cursorSort
     pure $ { label : name
-    , action : defer \_ -> action -- TODO: Maybe I should find a way to use Lazy correctly here? And only the the necessary computation before it?
+    , action : pure $ defer \_ -> action -- TODO: Maybe I should find a way to use Lazy correctly here? And only the the necessary computation before it?
     }
 
 makeActionFromPath :: forall l r. Grammar.IsRuleLabel l r =>
@@ -99,7 +105,7 @@ makeSubEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm 
 makeSubEditFromTerm dterm name cursorSort = do
     _ /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
     pure $ { label : name
-    , action : defer \_ -> Edit.FillAction
+    , action : pure $ defer \_ -> Edit.FillAction
         {
             sub
             , dterm : Grammar.subDerivTerm sub dterm
@@ -110,7 +116,7 @@ makeChangeEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTe
 makeChangeEditFromTerm dterm name cursorSort = do
     newCursorSort /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
     pure $ { label : name
-    , action : defer \_ -> Edit.ReplaceAction
+    , action : pure $ defer \_ -> Edit.ReplaceAction
         {
             topChange: ChangeAlgebra.diff cursorSort newCursorSort
             , dterm : Grammar.subDerivTerm sub dterm
