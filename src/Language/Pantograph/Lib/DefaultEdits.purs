@@ -70,7 +70,7 @@ makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange na
                 name cursorSort)
     in if List.length edits == 0 then List.singleton { -- If no edits, then output a single error edit
             label: name
-            , action: Left "no arguments of correct type"
+            , action: Left "can't wrap around this type"
         }
         else edits
 

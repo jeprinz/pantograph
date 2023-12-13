@@ -899,6 +899,10 @@ splitChange c =
 
 makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
+isTermSort :: Sort -> Boolean
+isTermSort (MInj (SInj TermSort) % _) = true
+isTermSort _ = false
+
 editsAtHoleInterior :: Sort -> Array Edit
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity ([
@@ -927,9 +931,10 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
 --    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
-    , makeEditFromPath (newPathFromRule ListRule 0) "List" cursorSort
-    -- , DefaultEdits.makeChangeEditFromTerm (newTermFromRule Comment) "Comment" cursorSort
-    , makeEditFromPath (newPathFromRule Lam 2) "fun" cursorSort
+    , makeEditFromPath (newPathFromRule ListRule 0) "List" cursorSort ])
+    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
+    <> if not (isTermSort cursorSort) then [] else
+    Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "fun" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
 --    , makeEditFromPath (newPathFromRule Comment 1) "comment" cursorSort
@@ -941,7 +946,6 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
         (\op -> Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange
             (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
     <> Array.fromFoldable (getVarWraps cursorSort)
-    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (newTermFromRule ConsRule))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "head" cursorSort (newTermFromRule HeadRule))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "tail" cursorSort (newTermFromRule TailRule))
