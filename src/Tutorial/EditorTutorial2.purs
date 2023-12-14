@@ -1,31 +1,38 @@
 module Tutorial.EditorTutorial2 where
 
+import Data.Tuple.Nested
 import Prelude
-import Halogen.HTML as HH
-import Halogen as H
-import Language.Pantograph.Generic.Grammar as Grammar
-import Language.Pantograph.Generic.Rendering.Editor as Editor
-import Halogen.VDom.Driver as VDomDriver
-import Effect.Class.Console as Console
-import Language.Pantograph.Generic.Rendering.Base as Base
-import Halogen.Aff as HA
-import Halogen.HTML.Events as HE
-import Effect (Effect)
-import Type.Proxy (Proxy(..))
+
 import Bug as Bug
+import CSS as CSS
+import CSS.Cursor as CSSCursor
+import CSS.Font as CSSFont
+import Data.Array as Array
 import Data.Lazy (Lazy, force, defer)
 import Data.Maybe (Maybe(..))
+import Data.NonEmpty as NonEmpty
+import Data.Tuple (Tuple(..))
 import Debug (traceM, trace)
-import Type.Direction as Dir
-import Data.Tuple.Nested
+import Effect (Effect)
 import Effect.Aff (Aff)
-import Util as Util
+import Effect.Class.Console as Console
+import Halogen as H
+import Halogen.Aff as HA
+import Halogen.Component (ComponentSlot)
+import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Utilities (classNames)
-import Data.Array as Array
-import Web.HTML.Common (AttrName(..))
-import Halogen.Component (ComponentSlot)
+import Halogen.VDom.Driver as VDomDriver
+import Language.Pantograph.Generic.Grammar as Grammar
+import Language.Pantograph.Generic.Rendering.Base as Base
+import Language.Pantograph.Generic.Rendering.Editor as Editor
+import Type.Direction as Dir
+import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
+import Util as Util
+import Web.HTML.Common (AttrName(..))
 
 {-
 I was having issues with all the components reading keyboard input at the same time before, so now I'm going to do it
@@ -43,7 +50,7 @@ type Lesson l r = {
     , instructions:: HH.HTML Unit Unit -- forall w i. HH.HTML w i
 }
 
-data PantographLessonAction = EditorOutput Unit | Initialize | ResetLesson | PreviousLesson | NextLesson | RunProgram
+data PantographLessonAction = EditorOutput Unit | Initialize | ResetLesson | PreviousLesson | NextLesson | RunProgram | SetLesson Int
 
 makePantographTutorial :: forall l r query input output. Grammar.IsRuleLabel l r =>
     Base.EditorSpec l r
@@ -81,7 +88,33 @@ makePantographTutorial spec lessons interpereter =
                 HH.div [ classNames ["PantographTitle"] ] [
                     HH.div_ [HH.text "Pantograph"],
                     HH.div_ [HH.text "|"],
-                    HH.div_ [HH.text $ "Lesson " <> show (state.activeLesson + 1)]
+                    -- HH.div_ [HH.text $ "Lesson [" <> show (state.activeLesson + 1) <> " / " <> show (Array.length state.lessonsSolved) <> "]"]
+                    HH.div
+                      [ HCSS.style do
+                          CSS.display CSS.flex
+                          CSS.flexDirection CSS.row
+                          CSS.rule $ CSS.Property (CSS.fromString "gap") (CSS.value (CSS.em 0.5))
+                      ] $
+                      Array.mapWithIndex Tuple state.lessonsSolved <#> \(Tuple i _) ->
+                        HH.div
+                          [ HCSS.style do
+                              (let s = CSS.em 1.0 in CSS.borderRadius s s s s)
+                              CSS.border CSS.solid (CSS.px 1.0) CSS.white
+                              CSS.width (CSS.em 1.7)
+                              CSS.fontSize (CSS.pt 8.0)
+                              CSS.cursor CSSCursor.pointer
+                              (let s = CSS.em 0.2 in CSS.padding s (CSS.em 0.0) s (CSS.em 0.0))
+                              CSS.rule $ CSS.Property (CSS.fromString "text-align") (CSS.fromString "center")
+                              CSS.fontFamily [] $ NonEmpty.singleton $ CSSFont.monospace
+                              if (i == state.activeLesson) then do
+                                CSS.background CSS.white
+                                CSS.color CSS.black
+                              else do
+                                CSS.background CSS.black
+                                CSS.color CSS.white
+                          , HE.onClick \_mouseEvent -> SetLesson i
+                          ]
+                          [ HH.text $ show (i + 1) ]
                 ]
                 , HH.div [ classNames ["PantographControls"] ] [
                     HH.button [ classNames ["TutorialControlButton"], HE.onClick \_ -> ResetLesson ] [ HH.text "Reset" ]
@@ -128,6 +161,10 @@ makePantographTutorial spec lessons interpereter =
         PreviousLesson -> do
             H.modify_ \state ->
                 state {activeLesson= state.activeLesson - 1}
+            setLesson
+        SetLesson i -> do
+            H.modify_ \state ->
+                state {activeLesson = i}
             setLesson
         ResetLesson -> do
             setLesson

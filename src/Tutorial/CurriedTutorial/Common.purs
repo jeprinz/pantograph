@@ -1,10 +1,9 @@
-module Tutorial.CurriedTutorial where
+module Tutorial.CurriedTutorial.Common where
 
 import Prelude
 import Tutorial.Markdown (HTML, parseMd)
 import CSS as CSS
 import CSS.Size as CSSSize
-import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Expr as Expr
 import Data.Lazy (Lazy, defer, force)
@@ -16,13 +15,8 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Rendering as Rendering
 import Language.Pantograph.Specific.Currying as Currying
-import Tutorial.CurriedTutorial.ProblemLessons as ProblemLessons
-import Tutorial.CurriedTutorial.TutorialLessons as TutorialLessons
 import Tutorial.EditorTutorial2 (Lesson)
 
-{-
-A specific tutorial for the Currying.purs language
--}
 prog :: String -> Grammar.DerivTerm Currying.PreSortLabel Currying.RuleLabel
 prog str = Grammar.decodeSerializedZipper2 Currying.editorSpec.clipboardSort str
 
@@ -132,11 +126,3 @@ divFlexColumn =
         CSS.display CSS.flex
         CSS.flexDirection CSS.column
     ]
-
-lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
-lessons =
-  Array.reverse
-    $ Array.concat
-        [ TutorialLessons.lessons
-        , ProblemLessons.lessons
-        ]
