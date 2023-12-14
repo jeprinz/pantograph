@@ -40,6 +40,7 @@ to generate this file without the comments in this block.
   , "lists"
   , "maybe"
   , "newtype"
+  , "nonempty"
   , "ordered-collections"
   , "partial"
   , "prelude"
