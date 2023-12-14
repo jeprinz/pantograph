@@ -135,8 +135,7 @@ divFlexColumn =
 
 lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
 lessons =
-  Array.reverse
-    $ Array.concat
+    Array.concat
         [ TutorialLessons.lessons
         , ProblemLessons.lessons
         ]

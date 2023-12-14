@@ -233,7 +233,7 @@ Implementing a real tree diff algorithm is hard, so instead I have one that make
 Its also dubious if the notion of "shortest edit sequence" is really what we want anyway. Would that really be the
 change that correctly preserves the semantic meaning?
 This diff algorithm tries to find an unambiguous diff, and if it doesn't exist just returns Replace.
-In other words, the set S of pairs of expressions (e1, e2) on which the algorithm deals doesn't just return Replace
+In other words, the set S of pairs of expressions (e1, e2) on which the algorithm doesn't just return Replace
 consists of pairs satisfying any of the following:
 - e1 = e2
 - e1 is a subexpression of e2
