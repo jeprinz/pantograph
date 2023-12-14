@@ -511,14 +511,11 @@ editorComponent _unit =
         -- CursorState where mode = BufferCursorMode
         ------------------------------------------------------------------------
         CursorState {mode: BufferCursorMode} -> do
-           if key == "Enter" || key == " " then do
---          if key == "Enter" then do
-            -- exit BufferCursorMode
+          if key == "Tab" || key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             HK.tell tokens.slotToken bufferSlot unit SubmitBufferQuery
-            if key == " " then
-                moveToNextHole
-                else pure unit
+            when (key == " ") do
+              moveToNextHole
           else if key == "Escape" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- tell buffer to deactivate -- TODO: this causes an exception if the buffer wasn't active
