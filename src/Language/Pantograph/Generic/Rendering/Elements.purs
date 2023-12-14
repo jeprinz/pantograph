@@ -9,7 +9,9 @@ makePuncElem className symbol = HH.div [classNames ["subnode", "punctuation", cl
 
 spaceElem = makePuncElem "space" " "
 lparenElem = makePuncElem "lparen" "("
+-- lparenElem = makePuncElem "lparen" "❰"
 rparenElem = makePuncElem "rparen" ")"
+-- rparenElem = makePuncElem "rparen" "❱"
 lbraceElem = makePuncElem "lbrace" "{"
 rbraceElem = makePuncElem "rbrace" "}"
 lbracketElem = makePuncElem "lbracket" "["

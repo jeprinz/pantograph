@@ -132,6 +132,14 @@ divFlexColumn =
         CSS.flexDirection CSS.column
     ]
 
+-- lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
+-- lessons =
+--   [ makeLesson
+--       """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
+--       [] $
+--       defer \_ -> HH.div_ []
+--   ]
+
 lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
 lessons =
   [
@@ -631,6 +639,3 @@ lessons =
           """
         ] <> editActions
   ]
-
-allHTMListhesame :: forall a b c d. HH.HTML a b -> HH.HTML c d
-allHTMListhesame x = unsafeCoerce x
