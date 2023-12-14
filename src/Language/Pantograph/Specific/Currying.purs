@@ -932,7 +932,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
 --    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
     , makeEditFromPath (newPathFromRule ListRule 0) "List" cursorSort ])
-    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
+    <> (Array.drop 1 $ Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
     <> if not (isTermSort cursorSort) then [] else
     Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "fun" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
