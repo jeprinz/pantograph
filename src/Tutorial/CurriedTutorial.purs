@@ -3,17 +3,23 @@ module Tutorial.CurriedTutorial where
 import Prelude
 import Tutorial.Markdown
 
+import CSS as CSS
+import CSS.Common as CSSCommon
+import CSS.Size as CSSSize
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Expr as Expr
 import Data.Lazy (Lazy, defer, force)
 import Data.List (List(..))
+import Data.NonEmpty as NonEmpty
 import Halogen.HTML as HH
+import Halogen.HTML.CSS as HCSS
 import Halogen.Utilities (classNames)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Rendering as Rendering
 import Language.Pantograph.Specific.Currying as Currying
+import Partial.Unsafe (unsafeCrashWith)
 import Tutorial.EditorTutorial2 (Lesson)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -69,23 +75,62 @@ selectionsWarning =
 
 editActions :: Array (HH.HTML Unit Unit)
 editActions =
-  [ HH.p_ $ parseMd """
-    ♯br
-    Edit actions:
-    """
-  , HH.ul_
-      [ HH.li_ $ parseMd """ ♯bold⟦Fill in a hole⟧: write the value in the hole """
-      , HH.li_ $ parseMd """ ♯bold⟦Wrap a form around an term⟧: write the value at the term """
-      , HH.li_ $ parseMd """ ♯bold⟦Delete a term or selection⟧: press "Delete" """
-      , HH.li_ $ parseMd """ ♯bold⟦Name a variable⟧: write the variable's new name at the variable """
-      , HH.li_ $ parseMd """ ♯bold⟦Built-in functions⟧: """
-      , HH.ul_
-          [ HH.li_ $ parseMd """ ♯code⟦+⟧, ♯code⟦-⟧, ♯code⟦*⟧, ♯code⟦/⟧, ♯code⟦%⟧: integer operations """
-          , HH.li_ $ parseMd """ ♯code⟦match⟧: pattern-match on the ♯code⟦nil⟧ and ♯code⟦cons⟧ case of a list """
-          , HH.li_ $ parseMd """ ♯code⟦if⟧: branch on a boolean condition """
+  [ HH.div
+      [ HCSS.style do
+          CSS.border CSS.inset borderWidth CSS.black
+          (let s = CSS.em 0.5 in CSS.padding s s s s)
+          CSS.marginTop $ CSS.em 1.0
+          (let s = CSS.em 0.5 in CSS.borderRadius s s s s)
+      ]
+      [ HH.div
+          [ HCSS.style do
+              CSS.rule $ CSS.Property (CSS.fromString "font-variant-caps") (CSS.Value (CSS.fromString "small-caps"))
+              CSS.rule $ CSS.Property (CSS.fromString "text-align") (CSS.Value (CSS.fromString "center"))
+          ]
+          [HH.text "Pantograph Cheatsheet"]
+      , HH.hr
+          [ HCSS.style do
+              CSS.rule $ CSS.Property (CSS.fromString "border") (CSS.Value (CSS.fromString "none"))
+              CSS.borderBottom CSS.inset borderWidth CSS.black
+          ]
+      , let
+          li = HH.li 
+            [ HCSS.style do
+                (let s = CSSSize.unitless 0.0 in CSS.margin s s s s)
+                (let s = CSSSize.unitless 0.0 in CSS.padding s s s s)
+                CSS.marginLeft (CSS.em (-1.0))
+            ]
+        in
+        HH.ul
+          [ HCSS.style do
+              CSS.display CSS.flex
+              CSS.flexDirection CSS.column
+              CSS.rule $ CSS.Property (CSS.fromString "gap") (CSS.value (CSS.em 1.0))
+          ]
+          [ li $ parseMd """ ♯bold⟦Fill in a hole⟧: write the value in the hole """
+          , li $ parseMd """ ♯bold⟦Wrap a form around an term⟧: write the value at the term """
+          , li $ parseMd """ ♯bold⟦Delete a term or selection⟧: press "Delete" """
+          , li $ parseMd """ ♯bold⟦Name a variable⟧: write the variable's new name at the variable """
+          , li $ parseMd """ ♯bold⟦Built-in functions⟧: """
+          , HH.ul_
+              [ li $ parseMd """ ♯code⟦+⟧, ♯code⟦-⟧, ♯code⟦*⟧, ♯code⟦/⟧, ♯code⟦%⟧: integer operations """
+              , li $ parseMd """ ♯code⟦match⟧: pattern-match on the ♯code⟦nil⟧ and ♯code⟦cons⟧ case of a list """
+              , li $ parseMd """ ♯code⟦if⟧: branch on a boolean condition """
+              ]
           ]
       ]
   ]
+  where
+  -- borderWidth = CSS.em 0.2
+  borderWidth = CSS.px 2.0
+
+divFlexColumn :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
+divFlexColumn =
+  HH.div 
+    [ HCSS.style do
+        CSS.display CSS.flex 
+        CSS.flexDirection CSS.column
+    ]
 
 lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
 lessons =
@@ -93,7 +138,7 @@ lessons =
     makeLesson
       """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fib"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpLessEq"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
       [] $
-      defer \_ -> HH.div_
+      defer \_ -> HH.div_ $
         [ HH.h1_ [HH.text "Introduction"]
         , HH.p_ $ parseMd """
           This tutorial is an introduction to ♯Pantograph, a structure editor.
@@ -103,13 +148,12 @@ lessons =
 
           Just like a text editor, you can navigate in Pantograph using a cursor.
           Unlike a text editor, the cursor goes around entire expressions.
-          ♯br♯br
-
+          
           ♯task⟦Hover over the program to reveal its structure.⟧
           ♯task⟦Click to place the cursor.⟧
-          ♯br♯br
-          """
-        , HH.p_ $ parseMd """
+
+          ♯br
+          
           Then, click ♯button⟦Next Lesson⟧ to move on.
           """
         ]
@@ -128,7 +172,7 @@ lessons =
           To ♯bold⟦fill⟧  in a hole,
           move the cursor to the ♯code⟦▪⟧ inside the hole,
           then write the value to fill,
-          and finally press "Enter".
+          and finally press "Tab".
           
           ♯task⟦Fill each hole.⟧
 
@@ -146,7 +190,7 @@ lessons =
 
           ♯task⟦Click on "100"⟧
 
-          ♯task⟦Type "double" and press Enter.⟧
+          ♯task⟦Type "double" and press Tab.⟧
           """
         ]
   , makeLesson
@@ -162,7 +206,7 @@ lessons =
             , HH.li_ $ parseMd """ ♯bold⟦Wrap around a term⟧: click on the term """
             ]
         , HH.p_ $ parseMd """
-        ♯br♯br
+        ♯br
 
         Using these two kinds of edits,
         ♯task⟦make each "task" match each "given"⟧
@@ -200,14 +244,14 @@ lessons =
 
           ♯br
 
-          To wrap a ♯code⟦fun⟧ around the term at your cursor, query "fun" and press Enter.
+          To wrap a ♯code⟦fun⟧ around the term at your cursor, query "fun" and press Tab.
 
           ♯task⟦Place your cursor by clicking "fun", then wrap a second "fun" around the body of fib.⟧
           When you do this, ♯Pantograph automatically updates ♯code⟦fib⟧'s type and each ♯code⟦fib⟧ call.
 
           ♯br♯br
 
-          To name or rename a variable, write the new name at the variable and then press "Enter".
+          To name or rename a variable, write the new name at the variable and then press "Tab".
           ♯task⟦Name the new argument "m".⟧
           ♯task⟦Fill in all holes in fib's body with m.⟧
           """
@@ -310,7 +354,7 @@ lessons =
 
           ♯br ♯br
 
-          Bonus: try moving the ♯code⟦square_or_triple⟧ call. Notice that you can make a selection that wouldn't be possible in a text editor!
+          ♯bold⟦Bonus:⟧ try moving the ♯code⟦square_or_triple⟧ call. Notice that you can make a selection that wouldn't be possible in a text editor!
           """
         ]
   , 
@@ -573,7 +617,6 @@ lessons =
           """
         , HH.ol_
             [ HH.li_ $ parseMd """ If ♯code⟦l⟧ is empty, then return the empty list, ♯code⟦nil⟧. """
-            , HH.li_ $ parseMd """ Find the index ♯code⟦i⟧ of the smallest element of ♯code⟦l⟧. """
             , HH.li_ $ parseMd """ Let ♯code⟦i_smallest⟧ be the index of the smallest element of ♯code⟦l⟧, ♯code⟦x_smallest⟧. """
             , HH.li_ $ parseMd """ Let ♯code⟦l'⟧ be ♯code⟦l⟧ except with index ♯code⟦i_smallest⟧ removed. """
             , HH.li_ $ parseMd """ Return the list starting with ♯code⟦x_smallest⟧ followed by ♯code⟦bubble_sort(l')⟧ """
@@ -584,7 +627,7 @@ lessons =
           ♯br♯br
 
           Example behavior:
-          ♯code⟦bubble_sort (fun x => fun y => (x > y)) (cons 5 (cons 2 (cons 7 (cons 1)))) = (cons 7 (cons 5 (cons 2 (cons 1))))⟧
+          ♯code⟦bubble_sort (fun x => fun y => (x > y)) (cons 5 (cons 2 (cons 7 (cons 1)))) = (cons 1 (cons 2 (cons 5 (cons 7))))⟧
           """
         ] <> editActions
   ]
