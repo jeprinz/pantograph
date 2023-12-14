@@ -511,7 +511,7 @@ editorComponent _unit =
         -- CursorState where mode = BufferCursorMode
         ------------------------------------------------------------------------
         CursorState {mode: BufferCursorMode} -> do
-          if key == "Tab" || key == " " then do
+          if key == "Tab" || key == "Enter" || key == " " then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             HK.tell tokens.slotToken bufferSlot unit SubmitBufferQuery
             when (key == " ") do
