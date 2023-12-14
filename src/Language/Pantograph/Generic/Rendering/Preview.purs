@@ -9,8 +9,6 @@ import Control.Plus (empty)
 import Data.Array as Array
 import Data.Expr ((%))
 import Data.Expr as Expr
-import Data.Fuzzy (FuzzyStr(..))
-import Data.Fuzzy as Fuzzy
 import Data.Lazy (defer, force)
 import Data.Maybe (Maybe(..))
 import Data.Rational as Rational

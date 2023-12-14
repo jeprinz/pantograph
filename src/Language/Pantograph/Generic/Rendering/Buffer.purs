@@ -9,9 +9,10 @@ import Bug (bug)
 import Bug.Assertion (assert, just)
 import Control.Alternative (guard)
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Expr ((%), (%*))
 import Data.Expr as Expr
-import Data.Fuzzy (FuzzyStr(..))
+import Data.Fuzzy (Distance(..), FuzzyStr(..))
 import Data.Fuzzy as Fuzzy
 import Data.Lazy (Lazy, defer, force)
 import Data.Maybe (Maybe(..))
@@ -37,7 +38,6 @@ import Web.Event.Event as Event
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.HTMLInputElement as InputElement
 import Web.UIEvent.MouseEvent as MouseEvent
-import Data.Either (Either(..))
 
 type BufferPreState l r =
   { isEnabled :: Boolean
@@ -80,7 +80,12 @@ computeEdits input {bufferString, mb_oldString} =
                 -- memo fuzzy distances
                 map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
                 -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
-                Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
+                -- Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
+                Array.filter 
+                  (\((FuzzyStr fs) /\ _) -> case fs.distance of
+                    None -> false
+                    Distance _failed _failed_betewen failed_prefix _failed_before_match _failed_suffix _failed_after_match -> Rational.fromInt 0 < fs.ratio && failed_prefix == 0
+                  ) >>>
                 -- sort the remaining edits by the fuzzy distance
                 Array.sortBy (\(fuzzyStr1 /\ _) (fuzzyStr2 /\ _) -> compare fuzzyStr1 fuzzyStr2) >>>
                 -- forget fuzzy distances
