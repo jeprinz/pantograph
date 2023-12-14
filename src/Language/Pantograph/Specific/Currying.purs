@@ -953,7 +953,8 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "length" cursorSort (newTermFromRule LengthRule))
     <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "append" cursorSort (newTermFromRule AppendRule))
     <> (Array.fromFoldable $ getAppliedWrapEdits "match" cursorSort (newTermFromRule ListMatchRule))
-    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (newTermFromRule If))
+    -- <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (newTermFromRule If))
+    <> (Array.catMaybes [makeEditFromPath (newPathFromRule If 1) "if" cursorSort])
     <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (newTermFromRule EqualsRule))
     <> (Array.concat ((Util.allPossible :: Array Constant) <#>
         (\constant -> Array.fromFoldable (getAppliedWrapEdits (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))))
