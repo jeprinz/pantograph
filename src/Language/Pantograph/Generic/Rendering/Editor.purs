@@ -310,6 +310,14 @@ editorComponent _unit =
             Nothing -> pure unit
             Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
         _ -> pure unit
+    moveToPrevHole = do
+      getFacade >>= case _ of
+        CursorState {mode: BufferCursorMode} -> pure unit
+        CursorState cursor -> do
+          case moveHDZUntil prevDir (\hdz -> isValidCursor spec.isValidCursorSort hdz && hdzIsHolePosition hdz) cursor.hdzipper of
+            Nothing -> pure unit
+            Just hdzipper' -> setFacade $ CursorState (cursorFromHoleyDerivZipper hdzipper')
+        _ -> pure unit
 
     moveCursorVertically verticalOrHorizontal = do -- true is up, false is down
       getFacade >>= case _ of
@@ -655,8 +663,12 @@ editorComponent _unit =
             assert (just "handleKeyboardEvent" $ readMoveDir key) \dir -> do
               liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
               (if shiftKey then moveSelect else moveCursor) dir
-           else if key == " " then do
-             moveToNextHole
+          else if shiftKey && key == "Tab" then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            moveToPrevHole
+          else if key == " " || key == "Tab" then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            moveToNextHole
           else pure unit
         ------------------------------------------------------------------------
         -- SelectState
