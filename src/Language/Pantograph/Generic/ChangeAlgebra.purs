@@ -191,6 +191,9 @@ compose c1 c2 =
             , and (List.zipWith (\e c -> inject e == c) (ZipList.unpath p)
                 (ZipList.unpath p1)) ->
             Expr (Minus th) [compose kid c2']
+        -- TODO: The above case isn't actually general enough. See my notes!
+        -- For example: (-A -> B) -> [C]   o   - B -> [C]  = - (A -> B) -> [C]
+        -- But this function won't do that!
         (Expr (CInj l1) kids1) /\ (Expr (CInj l2) kids2) | l1 == l2 ->
             Expr (CInj l1) (Array.zipWith compose kids1 kids2)
         _ -> do
