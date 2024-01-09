@@ -449,6 +449,7 @@ defaultUp _ _ _ = Nothing
 
 passThroughRule :: forall l r. IsRuleLabel l r => StepRule l r
 passThroughRule _ (Expr.Expr (Boundary Down downCh) [Expr.Expr (Boundary Up upCh) [kid]]) =
+    trace "passThroughRule happened" \_ ->
     let hypotenuse = fromJust' "This shouldn't happen [passThroughRule]" $ lub downCh upCh in
     let upCh' = compose (invert downCh) hypotenuse in
     let downCh' = compose (invert upCh) hypotenuse in

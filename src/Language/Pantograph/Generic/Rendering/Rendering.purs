@@ -165,7 +165,7 @@ renderHoleInterior locs isCursor dzipper renCtx = do
       ])
     (arrangeNodeSubs locs isCursor hdzipper
       [ HH.div [classNames ["subnode", "holeInterior-inner"]]
-        [squareElem]
+        [HH.text " "] -- [squareElem]
       ])
 
 ------------------------------------------------------------------------------

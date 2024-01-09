@@ -205,12 +205,9 @@ code {
   box-shadow: none;
 }
 
-.node.holeInterior.cursor>.subnode.holeInterior-inner>.subnode,
-.node.holeInterior.highlight>.subnode.holeInterior-inner>.subnode,
-.node.empty-string.cursor>.subnode.empty-string>.subnode,
-.node.empty-string.highlight>.subnode.empty-string>.subnode {
-  /*  display: none; */
-  visibility: hidden
+.node.holeInterior.highlight,
+.node.empty-string.highlight{
+    background-color: gray;
 }
 
 .node.holeInterior.cursor>.subnode.holeInterior-inner::before,
@@ -226,6 +223,7 @@ code {
     text-shadow: 1.5px 0px 0px blue;
 }
 
+/*
 .node.holeInterior.highlight>.subnode.holeInterior-inner::before,
 .node.empty-string.highlight>.subnode.empty-string::before {
   display: inline-block;
@@ -233,6 +231,7 @@ code {
   width: 0px;
   content: '|';
 }
+*/
 
 /*
   .subnode
