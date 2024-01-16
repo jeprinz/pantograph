@@ -34,7 +34,7 @@ import Debug (trace, traceM)
 import Hole (hole)
 import Hole as Hole
 import Language.Pantograph.Generic.ChangeAlgebra (diff)
-import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen', unifyLists, composeSub, composeSubs, unify)
+import Language.Pantograph.Generic.Unification (class Freshenable, Sub, freshen', unifyLists, composeSub, composeSubs, unify, unifyFImpl, flattenSub, runUnifyMonad)
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (class Pretty, bullets, pretty)
 import Type.Direction (_down, _up)
@@ -47,6 +47,9 @@ import Data.Argonaut.Decode.Generic (genericDecodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson, encodeJson)
 import Data.Argonaut.Encode.Generic (genericEncodeJson)
 import Data.Argonaut.Parser (jsonParser)
+import Control.Monad.Except.Trans (ExceptT, runExceptT)
+import Control.Monad.State (State)
+import Control.Monad.State as State
 
 --------------------------------------------------------------------------------
 -- RuleLabel
@@ -559,6 +562,62 @@ forgetDerivLabelSorts f label =
                 Nothing -> label
 
 --------------------------------------------------------------------------------
+------- Faster versions of infer* ----------------------------------------------
+--------------------------------------------------------------------------------
+
+--unifyFImpl :: forall l. Expr.IsExprLabel l => Expr.MetaExpr l -> Expr.MetaExpr l -> ExceptT Unit (State (Sub l)) (Expr.MetaExpr l)
+
+inferFImpl :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    DerivTerm l r -> ExceptT Unit (State (SortSub l)) Unit
+inferFImpl (l % kids) = do
+    _ <- sequence (map inferFImpl kids)
+    _ <- sequence $ Array.zipWith (\parentBottom kidTop -> unifyFImpl parentBottom (derivTermSort kidTop)) (kidSorts l) kids
+    pure unit
+
+inferPathFImpl :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    Sort l -> DerivPath Dir.Up l r -> ExceptT Unit (State (SortSub l)) Unit
+inferPathFImpl _ (Expr.Path Nil) = pure unit
+inferPathFImpl innerSort (Expr.Path ((Expr.Tooth l (ZipList.Path {left, right})) : ths)) = do
+    _ <- sequence $ map inferFImpl left
+    _ <- sequence $ map inferFImpl right
+    let kidTopSorts = ((derivTermSort <$> RevList.unreverse left) <> innerSort : (derivTermSort <$> right))
+    let parentBottomSorts = kidSorts l
+    _ <- sequence $ Array.zipWith (\parentBottom kidTop -> unifyFImpl parentBottom kidTop) parentBottomSorts (Array.fromFoldable kidTopSorts)
+    _ <- inferPathFImpl (derivLabelSort l) (Expr.Path ths)
+    pure unit
+
+inferZipperFImpl :: forall l r. Expr.IsExprLabel l => IsRuleLabel l r =>
+    DerivZipper l r -> ExceptT Unit (State (SortSub l)) Unit
+inferZipperFImpl (Expr.Zipper path term) = do
+        _ <- inferFImpl term
+        _ <- inferPathFImpl (derivTermSort term) path
+        pure unit
+
+inferPathF :: forall l r. IsRuleLabel l r => Sort l -> DerivPath Dir.Up l r -> Maybe (SortSub l)
+inferPathF innerSort path =
+    fst <$> runUnifyMonad do
+        _ <- inferPathFImpl innerSort path
+        pure unit
+
+inferF :: forall l r. IsRuleLabel l r => DerivTerm l r -> Maybe (SortSub l)
+inferF term =
+    fst <$> runUnifyMonad do
+        _ <- inferFImpl term
+        pure unit
+
+inferZipperF :: forall l r. IsRuleLabel l r => DerivZipper l r -> Maybe (SortSub l)
+inferZipperF (Expr.Zipper path term) =
+    fst <$> runUnifyMonad do
+        _ <- inferFImpl term
+        _ <- inferPathFImpl (derivTermSort term) path
+        pure unit
+
+--    let maybeExpr /\ sub = State.runState (runExceptT runInference) Map.empty in
+--    case maybeExpr of
+--        Left _ -> Nothing
+--        Right _ -> Just (flattenSub sub)
+
+--------------------------------------------------------------------------------
 {-
 These functions help with getting the change across a path. My original idea of LanguageChanges didn't work,
 so hopefully this can deal with the other case.
@@ -642,7 +701,7 @@ decodeSerializedZipper2 clipboardSort string =
                 Left err -> bug ("decodeJson failed:" <> show err)
                 Right tree ->
                     let preDerivTerm = map unsimplifyDerivLabel tree in
-                    let unifyingSub' = Util.fromJust' "program didn't typecheck in deserialization" $ infer preDerivTerm in
+                    let unifyingSub' = Util.fromJust' "program didn't typecheck in deserialization" $ inferF preDerivTerm in
                     let forgottenFinalSort = (derivTermSort preDerivTerm) in
                     let expectedProgSort = clipboardSort forgottenFinalSort in
                     let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' forgottenFinalSort in

@@ -248,12 +248,12 @@ editorComponent _unit =
             let preFinal = SmallStep.termToZipper $ SmallStep.stepRepeatedly Nothing ssterm spec.stepRules
             -- re-infer, which will 1) unlink metavars that don't need to be linked and 2) fill holes with defaults where relevant
             let forgottenFinal = map (forgetDerivLabelSorts spec.forgetSorts) preFinal
-            let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferZipper forgottenFinal
             let forgottenFinalSort = (derivZipperTopSort forgottenFinal)
             let expectedProgSort = spec.clipboardSort forgottenFinalSort
-            let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' forgottenFinalSort
-            let unifyingSub = Unification.composeSub unifyingSub'
-                    (Tuple.snd $ Util.fromJust' "gacct shouldn't fail" $ (Unification.unify expectedProgSort forgottenTopSort))
+            let unifyingSub = Tuple.fst $ Util.fromJust' "fss" $ Unification.runUnifyMonad do
+                    _ <- inferZipperFImpl forgottenFinal
+                    _ <- Unification.unifyFImpl expectedProgSort forgottenFinalSort
+                    pure unit
             let final = subDerivZipper unifyingSub forgottenFinal -- This will also call fillDefaults
 
             setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper final))
@@ -433,7 +433,7 @@ editorComponent _unit =
                 (SmallStep.stepRepeatedly Nothing (SmallStep.wrapBoundary SmallStep.Down generalizingChange
                     (SmallStep.termToSSTerm dterm)) spec.stepRules)
         let forgottenDTerm = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDTerm
-        let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ infer forgottenDTerm
+        let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferF forgottenDTerm
         let expectedClipSort = spec.clipboardSort (derivTermSort forgottenDTerm)
         let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' (derivTermSort forgottenDTerm)
         let unifyingSub = Unification.composeSub unifyingSub'
@@ -450,7 +450,7 @@ editorComponent _unit =
                 (SmallStep.stepRepeatedly Nothing (SmallStep.wrapBoundary SmallStep.Down generalizingChange
                     (SmallStep.wrapPath dpath (SmallStep.Marker 0 % []))) spec.stepRules)
         let forgottenDPath = map (forgetDerivLabelSorts spec.forgetSorts) generalizedDPath
-        let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferPath (nonemptyPathInnerSort forgottenDPath) forgottenDPath
+        let unifyingSub' = Util.fromJust' "shouldn't fail if term typechecks" $ inferPathF (nonemptyPathInnerSort forgottenDPath) forgottenDPath
         let expectedClipSort = spec.clipboardSort (nonemptyUpPathTopSort forgottenDPath)
         let forgottenTopSort = Expr.subMetaExprPartially unifyingSub' (nonemptyUpPathTopSort forgottenDPath)
         let unifyingSub = Unification.composeSub unifyingSub'
