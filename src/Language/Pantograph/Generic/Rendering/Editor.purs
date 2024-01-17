@@ -441,6 +441,13 @@ editorComponent _unit =
         let unifiedDTerm = subDerivTerm unifyingSub forgottenDTerm
         liftEffect $ Ref.write (Just (Right unifiedDTerm)) clipboard_ref
 
+    goToInnerHoleIfPossible :: HK.HookM Aff Unit
+    goToInnerHoleIfPossible = do
+        st <- getFacade
+        case st of
+            CursorState cursor@{hdzipper} -> setFacade (CursorState cursor{hdzipper = hdzEnterInnerHoleIfPossible hdzipper})
+            _ -> pure unit
+
     -- Takes a path to be added to the clipboard, and generalizes it before adding it to the clipboard
     -- The path to be copied should be nonempty
     genAndCopyClipPath :: DerivPath Up l r -> HK.HookM Aff Unit
@@ -472,6 +479,7 @@ editorComponent _unit =
                   upChange
                   dterm'
             doSmallstep ssterm
+            goToInnerHoleIfPossible
     
     popHistory :: HK.HookM Aff (Maybe (State l r))
     popHistory = do

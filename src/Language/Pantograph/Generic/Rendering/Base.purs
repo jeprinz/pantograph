@@ -393,6 +393,10 @@ hdzIsHolePosition (HoleyDerivZipper (Expr.Zipper _path (Expr.Expr dlabel _)) isI
         then isInner
         else isHoleRule
 
+hdzEnterInnerHoleIfPossible :: forall l r. IsRuleLabel l r => HoleyDerivZipper l r -> HoleyDerivZipper l r
+hdzEnterInnerHoleIfPossible hdz@(HoleyDerivZipper zipper _isInner) =
+    if Maybe.isJust (isInnerHoleDerivLabel (derivZipperLabel zipper)) then (HoleyDerivZipper zipper true) else hdz
+
 hdzipperDerivPath :: forall l r. HoleyDerivZipper l r -> DerivPath Up l r
 hdzipperDerivPath (HoleyDerivZipper dzipper _) = Expr.zipperPath dzipper
 
