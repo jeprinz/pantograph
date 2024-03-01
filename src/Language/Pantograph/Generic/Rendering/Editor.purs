@@ -610,11 +610,9 @@ editorComponent _unit =
                 -- paste a dterm:
                 -- First, specialize the term
                 let specializingChange = spec.specializeDerivation (derivTermSort clipDTerm) (derivTermSort dterm)
-                traceM ("Here1. Specialia... is: " <> pretty specializingChange <> "\nand clipdterm is: " <> pretty clipDTerm)
                 let _  /\ specializedDTerm = SmallStep.ssTermToChangedTerm
                         (SmallStep.stepRepeatedly Nothing (SmallStep.wrapBoundary SmallStep.Down specializingChange
                             (SmallStep.termToSSTerm clipDTerm)) spec.stepRules)
-                traceM "Here2"
                 -- Then, unify to make sure the types line up
                 case Unification.unify (derivTermSort specializedDTerm) (derivTermSort dterm) of
                     Just (_newSort /\ unifyingSub) -> do
