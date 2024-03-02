@@ -936,6 +936,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     <> if not (isTermSort cursorSort) then [] else
     Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
+    , makeEditFromPath (newPathFromRule Let 2) "let" cursorSort -- also allow wrapping around definition
     , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
 --    , makeEditFromPath (newPathFromRule Comment 1) "comment" cursorSort
 --    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
@@ -1442,7 +1443,7 @@ stepRules = do
     , typeBecomeRhsOfChange
     , unWrapAppDown
     , wrapLambda
-    , upWrapLambdaUp
+--    , upWrapLambdaUp
     , introDownErrorNeutral
     , introUpErrorNeutral
 --    , introErrorDownVar
