@@ -137,9 +137,9 @@ lessons =
 
           ♯br
 
-          To wrap a ♯code⟦fun⟧ around the term at your cursor, query "fun" and press Tab.
+          To wrap a ♯code⟦λ⟧ around the term at your cursor, query (a prefix of) "lambda" and press Tab.
 
-          ♯task⟦Place your cursor by clicking "fun", then wrap a second "fun" around the body of fib.⟧
+          ♯task⟦Place your cursor by clicking "λ", then wrap a second "λ" around the body of fib.⟧
           When you do this, ♯Pantograph automatically updates ♯code⟦fib⟧'s type and each ♯code⟦fib⟧ call.
 
           ♯br♯br
@@ -299,12 +299,12 @@ lessons =
           Selections can be used to rearrage a function's arguments.
 
           Switch the order of inputs ♯code⟦x⟧ and ♯code⟦y⟧ in the definition of ♯code⟦average⟧.
-          ♯task⟦Select the "x" input: drag from the "fun" in "fun x" to the "fun" in "fun y".⟧
+          ♯task⟦Select the "x" input: drag from the "λ" in "λ x" to the "λ" in "λ y".⟧
           ♯task⟦Cut.⟧
 
           Since ♯code⟦average⟧'s first input was removed, the argument ♯code⟦1⟧ in ♯code⟦(average 1 4 20)⟧ is ♯greyError⟦out-of-place⟧.
 
-          ♯task⟦Move to the "z" argument: click on the "fun" in "fun z".⟧
+          ♯task⟦Move to the "z" argument: click on the "λ" in "λ z".⟧
           ♯task⟦Paste.⟧
 
           Now, fix the out-of-place argument ♯code⟦1⟧ in the ♯code⟦average⟧ call in the body of ♯code⟦result⟧ by cut-pasting it to the right place.
@@ -331,7 +331,7 @@ lessons =
 
           Edit ♯code⟦f⟧ to take a ♯code⟦Bool⟧ as input instead of an ♯code⟦Int⟧.
 
-          ♯task⟦Delete the Int in "fun x : Int => ...".⟧
+          ♯task⟦Delete the Int in "λ x : Int => ...".⟧
           ♯task⟦Write "Bool".⟧
 
           The ♯code⟦y⟧ in ♯code⟦(f y)⟧ now has a type boundary around it.
@@ -428,7 +428,7 @@ lessons =
 
           ♯br♯br
 
-          Example behavior: ♯code⟦map (fun x => (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))⟧
+          Example behavior: ♯code⟦map (λ x.> (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))⟧
           """
               ]
             <> editActions

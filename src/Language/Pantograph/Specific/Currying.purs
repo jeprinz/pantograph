@@ -356,7 +356,7 @@ sortToType ty =
 instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
   prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = pretty Suc <> x
-  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "fun" <+> x <+> ":" <+> ty <+> "=>" <+> b
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "=>" <+> b
   prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
   prettyExprF'_unsafe_RuleLabel (ListRule /\ [t]) = "List" <+> t
@@ -595,7 +595,7 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
             , MInj (Grammar.DataLabel (DataString str)) % []
             , _ty
             , locality ]) ->
-            let classes = if locality == sor Local % [] then [] else ["error", "grey"] in
+            let classes = if locality == sor Local % [] then [] else ["error", "free"] in
             [pure [HH.div [classNames (["inline"] <> classes)] [nameElem str]]]
 --            [pure [nameElem (str <> postfix)]]
           -- term
@@ -699,10 +699,10 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
           IndexRule /\ _ -> [pure [HH.text "index"]]
           ListMatchRule /\ _ ->
             let renCtx' = Base.incremementIndentationLevel renCtx in
-            [pure [HH.text "match "], Left (renCtx' /\ 0), pure [HH.text " with"], pure (newlineIndentElem renCtx.indentationLevel)
-                , pure [HH.text "nil => "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
+            [pure [HH.b_ [HH.text "match "]], Left (renCtx' /\ 0), pure [HH.b_ [HH.text " with"]], pure (newlineIndentElem renCtx.indentationLevel)
+                , pure [HH.text "nil ⇒ "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
                 , pure [HH.text "cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
-                , pure [HH.text " => "], Left (renCtx' /\ 4)]
+                , pure [HH.text " ⇒ "], Left (renCtx' /\ 4)]
           IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
           _ -> bug $
             "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
@@ -712,8 +712,8 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
     in
     html <> [pure (if dotOrNot then [HH.div [classNames ["app-circle"]] [appCircle]] else [])]
 
-lambdaElem = Rendering.makePuncElem "lambda" "fun"
-mapstoElem = Rendering.makePuncElem "mapsto" "=>"
+lambdaElem = Rendering.makePuncElem "lambda" "λ"
+mapstoElem = Rendering.makePuncElem "mapsto" "."
 refElem = Rendering.makePuncElem "ref" "#"
 zeroVarElem = Rendering.makePuncElem "zeroVar" "Z"
 sucVarElem = Rendering.makePuncElem "sucVar" "S"
@@ -736,7 +736,7 @@ dataTypeElem str = HH.span [classNames ["datatype"]] [HH.text str]
 
 tabElem = Rendering.makePuncElem "indent" "    "
 
-appCircle = Rendering.makePuncElem "circle" " ⬤ "
+appCircle = Rendering.makePuncElem "circle" " • "
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
 --newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
@@ -907,7 +907,7 @@ editsAtHoleInterior :: Sort -> Array Edit
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity ([
         DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "if" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "fun" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "(" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
@@ -934,8 +934,9 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     , makeEditFromPath (newPathFromRule ListRule 0) "List" cursorSort ])
     <> (Array.drop 1 $ Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
     <> if not (isTermSort cursorSort) then [] else
-    Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "fun" cursorSort
+    Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
+    , makeEditFromPath (newPathFromRule Let 2) "let" cursorSort -- also allow wrapping around definition
     , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
 --    , makeEditFromPath (newPathFromRule Comment 1) "comment" cursorSort
 --    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
@@ -1078,6 +1079,26 @@ unWrapLambda _ (Expr (Smallstep.Boundary Smallstep.Down ch) [
 
 unWrapLambda _ _ = Nothing
 
+-- lam x . up{+ A -> B}{t} ~~> up{A -> B}{t}
+upWrapLambdaUp :: StepRule
+upWrapLambdaUp _ (Expr (SSInj (Grammar.DerivLabel Lam sigma)) [
+        SSInj (DerivLiteral (DataString s)) % _,
+        _annotation,
+        Expr.Expr (Boundary Up ch) [t]
+    ])
+    | Just ([a] /\ [x, a', gamma, b]) <- Expr.matchChange ch (TermSort %+- [CtxConsSort %+- [{-x-}cSlot, {-a'-}cSlot, {-gamma-}cSlot], dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+    , a' == inject a
+    , isId x
+    , s == "" -- Only trigger if the lambda has an empty name
+    =
+    pure $
+        let _ = trace "NOTE: this rule is untested, because I couldn't find a case where it was used." \_ -> unit in
+        wrapBoundary Up (csor TermSort % [gamma, (csor Arrow) % [inject a, b]])
+        $ wrapBoundary Down (csor TermSort % [minusChange (sor CtxConsSort)
+            [rEndpoint x, a] (inject (rEndpoint gamma)) []
+            , (csor Arrow) % [inject a, inject (rEndpoint b)]]) t
+upWrapLambdaUp _ _ = Nothing
+
 -- TODO: its not clear to me that I've correctly thought through how this will work when
 -- there are boundaries inside the input term
 isNeutralFormWithoutCursor :: SSTerm -> Boolean
@@ -1099,7 +1120,9 @@ isNeutralFormWithCursor t = case t of
 
 -- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
 wrapApp :: StepRule
-wrapApp = Smallstep.makeUpRule
+wrapApp (Just ((SSInj (DerivLabel Lam _)) /\ _ /\ _)) _ = Nothing -- Don't wrap an app if the thing above is a Lambda, because instead we want to unwrap the lambda!
+wrapApp th ssterm =
+    Smallstep.makeUpRule
     (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
     {-t-}slot
     (\[t] -> t /\ (\[a] [gamma, b] inside ->
@@ -1108,17 +1131,33 @@ wrapApp = Smallstep.makeUpRule
         Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
             dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
                 [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]))
+    th ssterm
 
-wrapApp' :: StepRule
-wrapApp' _ ((Smallstep.Boundary Smallstep.Up ch) % [inside])
+unWrapAppDown :: StepRule
+unWrapAppDown _ (Expr (Smallstep.Boundary Smallstep.Down ch) [
+        Expr (SSInj (Grammar.DerivLabel App sigma)) [
+            inside,
+            (SSInj (Grammar.DerivLabel TermHole _)) % _
+        ]
+    ])
     | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
-    =
-    if not (isNeutralFormWithoutCursor inside) then Nothing else
-    pure $
-    Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
-        dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
-            [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]
-wrapApp' _ _ = Nothing
+    , Util.lookup' (RuleMetaVar "a") sigma == a -- Hole has the right type
+    = do
+        pure $
+            Smallstep.wrapBoundary Smallstep.Down (csor TermSort % [gamma, b]) $
+                inside
+unWrapAppDown _ _ = Nothing
+
+--wrapApp' :: StepRule
+--wrapApp' _ ((Smallstep.Boundary Smallstep.Up ch) % [inside])
+--    | Just ([a] /\ [gamma, b]) <- Expr.matchChange ch (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
+--    =
+--    if not (isNeutralFormWithoutCursor inside) then Nothing else
+--    pure $
+--    Smallstep.wrapBoundary Smallstep.Up (csor TermSort % [gamma, b]) $
+--        dTERM App ["gamma" /\ rEndpoint gamma, "a" /\ a, "b" /\ rEndpoint b]
+--            [inside, Smallstep.termToSSTerm $ Util.fromJust' "wrapApp" $ (Grammar.defaultDerivTerm (sor TermSort % [rEndpoint gamma, a]))]
+--wrapApp' _ _ = Nothing
 
 -- If the argument to a greyed app is merely a hole, get rid of it
 removeGreyedApp :: StepRule
@@ -1402,15 +1441,18 @@ stepRules = do
     , removeSucRule
     , passThroughArrow
     , typeBecomeRhsOfChange
+    , unWrapAppDown
+    , wrapLambda
+--    , upWrapLambdaUp
     , introDownErrorNeutral
     , introUpErrorNeutral
 --    , introErrorDownVar
     , removeError
 --    , removeErrorPermissive
-    ]
-    <> (if alternateDesign then [] else
-    [
-    wrapLambda
+--    ]
+--    <> (if alternateDesign then [] else
+--    [
+--    wrapLambda
     , unWrapLambda
 --    , rehydrateApp
     , mergeAppGreyApp
@@ -1419,7 +1461,7 @@ stepRules = do
 --    , unWrapApp
     , makeAppGreyed
     , removeGreyedApp
-    ])
+    ]--)
 --    <>
 --    (GreyedRules.createGreyedRules 2 Lam Nothing splitChange forgetSorts languageChanges)
     <> [
