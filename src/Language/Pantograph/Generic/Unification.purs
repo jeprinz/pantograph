@@ -189,7 +189,7 @@ recursiveOccurs sub x e =
     case e of
         Expr.MV y % [] | Just e' <- Map.lookup y sub -> recursiveOccurs sub x e'
         Expr.MV x' % [] -> x' == x
-        _ % kids -> Array.any (occurs x) kids
+        _ % kids -> Array.any (occurs x) kids -- TODO: should this be recursiveOccurs?
 
 -- NOTE: it may be confusing that the State in unifyFImpl is a completely different thing to the State in flatten*
 -- The (Sub l) in the State is the non-idempotent substitution being built up
