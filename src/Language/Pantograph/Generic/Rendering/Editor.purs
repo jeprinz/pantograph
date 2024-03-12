@@ -4,7 +4,6 @@ import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Rendering.Base
 import Prelude
-
 import Bug (bug)
 import Bug.Assertion (assert, just)
 import Control.Monad.Trans.Class (lift)
@@ -31,14 +30,16 @@ import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
+import Effect.Unsafe (unsafePerformEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
-import Halogen.Utilities (classNames, setClassName)
+import Halogen.Utilities (classNames, encode_uri_string, get_url_search_param, setClassName)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
+import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Console (_consoleSlot, consoleComponent)
 import Language.Pantograph.Generic.Rendering.Rendering (renderDerivTerm, renderHoleInterior, renderPath, renderSSTerm)
 import Language.Pantograph.Generic.Smallstep (setupSSTermFromReplaceAction, setupSSTermFromWrapAction)
@@ -85,8 +86,13 @@ editorComponent _unit =
   ------------------------------------------------------------------------------
 
   let
-    initState = CursorState
-      (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper mempty spec.dterm)))
+    initState = unsafePerformEffect do
+      program_string <- get_url_search_param "program"
+      if String.null program_string then
+        pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty spec.dterm
+      else do
+        let dterm = Grammar.decodeSerializedZipper2 spec.clipboardSort program_string
+        pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty dterm
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
@@ -628,7 +634,7 @@ editorComponent _unit =
           else if cmdKey && key == "s" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             rect <- getBoundingClientRectFromPath (hdzipperHoleyDerivPath cursor.hdzipper)
-            Debug.traceM $ pretty $ 
+            Console.log $ pretty $ 
               "[print sort]" <> bullets
                 [ "path = " <> pretty path
                 , "dterm = " <> pretty dterm
@@ -639,7 +645,10 @@ editorComponent _unit =
                 ]
           else if cmdKey && key == "p" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
-            Debug.traceM $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
+            if shiftKey then
+              Console.log $ encode_uri_string $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
+            else
+              Console.log $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
             pure unit
           else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm

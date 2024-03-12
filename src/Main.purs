@@ -22,18 +22,19 @@ import Language.Pantograph.Specific.CurryingInterpereter as CurryingInterpereter
 --main :: Effect Unit
 --main = runEditorForLang FullyApplied.editorSpec
 
---main :: Effect Unit
---main = runEditorForLang Currying.editorSpec
+main :: Effect Unit
+main = runEditorForLang Currying.editorSpec
 
 --main :: Effect Unit
 --main = runEditorForLang Multary.editorSpec
-
--- Tutorial
-main :: Effect Unit
-main = EditorTutorial2.runTutorial Currying.editorSpec CurriedTutorial.lessons CurryingInterpereter.interpereter
 
 runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r -> Effect Unit
 runEditorForLang l = HA.runHalogenAff do
   Console.log "[main]"
   body <- HA.awaitBody
   VDomDriver.runUI (Rendering.editorComponent unit) l body
+
+-- -- Tutorial
+-- main :: Effect Unit
+-- main = EditorTutorial2.runTutorial Currying.editorSpec CurriedTutorial.lessons CurryingInterpereter.interpereter
+

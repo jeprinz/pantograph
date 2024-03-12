@@ -1,7 +1,6 @@
 module Halogen.Utilities where
 
 import Prelude
-
 import Bug as Bug
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
@@ -23,7 +22,8 @@ import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.HTMLElement as HTMLElement
 import Web.HTML.Window as Window
 
-type ElementId = String
+type ElementId
+  = String
 
 setClassName ∷ ∀ (m ∷ Type -> Type). MonadEffect m ⇒ Element.Element → String → Boolean → m Unit
 setClassName elem className classValue = do
@@ -34,12 +34,17 @@ setClassName elem className classValue = do
 setClassNameByElementId ∷ String → String → Boolean → Effect Unit
 setClassNameByElementId elemId className classValue = do
   doc <- Window.document =<< HTML.window
-  NonElementParentNode.getElementById elemId (Document.toNonElementParentNode $ HTMLDocument.toDocument doc) >>= case _ of
-    Nothing -> do
-      Bug.bug $ "[setClassName] There is no element with this element id: " <> elemId
-    Just elem -> setClassName elem className classValue
-
+  NonElementParentNode.getElementById elemId (Document.toNonElementParentNode $ HTMLDocument.toDocument doc)
+    >>= case _ of
+        Nothing -> do
+          Bug.bug $ "[setClassName] There is no element with this element id: " <> elemId
+        Just elem -> setClassName elem className classValue
 
 classNames = HP.classes <<< map HH.ClassName
 
 foreign import fromInputEventToTargetValue :: Event -> Effect String
+
+-- returns "" if the string if the param is not found
+foreign import get_url_search_param :: String -> Effect String
+
+foreign import encode_uri_string :: String -> String

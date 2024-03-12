@@ -13,9 +13,11 @@ import Data.Maybe (Maybe(..))
 import Data.NonEmpty as NonEmpty
 import Data.Tuple (Tuple(..))
 import Debug (traceM, trace)
+import Debug as Debug
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Class.Console as Console
+import Effect.Unsafe (unsafePerformEffect)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.Component (ComponentSlot)
@@ -23,7 +25,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Utilities (classNames)
+import Halogen.Utilities (classNames, get_url_search_param)
 import Halogen.VDom.Driver as VDomDriver
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Base
@@ -72,8 +74,8 @@ makePantographTutorial spec lessons interpereter =
       where
       editorComponent = Editor.editorComponent unit
       convertPaths markedPaths = markedPaths <#> \path -> (Base.HoleyDerivPath path false)
-      initialState _ = {
-        activeLesson : 0
+      initialState _ =
+        { activeLesson : 0
         , lessonsSolved : Array.replicate (Array.length lessons) false
         , output : ""
         }
