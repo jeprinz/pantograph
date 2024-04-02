@@ -22,8 +22,8 @@ import Tutorial.EditorTutorial2 as EditorTutorial2
 --main :: Effect Unit
 --main = runEditorForLang FullyApplied.editorSpec
 
-main :: Effect Unit
-main = runEditorForLang {spec: Currying.editorSpec, interpreter: CurryingInterpereter.interpereter }
+main_standalone :: Effect Unit
+main_standalone = runEditorForLang {spec: Currying.editorSpec, interpreter: CurryingInterpereter.interpereter }
 
 --main :: Effect Unit
 --main = runEditorForLang Multary.editorSpec
@@ -34,7 +34,15 @@ runEditorForLang {spec, interpreter }  = HA.runHalogenAff do
   body <- HA.awaitBody
   VDomDriver.runUI RunnableEditor.component {spec, interpreter } body
 
--- -- Tutorial
--- main :: Effect Unit
--- main = EditorTutorial2.runTutorial Currying.editorSpec CurriedTutorial.lessons CurryingInterpereter.interpereter
+-- Tutorial
+main_tutorial :: Effect Unit
+main_tutorial = EditorTutorial2.runTutorial Currying.editorSpec CurriedTutorial.lessons CurryingInterpereter.interpereter
+
+data Mode = Standalone | Tutorial
+
+main :: Effect Unit
+main = case Tutorial of 
+  Standalone -> main_standalone
+  Tutorial -> main_tutorial
+
 
