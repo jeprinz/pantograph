@@ -700,9 +700,9 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
           ListMatchRule /\ _ ->
             let renCtx' = Base.incremementIndentationLevel renCtx in
             [pure [HH.b_ [HH.text "match "]], Left (renCtx' /\ 0), pure [HH.b_ [HH.text " with"]], pure (newlineIndentElem renCtx.indentationLevel)
-                , pure [HH.text "nil ⇒ "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
+                , pure [HH.text "nil => "], Left (renCtx' /\ 1), pure (newlineIndentElem renCtx.indentationLevel)
                 , pure [HH.text "cons "], Left (renCtx' /\ 2), pure [HH.text " "], Left (renCtx' /\ 3)
-                , pure [HH.text " ⇒ "], Left (renCtx' /\ 4)]
+                , pure [HH.text " => "], Left (renCtx' /\ 4)]
           IntegerLiteral /\ _ -> [Left (renCtx /\ 0)]
           _ -> bug $
             "[STLC.Grammar.arrangeDerivTermSubs] no match" <> "\n" <>
