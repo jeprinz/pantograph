@@ -2,7 +2,6 @@
   "name": "pantograph",
   "version": "1.0.0",
   "description": "A typed zipped structure editor.",
-  "main": "index.js",
   "directories": {
     "test": "test"
   },
@@ -25,7 +24,7 @@
     "build-tutorial": "npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js\n",
     "build-standalone": "npx esbuild standalone.js --bundle --outfile=dist/pantograph.js\n",
     "test": "npx spago test",
-    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outdir=dist --servedir=dist"
+    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outfile=dist/pantograph.js --servedir=dist"
   },
   "repository": {
     "type": "git",
