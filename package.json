@@ -2,7 +2,6 @@
   "name": "pantograph",
   "version": "1.0.0",
   "description": "A typed zipped structure editor.",
-  "main": "index.js",
   "directories": {
     "test": "test"
   },
