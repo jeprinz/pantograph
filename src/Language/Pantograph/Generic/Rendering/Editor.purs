@@ -678,9 +678,9 @@ editorComponent _unit =
           else if cmdKey && key == "p" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             if shiftKey then
-              Console.log $ encode_uri_string $ Argonaut.stringify $ encodeJson $ hdzipperDerivZipper cursor.hdzipper
+              Console.log $ encode_uri_string $ printSerializedDerivZipper2 $ hdzipperDerivZipper cursor.hdzipper
             else
-              Console.log $ Argonaut.stringify $ encodeJson $ hdzipperDerivZipper cursor.hdzipper
+              Console.log $ printSerializedDerivZipper2 $ hdzipperDerivZipper cursor.hdzipper
             pure unit
           else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm
