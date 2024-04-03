@@ -45,7 +45,7 @@ lessons =
                 $ parseMd
                     """
           Here is the same program, but with a couple of the terms removed.
-          Two of the numbers from the program have been deleted, leaving holes in their place.
+          Two of the numbers from the program have been deleted, leaving holes in their places.
           ♯br♯br
           A ♯bold⟦hole⟧ is a placeholder term, displayed as ♯dataTyHole⟦T⟧, where ♯code⟦T⟧ is the type of the hole.
           ♯br♯br
@@ -252,7 +252,7 @@ lessons =
           To do this, first note that to place your cursor on a function application, you click on the parenthesis around the
           function call.
 
-          ♯task⟦Select the "square_or_triple" function call: drag from the "(" to the left of "double" to the "10".⟧
+          ♯task⟦Select the "double" function call: drag from the "(" to the left of "double" to the "10".⟧
           
           ♯task⟦Cut (ctrl+x).⟧
           ♯task⟦Paste onto the "(" in "(square_or_triple".⟧
