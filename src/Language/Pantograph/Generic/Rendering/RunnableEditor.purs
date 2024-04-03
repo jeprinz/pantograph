@@ -59,7 +59,7 @@ component = H.mkComponent { initialState, render, eval }
       ]
       [ HH.div
           [ HCSS.style do
-              (let s = 1.0 # CSS.em in CSS.padding s s s s)
+              (let s = 0.5 # CSS.em in CSS.padding s s s s)
               CSS.display CSS.flex
               CSS.flexDirection CSS.row
               CSS.rule $ CSS.Property (CSS.fromString "gap") (CSS.fromString "0.5em")

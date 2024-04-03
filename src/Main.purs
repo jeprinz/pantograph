@@ -1,21 +1,11 @@
 module Main where
 
 import Prelude
-
 import Effect (Effect)
-import Effect.Class.Console as Console
-import Halogen.Aff as HA
-import Halogen.VDom.Driver as VDomDriver
-import Language.Pantograph.Generic.Grammar as Grammar
-import Language.Pantograph.Generic.Rendering.Base as Base
-import Language.Pantograph.Generic.Rendering.Editor (editorComponent) as Rendering
-import Language.Pantograph.Generic.Rendering.RunnableEditor as RunnableEditor
-import Language.Pantograph.Specific.Currying as Currying
-import Language.Pantograph.Specific.CurryingInterpereter as CurryingInterpereter
-import Language.Pantograph.Specific.FullyApplied as FullyApplied
-import Tutorial.CurriedTutorial as CurriedTutorial
-import Tutorial.EditorTutorial2 as EditorTutorial2
+import MainStandalone as MainStandalone
+import MainTutorial as MainTutorial
 
+{-
 -- Maybe in the future we can make a better way, but for now you can switch which thing gets run by uncommenting the correct main function
 
 -- Some different languages
@@ -44,5 +34,18 @@ main :: Effect Unit
 main = case Tutorial of 
   Standalone -> main_standalone
   Tutorial -> main_tutorial
+-}
+data Mode
+  = Standalone
+  | Tutorial
 
-
+main :: Effect Unit
+main =
+  let
+    opts =
+      { active_mode: Tutorial
+      }
+  in
+    case opts.active_mode of
+      Standalone -> MainStandalone.main
+      Tutorial -> MainTutorial.main

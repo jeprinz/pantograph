@@ -4,14 +4,19 @@ import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Rendering.Base
 import Prelude
+
 import Bug (bug)
 import Bug.Assertion (assert, just)
 import Control.Monad.Trans.Class (lift)
+import Data.Argonaut (encodeJson)
+import Data.Argonaut as Argonaut
+import Data.Array as Array
 import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), either)
 import Data.Either.Nested (type (\/))
 import Data.Expr ((%))
 import Data.Expr as Expr
+import Data.Int as Int
 import Data.Int.Bits as Bits
 import Data.Lazy as Lazy
 import Data.List (List(..))
@@ -47,6 +52,7 @@ import Language.Pantograph.Generic.Smallstep as SmallStep
 import Language.Pantograph.Generic.Unification as Unification
 import Language.Pantograph.Generic.ZipperMovement (moveZipperpUntil)
 import Language.Pantograph.Generic.ZipperMovement (normalizeZipperp)
+import Language.Pantograph.UserStudy.Programs as UserStudyPrograms
 import Log (log, logM)
 import Text.Pretty (bullets, pretty)
 import Text.Pretty as P
@@ -87,12 +93,25 @@ editorComponent _unit =
 
   let
     initState = unsafePerformEffect do
-      program_string <- get_url_search_param "program"
-      if String.null program_string then
-        pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty spec.dterm
+      -- program_string <- get_url_search_param "program"
+      -- if String.null program_string then
+      --   pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty spec.dterm
+      -- else do
+      --   let dterm = Grammar.decodeSerializedZipper2 spec.clipboardSort program_string
+      --   pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty dterm
+      let default = pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty spec.dterm
+      param <- get_url_search_param "UserStudyProgramIndex"
+      if String.null param then
+        default
       else do
-        let dterm = Grammar.decodeSerializedZipper2 spec.clipboardSort program_string
-        pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty dterm
+        case Int.fromString param of 
+          Nothing -> default
+          Just i -> do
+            case UserStudyPrograms.program_strings Array.!! i of 
+              Nothing -> default 
+              Just program_string -> do
+                let dterm = Grammar.decodeSerializedZipper2 spec.clipboardSort program_string
+                pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty dterm
 
   -- state
   currentState /\ state_id <- HK.useState $ initState
@@ -646,9 +665,9 @@ editorComponent _unit =
           else if cmdKey && key == "p" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             if shiftKey then
-              Console.log $ encode_uri_string $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
+              Console.log $ encode_uri_string $ Argonaut.stringify $ encodeJson $ hdzipperDerivZipper cursor.hdzipper
             else
-              Console.log $ printSerializedDerivZipper2 (hdzipperDerivZipper cursor.hdzipper)
+              Console.log $ Argonaut.stringify $ encodeJson $ hdzipperDerivZipper cursor.hdzipper
             pure unit
           else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm

@@ -21,11 +21,11 @@
     "clean-purscript": "rm -rf output .spago .psc-ide-port .psci_modules",
     "build": "npx spago build --purs-args \"--codegen=sourcemaps,js\"",
     "build-prod": "spago -x spago.production.dhall build --purs-args \"-o output-prod -g sourcemaps --json-errors\"",
-    "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/index.js",
-    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outdir=dist --servedir=dist",
-    "servek": "npm run serve",
+    "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/pantograph.js",
+    "build-tutorial": "npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js\n",
+    "build-standalone": "npx esbuild standalone.js --bundle --outfile=dist/pantograph.js\n",
     "test": "npx spago test",
-    "build-standalone": "npx esbuild index.js --bundle --outfile=dist/index.js\n"
+    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outdir=dist --servedir=dist"
   },
   "repository": {
     "type": "git",
