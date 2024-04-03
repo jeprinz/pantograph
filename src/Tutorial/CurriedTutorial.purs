@@ -137,5 +137,5 @@ lessons :: Array (Lazy (Lesson Currying.PreSortLabel Currying.RuleLabel))
 lessons =
     Array.concat
         [ TutorialLessons.lessons
-        , ProblemLessons.lessons
+--        , ProblemLessons.lessons
         ]

@@ -45,12 +45,12 @@ lessons =
                 $ parseMd
                     """
           Here is the same program, but with a couple of the terms removed.
-          Two of the numbers from the program have been deleted, and instead we have holes in their place.
+          Two of the numbers from the program have been deleted, leaving holes in their place.
           ♯br♯br
           A ♯bold⟦hole⟧ is a placeholder term, displayed as ♯dataTyHole⟦T⟧, where ♯code⟦T⟧ is the type of the hole.
           ♯br♯br
           To ♯bold⟦fill⟧  in a hole,
-          move the cursor to the ♯code⟦▪⟧ inside the hole,
+          move the cursor to the ♯code⟦□⟧ inside the hole,
           then write the value to fill,
           and finally press "Tab".
           
@@ -88,7 +88,7 @@ lessons =
         There are two ways to insert nodes in pantograph:
         """
             , HH.ul_
-                [ HH.li_ $ parseMd """ ♯bold⟦Fill in a hole⟧: click on ♯code⟦▪⟧ """
+                [ HH.li_ $ parseMd """ ♯bold⟦Fill in a hole⟧: click on ♯code⟦□⟧ """
                 , HH.li_ $ parseMd """ ♯bold⟦Wrap around a term⟧: click on the term """
                 ]
             , HH.p_
@@ -97,7 +97,7 @@ lessons =
         ♯br
 
         Using these two kinds of edits,
-        ♯task⟦make each "task" match each "given"⟧
+        ♯task⟦Edit each "task" to match each "given"⟧
         """
             ]
   , makeLesson
@@ -115,40 +115,40 @@ lessons =
         ♯task⟦make each "task" match each "given"⟧
         """
             ]
-  , makeLesson
-      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fib"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpLessEq"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
-      []
-      $ defer \_ ->
-          HH.div_
-            [ HH.h1_ [ HH.text "Extended Editing Example" ]
-            , HH.p_
-                $ parseMd
-                    """
-          Putting together what you have learned so far, we will perform a larger edit on a program.
-
-          ♯br
-
-          In this lesson, we will edit ♯code⟦fib⟧ to take its base case as an additional input rather than being fixed as ♯code⟦1⟧.
-
-          ♯br♯br
-
-          To ♯bold⟦delete⟧ a term, press "Delete" or "Backspace". This replaces the term with a hole.
-          ♯task⟦Delete the base case value: Delete the "1" in "then 1".⟧
-
-          ♯br
-
-          To wrap a ♯code⟦λ⟧ around the term at your cursor, query (a prefix of) "lambda" and press Tab.
-
-          ♯task⟦Place your cursor by clicking "λ", then wrap a second "λ" around the body of fib.⟧
-          When you do this, ♯Pantograph automatically updates ♯code⟦fib⟧'s type and each ♯code⟦fib⟧ call.
-
-          ♯br♯br
-
-          To name or rename a variable, write the new name at the variable and then press "Tab".
-          ♯task⟦Name the new argument "m".⟧
-          ♯task⟦Fill in all holes in fib's body with m.⟧
-          """
-            ]
+--  , makeLesson
+--      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fib"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpLessEq"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
+--      []
+--      $ defer \_ ->
+--          HH.div_
+--            [ HH.h1_ [ HH.text "Extended Editing Example" ]
+--            , HH.p_
+--                $ parseMd
+--                    """
+--          Putting together what you have learned so far, we will perform a larger edit on a program.
+--
+--          ♯br
+--
+--          In this lesson, we will edit ♯code⟦fib⟧ to take its base case as an additional input rather than being fixed as ♯code⟦1⟧.
+--
+--          ♯br♯br
+--
+--          To ♯bold⟦delete⟧ a term, press "Delete" or "Backspace". This replaces the term with a hole.
+--          ♯task⟦Delete the base case value: Delete the "1" in "then 1".⟧
+--
+--          ♯br
+--
+--          To wrap a ♯code⟦fun⟧ around the term at your cursor, query (a prefix of) "lambda" and press Tab.
+--
+--          ♯task⟦Place your cursor by clicking "fun", then wrap a second "fun" around the body of fib.⟧
+--          When you do this, ♯Pantograph automatically updates ♯code⟦fib⟧'s type and each ♯code⟦fib⟧ call.
+--
+--          ♯br♯br
+--
+--          To name or rename a variable, write the new name at the variable and then press "Tab".
+--          ♯task⟦Name the new argument "m".⟧
+--          ♯task⟦Fill in all holes in fib's body with m.⟧
+--          """
+--            ]
   , makeLesson
       """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
       []
@@ -162,9 +162,9 @@ lessons =
           """
             , HH.ul_
                 [ HH.li_ $ parseMd """ ♯bold⟦Fill in a hole⟧: write the value in the hole """
-                , HH.li_ $ parseMd """ ♯bold⟦Wrap a form around an term⟧: write the value at the term """
+                , HH.li_ $ parseMd """ ♯bold⟦Wrap a form around a term⟧: write the value at the term """
                 , HH.li_ $ parseMd """ ♯bold⟦Delete a term⟧: press "Delete/Backspace" """
-                , HH.li_ $ parseMd """ ♯bold⟦Name a variable⟧: write the variable's new name at the variable """
+                , HH.li_ $ parseMd """ ♯bold⟦Name a variable⟧: Input the variable's name """
                 ]
             , HH.p_
                 $ parseMd
@@ -196,7 +196,7 @@ lessons =
 
           ♯br♯br
 
-          Try making some selections to get a feel for it.
+          Try making some selections to get a feel for it. In the next lessons, we will explore selections in detail.
           """
             ]
   , makeLesson
@@ -211,7 +211,7 @@ lessons =
 
           For each task, make a single selection and press "Backspace/Delete".
 
-          ♯task⟦make each "task" match each "given"⟧
+          ♯task⟦Edit each "task" to match each "given"⟧
           """
             ]
   , makeLesson
@@ -279,7 +279,7 @@ lessons =
 
           ♯code⟦average⟧ is now only called with its first two arguments.
           As a result, ♯Pantograph automatically updated the type of ♯code⟦result⟧ to be ♯code⟦Int → Int⟧ 
-          and added a hole for the missing argument in ♯code⟦10 * (result { ▪ : Int })⟧.
+          and added a hole for the missing argument in ♯code⟦10 * (result { □ : Int })⟧.
 
           ♯br♯br
 
@@ -299,12 +299,12 @@ lessons =
           Selections can be used to rearrage a function's arguments.
 
           Switch the order of inputs ♯code⟦x⟧ and ♯code⟦y⟧ in the definition of ♯code⟦average⟧.
-          ♯task⟦Select the "x" input: drag from the "λ" in "λ x" to the "λ" in "λ y".⟧
+          ♯task⟦Select the "x" input: drag from the "fun" in "fun x" to the "fun" in "fun y".⟧
           ♯task⟦Cut.⟧
 
           Since ♯code⟦average⟧'s first input was removed, the argument ♯code⟦1⟧ in ♯code⟦(average 1 4 20)⟧ is ♯greyError⟦out-of-place⟧.
 
-          ♯task⟦Move to the "z" argument: click on the "λ" in "λ z".⟧
+          ♯task⟦Move to the "z" argument: click on the "fun" in "fun z".⟧
           ♯task⟦Paste.⟧
 
           Now, fix the out-of-place argument ♯code⟦1⟧ in the ♯code⟦average⟧ call in the body of ♯code⟦result⟧ by cut-pasting it to the right place.
@@ -331,7 +331,7 @@ lessons =
 
           Edit ♯code⟦f⟧ to take a ♯code⟦Bool⟧ as input instead of an ♯code⟦Int⟧.
 
-          ♯task⟦Delete the Int in "λ x : Int => ...".⟧
+          ♯task⟦Delete the Int in "fun x : Int => ...".⟧
           ♯task⟦Write "Bool".⟧
 
           The ♯code⟦y⟧ in ♯code⟦(f y)⟧ now has a type boundary around it.
@@ -378,58 +378,58 @@ lessons =
           type of the new term now in that place.
           """
             ]
-  , makeLesson
-      """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
-      []
-      $ defer \_ ->
-          HH.div_
-            $ [ HH.h1_ [ HH.text "Checkpoint before Exercises" ]
-              , HH.p_
-                  $ parseMd
-                      """
-          You now know the basics of editing with ♯Pantograph!
-          Take a moment to experiment with this novel style of editing.
-          """
-              ]
-            <> editActions
-            <> [ HH.p_
-                  $ parseMd
-                      """        
-          The next lessons are simple exercises to practice what you've learned.
-          """
-              ]
-  , makeLesson
-      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["sum"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
-      []
-      $ defer \_ ->
-          HH.div_
-            $ [ HH.h1_ [ HH.text "Exercise: sum" ]
-              , HH.p_
-                  $ parseMd
-                      """
-          Implement ♯code⟦sum⟧, a function that computes the sum of a list of integers.
-
-          ♯br♯br
-
-          Example behavior: ♯code⟦sum (cons 0 (cons 1 (cons 2 nil))) = 3⟧
-          """
-              ]
-            <> editActions
-  , makeLesson
-      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["map"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
-      []
-      $ defer \_ ->
-          HH.div_
-            $ [ HH.h1_ [ HH.text "Exercise: map" ]
-              , HH.p_
-                  $ parseMd
-                      """
-          Implement ♯code⟦map⟧, a function that applies a function to each element of a list.
-
-          ♯br♯br
-
-          Example behavior: ♯code⟦map (λ x.> (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))⟧
-          """
-              ]
-            <> editActions
+--  , makeLesson
+--      """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
+--      []
+--      $ defer \_ ->
+--          HH.div_
+--            $ [ HH.h1_ [ HH.text "Checkpoint before Exercises" ]
+--              , HH.p_
+--                  $ parseMd
+--                      """
+--          You now know the basics of editing with ♯Pantograph!
+--          Take a moment to experiment with this novel style of editing.
+--          """
+--              ]
+--            <> editActions
+--            <> [ HH.p_
+--                  $ parseMd
+--                      """
+--          The next lessons are simple exercises to practice what you've learned.
+--          """
+--              ]
+--  , makeLesson
+--      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["sum"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
+--      []
+--      $ defer \_ ->
+--          HH.div_
+--            $ [ HH.h1_ [ HH.text "Exercise: sum" ]
+--              , HH.p_
+--                  $ parseMd
+--                      """
+--          Implement ♯code⟦sum⟧, a function that computes the sum of a list of integers.
+--
+--          ♯br♯br
+--
+--          Example behavior: ♯code⟦sum (cons 0 (cons 1 (cons 2 nil))) = 3⟧
+--          """
+--              ]
+--            <> editActions
+--  , makeLesson
+--      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["map"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
+--      []
+--      $ defer \_ ->
+--          HH.div_
+--            $ [ HH.h1_ [ HH.text "Exercise: map" ]
+--              , HH.p_
+--                  $ parseMd
+--                      """
+--          Implement ♯code⟦map⟧, a function that applies a function to each element of a list.
+--
+--          ♯br♯br
+--
+--          Example behavior: ♯code⟦map (fun x => (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))⟧
+--          """
+--              ]
+--            <> editActions
   ]

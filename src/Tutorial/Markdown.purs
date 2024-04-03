@@ -23,7 +23,7 @@ dummyDataTyHole str_dataty =
   HH.code_
     [HH.div [classNames ["node"]]
       [ HH.div [classNames ["subnode", "punctuation", "lbrace"]] [HH.text "{"]
-      , HH.div [classNames ["node", "holeInterior"]] [HH.div [classNames ["node", "holeInterior-inner"]] [HH.div [classNames ["subnode", "punctuation", "square"]] [HH.text "▪"]]]
+      , HH.div [classNames ["node", "holeInterior"]] [HH.div [classNames ["node", "holeInterior-inner"]] [HH.div [classNames ["subnode", "punctuation", "square"]] [HH.text "□"]]]
       , HH.div [classNames ["subnode", "punctuation", "colon"]] [HH.text ":"]
       , HH.div [classNames ["node", "typesubscript"]]
           [ HH.div [classNames ["node"]] [HH.span [classNames ["datatype"]] [HH.text str_dataty]] ]

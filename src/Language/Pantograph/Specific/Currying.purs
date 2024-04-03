@@ -283,8 +283,8 @@ infixName op =
     OpGreater -> ">"
     OpLessEq -> "<="
     OpGreaterEq -> ">="
-    OpAnd -> "and"
-    OpOr -> "or"
+    OpAnd -> "&&"
+    OpOr -> "||"
 
 -- | Naming convention: <title>_<output sort>
 data RuleLabel
@@ -356,7 +356,7 @@ sortToType ty =
 instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   prettyExprF'_unsafe_RuleLabel (Zero /\ []) = pretty Zero
   prettyExprF'_unsafe_RuleLabel (Suc /\ [x]) = pretty Suc <> x
-  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "λ" <+> x <+> ":" <+> ty <+> "=>" <+> b
+  prettyExprF'_unsafe_RuleLabel (Lam /\ [x, ty, b]) = P.parens $ "fun" <+> x <+> ":" <+> ty <+> "=>" <+> b
   prettyExprF'_unsafe_RuleLabel (Let /\ [x, ty, a, b]) = P.parens $ "let" <+> x <+> ":" <+> ty <+> "=" <+> a <+> b
   prettyExprF'_unsafe_RuleLabel (ArrowRule /\ [a, b]) = P.parens $ a <+> "->" <+> b
   prettyExprF'_unsafe_RuleLabel (ListRule /\ [t]) = "List" <+> t
@@ -712,8 +712,8 @@ arrangeDerivTermSubs _ {renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent
     in
     html <> [pure (if dotOrNot then [HH.div [classNames ["app-circle"]] [appCircle]] else [])]
 
-lambdaElem = Rendering.makePuncElem "lambda" "λ"
-mapstoElem = Rendering.makePuncElem "mapsto" "."
+lambdaElem = Rendering.makePuncElem "lambda" "fun"
+mapstoElem = Rendering.makePuncElem "mapsto" "=>"
 refElem = Rendering.makePuncElem "ref" "#"
 zeroVarElem = Rendering.makePuncElem "zeroVar" "Z"
 sucVarElem = Rendering.makePuncElem "sucVar" "S"
@@ -907,7 +907,7 @@ editsAtHoleInterior :: Sort -> Array Edit
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity ([
         DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "if" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "fun" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "(" cursorSort
         , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
@@ -934,7 +934,7 @@ editsAtCursor cursorSort = Array.mapMaybe identity (
     , makeEditFromPath (newPathFromRule ListRule 0) "List" cursorSort ])
     <> (Array.drop 1 $ Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
     <> if not (isTermSort cursorSort) then [] else
-    Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
+    Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "fun" cursorSort
     , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
     , makeEditFromPath (newPathFromRule Let 2) "let" cursorSort -- also allow wrapping around definition
     , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
