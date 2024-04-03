@@ -20,6 +20,7 @@ import Data.Int as Int
 import Data.Int.Bits as Bits
 import Data.Lazy as Lazy
 import Data.List (List(..))
+import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust)
 import Data.Maybe as Maybe
 import Data.String as String
@@ -104,14 +105,11 @@ editorComponent _unit =
       if String.null param then
         default
       else do
-        case Int.fromString param of 
-          Nothing -> default
-          Just i -> do
-            case UserStudyPrograms.program_strings Array.!! i of 
-              Nothing -> default 
-              Just program_string -> do
-                let dterm = Grammar.decodeSerializedZipper2 spec.clipboardSort program_string
-                pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty dterm
+        case param `Map.lookup` UserStudyPrograms.program_strings of 
+          Just (Just program_string) -> do
+            let dterm = Grammar.decodeSerializedZipper2 spec.clipboardSort program_string
+            pure $ CursorState $ cursorFromHoleyDerivZipper $ injectHoleyDerivZipper $ Expr.Zipper mempty dterm
+          _ -> default
 
   -- state
   currentState /\ state_id <- HK.useState $ initState

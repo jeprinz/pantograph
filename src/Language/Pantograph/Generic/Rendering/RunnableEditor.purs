@@ -1,6 +1,7 @@
 module Language.Pantograph.Generic.Rendering.RunnableEditor where
 
 import Prelude
+
 import CSS as CSS
 import CSS.Font as CSSFont
 import Data.Expr (Expr)
@@ -59,6 +60,7 @@ component = H.mkComponent { initialState, render, eval }
       ]
       [ HH.div
           [ HCSS.style do
+              CSS.height (1.5 # CSS.em)
               (let s = 0.5 # CSS.em in CSS.padding s s s s)
               CSS.display CSS.flex
               CSS.flexDirection CSS.row
