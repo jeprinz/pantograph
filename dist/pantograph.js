@@ -40497,17 +40497,17 @@
                               }
                               ;
                               if (history2.value0 instanceof CursorState && (history2.value0.value0.mode instanceof BufferCursorMode && true)) {
-                                return $lazy_popHistory(526);
+                                return $lazy_popHistory(533);
                               }
                               ;
                               return pure210(new Just(history2.value0));
                             });
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 512, column 7 - line 527, column 32): " + [history2.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 519, column 7 - line 534, column 32): " + [history2.constructor.name]);
                         });
                       });
-                      var popHistory = $lazy_popHistory(509);
+                      var popHistory = $lazy_popHistory(516);
                       var normalizeZipperpToState = function(zipperp) {
                         if (zipperp instanceof Left) {
                           return new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(zipperp.value0)));
@@ -40519,7 +40519,7 @@
                           });
                         }
                         ;
-                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 410, column 39 - line 412, column 53): " + [zipperp.constructor.name]);
+                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 417, column 39 - line 419, column 53): " + [zipperp.constructor.name]);
                       };
                       var getState = get3(v1.value1);
                       var getFacade = liftEffect8(read(v4.value1));
@@ -40701,7 +40701,7 @@
                               }));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 419, column 9 - line 424, column 88): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 426, column 9 - line 431, column 88): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SelectState) {
@@ -40720,7 +40720,7 @@
                               }));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 426, column 9 - line 430, column 88): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 433, column 9 - line 437, column 88): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof TopState) {
@@ -40753,17 +40753,17 @@
                                 }));
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 437, column 26 - line 440, column 90): " + [v8.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 444, column 26 - line 447, column 90): " + [v8.constructor.name]);
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 435, column 9 - line 440, column 90): " + [mb_select.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 442, column 9 - line 447, column 90): " + [mb_select.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SmallStepState) {
                             return pure210(unit);
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 414, column 36 - line 441, column 36): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 421, column 36 - line 448, column 36): " + [v7.constructor.name]);
                         });
                       };
                       var moveToNextHole = bind113(getFacade)(function(v7) {
@@ -40783,7 +40783,7 @@
                             return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 334, column 11 - line 336, column 93): " + [v8.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 341, column 11 - line 343, column 93): " + [v8.constructor.name]);
                         }
                         ;
                         return pure210(unit);
@@ -40805,7 +40805,7 @@
                             return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 342, column 11 - line 344, column 93): " + [v8.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 349, column 11 - line 351, column 93): " + [v8.constructor.name]);
                         }
                         ;
                         return pure210(unit);
@@ -40852,7 +40852,7 @@
                                   return checkValidity10(v8.value0);
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 842, column 13 - line 844, column 54): " + [v8.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 857, column 13 - line 859, column 54): " + [v8.constructor.name]);
                               }
                               ;
                               if (v7 instanceof SelectState) {
@@ -40874,10 +40874,10 @@
                                     });
                                   }
                                   ;
-                                  throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 856, column 17 - line 860, column 110): " + [v9.constructor.name]);
+                                  throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 871, column 17 - line 875, column 110): " + [v9.constructor.name]);
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 849, column 13 - line 860, column 110): " + [v8.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 864, column 13 - line 875, column 110): " + [v8.constructor.name]);
                               }
                               ;
                               if (v7 instanceof TopState) {
@@ -40888,7 +40888,7 @@
                                 return pure210(unit);
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 840, column 23 - line 862, column 40): " + [v7.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 855, column 23 - line 877, column 40): " + [v7.constructor.name]);
                             }))(function() {
                               return setHighlightElement(Nothing.value);
                             });
@@ -41010,7 +41010,8 @@
                             var up = hdzipperDerivPath(cursor2.hdzipper);
                             var dzipper0 = new Zipper(up, v7.value0.dterm);
                             var dzipper1 = subDerivZipper2(v7.value0.sub)(dzipper0);
-                            return setState(new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(dzipper1))));
+                            var ssterm = setupSSTermFromReplaceAction2(zipperPath(dzipper1))(inject(derivTermSort3(zipperExpr(dzipper1))))(zipperExpr(dzipper1));
+                            return doSmallstep(ssterm);
                           });
                         }
                         ;
@@ -41022,7 +41023,7 @@
                           });
                         }
                         ;
-                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 295, column 20 - line 328, column 27): " + [v7.constructor.name]);
+                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 295, column 20 - line 335, column 27): " + [v7.constructor.name]);
                       };
                       var handleBufferOutput = function(v7) {
                         if (v7 instanceof ActionOutput) {
@@ -41035,7 +41036,7 @@
                           });
                         }
                         ;
-                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 795, column 26 - line 799, column 83): " + [v7.constructor.name]);
+                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 810, column 26 - line 814, column 83): " + [v7.constructor.name]);
                       };
                       var deleteTermAtCursor = function(restOfProg) {
                         return function(dterm) {
@@ -41052,7 +41053,7 @@
                             });
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 498, column 9 - line 507, column 36): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 505, column 9 - line 514, column 36): " + [v7.constructor.name]);
                         };
                       };
                       var computeCursorMovement = function(dir2) {
@@ -41076,7 +41077,7 @@
                               return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 387, column 11 - line 389, column 93): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 394, column 11 - line 396, column 93): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SelectState) {
@@ -41097,14 +41098,14 @@
                               return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 405, column 11 - line 407, column 93): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 412, column 11 - line 414, column 93): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SmallStepState) {
                             return pure210(unit);
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 384, column 21 - line 408, column 38): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 391, column 21 - line 415, column 38): " + [v7.constructor.name]);
                         });
                       };
                       var moveCursorVertically = function(verticalOrHorizontal) {
@@ -41136,7 +41137,7 @@
                                         return goUntil(dir2)(v8.value0)(check);
                                       }
                                       ;
-                                      throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 359, column 30 - line 361, column 78): " + [v8.constructor.name]);
+                                      throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 366, column 30 - line 368, column 78): " + [v8.constructor.name]);
                                     });
                                   };
                                 };
@@ -41171,7 +41172,7 @@
                                             return pure210(v8.value0);
                                           }
                                           ;
-                                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 372, column 30 - line 374, column 45): " + [v8.constructor.name]);
+                                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 379, column 30 - line 381, column 45): " + [v8.constructor.name]);
                                         }
                                         ;
                                         return pure210(pos2);
@@ -41258,7 +41259,7 @@
                                       return setState(v9.value0);
                                     }
                                     ;
-                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 585, column 49 - line 587, column 39): " + [v9.constructor.name]);
+                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 592, column 49 - line 594, column 39): " + [v9.constructor.name]);
                                   });
                                 });
                               });
@@ -41306,7 +41307,7 @@
                                       return pure210(unit);
                                     }
                                     ;
-                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 615, column 17 - line 632, column 34): " + [v11.constructor.name]);
+                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 622, column 17 - line 639, column 34): " + [v11.constructor.name]);
                                   });
                                 }
                                 ;
@@ -41314,31 +41315,32 @@
                                   return discard15(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                     var specializingChange = spec.specializeDerivation(derivTermSort3(v82.value0.value0))(derivTermSort3(dterm));
                                     var v9 = ssTermToChangedTerm2(stepRepeatedly2(Nothing.value)(wrapBoundary3(Down.value)(specializingChange)(termToSSTerm(v82.value0.value0)))(spec.stepRules));
-                                    return discard15(function() {
-                                      var v10 = unify3(derivTermSort3(v9.value1))(derivTermSort3(dterm));
-                                      if (v10 instanceof Just) {
-                                        var unifiedDTerm = subDerivTerm3(v10.value0.value1)(v9.value1);
-                                        var unifiedPath = subDerivPath2(v10.value0.value1)(path);
-                                        return setState(new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(new Zipper(unifiedPath, unifiedDTerm)))));
-                                      }
-                                      ;
-                                      if (v10 instanceof Nothing) {
-                                        return pure210(unit);
-                                      }
-                                      ;
-                                      throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 642, column 17 - line 648, column 34): " + [v10.constructor.name]);
-                                    }())(function() {
-                                      var $443 = hdzIsHolePosition2(v7.value0.hdzipper);
-                                      if ($443) {
-                                        return pure210(unit);
-                                      }
-                                      ;
-                                      return genAndCopyClipTerm(dterm);
-                                    });
+                                    var v10 = unify3(derivTermSort3(v9.value1))(derivTermSort3(dterm));
+                                    if (v10 instanceof Just) {
+                                      var unifiedDTerm = subDerivTerm3(v10.value0.value1)(v9.value1);
+                                      var unifiedPath = subDerivPath2(v10.value0.value1)(path);
+                                      return bind113(function() {
+                                        var $440 = hdzIsHolePosition2(v7.value0.hdzipper);
+                                        if ($440) {
+                                          return pure210(unit);
+                                        }
+                                        ;
+                                        return genAndCopyClipTerm(dterm);
+                                      }())(function() {
+                                        var ssterm = setupSSTermFromReplaceAction2(unifiedPath)(inject(derivTermSort3(unifiedDTerm)))(unifiedDTerm);
+                                        return doSmallstep(ssterm);
+                                      });
+                                    }
+                                    ;
+                                    if (v10 instanceof Nothing) {
+                                      return pure210(unit);
+                                    }
+                                    ;
+                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 649, column 17 - line 666, column 34): " + [v10.constructor.name]);
                                   });
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 601, column 53 - line 651, column 45): " + [v82.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 608, column 53 - line 666, column 34): " + [v82.constructor.name]);
                               });
                             }
                             ;
@@ -41465,7 +41467,7 @@
                                   return v7.value0.dzipperp.value1.value0;
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 716, column 35 - line 718, column 35): " + [v7.value0.dzipperp.value1.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 731, column 35 - line 733, column 35): " + [v7.value0.dzipperp.value1.constructor.name]);
                               }();
                               var v82 = spec.splitChange(getPathChange22(selection$prime$prime)(spec.forgetSorts));
                               var ssterm = setupSSTermFromWrapAction2(false)(v7.value0.dzipperp.value0)(invert(v82.upChange))(mempty13)(v82.downChange)(v7.value0.dzipperp.value2);
@@ -41563,7 +41565,7 @@
                                 }));
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 781, column 13 - line 783, column 76): " + [v8.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 796, column 13 - line 798, column 76): " + [v8.constructor.name]);
                             }
                             ;
                             var $502 = key5 === "Enter";
@@ -41575,7 +41577,7 @@
                             return pure210(unit);
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 550, column 21 - line 788, column 22): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 557, column 21 - line 803, column 22): " + [v7.constructor.name]);
                         });
                       };
                       var locs = {
@@ -41613,7 +41615,7 @@
                             });
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 904, column 33 - line 911, column 51): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 919, column 33 - line 926, column 51): " + [v7.constructor.name]);
                         }))(function() {
                           return pure14(div2([classNames(["editor"])])([div2([classNames(["program"]), onMouseLeave(function(event) {
                             return discard15(liftEffect8(stopPropagation(toEvent(event))))(function() {
@@ -41630,7 +41632,7 @@
                                 return [renderPath2(locs)(dzipper)(renderDerivTerm2(locs)(false)(true)(dzipper))(defaultRenderingContext(pathIdPrefix))];
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 942, column 11 - line 952, column 16): " + [v1.value0.value0.hdzipper.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 957, column 11 - line 967, column 16): " + [v1.value0.value0.hdzipper.constructor.name]);
                             }
                             ;
                             if (v1.value0 instanceof SelectState) {
@@ -41645,7 +41647,7 @@
                               return [div2([classNames(["smallstep-program"])])([renderSSTerm2(locs)(v1.value0.value0.ssterm)(defaultRenderingContext(pathIdPrefix))])];
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 938, column 7 - line 960, column 15): " + [v1.value0.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 953, column 7 - line 975, column 15): " + [v1.value0.constructor.name]);
                           }())]));
                         });
                       });
@@ -46275,7 +46277,7 @@
             ;
             if (v2.value0 instanceof ListMatchRule) {
               var renCtx$prime2 = incremementIndentationLevel(renCtx);
-              return [pure115([b_([text5("match ")])]), new Left(new Tuple(renCtx$prime2, 0)), pure115([b_([text5(" with")])]), pure115(newlineIndentElem(renCtx.indentationLevel)), pure115([text5("nil \u21D2 ")]), new Left(new Tuple(renCtx$prime2, 1)), pure115(newlineIndentElem(renCtx.indentationLevel)), pure115([text5("cons ")]), new Left(new Tuple(renCtx$prime2, 2)), pure115([text5(" ")]), new Left(new Tuple(renCtx$prime2, 3)), pure115([text5(" \u21D2 ")]), new Left(new Tuple(renCtx$prime2, 4))];
+              return [pure115([b_([text5("match ")])]), new Left(new Tuple(renCtx$prime2, 0)), pure115([b_([text5(" with")])]), pure115(newlineIndentElem(renCtx.indentationLevel)), pure115([text5("nil => ")]), new Left(new Tuple(renCtx$prime2, 1)), pure115(newlineIndentElem(renCtx.indentationLevel)), pure115([text5("cons ")]), new Left(new Tuple(renCtx$prime2, 2)), pure115([text5(" ")]), new Left(new Tuple(renCtx$prime2, 3)), pure115([text5(" => ")]), new Left(new Tuple(renCtx$prime2, 4))];
             }
             ;
             if (v2.value0 instanceof IntegerLiteral) {

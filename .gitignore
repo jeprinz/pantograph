@@ -10,5 +10,5 @@
 /.spago
 /.idea
 /.vscode
-/dist/index.js
+/dist/pantograph.js
 /dist/assets/fonts/FireCode-Regular.ttf
