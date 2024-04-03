@@ -221,7 +221,7 @@ constantName :: Constant -> String
 constantName = case _ of
     ConstTrue -> "true"
     ConstFalse -> "false"
-    ConstNot -> "not"
+    ConstNot -> "!"
 
 data InfixOperator
     = OpPlus
