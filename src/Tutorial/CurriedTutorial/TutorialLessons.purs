@@ -112,7 +112,7 @@ lessons =
         You can delete a term with "Delete" or "Backspace".
         ♯br♯br
         Using deletion and filling holes,
-        ♯task⟦make each "task" match each "given"⟧
+        ♯task⟦Edit each "task" to match each "given"⟧
         """
             ]
 --  , makeLesson
@@ -383,6 +383,27 @@ lessons =
           type of the new term now in that place.
           """
             ]
+  , makeLesson
+      """{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["map"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}"""
+      []
+      $ defer \_ ->
+          HH.div_
+            $ [ HH.h1_ [ HH.text "Exercise: map" ]
+              , HH.p_
+                  $ parseMd
+                      """
+          Implement ♯code⟦map⟧, a function that applies a function to each element of a list.
+
+          ♯br♯br
+
+          Example behavior: ♯code⟦map (fun x => (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))⟧
+
+          ♯br♯br
+
+          Type ♯code⟦match⟧ to make a match expression that matches on a list.
+          """
+              ]
+--            <> editActions
   , makeLesson
       """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
       []
