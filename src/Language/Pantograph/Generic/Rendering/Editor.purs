@@ -291,7 +291,14 @@ editorComponent _unit =
         let up = hdzipperDerivPath cursor.hdzipper
         let dzipper0 = Expr.Zipper up dterm
         let dzipper1 = subDerivZipper sub dzipper0
-        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper1))
+
+        -- TODO: I should abstract a function for enterring cursor mode with smallstep instead of this just being written here.
+        let ssterm = setupSSTermFromReplaceAction
+              (Expr.zipperPath dzipper1)
+              (ChangeAlgebra.inject (derivTermSort (Expr.zipperExpr dzipper1)))
+              (Expr.zipperExpr dzipper1)
+        doSmallstep ssterm
+--        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper dzipper1))
 
       -- !TODO use topChange
       ReplaceAction {topChange, dterm} -> getCursorState "handleAction" >>= \cursor -> do
@@ -624,12 +631,20 @@ editorComponent _unit =
                     Just (_newSort /\ unifyingSub) -> do
                         let unifiedDTerm = subDerivTerm unifyingSub specializedDTerm
                         let unifiedPath = subDerivPath unifyingSub path
-                        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper unifiedPath unifiedDTerm)))
+--                        setState $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.Zipper unifiedPath unifiedDTerm)))
+
+                        -- If not in a hole, swap the old term back into the clipboard:
+                        _ <- if hdzIsHolePosition cursor.hdzipper then pure unit else genAndCopyClipTerm dterm
+
+                        -- Finally, do smallstep just to fix greyed args
+                        -- TODO: I should abstract a function for enterring cursor mode with smallstep instead of this just being written here.
+                        let ssterm = setupSSTermFromReplaceAction
+                              unifiedPath
+                              (ChangeAlgebra.inject (derivTermSort unifiedDTerm))
+                              unifiedDTerm
+                        doSmallstep ssterm
                     Nothing -> do -- Didn't unify; can't paste
                         pure unit
-                -- If not in a hole, swap the old term back into the clipboard:
-                if hdzIsHolePosition cursor.hdzipper then pure unit else
-                    genAndCopyClipTerm dterm
 
           else if cmdKey && key == "s" then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
