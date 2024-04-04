@@ -15,6 +15,7 @@ import Data.Either as Either
 import Util as Util
 import Data.Int (pow)
 import Data.Lazy (Lazy, defer, force)
+import Hole (realCatchException)
 
 data Value = IntVal Int | BoolVal Boolean | ListVal (List Value) | FunVal (Value -> Either Error Value)
 
@@ -127,9 +128,12 @@ printValue val = case val of
     FunVal _ -> "<function>"
 
 interpereter :: Grammar.DerivTerm PreSortLabel RuleLabel -> String
-interpereter dterm = case eval Nil dterm of
-    Left error -> case error of
+interpereter dterm =
+    let res = realCatchException Left Right (\_ -> eval Nil dterm) in
+    case res of
+    Right (Left error) -> case error of
         HoleError -> "Error: hole"
         BoundaryError -> "Error: type boundary"
         FreeVarError -> "Error: unbound variable"
-    Right res -> printValue res
+    Right (Right res) -> printValue res
+    Left error -> "Error: infinite loop"
