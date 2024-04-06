@@ -755,7 +755,7 @@ editorComponent _unit =
             -- SelectState --> CursorState
 --            setBufferEnabled false Nothing
             setFacade $ CursorState (cursorFromHoleyDerivZipper (injectHoleyDerivZipper (Expr.unzipperp select.dzipperp)))
-          else if key == "Backspace" then deleteSelection unit
+          else if key == "Backspace" || key == "Delete" then deleteSelection unit
           else if isOpenBufferKey key then do
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
             -- SelectState --> CursorState
