@@ -244,22 +244,23 @@ lessons =
                 <> """
           You will use a selection to rearrange the function calls on the last line from
           ♯br
-          ♯code⟦square_or_triple (double 10) true⟧ to ♯br
-          ♯code⟦double (square_or_triple 10 true)⟧
+          ♯code⟦(square_or_triple (double 10) true)⟧ to ♯br
+          ♯code⟦(double (square_or_triple 10 true))⟧
 
           ♯br ♯br
 
           To do this, first note that to place your cursor on a function application, you click on the parenthesis around the
           function call.
 
-          ♯task⟦Select the "double" function call: drag from the "(" to the left of "double" to the "10".⟧
+          ♯task⟦Select the "double" function call: drag from the "(" in "(double" to the "10".⟧
           
           ♯task⟦Cut (ctrl+x).⟧
           ♯task⟦Paste onto the "(" in "(square_or_triple".⟧
 
           ♯br ♯br
 
-          ♯bold⟦Bonus:⟧ try moving the ♯code⟦square_or_triple⟧ call. Notice that you can make a selection that wouldn't be possible in a text editor!
+          ♯bold⟦Bonus:⟧ try rearranging the function calls on the last line back to be ♯code⟦(square_or_triple (double 10) true)⟧ by making a certain selection starting from the "(" in "(square_or_triple" and then copying and pasting. 
+          Notice that this selection wouldn't be possible in a text editor!
           """
             ]
   , makeLesson
