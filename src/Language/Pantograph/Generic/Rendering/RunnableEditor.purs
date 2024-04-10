@@ -12,6 +12,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Editor as Editor
@@ -72,7 +73,8 @@ component = H.mkComponent { initialState, render, eval }
               [ HE.onMouseDown (const RunProgram) ]
               [ HH.text "run" ]
           , HH.div
-              [ HCSS.style do
+              [ HP.id "evaluation"
+              , HCSS.style do
                   CSS.fontFamily [] $ NonEmpty.singleton $ CSSFont.monospace
               ]
               [ HH.text state.output ]
