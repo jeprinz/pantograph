@@ -274,7 +274,7 @@ lessons =
                     """
 
           For each task, make a single cut and paste.
-          Some of the tasks require you to cut and paste a term, and others a seleciton.
+          Some of the tasks require you to cut and paste a term, and others a selection.
 
           ♯br ♯br
 
@@ -293,7 +293,7 @@ lessons =
                 <> """
           The gray circles between function call arguments are "handles" that let you select sequences of arguments.
 
-          Delete the last argument of the call ♯code⟦(average 1 4 20)⟧.
+          Delete the last argument of the call ♯code⟦(average 1 4 20)⟧:
           
           ♯task⟦Select the last argument: drag from the gray circle right before "20" to the ")" right after it.⟧
           ♯task⟦Delete.⟧
@@ -319,7 +319,7 @@ lessons =
                 <> """
           Selections can be used to rearrage a function's arguments.
 
-          You will switch the order of inputs ♯code⟦x⟧ and ♯code⟦y⟧ in the definition of ♯code⟦average⟧.
+          You will switch the order of inputs ♯code⟦x⟧ and ♯code⟦y⟧ in the definition of ♯code⟦average⟧:
 
           ♯task⟦Select the "x" input: drag from the "fun" in "fun x" to the "fun" in "fun y".⟧
           ♯task⟦Cut.⟧

@@ -78,7 +78,7 @@ computeEdits input {bufferString, mb_oldString} =
       let sortedMatchingEdits =
               input.edits #
                 -- memo fuzzy distances
-                map (\item@{edit} -> Fuzzy.matchStr false bufferString edit.label /\ item) >>>
+                map (\item@{edit} -> Fuzzy.matchStr true bufferString edit.label /\ item) >>>
                 -- filter out edits that are below a certain fuzzy distance from the edit ExprLabel
                 -- Array.filter (\(FuzzyStr fs /\ _) -> Rational.fromInt 0 < fs.ratio) >>>
                 Array.filter 
