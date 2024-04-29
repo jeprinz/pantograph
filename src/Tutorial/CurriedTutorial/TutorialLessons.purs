@@ -164,13 +164,44 @@ lessons =
                 [ HH.li_ $ parseMd """ ♯bold⟦Fill in a hole⟧: write the value in the hole """
                 , HH.li_ $ parseMd """ ♯bold⟦Wrap a form around a term⟧: write the value at the term """
                 , HH.li_ $ parseMd """ ♯bold⟦Delete a term⟧: press "Delete/Backspace" """
-                , HH.li_ $ parseMd """ ♯bold⟦Name a variable⟧: Input the variable's name """
                 ]
+            , HH.p_ $ parseMd """Also,"""
+            , HH.ul_
+                [ HH.li_ $ parseMd """ ♯bold⟦Name a variable⟧: Input the variable's name """ ]
             , HH.p_
                 $ parseMd
                     """
           Using your knowledge so far, write the function ♯code⟦plus⟧, which takes two inputs and uses "+" to add them together, from scratch.
           ♯br♯br
+          """
+            , HH.p_
+                $ parseMd
+                    """
+          ♯task⟦Write the function "plus".⟧
+          """
+            ]
+  , makeLesson
+      """{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}"""
+      []
+      $ defer \_ ->
+          HH.div_
+            [ HH.h1_ [ HH.text "Using pantograph effectively" ]
+            , HH.p_
+                $ parseMd
+                    """
+          You can write terms very quickly in pantograph using some simple shortcuts.
+          Copy this plus function a second time, but this time:
+          """
+            , HH.ul_
+                [ HH.li_ $ parseMd """Use "Spacebar" instead of "Tab"/"Enter" to submit forms. This brings your cursor to the next hole."""
+                , HH.li_ $ parseMd """Skip over type annotations: press "Spacebar" to skip to the next hole, and let Pantograph fill in the types as you input the terms."""
+                ],
+          HH.p_ $ parseMd """
+          Write the ♯code⟦plus⟧ function again, but using these time saving tricks:
+          ♯code⟦
+          let plus : Int -> Int -> Int = fun x : Int => fun y : Int => x + y in
+          {? : ?}
+          ⟧
           """
             , HH.p_
                 $ parseMd
