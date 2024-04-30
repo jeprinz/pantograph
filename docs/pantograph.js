@@ -322,10 +322,10 @@
     return dict.map;
   };
   var mapFlipped = function(dictFunctor) {
-    var map124 = map(dictFunctor);
+    var map126 = map(dictFunctor);
     return function(fa) {
       return function(f) {
-        return map124(f)(fa);
+        return map126(f)(fa);
       };
     };
   };
@@ -333,10 +333,10 @@
     return map(dictFunctor)($$const(unit));
   };
   var voidLeft = function(dictFunctor) {
-    var map124 = map(dictFunctor);
+    var map126 = map(dictFunctor);
     return function(f) {
       return function(x) {
-        return map124($$const(x))(f);
+        return map126($$const(x))(f);
       };
     };
   };
@@ -427,20 +427,20 @@
   };
   var applySecond = function(dictApply) {
     var apply1 = apply(dictApply);
-    var map75 = map(dictApply.Functor0());
+    var map76 = map(dictApply.Functor0());
     return function(a2) {
       return function(b2) {
-        return apply1(map75($$const(identity2))(a2))(b2);
+        return apply1(map76($$const(identity2))(a2))(b2);
       };
     };
   };
   var lift2 = function(dictApply) {
     var apply1 = apply(dictApply);
-    var map75 = map(dictApply.Functor0());
+    var map76 = map(dictApply.Functor0());
     return function(f) {
       return function(a2) {
         return function(b2) {
-          return apply1(map75(f)(a2))(b2);
+          return apply1(map76(f)(a2))(b2);
         };
       };
     };
@@ -562,12 +562,12 @@
   };
   var ap = function(dictMonad) {
     var bind33 = bind(dictMonad.Bind1());
-    var pure40 = pure(dictMonad.Applicative0());
+    var pure41 = pure(dictMonad.Applicative0());
     return function(f) {
       return function(a2) {
         return bind33(f)(function(f$prime) {
           return bind33(a2)(function(a$prime) {
-            return pure40(f$prime(a$prime));
+            return pure41(f$prime(a$prime));
           });
         });
       };
@@ -2613,13 +2613,13 @@
   };
   var traverse_ = function(dictApplicative) {
     var applySecond3 = applySecond(dictApplicative.Apply0());
-    var pure40 = pure(dictApplicative);
+    var pure41 = pure(dictApplicative);
     return function(dictFoldable) {
       var foldr22 = foldr(dictFoldable);
       return function(f) {
         return foldr22(function($454) {
           return applySecond3(f($454));
-        })(pure40(unit));
+        })(pure41(unit));
       };
     };
   };
@@ -2870,23 +2870,23 @@
       };
     }
     return function(apply6) {
-      return function(map75) {
-        return function(pure40) {
+      return function(map76) {
+        return function(pure41) {
           return function(f) {
             return function(array) {
               function go2(bot, top3) {
                 switch (top3 - bot) {
                   case 0:
-                    return pure40([]);
+                    return pure41([]);
                   case 1:
-                    return map75(array1)(f(array[bot]));
+                    return map76(array1)(f(array[bot]));
                   case 2:
-                    return apply6(map75(array2)(f(array[bot])))(f(array[bot + 1]));
+                    return apply6(map76(array2)(f(array[bot])))(f(array[bot + 1]));
                   case 3:
-                    return apply6(apply6(map75(array3)(f(array[bot])))(f(array[bot + 1])))(f(array[bot + 2]));
+                    return apply6(apply6(map76(array3)(f(array[bot])))(f(array[bot + 1])))(f(array[bot + 2]));
                   default:
                     var pivot = bot + Math.floor((top3 - bot) / 4) * 2;
-                    return apply6(map75(concat22)(go2(bot, pivot)))(go2(pivot, top3));
+                    return apply6(map76(concat22)(go2(bot, pivot)))(go2(pivot, top3));
                 }
               }
               return go2(0, array.length);
@@ -3381,10 +3381,10 @@
     };
   };
   var assertM = function(dictApplicative) {
-    var pure40 = pure(dictApplicative);
+    var pure41 = pure(dictApplicative);
     return function(v) {
       if (v.result instanceof Right) {
-        return pure40(v.result.value0);
+        return pure41(v.result.value0);
       }
       ;
       if (v.result instanceof Left) {
@@ -3437,7 +3437,6 @@
   function id(x) {
     return x;
   }
-  var jsonNull = null;
   function stringify(j) {
     return JSON.stringify(j);
   }
@@ -4015,10 +4014,10 @@
       return arr;
     }
     return function(apply6) {
-      return function(map75) {
+      return function(map76) {
         return function(f) {
           var buildFrom = function(x, ys) {
-            return apply6(map75(consList)(f(x)))(ys);
+            return apply6(map76(consList)(f(x)))(ys);
           };
           var go2 = function(acc, currentLen, xs) {
             if (currentLen === 0) {
@@ -4032,12 +4031,12 @@
             }
           };
           return function(array) {
-            var acc = map75(finalCell)(f(array[array.length - 1]));
+            var acc = map76(finalCell)(f(array[array.length - 1]));
             var result = go2(acc, array.length - 1, array);
             while (result instanceof Cont) {
               result = result.fn();
             }
-            return map75(listToArray)(result);
+            return map76(listToArray)(result);
           };
         };
       };
@@ -4066,17 +4065,17 @@
   };
   var oneOf2 = function(dictAlternative) {
     var alt6 = alt(dictAlternative.Plus1().Alt0());
-    var pure40 = pure(dictAlternative.Applicative0());
+    var pure41 = pure(dictAlternative.Applicative0());
     return function(v) {
-      return alt6(pure40(v.value0))(v.value1);
+      return alt6(pure41(v.value0))(v.value1);
     };
   };
   var functorNonEmpty = function(dictFunctor) {
-    var map216 = map(dictFunctor);
+    var map217 = map(dictFunctor);
     return {
       map: function(f) {
         return function(m) {
-          return new NonEmpty(f(m.value0), map216(f)(m.value1));
+          return new NonEmpty(f(m.value0), map217(f)(m.value1));
         };
       }
     };
@@ -4368,11 +4367,11 @@
   var traversableList = {
     traverse: function(dictApplicative) {
       var Apply0 = dictApplicative.Apply0();
-      var map124 = map(Apply0.Functor0());
+      var map126 = map(Apply0.Functor0());
       var lift23 = lift2(Apply0);
       var pure117 = pure(dictApplicative);
       return function(f) {
-        var $301 = map124(foldl2(flip(Cons.create))(Nil.value));
+        var $301 = map126(foldl2(flip(Cons.create))(Nil.value));
         var $302 = foldl2(function(acc) {
           var $304 = lift23(flip(Cons.create))(acc);
           return function($305) {
@@ -6122,7 +6121,7 @@
       var pure117 = pure(dictApplicative);
       var Apply0 = dictApplicative.Apply0();
       var apply6 = apply(Apply0);
-      var map124 = map(Apply0.Functor0());
+      var map126 = map(Apply0.Functor0());
       return function(v) {
         return function(v1) {
           if (v1 instanceof Leaf) {
@@ -6130,11 +6129,11 @@
           }
           ;
           if (v1 instanceof Two) {
-            return apply6(apply6(apply6(map124(Two.create)(traverse(traversableMap)(dictApplicative)(v)(v1.value0)))(pure117(v1.value1)))(v(v1.value2)))(traverse(traversableMap)(dictApplicative)(v)(v1.value3));
+            return apply6(apply6(apply6(map126(Two.create)(traverse(traversableMap)(dictApplicative)(v)(v1.value0)))(pure117(v1.value1)))(v(v1.value2)))(traverse(traversableMap)(dictApplicative)(v)(v1.value3));
           }
           ;
           if (v1 instanceof Three) {
-            return apply6(apply6(apply6(apply6(apply6(apply6(map124(Three.create)(traverse(traversableMap)(dictApplicative)(v)(v1.value0)))(pure117(v1.value1)))(v(v1.value2)))(traverse(traversableMap)(dictApplicative)(v)(v1.value3)))(pure117(v1.value4)))(v(v1.value5)))(traverse(traversableMap)(dictApplicative)(v)(v1.value6));
+            return apply6(apply6(apply6(apply6(apply6(apply6(map126(Three.create)(traverse(traversableMap)(dictApplicative)(v)(v1.value0)))(pure117(v1.value1)))(v(v1.value2)))(traverse(traversableMap)(dictApplicative)(v)(v1.value3)))(pure117(v1.value4)))(v(v1.value5)))(traverse(traversableMap)(dictApplicative)(v)(v1.value6));
           }
           ;
           throw new Error("Failed pattern match at Data.Map.Internal (line 160, column 1 - line 175, column 31): " + [v.constructor.name, v1.constructor.name]);
@@ -6451,11 +6450,11 @@
 
   // output/Control.Alternative/index.js
   var guard = function(dictAlternative) {
-    var pure40 = pure(dictAlternative.Applicative0());
+    var pure41 = pure(dictAlternative.Applicative0());
     var empty13 = empty(dictAlternative.Plus1());
     return function(v) {
       if (v) {
-        return pure40(unit);
+        return pure41(unit);
       }
       ;
       if (!v) {
@@ -6991,18 +6990,6 @@
     }())(decodeJArray);
   };
 
-  // output/Record/index.js
-  var get = function(dictIsSymbol) {
-    var reflectSymbol2 = reflectSymbol(dictIsSymbol);
-    return function() {
-      return function(l) {
-        return function(r) {
-          return unsafeGet(reflectSymbol2(l))(r);
-        };
-      };
-    };
-  };
-
   // output/Data.Argonaut.Decode.Class/index.js
   var decodeJsonString = {
     decodeJson: decodeString
@@ -7231,47 +7218,22 @@
 
   // output/Data.Argonaut.Encode.Encoders/index.js
   var map14 = /* @__PURE__ */ map(functorArray);
-  var toUnfoldable5 = /* @__PURE__ */ toUnfoldable2(unfoldableArray);
-  var toUnfoldable12 = /* @__PURE__ */ toUnfoldable3(unfoldableList);
-  var encodeTuple = function(encoderA) {
-    return function(encoderB) {
-      return function(v) {
-        return id([encoderA(v.value0), encoderB(v.value1)]);
-      };
-    };
-  };
+  var fromFoldable6 = /* @__PURE__ */ fromFoldable2(foldableList);
   var encodeString = id;
-  var encodeMaybe = function(encoder) {
-    return function(v) {
-      if (v instanceof Nothing) {
-        return jsonNull;
-      }
-      ;
-      if (v instanceof Just) {
-        return encoder(v.value0);
-      }
-      ;
-      throw new Error("Failed pattern match at Data.Argonaut.Encode.Encoders (line 31, column 23 - line 33, column 22): " + [v.constructor.name]);
-    };
-  };
-  var encodeList = function(encoder) {
-    var $45 = map14(encoder);
-    return function($46) {
-      return id($45(toUnfoldable5($46)));
-    };
-  };
-  var encodeMap = function(dictOrd) {
-    return function(encoderA) {
-      return function(encoderB) {
-        var $47 = encodeList(encodeTuple(encoderA)(encoderB));
-        return function($48) {
-          return $47(toUnfoldable12($48));
-        };
-      };
-    };
-  };
   var encodeInt = function($53) {
     return id(toNumber($53));
+  };
+  var encodeEither = function(encoderA) {
+    return function(encoderB) {
+      var obj = function(encoder) {
+        return function(tag) {
+          return function(x) {
+            return id(fromFoldable6(new Cons(new Tuple("tag", id(tag)), new Cons(new Tuple("value", encoder(x)), Nil.value))));
+          };
+        };
+      };
+      return either(obj(encoderA)("Left"))(obj(encoderB)("Right"));
+    };
   };
   var encodeArray = function(encoder) {
     var $58 = map14(encoder);
@@ -7281,26 +7243,6 @@
   };
 
   // output/Data.Argonaut.Encode.Class/index.js
-  var gEncodeJsonNil = {
-    gEncodeJson: function(v) {
-      return function(v1) {
-        return empty2;
-      };
-    }
-  };
-  var gEncodeJson = function(dict) {
-    return dict.gEncodeJson;
-  };
-  var encodeRecord = function(dictGEncodeJson) {
-    var gEncodeJson1 = gEncodeJson(dictGEncodeJson);
-    return function() {
-      return {
-        encodeJson: function(rec) {
-          return id(gEncodeJson1(rec)($$Proxy.value));
-        }
-      };
-    };
-  };
   var encodeJsonJString = {
     encodeJson: encodeString
   };
@@ -7315,43 +7257,11 @@
       encodeJson: encodeArray(encodeJson(dictEncodeJson))
     };
   };
-  var encodeJsonList = function(dictEncodeJson) {
-    return {
-      encodeJson: encodeList(encodeJson(dictEncodeJson))
-    };
-  };
-  var encodeJsonMaybe = function(dictEncodeJson) {
-    return {
-      encodeJson: encodeMaybe(encodeJson(dictEncodeJson))
-    };
-  };
-  var encodeMap2 = function(dictOrd) {
-    var encodeMap1 = encodeMap(dictOrd);
-    return function(dictEncodeJson) {
-      var encodeJson1 = encodeJson(dictEncodeJson);
-      return function(dictEncodeJson1) {
-        return {
-          encodeJson: encodeMap1(encodeJson1)(encodeJson(dictEncodeJson1))
-        };
-      };
-    };
-  };
-  var gEncodeJsonCons = function(dictEncodeJson) {
+  var encodeJsonEither = function(dictEncodeJson) {
     var encodeJson1 = encodeJson(dictEncodeJson);
-    return function(dictGEncodeJson) {
-      var gEncodeJson1 = gEncodeJson(dictGEncodeJson);
-      return function(dictIsSymbol) {
-        var reflectSymbol2 = reflectSymbol(dictIsSymbol);
-        var get8 = get(dictIsSymbol)();
-        return function() {
-          return {
-            gEncodeJson: function(row2) {
-              return function(v) {
-                return insert(reflectSymbol2($$Proxy.value))(encodeJson1(get8($$Proxy.value)(row2)))(gEncodeJson1(row2)($$Proxy.value));
-              };
-            }
-          };
-        };
+    return function(dictEncodeJson1) {
+      return {
+        encodeJson: encodeEither(encodeJson1)(encodeJson(dictEncodeJson1))
       };
     };
   };
@@ -7710,12 +7620,6 @@
   };
 
   // output/Data.List.Rev/index.js
-  var RevIsSymbol = {
-    reflectSymbol: function() {
-      return "Rev";
-    }
-  };
-  var encodeRepConstructor2 = /* @__PURE__ */ encodeRepConstructor(RevIsSymbol);
   var foldr5 = /* @__PURE__ */ foldr(foldableList);
   var foldl5 = /* @__PURE__ */ foldl(foldableList);
   var foldMap5 = /* @__PURE__ */ foldMap(foldableList);
@@ -7731,26 +7635,9 @@
     return ordList(dictOrd);
   };
   var monoidRevList = monoidList;
-  var genericRevList_ = {
-    to: function(x) {
-      return x;
-    },
-    from: function(x) {
-      return x;
-    }
-  };
-  var genericEncodeJson2 = /* @__PURE__ */ genericEncodeJson(genericRevList_);
   var functorRevList = functorList;
   var eqRevList = function(dictEq) {
     return eqList(dictEq);
-  };
-  var encodeJsonRevList = function(dictEncodeJson) {
-    var genericEncodeJson15 = genericEncodeJson2(encodeRepConstructor2(encodeRepArgsArgument(encodeJsonList(dictEncodeJson))));
-    return {
-      encodeJson: function(a2) {
-        return genericEncodeJson15(a2);
-      }
-    };
   };
   var wrap = Rev;
   var unwrap5 = function(v) {
@@ -7803,10 +7690,10 @@
   };
   var traversableRevList = {
     traverse: function(dictApplicative) {
-      var map75 = map(dictApplicative.Apply0().Functor0());
+      var map76 = map(dictApplicative.Apply0().Functor0());
       var traverse13 = traverse2(dictApplicative);
       return function(f) {
-        var $84 = map75(reverse3);
+        var $84 = map76(reverse3);
         var $85 = traverse13(f);
         return function($86) {
           return $84($85(unreverse($86)));
@@ -7930,7 +7817,7 @@
   var intercalate7 = /* @__PURE__ */ intercalate2(monoidString);
   var map16 = /* @__PURE__ */ map(functorArray);
   var mapFlipped2 = /* @__PURE__ */ mapFlipped(functorArray);
-  var toUnfoldable6 = /* @__PURE__ */ toUnfoldable3(unfoldableArray);
+  var toUnfoldable5 = /* @__PURE__ */ toUnfoldable3(unfoldableArray);
   var prettyString = {
     pretty: /* @__PURE__ */ identity(categoryFn)
   };
@@ -7998,7 +7885,7 @@
       var pretty23 = pretty(dictPretty1);
       return {
         pretty: function(m) {
-          return "map:" + indent(bullets(mapFlipped2(toUnfoldable6(m))(function(v) {
+          return "map:" + indent(bullets(mapFlipped2(toUnfoldable5(m))(function(v) {
             return pretty13(v.value0) + (" \u21A6 " + pretty23(v.value1));
           })));
         }
@@ -8053,7 +7940,6 @@
   var traverse3 = /* @__PURE__ */ traverse(traversableRevList);
   var traverse12 = /* @__PURE__ */ traverse(traversableList);
   var identity11 = /* @__PURE__ */ identity(categoryFn);
-  var encodeRepConstructor3 = /* @__PURE__ */ encodeRepConstructor(PathIsSymbol);
   var genericPath_ = {
     to: function(x) {
       return x;
@@ -8063,7 +7949,6 @@
     }
   };
   var genericShow1 = /* @__PURE__ */ genericShow(genericPath_);
-  var genericEncodeJson1 = /* @__PURE__ */ genericEncodeJson(genericPath_);
   var showPath1 = function(dictShow) {
     var genericShow24 = genericShow1(genericShowConstructor(genericShowArgsArgument(showRecord2(showRecordFieldsCons2(showRecordFieldsConsNil2(showList(dictShow)))(showRevList(dictShow)))))(PathIsSymbol));
     return {
@@ -8112,12 +7997,12 @@
     traverse: function(dictApplicative) {
       var Apply0 = dictApplicative.Apply0();
       var apply6 = apply(Apply0);
-      var map311 = map(Apply0.Functor0());
+      var map312 = map(Apply0.Functor0());
       var traverse32 = traverse3(dictApplicative);
       var traverse4 = traverse12(dictApplicative);
       return function(f) {
         return function(m) {
-          return apply6(map311(function(v1) {
+          return apply6(map312(function(v1) {
             return function(v2) {
               return {
                 left: v1,
@@ -8172,14 +8057,6 @@
       },
       Eq0: function() {
         return eqPath1;
-      }
-    };
-  };
-  var encodeJsonPath = function(dictEncodeJson) {
-    var genericEncodeJson25 = genericEncodeJson1(encodeRepConstructor3(encodeRepArgsArgument(encodeRecord(gEncodeJsonCons(encodeJsonRevList(dictEncodeJson))(gEncodeJsonCons(encodeJsonList(dictEncodeJson))(gEncodeJsonNil)(rightIsSymbol)())(leftIsSymbol)())())));
-    return {
-      encodeJson: function(a2) {
-        return genericEncodeJson25(a2);
       }
     };
   };
@@ -8363,11 +8240,11 @@
   var $$try = function(dictMonadError) {
     var catchError1 = catchError(dictMonadError);
     var Monad0 = dictMonadError.MonadThrow0().Monad0();
-    var map75 = map(Monad0.Bind1().Apply0().Functor0());
-    var pure40 = pure(Monad0.Applicative0());
+    var map76 = map(Monad0.Bind1().Apply0().Functor0());
+    var pure41 = pure(Monad0.Applicative0());
     return function(a2) {
-      return catchError1(map75(Right.create)(a2))(function($52) {
-        return pure40(Left.create($52));
+      return catchError1(map76(Right.create)(a2))(function($52) {
+        return pure41(Left.create($52));
       });
     };
   };
@@ -8394,11 +8271,11 @@
   var makeTotalMap = function(dictEnum) {
     var enumFromTo2 = enumFromTo(dictEnum)(unfoldable1Array);
     return function(dictBounded) {
-      var fromFoldable20 = fromFoldable4(dictBounded.Ord0())(foldableArray);
+      var fromFoldable21 = fromFoldable4(dictBounded.Ord0())(foldableArray);
       var bottom3 = bottom(dictBounded);
       var top3 = top(dictBounded);
       return function(f) {
-        return fromFoldable20(mapFlipped3(enumFromTo2(bottom3)(top3))(function(k) {
+        return fromFoldable21(mapFlipped3(enumFromTo2(bottom3)(top3))(function(k) {
           return new Tuple(k, f(k));
         }));
       };
@@ -8910,11 +8787,11 @@
   var traceM = function() {
     return function(dictMonad) {
       var discard110 = discard3(dictMonad.Bind1());
-      var pure40 = pure(dictMonad.Applicative0());
+      var pure41 = pure(dictMonad.Applicative0());
       return function(s) {
-        return discard110(pure40(unit))(function() {
+        return discard110(pure41(unit))(function() {
           return trace1(s)(function(v) {
-            return pure40(unit);
+            return pure41(unit);
           });
         });
       };
@@ -8931,6 +8808,14 @@
     console.log("==[ HOLE ]=================================================================");
     console.log(a2);
     throw new Error("HOLE");
+  };
+  var realCatchException = (Left2) => (Right2) => (callback) => {
+    try {
+      var res = callback();
+      return Right2(res);
+    } catch (e) {
+      return Left2("error");
+    }
   };
 
   // output/Hole/index.js
@@ -8962,7 +8847,7 @@
     var member2 = member(dictOrd);
     var union$prime1 = union$prime(dictOrd);
     var mapMaybeWithKey2 = mapMaybeWithKey(dictOrd);
-    var lookup20 = lookup3(dictOrd);
+    var lookup21 = lookup3(dictOrd);
     return function(onlyLeft) {
       return function(onlyRight) {
         return function(both) {
@@ -8982,7 +8867,7 @@
                 return function(v) {
                   return maybe(Nothing.value)(function(v2) {
                     return new Just(both(v)(v2));
-                  })(lookup20(k)(m2));
+                  })(lookup21(k)(m2));
                 };
               })(m1));
             };
@@ -9005,10 +8890,10 @@
     });
   };
   var lookup$prime = function(dictOrd) {
-    var lookup20 = lookup3(dictOrd);
+    var lookup21 = lookup3(dictOrd);
     return function(x) {
       return function(m) {
-        var v = lookup20(x)(m);
+        var v = lookup21(x)(m);
         if (v instanceof Just) {
           return v.value0;
         }
@@ -9206,11 +9091,6 @@
       return "Tooth";
     }
   };
-  var ZipperIsSymbol = {
-    reflectSymbol: function() {
-      return "Zipper";
-    }
-  };
   var PlusIsSymbol = {
     reflectSymbol: function() {
       return "Plus";
@@ -9237,10 +9117,7 @@
   var identity13 = /* @__PURE__ */ identity(categoryFn);
   var foldl7 = /* @__PURE__ */ foldl(foldableArray);
   var foldl22 = /* @__PURE__ */ foldl(foldableList);
-  var encodeRepConstructor4 = /* @__PURE__ */ encodeRepConstructor(MInjIsSymbol);
   var encodeRepConstructor1 = /* @__PURE__ */ encodeRepConstructor(ExprIsSymbol);
-  var encodeRepConstructor22 = /* @__PURE__ */ encodeRepConstructor(ToothIsSymbol);
-  var encodeRepConstructor32 = /* @__PURE__ */ encodeRepConstructor(ZipperIsSymbol);
   var decodeRepConstructor2 = /* @__PURE__ */ decodeRepConstructor(ExprIsSymbol);
   var unwrap6 = /* @__PURE__ */ unwrap();
   var discard4 = /* @__PURE__ */ discard(discardUnit)(bindMaybe);
@@ -9249,7 +9126,7 @@
   var bind7 = /* @__PURE__ */ bind(bindMaybe);
   var pure4 = /* @__PURE__ */ pure(applicativeMaybe);
   var compare5 = /* @__PURE__ */ compare(ordInt);
-  var fromFoldable6 = /* @__PURE__ */ fromFoldable(foldableList);
+  var fromFoldable7 = /* @__PURE__ */ fromFoldable(foldableList);
   var mempty1 = /* @__PURE__ */ mempty(monoidRevList);
   var fromFoldable1 = /* @__PURE__ */ fromFoldable3(foldableArray);
   var mapFlipped4 = /* @__PURE__ */ mapFlipped(functorMaybe);
@@ -9496,15 +9373,6 @@
     };
   }();
   var mempty22 = /* @__PURE__ */ mempty(monoidPath);
-  var genericZipper_ = {
-    to: function(x) {
-      return new Zipper(x.value0, x.value1);
-    },
-    from: function(x) {
-      return new Product(x.value0, x.value1);
-    }
-  };
-  var genericEncodeJson3 = /* @__PURE__ */ genericEncodeJson(genericZipper_);
   var genericTooth_ = {
     to: function(x) {
       return new Tooth(x.value0, x.value1);
@@ -9516,7 +9384,6 @@
   var genericShow2 = /* @__PURE__ */ genericShow(genericTooth_);
   var genericEq2 = /* @__PURE__ */ genericEq(genericTooth_);
   var genericCompare2 = /* @__PURE__ */ genericCompare(genericTooth_);
-  var genericEncodeJson12 = /* @__PURE__ */ genericEncodeJson(genericTooth_);
   var genericMeta_ = {
     to: function(x) {
       if (x instanceof Inl) {
@@ -9544,7 +9411,6 @@
   var genericShow3 = /* @__PURE__ */ genericShow(genericMeta_);
   var genericEq1 = /* @__PURE__ */ genericEq(genericMeta_);
   var genericCompare1 = /* @__PURE__ */ genericCompare(genericMeta_);
-  var genericEncodeJson22 = /* @__PURE__ */ genericEncodeJson(genericMeta_);
   var genericMetaVar_ = {
     to: function(x) {
       if (x instanceof Inl) {
@@ -9572,7 +9438,6 @@
   var genericShow4 = /* @__PURE__ */ genericShow(genericMetaVar_)(/* @__PURE__ */ genericShowSum(/* @__PURE__ */ genericShowConstructor(/* @__PURE__ */ genericShowArgsProduct(/* @__PURE__ */ genericShowArgsArgument(/* @__PURE__ */ showMaybe(showString)))(/* @__PURE__ */ genericShowArgsArgument(showInt)))(MetaVarIsSymbol))(/* @__PURE__ */ genericShowConstructor(/* @__PURE__ */ genericShowArgsArgument(showString))(RuleMetaVarIsSymbol)));
   var genericEq22 = /* @__PURE__ */ genericEq(genericMetaVar_)(/* @__PURE__ */ genericEqSum(/* @__PURE__ */ genericEqConstructor(/* @__PURE__ */ genericEqProduct(/* @__PURE__ */ genericEqArgument(/* @__PURE__ */ eqMaybe(eqString)))(/* @__PURE__ */ genericEqArgument(eqInt))))(/* @__PURE__ */ genericEqConstructor(/* @__PURE__ */ genericEqArgument(eqString))));
   var genericCompare22 = /* @__PURE__ */ genericCompare(genericMetaVar_)(/* @__PURE__ */ genericOrdSum(/* @__PURE__ */ genericOrdConstructor(/* @__PURE__ */ genericOrdProduct(/* @__PURE__ */ genericOrdArgument(/* @__PURE__ */ ordMaybe(ordString)))(/* @__PURE__ */ genericOrdArgument(ordInt))))(/* @__PURE__ */ genericOrdConstructor(/* @__PURE__ */ genericOrdArgument(ordString))));
-  var genericEncodeJson32 = /* @__PURE__ */ genericEncodeJson(genericMetaVar_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(MetaVarIsSymbol)(/* @__PURE__ */ encodeRepArgsProduct(/* @__PURE__ */ encodeRepArgsArgument(/* @__PURE__ */ encodeJsonMaybe(encodeJsonJString)))(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonInt))))(/* @__PURE__ */ encodeRepConstructor(RuleMetaVarIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonJString))));
   var showMetaVar = {
     show: function(x) {
       return genericShow4(x);
@@ -9902,44 +9767,11 @@
       }
     };
   };
-  var encodeJsonMetaVar = {
-    encodeJson: function(a2) {
-      return genericEncodeJson32(a2);
-    }
-  };
-  var encodeRepSum2 = /* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(MVIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonMetaVar)));
-  var encodeJsonMeta = function(dictEncodeJson) {
-    var genericEncodeJson52 = genericEncodeJson22(encodeRepSum2(encodeRepConstructor4(encodeRepArgsArgument(dictEncodeJson))));
-    return {
-      encodeJson: function(a2) {
-        return genericEncodeJson52(a2);
-      }
-    };
-  };
   var encodeJsonExpr = function(dictEncodeJson) {
     var encodeRepArgsProduct2 = encodeRepArgsProduct(encodeRepArgsArgument(dictEncodeJson));
     return {
       encodeJson: function(a2) {
         return genericEncodeJson4(encodeRepConstructor1(encodeRepArgsProduct2(encodeRepArgsArgument(encodeJsonArray(encodeJsonExpr(dictEncodeJson))))))(a2);
-      }
-    };
-  };
-  var encodeJsonTooth = function(dictEncodeJson) {
-    var genericEncodeJson52 = genericEncodeJson12(encodeRepConstructor22(encodeRepArgsProduct(encodeRepArgsArgument(dictEncodeJson))(encodeRepArgsArgument(encodeJsonPath(encodeJsonExpr(dictEncodeJson))))));
-    return {
-      encodeJson: function(a2) {
-        return genericEncodeJson52(a2);
-      }
-    };
-  };
-  var encodeJsonPath2 = function(dictEncodeJson) {
-    return encodeJsonList(encodeJsonTooth(dictEncodeJson));
-  };
-  var encodeJsonZipper = function(dictEncodeJson) {
-    var genericEncodeJson52 = genericEncodeJson3(encodeRepConstructor32(encodeRepArgsProduct(encodeRepArgsArgument(encodeJsonPath2(dictEncodeJson)))(encodeRepArgsArgument(encodeJsonExpr(dictEncodeJson)))));
-    return {
-      encodeJson: function(a2) {
-        return genericEncodeJson52(a2);
       }
     };
   };
@@ -10038,7 +9870,7 @@
   };
   var unTooth = function(v) {
     return function(g) {
-      return new Expr(v.value0, fromFoldable6(unpathAround(g)(v.value1)));
+      return new Expr(v.value0, fromFoldable7(unpathAround(g)(v.value1)));
     };
   };
   var zipUp2 = function(v) {
@@ -10664,7 +10496,7 @@
     var pretty23 = pretty(prettyExpr(dictIsExprLabel));
     return function(v) {
       return function(str) {
-        return prettyExprF1(new Tuple(v.value0, fromFoldable6(unpathAround(str)(map110(pretty23)(v.value1)))));
+        return prettyExprF1(new Tuple(v.value0, fromFoldable7(unpathAround(str)(map110(pretty23)(v.value1)))));
       };
     };
   };
@@ -11162,6 +10994,21 @@
     };
     return Action3;
   }();
+  var functorInput = {
+    map: function(f) {
+      return function(m) {
+        if (m instanceof RefUpdate) {
+          return new RefUpdate(m.value0, m.value1);
+        }
+        ;
+        if (m instanceof Action) {
+          return new Action(f(m.value0));
+        }
+        ;
+        throw new Error("Failed pattern match at Halogen.Query.Input (line 0, column 0 - line 0, column 0): " + [m.constructor.name]);
+      };
+    }
+  };
 
   // output/Data.Nullable/foreign.js
   var nullImpl = null;
@@ -11317,6 +11164,23 @@
     }
   };
   var bimap2 = /* @__PURE__ */ bimap(bifunctorGraft);
+  var bifunctorVDom = {
+    bimap: function(v) {
+      return function(v1) {
+        return function(v2) {
+          if (v2 instanceof Text) {
+            return new Text(v2.value0);
+          }
+          ;
+          if (v2 instanceof Grafted) {
+            return new Grafted(bimap2(v)(v1)(v2.value0));
+          }
+          ;
+          return new Grafted(graft(new Graft(v, v1, v2)));
+        };
+      };
+    }
+  };
   var runGraft = /* @__PURE__ */ unGraft(function(v) {
     var go2 = function(v2) {
       if (v2 instanceof Text) {
@@ -11954,10 +11818,10 @@
   var monadTransExceptT = {
     lift: function(dictMonad) {
       var bind33 = bind(dictMonad.Bind1());
-      var pure40 = pure(dictMonad.Applicative0());
+      var pure41 = pure(dictMonad.Applicative0());
       return function(m) {
         return bind33(m)(function(a2) {
-          return pure40(new Right(a2));
+          return pure41(new Right(a2));
         });
       };
     }
@@ -11969,10 +11833,10 @@
     };
   };
   var functorExceptT = function(dictFunctor) {
-    var map124 = map(dictFunctor);
+    var map126 = map(dictFunctor);
     return {
       map: function(f) {
-        return mapExceptT(map124(map27(f)));
+        return mapExceptT(map126(map27(f)));
       }
     };
   };
@@ -11988,12 +11852,12 @@
   };
   var bindExceptT = function(dictMonad) {
     var bind33 = bind(dictMonad.Bind1());
-    var pure40 = pure(dictMonad.Applicative0());
+    var pure41 = pure(dictMonad.Applicative0());
     return {
       bind: function(v) {
         return function(k) {
           return bind33(v)(either(function($187) {
-            return pure40(Left.create($187));
+            return pure41(Left.create($187));
           })(function(a2) {
             var v1 = k(a2);
             return v1;
@@ -12102,6 +11966,8 @@
       return val;
     };
   };
+  var map28 = /* @__PURE__ */ map(functorFn);
+  var map112 = /* @__PURE__ */ map(functorMaybe);
   var Created = /* @__PURE__ */ function() {
     function Created2(value0) {
       this.value0 = value0;
@@ -12222,6 +12088,21 @@
   };
   var propFromString = unsafeCoerce2;
   var propFromBoolean = unsafeCoerce2;
+  var functorProp = {
+    map: function(v) {
+      return function(v1) {
+        if (v1 instanceof Handler) {
+          return new Handler(v1.value0, map28(map112(v))(v1.value1));
+        }
+        ;
+        if (v1 instanceof Ref) {
+          return new Ref(map28(map112(v))(v1.value0));
+        }
+        ;
+        return v1;
+      };
+    }
+  };
   var buildProp = function(emit) {
     return function(el) {
       var removeProp = function(prevEvents) {
@@ -12377,6 +12258,10 @@
   };
 
   // output/Halogen.HTML.Core/index.js
+  var map29 = /* @__PURE__ */ map(functorArray);
+  var map113 = /* @__PURE__ */ map(functorProp);
+  var map210 = /* @__PURE__ */ map(functorInput);
+  var bimap3 = /* @__PURE__ */ bimap(bifunctorVDom);
   var HTML = function(x) {
     return x;
   };
@@ -12435,6 +12320,15 @@
         };
       };
     };
+  };
+  var bifunctorHTML = {
+    bimap: function(f) {
+      return function(g) {
+        return function(v) {
+          return bimap3(map29(map113(map210(g))))(f)(v);
+        };
+      };
+    }
   };
   var attr = function(ns) {
     return function(v) {
@@ -12558,9 +12452,9 @@
   }
 
   // output/Web.DOM.NonElementParentNode/index.js
-  var map28 = /* @__PURE__ */ map(functorEffect);
+  var map30 = /* @__PURE__ */ map(functorEffect);
   var getElementById = function(eid) {
-    var $2 = map28(toMaybe);
+    var $2 = map30(toMaybe);
     var $3 = _getElementById(eid);
     return function($4) {
       return $2($3($4));
@@ -12616,13 +12510,13 @@
   };
 
   // output/Web.HTML.HTMLDocument/index.js
-  var map29 = /* @__PURE__ */ map(functorEffect);
+  var map31 = /* @__PURE__ */ map(functorEffect);
   var toParentNode = unsafeCoerce2;
   var toNonElementParentNode = unsafeCoerce2;
   var toEventTarget = unsafeCoerce2;
   var toDocument = unsafeCoerce2;
   var readyState = function(doc) {
-    return map29(function() {
+    return map31(function() {
       var $4 = fromMaybe(Loading.value);
       return function($5) {
         return $4(parse($5));
@@ -12700,12 +12594,12 @@
 
   // output/Control.Monad.State.Trans/index.js
   var functorStateT = function(dictFunctor) {
-    var map75 = map(dictFunctor);
+    var map76 = map(dictFunctor);
     return {
       map: function(f) {
         return function(v) {
           return function(s) {
-            return map75(function(v1) {
+            return map76(function(v1) {
               return new Tuple(f(v1.value0), v1.value1);
             })(v(s));
           };
@@ -12751,11 +12645,11 @@
     };
   };
   var applicativeStateT = function(dictMonad) {
-    var pure40 = pure(dictMonad.Applicative0());
+    var pure41 = pure(dictMonad.Applicative0());
     return {
       pure: function(a2) {
         return function(s) {
-          return pure40(new Tuple(a2, s));
+          return pure41(new Tuple(a2, s));
         };
       },
       Apply0: function() {
@@ -12764,12 +12658,12 @@
     };
   };
   var monadStateStateT = function(dictMonad) {
-    var pure40 = pure(dictMonad.Applicative0());
+    var pure41 = pure(dictMonad.Applicative0());
     var monadStateT1 = monadStateT(dictMonad);
     return {
       state: function(f) {
         return function($200) {
-          return pure40(f($200));
+          return pure41(f($200));
         };
       },
       Monad0: function() {
@@ -12803,14 +12697,14 @@
     };
   };
   var insert6 = function(dictOrd) {
-    var lookup20 = lookup3(dictOrd);
+    var lookup21 = lookup3(dictOrd);
     var insert16 = insert3(dictOrd);
     return function(dictOrd1) {
       var insert22 = insert4(dictOrd1);
       return function(k) {
         return function(v) {
           return function(m) {
-            var v1 = lookup20(k)(m);
+            var v1 = lookup21(k)(m);
             if (v1 instanceof Nothing) {
               return insert16(k)(insert22(v)(empty4))(m);
             }
@@ -12854,12 +12748,12 @@
   var map33 = /* @__PURE__ */ map(functorArray);
   var sequence32 = /* @__PURE__ */ sequence(traversableList)(applicativeStateT2);
   var map43 = /* @__PURE__ */ map(functorList);
-  var toUnfoldable7 = /* @__PURE__ */ toUnfoldable3(unfoldableList);
+  var toUnfoldable6 = /* @__PURE__ */ toUnfoldable3(unfoldableList);
   var union$prime2 = /* @__PURE__ */ union$prime(ordMetaVar);
   var map53 = /* @__PURE__ */ map(functorMap);
   var bind22 = /* @__PURE__ */ bind(bindMaybe);
   var pure22 = /* @__PURE__ */ pure(applicativeMaybe);
-  var fromFoldable7 = /* @__PURE__ */ fromFoldable3(foldableArray);
+  var fromFoldable8 = /* @__PURE__ */ fromFoldable3(foldableArray);
   var fromFoldable12 = /* @__PURE__ */ fromFoldable(foldableList);
   var occurs = function(dictIsExprLabel) {
     return function(x) {
@@ -13027,7 +12921,7 @@
     return function(original) {
       return bind12(sequence32(map43(function(v) {
         return flattenHelperInsertVar1(original)(v.value0);
-      })(toUnfoldable7(original))))(function() {
+      })(toUnfoldable6(original))))(function() {
         return pure12(unit);
       });
     };
@@ -13103,7 +12997,7 @@
         }
         ;
         if (v2.value0 instanceof MInj && (v2.value1 instanceof MInj && eq15(v2.value0.value0)(v2.value1.value0))) {
-          return bind22(unifyLists(dictIsExprLabel)(fromFoldable7(v.value1))(fromFoldable7(v1.value1)))(function(v3) {
+          return bind22(unifyLists(dictIsExprLabel)(fromFoldable8(v.value1))(fromFoldable8(v1.value1)))(function(v3) {
             return pure22(new Tuple(new Expr(new MInj(v2.value0.value0), fromFoldable12(v3.value0)), v3.value1));
           });
         }
@@ -13114,13 +13008,13 @@
   };
 
   // output/Language.Pantograph.Generic.ChangeAlgebra/index.js
-  var map30 = /* @__PURE__ */ map(functorRevList);
-  var map112 = /* @__PURE__ */ map(functorList);
-  var map210 = /* @__PURE__ */ map(functorExpr);
+  var map34 = /* @__PURE__ */ map(functorRevList);
+  var map114 = /* @__PURE__ */ map(functorList);
+  var map211 = /* @__PURE__ */ map(functorExpr);
   var findMap3 = /* @__PURE__ */ findMap(foldableArray);
   var bind9 = /* @__PURE__ */ bind(bindMaybe);
-  var fromFoldable8 = /* @__PURE__ */ fromFoldable3(foldableArray);
-  var map34 = /* @__PURE__ */ map(functorMaybe);
+  var fromFoldable9 = /* @__PURE__ */ fromFoldable3(foldableArray);
+  var map35 = /* @__PURE__ */ map(functorMaybe);
   var sequence5 = /* @__PURE__ */ sequence(traversableArray)(applicativeMaybe);
   var map44 = /* @__PURE__ */ map(functorArray);
   var pure6 = /* @__PURE__ */ pure(applicativeMaybe);
@@ -13139,15 +13033,15 @@
       return function(v) {
         if (v instanceof Plus) {
           return new Plus(new Tooth(v.value0.value0, {
-            left: map30(subExpr)(v.value0.value1.left),
-            right: map112(subExpr)(v.value0.value1.right)
+            left: map34(subExpr)(v.value0.value1.left),
+            right: map114(subExpr)(v.value0.value1.right)
           }));
         }
         ;
         if (v instanceof Minus) {
           return new Minus(new Tooth(v.value0.value0, {
-            left: map30(subExpr)(v.value0.value1.left),
-            right: map112(subExpr)(v.value0.value1.right)
+            left: map34(subExpr)(v.value0.value1.left),
+            right: map114(subExpr)(v.value0.value1.right)
           }));
         }
         ;
@@ -13168,7 +13062,7 @@
     return function(v) {
       return function(v1) {
         if (eq11(v)(v1)) {
-          return new Just(map210(CInj.create)(v));
+          return new Just(map211(CInj.create)(v));
         }
         ;
         var splits = mapWithIndex(function(index5) {
@@ -13179,8 +13073,8 @@
         return findMap3(function(v2) {
           return bind9(isPostfix(dictEq)(v2.value1.value0)(v1))(function(innerCh) {
             return new Just(new Expr(new Minus(new Tooth(v.value0, {
-              left: reverse3(fromFoldable8(v2.value0)),
-              right: fromFoldable8(v2.value1.value1)
+              left: reverse3(fromFoldable9(v2.value0)),
+              right: fromFoldable9(v2.value1.value1)
             })), [innerCh]));
           });
         })(splits);
@@ -13230,7 +13124,7 @@
       return function(c2) {
         var v = new Tuple(c1, c2);
         if (v.value0.value0 instanceof CInj && (v.value1.value0 instanceof CInj && eq11(v.value0.value0.value0)(v.value1.value0.value0))) {
-          return map34(Expr.create(new CInj(v.value0.value0.value0)))(sequence5(zipWith(lub(dictIsExprLabel))(v.value0.value1)(v.value1.value1)));
+          return map35(Expr.create(new CInj(v.value0.value0.value0)))(sequence5(zipWith(lub(dictIsExprLabel))(v.value0.value1)(v.value1.value1)));
         }
         ;
         if (isId1(c1)) {
@@ -13257,7 +13151,7 @@
       };
     };
   };
-  var invert = /* @__PURE__ */ map210(function(v) {
+  var invert = /* @__PURE__ */ map211(function(v) {
     if (v instanceof Plus) {
       return new Minus(v.value0);
     }
@@ -13277,7 +13171,7 @@
     throw new Error("Failed pattern match at Language.Pantograph.Generic.ChangeAlgebra (line 42, column 14 - line 46, column 33): " + [v.constructor.name]);
   });
   var inject = /* @__PURE__ */ function() {
-    return map210(CInj.create);
+    return map211(CInj.create);
   }();
   var subSomeMetaChange = function(dictIsExprLabel) {
     var subSomeChangeLabel1 = subSomeChangeLabel(dictIsExprLabel);
@@ -13357,7 +13251,7 @@
     return function(v) {
       return function(v1) {
         if (eq11(v)(v1)) {
-          return map210(CInj.create)(v);
+          return map211(CInj.create)(v);
         }
         ;
         var v2 = isPostfix1(v)(v1);
@@ -13401,7 +13295,7 @@
         }
         ;
         if (v.value0.value0 instanceof Minus && (v.value0.value1.length === 1 && (v.value1.value0 instanceof Plus && (v.value1.value1.length === 1 && eq11(v.value0.value0.value0)(v.value1.value0.value0))))) {
-          return new Expr(new CInj(v.value0.value0.value0.value0), append13(fromFoldable13(map112(map210(CInj.create))(unreverse(v.value0.value0.value0.value1.left))))(append13([compose2(dictIsExprLabel)(v["value0"]["value1"][0])(v["value1"]["value1"][0])])(fromFoldable13(map112(map210(CInj.create))(v.value0.value0.value0.value1.right)))));
+          return new Expr(new CInj(v.value0.value0.value0.value0), append13(fromFoldable13(map114(map211(CInj.create))(unreverse(v.value0.value0.value0.value1.left))))(append13([compose2(dictIsExprLabel)(v["value0"]["value1"][0])(v["value1"]["value1"][0])])(fromFoldable13(map114(map211(CInj.create))(v.value0.value0.value0.value1.right)))));
         }
         ;
         if (v.value1.value0 instanceof Plus && v.value1.value1.length === 1) {
@@ -13425,7 +13319,7 @@
           if (v.value0.value0 instanceof CInj && (v.value1.value0 instanceof Minus && v.value1.value1.length === 1)) {
             var $332 = eq15(v.value1.value0.value0.value0)(v.value0.value0.value0);
             if ($332) {
-              var $333 = fromJust$prime("compose")(zipAt(leftLength(v.value1.value0.value0.value1))(fromFoldable8(v.value0.value1)));
+              var $333 = fromJust$prime("compose")(zipAt(leftLength(v.value1.value0.value0.value1))(fromFoldable9(v.value0.value1)));
               var $334 = and2(zipWith2(function(e) {
                 return function(c) {
                   return eq24(inject(e))(c);
@@ -13446,7 +13340,7 @@
         if (v.value0.value0 instanceof Plus && (v.value0.value1.length === 1 && v.value1.value0 instanceof CInj)) {
           var $349 = eq15(v.value0.value0.value0.value0)(v.value1.value0.value0);
           if ($349) {
-            var $350 = fromJust$prime("compose")(zipAt(leftLength(v.value0.value0.value0.value1))(fromFoldable8(v.value1.value1)));
+            var $350 = fromJust$prime("compose")(zipAt(leftLength(v.value0.value0.value0.value1))(fromFoldable9(v.value1.value1)));
             var $351 = and2(zipWith2(function(e) {
               return function(c) {
                 return eq24(inject(e))(c);
@@ -13566,22 +13460,19 @@
       return "DerivLiteral";
     }
   };
-  var map31 = /* @__PURE__ */ map(functorArray);
-  var map113 = /* @__PURE__ */ map(functorExpr);
+  var map36 = /* @__PURE__ */ map(functorArray);
+  var map115 = /* @__PURE__ */ map(functorExpr);
   var compare6 = /* @__PURE__ */ compare(ordString);
   var compare13 = /* @__PURE__ */ compare(ordInt);
   var intercalate8 = /* @__PURE__ */ intercalate(foldableList)(monoidString);
   var map45 = /* @__PURE__ */ map(functorList);
   var pretty3 = /* @__PURE__ */ pretty(prettyMetaVar);
-  var toUnfoldable8 = /* @__PURE__ */ toUnfoldable3(unfoldableList);
+  var toUnfoldable7 = /* @__PURE__ */ toUnfoldable3(unfoldableList);
   var eqMap2 = /* @__PURE__ */ eqMap(eqMetaVar);
   var ordMap2 = /* @__PURE__ */ ordMap(ordMetaVar);
-  var encodeRepConstructor5 = /* @__PURE__ */ encodeRepConstructor(SInjIsSymbol);
-  var encodeRepConstructor12 = /* @__PURE__ */ encodeRepConstructor(DerivLabelIsSymbol);
-  var encodeMap3 = /* @__PURE__ */ encodeMap2(ordMetaVar)(encodeJsonMetaVar);
   var map55 = /* @__PURE__ */ map(functorMap);
   var mapFlipped5 = /* @__PURE__ */ mapFlipped(functorList);
-  var fromFoldable9 = /* @__PURE__ */ fromFoldable(foldableList);
+  var fromFoldable10 = /* @__PURE__ */ fromFoldable(foldableList);
   var encodeJson2 = /* @__PURE__ */ encodeJson(/* @__PURE__ */ encodeJsonArray(encodeJsonInt));
   var show12 = /* @__PURE__ */ show(/* @__PURE__ */ showArray(showString));
   var fromFoldable14 = /* @__PURE__ */ fromFoldable5(foldableArray)(ordMetaVar);
@@ -13594,7 +13485,7 @@
   var prettyTuple2 = /* @__PURE__ */ prettyTuple(prettyString);
   var empty7 = /* @__PURE__ */ empty(plusMaybe);
   var pure7 = /* @__PURE__ */ pure(applicativeMaybe);
-  var toUnfoldable13 = /* @__PURE__ */ toUnfoldable4(unfoldableArray);
+  var toUnfoldable12 = /* @__PURE__ */ toUnfoldable4(unfoldableArray);
   var map63 = /* @__PURE__ */ map10(/* @__PURE__ */ ordTuple2(ordMetaVar));
   var lookup$prime2 = /* @__PURE__ */ lookup$prime(ordMetaVar);
   var union6 = /* @__PURE__ */ union2(ordMetaVar);
@@ -13618,7 +13509,7 @@
   var sequence23 = /* @__PURE__ */ sequence(traversableList)(applicativeExceptT3);
   var append14 = /* @__PURE__ */ append(semigroupList);
   var map102 = /* @__PURE__ */ map(functorPath2);
-  var map114 = /* @__PURE__ */ map(functorTooth);
+  var map116 = /* @__PURE__ */ map(functorTooth);
   var map122 = /* @__PURE__ */ map(functorZipper);
   var bind13 = /* @__PURE__ */ bind(bindMaybe);
   var fromFoldable62 = /* @__PURE__ */ fromFoldable3(foldableList);
@@ -13777,7 +13668,6 @@
     }
   };
   var genericShow5 = /* @__PURE__ */ genericShow(genericSortType_)(/* @__PURE__ */ genericShowSum(/* @__PURE__ */ genericShowConstructor2(SortStringIsSymbol))(/* @__PURE__ */ genericShowConstructor2(SortIntIsSymbol)));
-  var genericEncodeJson5 = /* @__PURE__ */ genericEncodeJson(genericSortType_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(SortStringIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(SortIntIsSymbol)(encodeRepArgsNoArguments)));
   var showSortType = {
     show: function(x) {
       return genericShow5(x);
@@ -13841,7 +13731,6 @@
     }
   };
   var genericShow12 = /* @__PURE__ */ genericShow(genericSortLabel_);
-  var genericEncodeJson13 = /* @__PURE__ */ genericEncodeJson(genericSortLabel_);
   var genericSortData_ = {
     to: function(x) {
       if (x instanceof Inl) {
@@ -13867,7 +13756,7 @@
     }
   };
   var genericShow22 = /* @__PURE__ */ genericShow(genericSortData_)(/* @__PURE__ */ genericShowSum(/* @__PURE__ */ genericShowConstructor(/* @__PURE__ */ genericShowArgsArgument(showString))(DataStringIsSymbol))(/* @__PURE__ */ genericShowConstructor(/* @__PURE__ */ genericShowArgsArgument(showInt))(DataIntIsSymbol)));
-  var genericEncodeJson23 = /* @__PURE__ */ genericEncodeJson(genericSortData_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(DataStringIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonJString)))(/* @__PURE__ */ encodeRepConstructor(DataIntIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonInt))));
+  var genericEncodeJson2 = /* @__PURE__ */ genericEncodeJson(genericSortData_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(DataStringIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonJString)))(/* @__PURE__ */ encodeRepConstructor(DataIntIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonInt))));
   var genericDecodeJson2 = /* @__PURE__ */ genericDecodeJson(genericSortData_)(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorArg(DataStringIsSymbol)(decodeJsonString))(/* @__PURE__ */ decodeRepConstructorArg(DataIntIsSymbol)(decodeJsonInt)));
   var showSortData = {
     show: function(x) {
@@ -13910,7 +13799,6 @@
     }
   };
   var genericShow32 = /* @__PURE__ */ genericShow(genericDerivLabel_);
-  var genericEncodeJson33 = /* @__PURE__ */ genericEncodeJson(genericDerivLabel_);
   var showDerivLabel = function(dictShow) {
     var genericShowArgsArgument2 = genericShowArgsArgument(showMap2(showExpr(showMeta(showSortLabel(dictShow)))));
     return function(dictShow1) {
@@ -14140,7 +14028,7 @@
           if (v instanceof DerivLabel) {
             return pretty23(v.value0) + ("(" + (intercalate8(", ")(map45(function(v1) {
               return pretty3(v1.value0) + (" : " + pretty13(v1.value1));
-            })(toUnfoldable8(v.value1))) + ")"));
+            })(toUnfoldable7(v.value1))) + ")"));
           }
           ;
           if (v instanceof DerivLiteral && v.value0 instanceof DataString) {
@@ -14223,37 +14111,10 @@
   var eqAsExprLabel = function(dictEq) {
     return dictEq;
   };
-  var encodeJsonSortType = {
-    encodeJson: function(a2) {
-      return genericEncodeJson5(a2);
-    }
-  };
   var encodeJsonSortData = {
     encodeJson: function(a2) {
-      return genericEncodeJson23(a2);
+      return genericEncodeJson2(a2);
     }
-  };
-  var encodeRepArgsArgument2 = /* @__PURE__ */ encodeRepArgsArgument(encodeJsonSortData);
-  var encodeRepSum3 = /* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TypeOfLabelIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonSortType)))(/* @__PURE__ */ encodeRepConstructor(DataLabelIsSymbol)(encodeRepArgsArgument2));
-  var encodeRepConstructor23 = /* @__PURE__ */ encodeRepConstructor(DerivLiteralIsSymbol)(encodeRepArgsArgument2);
-  var encodeJsonSortLabel = function(dictEncodeJson) {
-    var genericEncodeJson43 = genericEncodeJson13(encodeRepSum(encodeRepConstructor5(encodeRepArgsArgument(dictEncodeJson)))(encodeRepSum3));
-    return {
-      encodeJson: function(a2) {
-        return genericEncodeJson43(a2);
-      }
-    };
-  };
-  var encodeJsonDerivLabel = function(dictEncodeJson) {
-    var encodeRepArgsArgument1 = encodeRepArgsArgument(encodeMap3(encodeJsonExpr(encodeJsonMeta(encodeJsonSortLabel(dictEncodeJson)))));
-    return function(dictEncodeJson1) {
-      var genericEncodeJson43 = genericEncodeJson33(encodeRepSum(encodeRepConstructor12(encodeRepArgsProduct(encodeRepArgsArgument(dictEncodeJson1))(encodeRepArgsArgument1)))(encodeRepConstructor23));
-      return {
-        encodeJson: function(a2) {
-          return genericEncodeJson43(a2);
-        }
-      };
-    };
   };
   var decodeJsonSortData = {
     decodeJson: function(a2) {
@@ -14291,7 +14152,7 @@
       var nums = mapFlipped5(v)(function(v1) {
         return leftLength(v1.value1);
       });
-      var numsGoingDown = reverse(fromFoldable9(nums));
+      var numsGoingDown = reverse(fromFoldable10(nums));
       return stringify(encodeJson2(numsGoingDown));
     };
   };
@@ -14329,8 +14190,8 @@
   })(function() {
     return function(strs) {
       return function(f) {
-        var mxs = map31(RuleMetaVar.create)(strs);
-        var es = map31(fromMetaVar)(mxs);
+        var mxs = map36(RuleMetaVar.create)(strs);
+        var es = map36(fromMetaVar)(mxs);
         var v = f(es);
         return new Rule(fromFoldable14(mxs), v.value0, v.value1);
       };
@@ -14346,11 +14207,11 @@
     return dict.language;
   };
   var makeFreshLabel = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language1 = language2(dictIsRuleLabel);
     var map142 = map10(ordTuple2(ordExpr(ordMeta(ordSortLabel(dictIsRuleLabel.IsExprLabel0().Ord1())))));
     return function(ruleLabel) {
-      var v = lookup20(ruleLabel)(language1);
+      var v = lookup21(ruleLabel)(language1);
       var sigma = fromFoldable32(map142(function(mv) {
         return new Tuple(mv, fromMetaVar(freshMetaVar(metaVarName(mv))));
       })(v.value0));
@@ -14358,14 +14219,14 @@
     };
   };
   var makeLabel = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language1 = language2(dictIsRuleLabel);
     var pretty13 = pretty(dictIsRuleLabel.Pretty5());
     var pretty23 = pretty(prettyArray(prettyTuple2(prettyExpr(isExprLabelMeta(isExprLabelSortLabel(dictIsRuleLabel.IsExprLabel0()))))));
     return function(ruleLabel) {
       return function(values3) {
-        var v = lookup20(ruleLabel)(language1);
-        var sigma = fromFoldable42(map31(lmap4(RuleMetaVar.create))(values3));
+        var v = lookup21(ruleLabel)(language1);
+        var sigma = fromFoldable42(map36(lmap4(RuleMetaVar.create))(values3));
         return assert(equal2("makeLabel")(function(v1) {
           return "Given substitution must have same vars as quantified in rule:" + bullets(["ruleLabel = " + pretty13(ruleLabel), "value keys = " + pretty23(values3)]);
         })(v.value0)(keys3(sigma)))(function() {
@@ -14377,12 +14238,12 @@
     };
   };
   var nonemptyPathInnerSort = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language1 = language2(dictIsRuleLabel);
     var subMetaExprPartially3 = subMetaExprPartially(isExprLabelSortLabel(dictIsRuleLabel.IsExprLabel0()));
     return function(v) {
       if (v instanceof Cons && v.value0.value0 instanceof DerivLabel) {
-        var v1 = lookup20(v.value0.value0.value0)(language1);
+        var v1 = lookup21(v.value0.value0.value0)(language1);
         return subMetaExprPartially3(v.value0.value0.value1)(fromJust$prime("nepis")(index(v1.value1)(leftLength(v.value0.value1))));
       }
       ;
@@ -14392,12 +14253,12 @@
   var kidSorts = function(dictIsExprLabel) {
     var subMetaExprPartially3 = subMetaExprPartially(isExprLabelSortLabel(dictIsExprLabel));
     return function(dictIsRuleLabel) {
-      var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+      var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
       var language1 = language2(dictIsRuleLabel);
       return function(v) {
         if (v instanceof DerivLabel) {
-          var v1 = lookup20(v.value0)(language1);
-          return map31(subMetaExprPartially3(v.value1))(v1.value1);
+          var v1 = lookup21(v.value0)(language1);
+          return map36(subMetaExprPartially3(v.value1))(v1.value1);
         }
         ;
         if (v instanceof DerivLiteral) {
@@ -14412,14 +14273,14 @@
     return dict.isHoleRuleTotalMap;
   };
   var isHole = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var isHoleRuleTotalMap1 = isHoleRuleTotalMap(dictIsRuleLabel);
     return function(v) {
       var v1 = function(v2) {
         return false;
       };
       if (v instanceof DerivLabel) {
-        var $1080 = lookup20(v.value0)(isHoleRuleTotalMap1);
+        var $1080 = lookup21(v.value0)(isHoleRuleTotalMap1);
         if ($1080 instanceof Yes) {
           return true;
         }
@@ -14436,10 +14297,10 @@
     };
   };
   var hasInnerHole = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var isHoleRuleTotalMap1 = isHoleRuleTotalMap(dictIsRuleLabel);
     return function(r) {
-      var v = lookup20(r)(isHoleRuleTotalMap1);
+      var v = lookup21(r)(isHoleRuleTotalMap1);
       if (v instanceof Yes && v.value0) {
         return true;
       }
@@ -14448,18 +14309,18 @@
     };
   };
   var getSortFromSub = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language1 = language2(dictIsRuleLabel);
     var subMetaExprPartially3 = subMetaExprPartially(isExprLabelSortLabel(dictIsRuleLabel.IsExprLabel0()));
     return function(r) {
       return function(sub3) {
-        var v = lookup20(r)(language1);
+        var v = lookup21(r)(language1);
         return subMetaExprPartially3(sub3)(v.value2);
       };
     };
   };
   var isInnerHoleDerivLabel = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var isHoleRuleTotalMap1 = isHoleRuleTotalMap(dictIsRuleLabel);
     var getSortFromSub1 = getSortFromSub(dictIsRuleLabel);
     return function(v) {
@@ -14467,7 +14328,7 @@
         return empty7;
       };
       if (v instanceof DerivLabel) {
-        var $1091 = lookup20(v.value0)(isHoleRuleTotalMap1);
+        var $1091 = lookup21(v.value0)(isHoleRuleTotalMap1);
         if ($1091 instanceof Yes && $1091.value0) {
           return pure7(getSortFromSub1(v.value0)(v.value1));
         }
@@ -14485,7 +14346,7 @@
     };
   };
   var freshenRuleMetaVars = function(mvars) {
-    return fromFoldable42(flip(map31)(toUnfoldable13(mvars))(function(v) {
+    return fromFoldable42(flip(map36)(toUnfoldable12(mvars))(function(v) {
       if (v instanceof RuleMetaVar) {
         return new Tuple(new RuleMetaVar(v.value0), fromMetaVar(freshMetaVar(v.value0)));
       }
@@ -14497,14 +14358,14 @@
     return new Expr(new MV(freshMetaVar(name15)), []);
   };
   var forgetCollectDerivLabel = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language1 = language2(dictIsRuleLabel);
     var map142 = map10(ordTuple2(ordExpr(ordMeta(ordSortLabel(dictIsRuleLabel.IsExprLabel0().Ord1())))));
     return function(forgetSorts2) {
       return function(label5) {
         var v = new Tuple(forgetSorts2(label5), label5);
         if (v.value0 instanceof Nothing && v.value1 instanceof DerivLabel) {
-          var v1 = lookup20(v.value1.value0)(language1);
+          var v1 = lookup21(v.value1.value0)(language1);
           var freshVars = fromFoldable32(map63(function(mv) {
             return new Tuple(mv, freshMetaVar(metaVarName(mv)));
           })(v1.value0));
@@ -14524,7 +14385,7 @@
     return function(forgetSorts2) {
       return function(v) {
         var v1 = forgetCollectDerivLabel1(forgetSorts2)(v.value0);
-        var v2 = unzip(map31(forgetCollectDerivTerm(dictIsRuleLabel)(forgetSorts2))(v.value1));
+        var v2 = unzip(map36(forgetCollectDerivTerm(dictIsRuleLabel)(forgetSorts2))(v.value1));
         var sub3 = union6(v1.value1)(unions1(v2.value1));
         return new Tuple(new Expr(v1.value0, v2.value0), sub3);
       };
@@ -14556,10 +14417,10 @@
     };
   };
   var expectedHypsCount = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language1 = language2(dictIsRuleLabel);
     return function(r) {
-      var v = lookup20(r)(language1);
+      var v = lookup21(r)(language1);
       return length(v.value1);
     };
   };
@@ -14646,6 +14507,25 @@
       Pretty3: function() {
         return prettyDerivLabel1;
       }
+    };
+  };
+  var printSerializedDerivZipper2 = function(dictIsRuleLabel) {
+    var unzipper2 = unzipper(isExprLabelDerivLabel(dictIsRuleLabel));
+    var encodeJson1 = encodeJson(encodeJsonExpr(encodeJsonEither(dictIsRuleLabel.EncodeJson7())(encodeJsonSortData)));
+    return function(dzipper) {
+      var simplifyDerivLabel = function(v) {
+        if (v instanceof DerivLabel) {
+          return new Left(v.value0);
+        }
+        ;
+        if (v instanceof DerivLiteral) {
+          return new Right(v.value0);
+        }
+        ;
+        throw new Error("Failed pattern match at Language.Pantograph.Generic.Grammar (line 683, column 31 - line 685, column 40): " + [v.constructor.name]);
+      };
+      var justLabels = map115(simplifyDerivLabel)(unzipper2(dzipper));
+      return stringify(encodeJson1(justLabels));
     };
   };
   var deserializePath = function(dictIsRuleLabel) {
@@ -14791,7 +14671,7 @@
       var derivTermSort1 = derivTermSort(dictIsRuleLabel);
       var kidSorts2 = kidSorts1(dictIsRuleLabel);
       return function(v) {
-        return bind10(sequence6(map31(inferFImpl(dictIsExprLabel)(dictIsRuleLabel))(v.value1)))(function() {
+        return bind10(sequence6(map36(inferFImpl(dictIsExprLabel)(dictIsRuleLabel))(v.value1)))(function() {
           return bind10(sequence6(zipWith(function(parentBottom) {
             return function(kidTop) {
               return unifyFImpl2(parentBottom)(derivTermSort1(kidTop));
@@ -14837,7 +14717,7 @@
                   return function(kidTop) {
                     return unifyFImpl2(parentBottom)(kidTop);
                   };
-                })(parentBottomSorts)(fromFoldable9(kidTopSorts))))(function() {
+                })(parentBottomSorts)(fromFoldable10(kidTopSorts))))(function() {
                   return bind10(inferPathFImpl(dictIsExprLabel)(dictIsRuleLabel)(derivLabelSort1(v1.value0.value0))(v1.value1))(function() {
                     return pure13(unit);
                   });
@@ -14881,7 +14761,7 @@
   };
   var isHoleDerivLabel = function(dictIsRuleLabel) {
     var derivLabelSort1 = derivLabelSort(dictIsRuleLabel);
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var isHoleRuleTotalMap1 = isHoleRuleTotalMap(dictIsRuleLabel);
     return function(l) {
       var v = function(v1) {
@@ -14892,7 +14772,7 @@
         return Nothing.value;
       };
       if (l instanceof DerivLabel) {
-        var $1239 = lookup20(l.value0)(isHoleRuleTotalMap1);
+        var $1239 = lookup21(l.value0)(isHoleRuleTotalMap1);
         if ($1239 instanceof Yes) {
           return pure7(derivLabelSort1(l));
         }
@@ -14978,7 +14858,7 @@
       }
       ;
       if (v1 instanceof Nothing) {
-        return new Expr(v.value0, map31(fillDefaultsDerivTerm(dictIsRuleLabel))(v.value1));
+        return new Expr(v.value0, map36(fillDefaultsDerivTerm(dictIsRuleLabel))(v.value1));
       }
       ;
       throw new Error("Failed pattern match at Language.Pantograph.Generic.Grammar (line 209, column 5 - line 211, column 68): " + [v1.constructor.name]);
@@ -15013,7 +14893,7 @@
     var subDerivLabel1 = subDerivLabel(dictIsRuleLabel);
     var fillDefaultsDerivTooth1 = fillDefaultsDerivTooth(dictIsRuleLabel);
     return function(sub3) {
-      var $1317 = map114(subDerivLabel1(sub3));
+      var $1317 = map116(subDerivLabel1(sub3));
       return function($1318) {
         return fillDefaultsDerivTooth1($1317($1318));
       };
@@ -15040,7 +14920,7 @@
     var subDerivLabel1 = subDerivLabel(dictIsRuleLabel);
     var fillDefaultsDerivTerm1 = fillDefaultsDerivTerm(dictIsRuleLabel);
     return function(sub3) {
-      var $1321 = map113(subDerivLabel1(sub3));
+      var $1321 = map115(subDerivLabel1(sub3));
       return function($1322) {
         return fillDefaultsDerivTerm1($1321($1322));
       };
@@ -15078,13 +14958,13 @@
       var kidSorts2 = kidSorts1(dictIsRuleLabel);
       return function(v) {
         return bind13(inferTerms(dictIsExprLabel)(dictIsRuleLabel)(fromFoldable52(v.value1)))(function(sub12) {
-          var inferredKidSorts = map31(function() {
+          var inferredKidSorts = map36(function() {
             var $1323 = subMetaExprPartially3(sub12);
             return function($1324) {
               return $1323(derivTermSort1($1324));
             };
           }())(v.value1);
-          var expectedKidSorts = map31(subMetaExprPartially3(sub12))(kidSorts2(v.value0));
+          var expectedKidSorts = map36(subMetaExprPartially3(sub12))(kidSorts2(v.value0));
           return bind13(unifyLists2(fromFoldable52(inferredKidSorts))(fromFoldable52(expectedKidSorts)))(function(v1) {
             var allSubs = composeSub3(sub12)(v1.value1);
             return pure7(allSubs);
@@ -15115,7 +14995,7 @@
           if (v1 instanceof Cons) {
             return bind13(inferTerms2(fromFoldable62(append14(fromFoldable72(v1.value0.value1.left))(v1.value0.value1.right))))(function(sub12) {
               var inferredKidSorts = map45(subMetaExprPartially3(sub12))(append14(map45(derivTermSort1)(unreverse(v1.value0.value1.left)))(new Cons(v, map45(derivTermSort1)(v1.value0.value1.right))));
-              var expectedKidSorts = map31(subMetaExprPartially3(sub12))(kidSorts2(v1.value0.value0));
+              var expectedKidSorts = map36(subMetaExprPartially3(sub12))(kidSorts2(v1.value0.value0));
               return bind13(unifyLists2(fromFoldable62(inferredKidSorts))(fromFoldable52(expectedKidSorts)))(function(v2) {
                 var sub122 = composeSub3(sub12)(v2.value1);
                 return bind13(inferPath(dictIsExprLabel)(dictIsRuleLabel)(subMetaExprPartially3(sub122)(derivLabelSort1(v1.value0.value0)))(subDerivPath1(sub122)(v1.value1)))(function(sub3) {
@@ -15165,7 +15045,7 @@
           }
           ;
           if (simplifiedTree instanceof Right) {
-            var preDerivTerm = map113(unsimplifyDerivLabel)(simplifiedTree.value0);
+            var preDerivTerm = map115(unsimplifyDerivLabel)(simplifiedTree.value0);
             var unifyingSub$prime = fromJust$prime("program didn't typecheck in deserialization")(inferF1(preDerivTerm));
             var forgottenFinalSort = derivTermSort1(preDerivTerm);
             var expectedProgSort = clipboardSort2(forgottenFinalSort);
@@ -15187,10 +15067,10 @@
   };
 
   // output/Language.Pantograph.Generic.Edit/index.js
-  var map35 = /* @__PURE__ */ map(functorArray);
-  var fromFoldable10 = /* @__PURE__ */ fromFoldable3(foldableArray);
+  var map37 = /* @__PURE__ */ map(functorArray);
+  var fromFoldable11 = /* @__PURE__ */ fromFoldable3(foldableArray);
   var sequence7 = /* @__PURE__ */ sequence(traversablePath)(applicativeMaybe);
-  var map115 = /* @__PURE__ */ map(functorPath);
+  var map117 = /* @__PURE__ */ map(functorPath);
   var FillAction = /* @__PURE__ */ function() {
     function FillAction2(value0) {
       this.value0 = value0;
@@ -15222,7 +15102,7 @@
     return WrapAction2;
   }();
   var newToothFromRule = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language4 = language2(dictIsRuleLabel);
     var IsExprLabel0 = dictIsRuleLabel.IsExprLabel0();
     var subMetaExprPartially3 = subMetaExprPartially(isExprLabelSortLabel(IsExprLabel0));
@@ -15231,11 +15111,11 @@
     var subDerivTooth2 = subDerivTooth(dictIsRuleLabel);
     return function(r) {
       return function(kidIx) {
-        var v = lookup20(r)(language4);
+        var v = lookup21(r)(language4);
         var sigma = freshenRuleMetaVars(v.value0);
-        var hyps = map35(subMetaExprPartially3(sigma))(v.value1);
-        var v1 = assertI(just("newPathFromRule.hpySortPath")(zipAt(kidIx)(fromFoldable10(hyps))));
-        var defaultHypDerivPath = assertI(just("newPathFromRule.defaultHypDerivPath")(sequence7(map115(defaultDerivTerm3)(v1.value0))));
+        var hyps = map37(subMetaExprPartially3(sigma))(v.value1);
+        var v1 = assertI(just("newPathFromRule.hpySortPath")(zipAt(kidIx)(fromFoldable11(hyps))));
+        var defaultHypDerivPath = assertI(just("newPathFromRule.defaultHypDerivPath")(sequence7(map117(defaultDerivTerm3)(v1.value0))));
         var tooth = new Tooth(new DerivLabel(r, sigma), defaultHypDerivPath);
         var path1 = singleton5(tooth);
         var sub3 = fromJust$prime("path didn't typecheck in newPathFromRule")(inferPath2(freshMetaVarSort("pathInside"))(path1));
@@ -15245,7 +15125,7 @@
     };
   };
   var newTermFromRule = function(dictIsRuleLabel) {
-    var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+    var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
     var language4 = language2(dictIsRuleLabel);
     var IsExprLabel0 = dictIsRuleLabel.IsExprLabel0();
     var subMetaExprPartially3 = subMetaExprPartially(isExprLabelSortLabel(IsExprLabel0));
@@ -15253,10 +15133,10 @@
     var infer2 = infer(IsExprLabel0)(dictIsRuleLabel);
     var subDerivTerm3 = subDerivTerm(dictIsRuleLabel);
     return function(r) {
-      var v = lookup20(r)(language4);
+      var v = lookup21(r)(language4);
       var sigma = freshenRuleMetaVars(v.value0);
-      var hyps = map35(subMetaExprPartially3(sigma))(v.value1);
-      var term1 = new Expr(new DerivLabel(r, sigma), map35(function() {
+      var hyps = map37(subMetaExprPartially3(sigma))(v.value1);
+      var term1 = new Expr(new DerivLabel(r, sigma), map37(function() {
         var $50 = fromJust$prime("yes");
         return function($51) {
           return $50(defaultDerivTerm3($51));
@@ -31327,7 +31207,7 @@
     return Lift.create;
   }();
   var goLeft = function(dictApplicative) {
-    var pure40 = pure(dictApplicative);
+    var pure41 = pure(dictApplicative);
     return function(fStack) {
       return function(valStack) {
         return function(nat) {
@@ -31335,7 +31215,7 @@
             return function(count) {
               if (func instanceof Pure) {
                 return new Tuple(new Cons({
-                  func: pure40(func.value0),
+                  func: pure41(func.value0),
                   count
                 }, fStack), valStack);
               }
@@ -31406,7 +31286,7 @@
   };
   var foldFreeAp = function(dictApplicative) {
     var goApply1 = goApply(dictApplicative);
-    var pure40 = pure(dictApplicative);
+    var pure41 = pure(dictApplicative);
     var goLeft1 = goLeft(dictApplicative);
     return function(nat) {
       return function(z) {
@@ -31415,7 +31295,7 @@
           var $tco_result;
           function $tco_loop(v) {
             if (v.value1.value0 instanceof Pure) {
-              var v1 = goApply1(v.value0)(v.value1.value1)(pure40(v.value1.value0.value0));
+              var v1 = goApply1(v.value0)(v.value1.value1)(pure41(v.value1.value0.value0));
               if (v1 instanceof Left) {
                 $tco_done = true;
                 return v1.value0;
@@ -31704,7 +31584,7 @@
     };
   };
   var append7 = /* @__PURE__ */ append(semigroupCatList);
-  var map36 = /* @__PURE__ */ map(functorFn);
+  var map38 = /* @__PURE__ */ map(functorFn);
   var Free = /* @__PURE__ */ function() {
     function Free2(value0, value16) {
       this.value0 = value0;
@@ -31849,7 +31729,7 @@
       }
       ;
       if (v instanceof Bind) {
-        return bind11(k(v.value0))(map36(go2)(v.value1));
+        return bind11(k(v.value0))(map38(go2)(v.value1));
       }
       ;
       throw new Error("Failed pattern match at Control.Monad.Free (line 168, column 10 - line 170, column 33): " + [v.constructor.name]);
@@ -31858,18 +31738,18 @@
   };
   var foldFree = function(dictMonadRec) {
     var Monad0 = dictMonadRec.Monad0();
-    var map124 = map(Monad0.Bind1().Apply0().Functor0());
+    var map126 = map(Monad0.Bind1().Apply0().Functor0());
     var pure117 = pure(Monad0.Applicative0());
     var tailRecM4 = tailRecM(dictMonadRec);
     return function(k) {
       var go2 = function(f) {
         var v = toView(f);
         if (v instanceof Return) {
-          return map124(Done.create)(pure117(v.value0));
+          return map126(Done.create)(pure117(v.value0));
         }
         ;
         if (v instanceof Bind) {
-          return map124(function($199) {
+          return map126(function($199) {
             return Loop.create(v.value1($199));
           })(k(v.value0));
         }
@@ -31893,10 +31773,10 @@
     };
   };
   var functorWriterT = function(dictFunctor) {
-    var map75 = map(dictFunctor);
+    var map76 = map(dictFunctor);
     return {
       map: function(f) {
-        return mapWriterT(map75(function(v) {
+        return mapWriterT(map76(function(v) {
           return new Tuple(f(v.value0), v.value1);
         }));
       }
@@ -31907,7 +31787,7 @@
     return function(dictApply) {
       var apply6 = apply(dictApply);
       var Functor0 = dictApply.Functor0();
-      var map75 = map(Functor0);
+      var map76 = map(Functor0);
       var functorWriterT1 = functorWriterT(Functor0);
       return {
         apply: function(v) {
@@ -31917,7 +31797,7 @@
                 return new Tuple(v3.value0(v4.value0), append27(v3.value1)(v4.value1));
               };
             };
-            return apply6(map75(k)(v))(v1);
+            return apply6(map76(k)(v))(v1);
           };
         },
         Functor0: function() {
@@ -31932,14 +31812,14 @@
     return function(dictBind) {
       var bind33 = bind(dictBind);
       var Apply0 = dictBind.Apply0();
-      var map75 = map(Apply0.Functor0());
+      var map76 = map(Apply0.Functor0());
       var applyWriterT2 = applyWriterT1(Apply0);
       return {
         bind: function(v) {
           return function(k) {
             return bind33(v)(function(v1) {
               var v2 = k(v1.value0);
-              return map75(function(v3) {
+              return map76(function(v3) {
                 return new Tuple(v3.value0, append27(v1.value1)(v3.value1));
               })(v2);
             });
@@ -31955,11 +31835,11 @@
     var mempty5 = mempty(dictMonoid);
     var applyWriterT1 = applyWriterT(dictMonoid.Semigroup0());
     return function(dictApplicative) {
-      var pure40 = pure(dictApplicative);
+      var pure41 = pure(dictApplicative);
       var applyWriterT2 = applyWriterT1(dictApplicative.Apply0());
       return {
         pure: function(a2) {
-          return pure40(new Tuple(a2, mempty5));
+          return pure41(new Tuple(a2, mempty5));
         },
         Apply0: function() {
           return applyWriterT2;
@@ -32973,7 +32853,7 @@
   };
   var pure9 = /* @__PURE__ */ pure(applicativeEffect);
   var $$void7 = /* @__PURE__ */ $$void(functorEffect);
-  var map37 = /* @__PURE__ */ map(functorEffect);
+  var map39 = /* @__PURE__ */ map(functorEffect);
   var Canceler = function(x) {
     return x;
   };
@@ -32984,7 +32864,7 @@
   var functorAff = {
     map: _map
   };
-  var map116 = /* @__PURE__ */ map(functorAff);
+  var map118 = /* @__PURE__ */ map(functorAff);
   var forkAff = /* @__PURE__ */ _fork(true);
   var ffiUtil = /* @__PURE__ */ function() {
     var unsafeFromRight = function(v) {
@@ -33101,13 +32981,13 @@
   };
   var joinFiber = function(v) {
     return makeAff(function(k) {
-      return map37(effectCanceler)(v.join(k));
+      return map39(effectCanceler)(v.join(k));
     });
   };
   var functorFiber = {
     map: function(f) {
       return function(t) {
-        return unsafePerformEffect(makeFiber(map116(f)(joinFiber(t))));
+        return unsafePerformEffect(makeFiber(map118(f)(joinFiber(t))));
       };
     }
   };
@@ -33119,7 +32999,7 @@
         }
         ;
         return makeAff(function(k) {
-          return map37(effectCanceler)(v.kill(e, k));
+          return map39(effectCanceler)(v.kill(e, k));
         });
       });
     };
@@ -33856,7 +33736,7 @@
   };
   var functorHookM = freeFunctor;
   var $$void10 = /* @__PURE__ */ $$void(functorHookM);
-  var map211 = /* @__PURE__ */ map(functorHookM);
+  var map212 = /* @__PURE__ */ map(functorHookM);
   var bindHookM = freeBind;
   var applyHookM = freeApply;
   var applicativeHookM = freeApplicative;
@@ -33926,7 +33806,7 @@
     };
   };
   var modify_3 = function(identifier) {
-    var $148 = map211($$const(unit));
+    var $148 = map212($$const(unit));
     var $149 = modify6(identifier);
     return function($150) {
       return $148($149($150));
@@ -33941,7 +33821,7 @@
     return liftF(new GetRef2(p2, identity18));
   };
   var getHTMLElementRef = /* @__PURE__ */ function() {
-    var $151 = map211(function(v) {
+    var $151 = map212(function(v) {
       return bindFlipped4(fromElement)(v);
     });
     return function($152) {
@@ -33974,22 +33854,22 @@
   var genericOrdConstructor2 = /* @__PURE__ */ genericOrdConstructor(genericOrdNoArguments);
   var genericOrdSum3 = /* @__PURE__ */ genericOrdSum(/* @__PURE__ */ genericOrdConstructor(/* @__PURE__ */ genericOrdArgument(ordInt)));
   var intercalate9 = /* @__PURE__ */ intercalate(foldableArray)(monoidString);
-  var map38 = /* @__PURE__ */ map(functorExpr);
-  var map117 = /* @__PURE__ */ map(functorMaybe);
-  var map212 = /* @__PURE__ */ map(functorArray);
+  var map40 = /* @__PURE__ */ map(functorExpr);
+  var map119 = /* @__PURE__ */ map(functorMaybe);
+  var map213 = /* @__PURE__ */ map(functorArray);
   var trace3 = /* @__PURE__ */ trace();
   var pure10 = /* @__PURE__ */ pure(applicativeMaybe);
-  var map39 = /* @__PURE__ */ map(functorMeta);
+  var map310 = /* @__PURE__ */ map(functorMeta);
   var map46 = /* @__PURE__ */ map(functorTotalMap);
   var bind16 = /* @__PURE__ */ bind(bindMaybe);
   var map56 = /* @__PURE__ */ map(functorList);
   var max6 = /* @__PURE__ */ max(ordInt);
   var identity19 = /* @__PURE__ */ identity(categoryFn);
-  var fromFoldable11 = /* @__PURE__ */ fromFoldable3(foldableArray);
+  var fromFoldable15 = /* @__PURE__ */ fromFoldable3(foldableArray);
   var map64 = /* @__PURE__ */ map(functorMap);
   var union7 = /* @__PURE__ */ union2(ordMetaVar);
   var append15 = /* @__PURE__ */ append(semigroupArray);
-  var fromFoldable15 = /* @__PURE__ */ fromFoldable(foldableList);
+  var fromFoldable16 = /* @__PURE__ */ fromFoldable(foldableList);
   var prettyMap2 = /* @__PURE__ */ prettyMap(prettyMetaVar);
   var append23 = /* @__PURE__ */ append(semigroupList);
   var apply4 = /* @__PURE__ */ apply(applyMaybe);
@@ -34313,7 +34193,7 @@
     };
   };
   var termToSSTerm = /* @__PURE__ */ function() {
-    return map38(SSInj.create);
+    return map40(SSInj.create);
   }();
   var stepUpThroughCursor = function(v) {
     return function(v1) {
@@ -34404,14 +34284,14 @@
     };
   };
   var metaInject = function(e) {
-    return map38(map39(function($853) {
+    return map40(map310(function($853) {
       return CInj.create(MInj.create($853));
     }))(e);
   };
   var langToChLang = function(dictIsRuleLabel) {
     return function(lang2) {
       return map46(function(v) {
-        return new SSChangeRule(v.value0, map212(metaInject)(v.value1), metaInject(v.value2));
+        return new SSChangeRule(v.value0, map213(metaInject)(v.value1), metaInject(v.value2));
       })(lang2);
     };
   };
@@ -34563,7 +34443,7 @@
                       }());
                       var v1 = function() {
                         var kidsWithTeeth = getTooths(v.value0);
-                        var v2 = unzip(map212(function(v3) {
+                        var v2 = unzip(map213(function(v3) {
                           return fastStepImpl(dictIsRuleLabel)(fullRules)(howFarToLookIntoKids)(v3.value0)(v3.value1);
                         })(kidsWithTeeth));
                         return new Tuple(v2.value0, any(identity19)(v2.value1));
@@ -34603,12 +34483,12 @@
     var subMetaExpr2 = subMetaExpr(isExprLabelChangeLabel(isExprLabelMeta3));
     var endpoints3 = endpoints(isExprLabelMeta3);
     return function(dictIsRuleLabel) {
-      var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+      var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
       return function(v) {
         return function(v1) {
           return function(v2) {
             if (v2.value0 instanceof SSInj && v2.value0.value0 instanceof DerivLabel) {
-              var v3 = lookup20(v2.value0.value0.value0)(v);
+              var v3 = lookup21(v2.value0.value0.value0)(v);
               var findUpBoundary = function(v4) {
                 if (v4.value0.value0 instanceof Boundary && (v4.value0.value0.value0 instanceof Up && v4.value0.value1.length === 1)) {
                   return new Just(new Tuple(v4.value0.value0.value1, new Tuple(v4["value0"]["value1"][0], v4.value1)));
@@ -34616,9 +34496,9 @@
                 ;
                 return Nothing.value;
               };
-              return bind16(getFirst(fromFoldable11(zip(v2.value1)(v3.value1)))(findUpBoundary))(function(v4) {
+              return bind16(getFirst(fromFoldable15(zip(v2.value1)(v3.value1)))(findUpBoundary))(function(v4) {
                 return bind16(doOperation2(v4.value1.value0.value0)(v4.value1.value0.value1.value1))(function(v5) {
-                  var subFull = map64(map38(CInj.create))(v2.value0.value0.value1);
+                  var subFull = map64(map40(CInj.create))(v2.value0.value0.value1);
                   var sub$prime = union7(v5.value0)(subFull);
                   var wrapKid = function(v6) {
                     return wrapBoundary1(Down.value)(subMetaExpr2(sub$prime)(v6.value1))(v6.value0);
@@ -34630,7 +34510,7 @@
                   };
                   return pure10(parentBoundary(new Expr(new SSInj(new DerivLabel(v2.value0.value0.value0, map64(function($854) {
                     return snd(endpoints3($854));
-                  })(sub$prime))), append15(fromFoldable15(leftKids))(append15([wrapBoundary1(Down.value)(v5.value1)(v4.value1.value0.value1.value0)])(fromFoldable15(rightKids))))));
+                  })(sub$prime))), append15(fromFoldable16(leftKids))(append15([wrapBoundary1(Down.value)(v5.value1)(v4.value1.value0.value1.value0)])(fromFoldable16(rightKids))))));
                 });
               });
             }
@@ -34654,13 +34534,13 @@
     var subMetaExpr2 = subMetaExpr(isExprLabelChangeLabel2);
     var wrapBoundary1 = wrapBoundary(dictIsExprLabel);
     return function(dictIsRuleLabel) {
-      var lookup20 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
+      var lookup21 = lookup4(dictIsRuleLabel.Bounded3().Ord0());
       var getSortFromSub2 = getSortFromSub(dictIsRuleLabel);
       return function(v) {
         return function(v1) {
           return function(v2) {
             if (v2.value0 instanceof Boundary && (v2.value0.value0 instanceof Down && (v2.value1.length === 1 && (v2["value1"][0].value0 instanceof SSInj && v2["value1"][0].value0.value0 instanceof DerivLabel)))) {
-              var v3 = lookup20(v2["value1"][0].value0.value0.value0)(v);
+              var v3 = lookup21(v2["value1"][0].value0.value0.value0)(v);
               var sort2 = getSortFromSub2(v2["value1"][0].value0.value0.value0)(v2["value1"][0].value0.value0.value1);
               var $663 = !eq15(fst(endpoints3(v2.value0.value1)))(sort2);
               if ($663) {
@@ -34668,9 +34548,9 @@
               }
               ;
               return bind16(doOperation2(v2.value0.value1)(v3.value2))(function(v4) {
-                var subFull = map64(map38(CInj.create))(v2["value1"][0].value0.value0.value1);
+                var subFull = map64(map40(CInj.create))(v2["value1"][0].value0.value0.value1);
                 var sub$prime = union7(v4.value0)(subFull);
-                var kidGSorts$prime = map212(subMetaExpr2(sub$prime))(v3.value1);
+                var kidGSorts$prime = map213(subMetaExpr2(sub$prime))(v3.value1);
                 var kidsWithBoundaries = zipWith(function(ch$prime) {
                   return function(kid) {
                     return wrapBoundary1(Down.value)(ch$prime)(kid);
@@ -34704,7 +34584,7 @@
         return function(rightKids) {
           return new Expr(new Plus(new Tooth(new InjectMatchLabel(new MInj(new SInj(l))), {
             left: reverseArray(leftKids),
-            right: fromFoldable11(rightKids)
+            right: fromFoldable15(rightKids)
           })), [inside]);
         };
       };
@@ -34716,7 +34596,7 @@
         return function(rightKids) {
           return new Expr(new Minus(new Tooth(new InjectMatchLabel(new MInj(new SInj(l))), {
             left: reverseArray(leftKids),
-            right: fromFoldable11(rightKids)
+            right: fromFoldable15(rightKids)
           })), [inside]);
         };
       };
@@ -34837,7 +34717,7 @@
           }
           ;
           if (v2 instanceof Nothing) {
-            return apply4(map117(Cons.create)(pure10(v.value0.value1)))(stepSomebody(dictIsRuleLabel)(v.value1)(v1));
+            return apply4(map119(Cons.create)(pure10(v.value0.value1)))(stepSomebody(dictIsRuleLabel)(v.value1)(v1));
           }
           ;
           throw new Error("Failed pattern match at Language.Pantograph.Generic.Smallstep (line 284, column 48 - line 286, column 53): " + [v2.constructor.name]);
@@ -34858,8 +34738,8 @@
             return rule205(parentTooth);
           })(fullRules));
           if (v1 instanceof Nothing) {
-            return bind16(stepSomebody(dictIsRuleLabel)(fromFoldable11(kidsWithTeeth))(rules))(function(kids$prime) {
-              return pure10(new Expr(v.value0, fromFoldable15(kids$prime)));
+            return bind16(stepSomebody(dictIsRuleLabel)(fromFoldable15(kidsWithTeeth))(rules))(function(kids$prime) {
+              return pure10(new Expr(v.value0, fromFoldable16(kids$prime)));
             });
           }
           ;
@@ -34957,10 +34837,10 @@
     var pretty13 = pretty(prettyExpr(isExprLabelStepExprLabel(dictIsRuleLabel)));
     return function(v) {
       if (v.value0 instanceof SSInj) {
-        var kids$prime = fromFoldable11(map212(unwrapSSTerm$prime(dictIsRuleLabel))(v.value1));
+        var kids$prime = fromFoldable15(map213(unwrapSSTerm$prime(dictIsRuleLabel))(v.value1));
         var v1 = oneOrNone(kids$prime)(identity19);
         if (v1 instanceof Left) {
-          return new Right(new Expr(v.value0.value0, fromFoldable15(v1.value0)));
+          return new Right(new Expr(v.value0.value0, fromFoldable16(v1.value0)));
         }
         ;
         if (v1 instanceof Right) {
@@ -35031,7 +34911,7 @@
       var pretty13 = pretty(prettyExpr(isExprLabelStepExprLabel(dictIsRuleLabel)));
       return function(v) {
         if (v.value0 instanceof SSInj) {
-          return new Expr(v.value0.value0, map212(assertJustExpr(dictIsExprLabel)(dictIsRuleLabel))(v.value1));
+          return new Expr(v.value0.value0, map213(assertJustExpr(dictIsExprLabel)(dictIsRuleLabel))(v.value1));
         }
         ;
         return bug("Error: assertJustExpr assertion failed. Term was: \n" + pretty13(v));
@@ -35063,7 +34943,7 @@
   };
   var addToothToTerm = function(v) {
     return function(t) {
-      return new Expr(new SSInj(v.value0), append15(fromFoldable15(map56(map38(SSInj.create))(unreverse(v.value1.left))))(append15([t])(fromFoldable15(map56(map38(SSInj.create))(v.value1.right)))));
+      return new Expr(new SSInj(v.value0), append15(fromFoldable16(map56(map40(SSInj.create))(unreverse(v.value1.left))))(append15([t])(fromFoldable16(map56(map40(SSInj.create))(v.value1.right)))));
     };
   };
   var wrapPath = function($copy_v) {
@@ -35133,13 +35013,13 @@
   var reversePath4 = /* @__PURE__ */ reversePath();
   var elem3 = /* @__PURE__ */ elem2(eqString);
   var append16 = /* @__PURE__ */ append(semigroupArray);
-  var map40 = /* @__PURE__ */ map(functorArray);
+  var map41 = /* @__PURE__ */ map(functorArray);
   var zipDowns3 = /* @__PURE__ */ zipDowns(zippableZipper);
   var bind17 = /* @__PURE__ */ bind(bindMaybe);
   var zipUp$prime2 = /* @__PURE__ */ zipUp$prime(zippableZipper);
   var identity20 = /* @__PURE__ */ identity(categoryFn);
   var pure14 = /* @__PURE__ */ pure(applicativeMaybe);
-  var bimap3 = /* @__PURE__ */ bimap(bifunctorTuple);
+  var bimap4 = /* @__PURE__ */ bimap(bifunctorTuple);
   var on4 = /* @__PURE__ */ on2();
   var on12 = /* @__PURE__ */ on4({
     reflectSymbol: function() {
@@ -35566,7 +35446,7 @@
             ;
             throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Base (line 326, column 22 - line 328, column 26): " + [v1.constructor.name]);
           }();
-          return append16(extraInner)(map40(injectHoleyDerivZipper)(zipDowns3(v.value0)));
+          return append16(extraInner)(map41(injectHoleyDerivZipper)(zipDowns3(v.value0)));
         }
         ;
         if (v.value1) {
@@ -35592,7 +35472,7 @@
               ;
               throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Base (line 334, column 26 - line 336, column 32): " + [v1.constructor.name]);
             }();
-            return pure14(bimap3(augmentIndices)(injectHoleyDerivZipper)(parentDZipper));
+            return pure14(bimap4(augmentIndices)(injectHoleyDerivZipper)(parentDZipper));
           });
         }
         ;
@@ -35913,8 +35793,8 @@
   var bind18 = /* @__PURE__ */ bind(bindMaybe);
   var pure15 = /* @__PURE__ */ pure(applicativeMaybe);
   var pure16 = /* @__PURE__ */ pure(applicativeEither);
-  var map41 = /* @__PURE__ */ map(functorList);
-  var fromFoldable16 = /* @__PURE__ */ fromFoldable3(foldableArray);
+  var map47 = /* @__PURE__ */ map(functorList);
+  var fromFoldable17 = /* @__PURE__ */ fromFoldable3(foldableArray);
   var zipDowns4 = /* @__PURE__ */ zipDowns(zippableZipper);
   var makeSubEditFromTerm = function(dictIsRuleLabel) {
     var unify3 = unify(isExprLabelSortLabel(dictIsRuleLabel.IsExprLabel0()));
@@ -36030,7 +35910,7 @@
               return function(cursorSort) {
                 return function(dterm) {
                   var getPaths = function(v) {
-                    var rest = concat2(map41(getPaths)(fromFoldable16(zipDowns4(v))));
+                    var rest = concat2(map47(getPaths)(fromFoldable17(zipDowns4(v))));
                     var $74 = isValidCursorSort2(derivTermSort3(v.value1)) && isHole2(exprLabel(v.value1));
                     if ($74) {
                       return new Cons(v, rest);
@@ -36394,8 +36274,8 @@
   var show14 = /* @__PURE__ */ show(showInt);
   var discard5 = /* @__PURE__ */ discard(discardUnit)(bindMaybe);
   var traceM2 = /* @__PURE__ */ traceM()(monadMaybe);
-  var map47 = /* @__PURE__ */ map(functorList);
-  var fromFoldable17 = /* @__PURE__ */ fromFoldable(foldableList);
+  var map48 = /* @__PURE__ */ map(functorList);
+  var fromFoldable18 = /* @__PURE__ */ fromFoldable(foldableList);
   var mapFlipped6 = /* @__PURE__ */ mapFlipped(functorArray);
   var mapFlipped12 = /* @__PURE__ */ mapFlipped(functorList);
   var $$delete4 = /* @__PURE__ */ $$delete3(ordString);
@@ -36403,7 +36283,7 @@
   var insert10 = /* @__PURE__ */ insert4(ordString);
   var lookup13 = /* @__PURE__ */ lookup3(ordMetaVar);
   var filter6 = /* @__PURE__ */ filter4(ordMetaVar);
-  var toUnfoldable9 = /* @__PURE__ */ toUnfoldable4(unfoldableArray);
+  var toUnfoldable8 = /* @__PURE__ */ toUnfoldable4(unfoldableArray);
   var OpPlus = /* @__PURE__ */ function() {
     function OpPlus2() {
     }
@@ -37245,7 +37125,7 @@
   var genericCompare5 = /* @__PURE__ */ genericCompare(genericInfixOperator_)(/* @__PURE__ */ genericOrdSum4(/* @__PURE__ */ genericOrdSum4(/* @__PURE__ */ genericOrdSum4(/* @__PURE__ */ genericOrdSum4(/* @__PURE__ */ genericOrdSum4(/* @__PURE__ */ genericOrdSum4(/* @__PURE__ */ genericOrdSum4(/* @__PURE__ */ genericOrdSum4(genericOrdSum32)))))))));
   var genericPred2 = /* @__PURE__ */ genericPred(genericInfixOperator_)(genericEnumSum4);
   var genericSucc2 = /* @__PURE__ */ genericSucc(genericInfixOperator_)(genericEnumSum4);
-  var genericEncodeJson6 = /* @__PURE__ */ genericEncodeJson(genericInfixOperator_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpPlusIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpMinusIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpTimesIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpDivideIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpModIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpPowIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpLessIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpGreaterIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpLessEqIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpGreaterEqIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpAndIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(OpOrIsSymbol)(encodeRepArgsNoArguments)))))))))))));
+  var genericEncodeJson3 = /* @__PURE__ */ genericEncodeJson(genericInfixOperator_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpPlusIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpMinusIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpTimesIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpDivideIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpModIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpPowIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpLessIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpGreaterIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpLessEqIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpGreaterEqIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(OpAndIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(OpOrIsSymbol)(encodeRepArgsNoArguments)))))))))))));
   var genericDecodeJson3 = /* @__PURE__ */ genericDecodeJson(genericInfixOperator_)(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpPlusIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpMinusIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpTimesIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpDivideIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpModIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpPowIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpLessIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpGreaterIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpLessEqIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpGreaterEqIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(OpAndIsSymbol))(/* @__PURE__ */ decodeRepConstructorNoArgs(OpOrIsSymbol)))))))))))));
   var showInfixOperator = {
     show: function(x) {
@@ -37281,7 +37161,7 @@
   var genericCompare13 = /* @__PURE__ */ genericCompare(genericDataType_)(genericOrdSum1);
   var genericPred1 = /* @__PURE__ */ genericPred(genericDataType_)(genericEnumSum1);
   var genericSucc1 = /* @__PURE__ */ genericSucc(genericDataType_)(genericEnumSum1);
-  var genericEncodeJson14 = /* @__PURE__ */ genericEncodeJson(genericDataType_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(BoolIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(IntIsSymbol)(encodeRepArgsNoArguments)));
+  var genericEncodeJson1 = /* @__PURE__ */ genericEncodeJson(genericDataType_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(BoolIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(IntIsSymbol)(encodeRepArgsNoArguments)));
   var genericDecodeJson1 = /* @__PURE__ */ genericDecodeJson(genericDataType_)(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(BoolIsSymbol))(/* @__PURE__ */ decodeRepConstructorNoArgs(IntIsSymbol)));
   var showDataType = {
     show: function(x) {
@@ -37343,7 +37223,7 @@
   var genericCompare23 = /* @__PURE__ */ genericCompare(genericConstant_)(genericOrdSum22);
   var genericPred22 = /* @__PURE__ */ genericPred(genericConstant_)(genericEnumSum22);
   var genericSucc22 = /* @__PURE__ */ genericSucc(genericConstant_)(genericEnumSum22);
-  var genericEncodeJson24 = /* @__PURE__ */ genericEncodeJson(genericConstant_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConstTrueIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConstFalseIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(ConstNotIsSymbol)(encodeRepArgsNoArguments))));
+  var genericEncodeJson22 = /* @__PURE__ */ genericEncodeJson(genericConstant_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConstTrueIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConstFalseIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(ConstNotIsSymbol)(encodeRepArgsNoArguments))));
   var genericDecodeJson22 = /* @__PURE__ */ genericDecodeJson(genericConstant_)(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(ConstTrueIsSymbol))(/* @__PURE__ */ decodeRepSum(/* @__PURE__ */ decodeRepConstructorNoArgs(ConstFalseIsSymbol))(/* @__PURE__ */ decodeRepConstructorNoArgs(ConstNotIsSymbol))));
   var showConstant = {
     show: function(x) {
@@ -38067,27 +37947,27 @@
   };
   var encodeJsonInfixOperator = {
     encodeJson: function(a2) {
-      return genericEncodeJson6(a2);
+      return genericEncodeJson3(a2);
     }
   };
   var encodeJsonDataType = {
     encodeJson: function(a2) {
-      return genericEncodeJson14(a2);
+      return genericEncodeJson1(a2);
     }
   };
-  var encodeRepArgsArgument3 = /* @__PURE__ */ encodeRepArgsArgument(encodeJsonDataType);
-  var genericEncodeJson34 = /* @__PURE__ */ genericEncodeJson(genericPreSortLabel_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(VarSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TermSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TypeSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(CtxConsSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(CtxNilSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(DataTypeIsSymbol)(encodeRepArgsArgument3))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ArrowIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ListIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LocalIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(NonLocalIsSymbol)(encodeRepArgsNoArguments)))))))))));
+  var encodeRepArgsArgument2 = /* @__PURE__ */ encodeRepArgsArgument(encodeJsonDataType);
+  var genericEncodeJson32 = /* @__PURE__ */ genericEncodeJson(genericPreSortLabel_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(VarSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TermSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TypeSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(CtxConsSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(CtxNilSortIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(DataTypeIsSymbol)(encodeRepArgsArgument2))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ArrowIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ListIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LocalIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(NonLocalIsSymbol)(encodeRepArgsNoArguments)))))))))));
   var encodeJsonPreSortLabel = {
     encodeJson: function(a2) {
-      return genericEncodeJson34(a2);
+      return genericEncodeJson32(a2);
     }
   };
   var encodeJsonConstant = {
     encodeJson: function(a2) {
-      return genericEncodeJson24(a2);
+      return genericEncodeJson22(a2);
     }
   };
-  var genericEncodeJson42 = /* @__PURE__ */ genericEncodeJson(genericRuleLabel_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ZeroIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(SucIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LamIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LetIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(AppIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(GreyAppIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(VarIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(FreeVarIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TermHoleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TypeHoleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(DataTypeRuleIsSymbol)(encodeRepArgsArgument3))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ArrowRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ListRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(NewlineIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(IfIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ErrorBoundaryIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConstantRuleIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonConstant)))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(InfixRuleIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonInfixOperator)))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(EqualsRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(NilRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConsRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LengthRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(AppendRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(HeadRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TailRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(IndexRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ListMatchRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(IntegerLiteralIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(CommentIsSymbol)(encodeRepArgsNoArguments))))))))))))))))))))))))))))));
+  var genericEncodeJson42 = /* @__PURE__ */ genericEncodeJson(genericRuleLabel_)(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ZeroIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(SucIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LamIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LetIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(AppIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(GreyAppIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(VarIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(FreeVarIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TermHoleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TypeHoleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(DataTypeRuleIsSymbol)(encodeRepArgsArgument2))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ArrowRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ListRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(NewlineIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(IfIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ErrorBoundaryIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConstantRuleIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonConstant)))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(InfixRuleIsSymbol)(/* @__PURE__ */ encodeRepArgsArgument(encodeJsonInfixOperator)))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(EqualsRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(NilRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ConsRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(LengthRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(AppendRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(HeadRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(TailRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(IndexRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(ListMatchRuleIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepSum(/* @__PURE__ */ encodeRepConstructor(IntegerLiteralIsSymbol)(encodeRepArgsNoArguments))(/* @__PURE__ */ encodeRepConstructor(CommentIsSymbol)(encodeRepArgsNoArguments))))))))))))))))))))))))))))));
   var encodeJsonRuleLabel = {
     encodeJson: function(a2) {
       return genericEncodeJson42(a2);
@@ -39824,7 +39704,7 @@
     return matchExpr22(ctx)(injectMatchExpr(sor(CtxConsSort.value))([slot, slot, slot]))(function() {
       return function(v) {
         if (v.length === 3) {
-          return new Cons(new Expr(makeLabel2(Zero.value)([new Tuple("gamma", v[2]), new Tuple("x", v[0]), new Tuple("type", v[1])]), []), map47(wrapInSuc(v[0])(v[1]))(getIndices(v[2])));
+          return new Cons(new Expr(makeLabel2(Zero.value)([new Tuple("gamma", v[2]), new Tuple("x", v[0]), new Tuple("type", v[1])]), []), map48(wrapInSuc(v[0])(v[1]))(getIndices(v[2])));
         }
         ;
         throw new Error("Failed pattern match at Language.Pantograph.Specific.Currying (line 767, column 46 - line 771, column 52): " + [v.constructor.name]);
@@ -39879,7 +39759,7 @@
               };
             });
           };
-          return map47(makeEdit)(indices);
+          return map48(makeEdit)(indices);
         }
         ;
         throw new Error("Failed pattern match at Language.Pantograph.Specific.Currying (line 800, column 53 - line 817, column 33): " + [v.constructor.name]);
@@ -39895,7 +39775,7 @@
     });
   };
   var editsAtHoleInterior = function(cursorSort) {
-    return append17(fromFoldable17(getVarEdits(cursorSort)))(mapMaybe(identity21)(append17([makeSubEditFromTerm2(newTermFromRule2(If.value))("if")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(Lam.value))("fun")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(Let.value))("let")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(App2.value))("(")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(NilRule.value))("nil")(cursorSort), getWrapInAppEdit("cons")(cursorSort)(newTermFromRule2(ConsRule.value)), getWrapInAppEdit("head")(cursorSort)(newTermFromRule2(HeadRule.value)), getWrapInAppEdit("tail")(cursorSort)(newTermFromRule2(TailRule.value)), getWrapInAppEdit("index")(cursorSort)(newTermFromRule2(IndexRule.value)), getWrapInAppEdit("length")(cursorSort)(newTermFromRule2(LengthRule.value)), getWrapInAppEdit("append")(cursorSort)(newTermFromRule2(AppendRule.value)), makeSubEditFromTerm2(newTermFromRule2(ListMatchRule.value))("match")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(EqualsRule.value))("==")(cursorSort)])(append17(mapFlipped6(allPossible1)(function(constant) {
+    return append17(fromFoldable18(getVarEdits(cursorSort)))(mapMaybe(identity21)(append17([makeSubEditFromTerm2(newTermFromRule2(If.value))("if")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(Lam.value))("fun")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(Let.value))("let")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(App2.value))("(")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(NilRule.value))("nil")(cursorSort), getWrapInAppEdit("cons")(cursorSort)(newTermFromRule2(ConsRule.value)), getWrapInAppEdit("head")(cursorSort)(newTermFromRule2(HeadRule.value)), getWrapInAppEdit("tail")(cursorSort)(newTermFromRule2(TailRule.value)), getWrapInAppEdit("index")(cursorSort)(newTermFromRule2(IndexRule.value)), getWrapInAppEdit("length")(cursorSort)(newTermFromRule2(LengthRule.value)), getWrapInAppEdit("append")(cursorSort)(newTermFromRule2(AppendRule.value)), makeSubEditFromTerm2(newTermFromRule2(ListMatchRule.value))("match")(cursorSort), makeSubEditFromTerm2(newTermFromRule2(EqualsRule.value))("==")(cursorSort)])(append17(mapFlipped6(allPossible1)(function(constant) {
       return getWrapInAppEdit(constantName(constant))(cursorSort)(newTermFromRule2(new ConstantRule(constant)));
     }))(mapFlipped6(allPossible2)(function(op) {
       return makeSubEditFromTerm2(newTermFromRule2(new InfixRule(op)))(infixName(op))(cursorSort);
@@ -39931,16 +39811,16 @@
     return v1(true);
   };
   var editsAtCursor = function(cursorSort) {
-    return append17(mapMaybe(identity21)([makeChangeEditFromTerm2(newTermFromRule2(new DataTypeRule(Int.value)))("Int")(cursorSort), makeChangeEditFromTerm2(newTermFromRule2(new DataTypeRule(Bool.value)))("Bool")(cursorSort), makeEditFromPath2(newPathFromRule2(ListRule.value)(0))("List")(cursorSort)]))(append17(drop(1)(fromFoldable17(makeWrapEdits2(isValidCursorSort)(isValidSelectionSorts)(forgetSorts)(splitChange)("->")(cursorSort)(newTermFromRule2(ArrowRule.value)))))(function() {
+    return append17(mapMaybe(identity21)([makeChangeEditFromTerm2(newTermFromRule2(new DataTypeRule(Int.value)))("Int")(cursorSort), makeChangeEditFromTerm2(newTermFromRule2(new DataTypeRule(Bool.value)))("Bool")(cursorSort), makeEditFromPath2(newPathFromRule2(ListRule.value)(0))("List")(cursorSort)]))(append17(drop(1)(fromFoldable18(makeWrapEdits2(isValidCursorSort)(isValidSelectionSorts)(forgetSorts)(splitChange)("->")(cursorSort)(newTermFromRule2(ArrowRule.value)))))(function() {
       var $2867 = !isTermSort(cursorSort);
       if ($2867) {
         return [];
       }
       ;
       return append17(mapMaybe(identity21)([makeEditFromPath2(newPathFromRule2(Lam.value)(2))("fun")(cursorSort), makeEditFromPath2(newPathFromRule2(Let.value)(3))("let")(cursorSort), makeEditFromPath2(newPathFromRule2(Let.value)(2))("let")(cursorSort), makeEditFromPath2(newPathFromRule2(App2.value)(0))("(")(cursorSort)]))(append17(concat(mapFlipped6(allPossible2)(function(op) {
-        return fromFoldable17(makeWrapEdits2(isValidCursorSort)(isValidSelectionSorts)(forgetSorts)(splitChange)(infixName(op))(cursorSort)(newTermFromRule2(new InfixRule(op))));
-      })))(append17(fromFoldable17(getVarWraps(cursorSort)))(append17(reverse(fromFoldable17(getAppliedWrapEdits("cons")(cursorSort)(newTermFromRule2(ConsRule.value)))))(append17(reverse(fromFoldable17(getAppliedWrapEdits("head")(cursorSort)(newTermFromRule2(HeadRule.value)))))(append17(reverse(fromFoldable17(getAppliedWrapEdits("tail")(cursorSort)(newTermFromRule2(TailRule.value)))))(append17(reverse(fromFoldable17(getAppliedWrapEdits("index")(cursorSort)(newTermFromRule2(IndexRule.value)))))(append17(reverse(fromFoldable17(getAppliedWrapEdits("length")(cursorSort)(newTermFromRule2(LengthRule.value)))))(append17(reverse(fromFoldable17(getAppliedWrapEdits("append")(cursorSort)(newTermFromRule2(AppendRule.value)))))(append17(fromFoldable17(getAppliedWrapEdits("match")(cursorSort)(newTermFromRule2(ListMatchRule.value))))(append17(catMaybes([makeEditFromPath2(newPathFromRule2(If.value)(1))("if")(cursorSort)]))(append17(fromFoldable17(makeWrapEdits2(isValidCursorSort)(isValidSelectionSorts)(forgetSorts)(splitChange)("==")(cursorSort)(newTermFromRule2(EqualsRule.value))))(concat(mapFlipped6(allPossible1)(function(constant) {
-        return fromFoldable17(getAppliedWrapEdits(constantName(constant))(cursorSort)(newTermFromRule2(new ConstantRule(constant))));
+        return fromFoldable18(makeWrapEdits2(isValidCursorSort)(isValidSelectionSorts)(forgetSorts)(splitChange)(infixName(op))(cursorSort)(newTermFromRule2(new InfixRule(op))));
+      })))(append17(fromFoldable18(getVarWraps(cursorSort)))(append17(reverse(fromFoldable18(getAppliedWrapEdits("cons")(cursorSort)(newTermFromRule2(ConsRule.value)))))(append17(reverse(fromFoldable18(getAppliedWrapEdits("head")(cursorSort)(newTermFromRule2(HeadRule.value)))))(append17(reverse(fromFoldable18(getAppliedWrapEdits("tail")(cursorSort)(newTermFromRule2(TailRule.value)))))(append17(reverse(fromFoldable18(getAppliedWrapEdits("index")(cursorSort)(newTermFromRule2(IndexRule.value)))))(append17(reverse(fromFoldable18(getAppliedWrapEdits("length")(cursorSort)(newTermFromRule2(LengthRule.value)))))(append17(reverse(fromFoldable18(getAppliedWrapEdits("append")(cursorSort)(newTermFromRule2(AppendRule.value)))))(append17(fromFoldable18(getAppliedWrapEdits("match")(cursorSort)(newTermFromRule2(ListMatchRule.value))))(append17(catMaybes([makeEditFromPath2(newPathFromRule2(If.value)(1))("if")(cursorSort)]))(append17(fromFoldable18(makeWrapEdits2(isValidCursorSort)(isValidSelectionSorts)(forgetSorts)(splitChange)("==")(cursorSort)(newTermFromRule2(EqualsRule.value))))(concat(mapFlipped6(allPossible1)(function(constant) {
+        return fromFoldable18(getAppliedWrapEdits(constantName(constant))(cursorSort)(newTermFromRule2(new ConstantRule(constant))));
       }))))))))))))));
     }()));
   };
@@ -40191,13 +40071,13 @@
               var outsideType = lookup$prime3(function() {
                 var $3040 = flip(index$prime)(0);
                 return function($3041) {
-                  return $3040(toUnfoldable9($3041));
+                  return $3040(toUnfoldable8($3041));
                 };
               }()(filter6(matchRuleMetaVarName("outsideType"))(v5.value0)))(v1.sigma);
               var insideType = lookup$prime3(function() {
                 var $3042 = flip(index$prime)(0);
                 return function($3043) {
-                  return $3042(toUnfoldable9($3043));
+                  return $3042(toUnfoldable8($3043));
                 };
               }()(filter6(matchRuleMetaVarName("insideType"))(v5.value0)))(v1.sigma);
               return [pure18([div3([classes(["error-info ErrorBoundary-info"])])([div_([text("[type boundary]")]), div_([text("inside  type: "), v1.renderTerm(new Zipper(Nil.value, sortToType(insideType)))(renCtx)]), div_([text("outside type: "), v1.renderTerm(new Zipper(Nil.value, sortToType(outsideType)))(renCtx)])])]), pure18([errorLeftSide]), new Left(new Tuple(renCtx, 0)), pure18([errorRightSide])];
@@ -40407,7 +40287,7 @@
       return "<function>";
     }
     ;
-    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 123, column 18 - line 127, column 29): " + [val.constructor.name]);
+    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 124, column 18 - line 128, column 29): " + [val.constructor.name]);
   };
   var eqValue = function(v1) {
     return function(v2) {
@@ -40472,7 +40352,7 @@
       });
     }
     ;
-    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 102, column 13 - line 105, column 70): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 103, column 13 - line 106, column 70): " + [v.constructor.name]);
   };
   var evalInfix = function(v) {
     if (v instanceof OpPlus) {
@@ -40571,7 +40451,7 @@
       };
     }
     ;
-    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 108, column 13 - line 120, column 65): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 109, column 13 - line 121, column 65): " + [v.constructor.name]);
   };
   var $$eval = function(v) {
     return function(v1) {
@@ -40594,10 +40474,10 @@
         if (v2.value0 instanceof Let && v2.value1.length === 4) {
           var $lazy_vDef = $runtime_lazy8("vDef", "Language.Pantograph.Specific.CurryingInterpereter", function() {
             return $$eval(new Cons(defer2(function(v3) {
-              return $lazy_vDef(54);
+              return $lazy_vDef(55);
             }), v))(v2["value1"][2]);
           });
-          var vDef = $lazy_vDef(54);
+          var vDef = $lazy_vDef(55);
           return $$eval(new Cons(pure110(vDef), v))(v2["value1"][3]);
         }
         ;
@@ -40721,7 +40601,7 @@
               return $$eval(new Cons(pure110(new Right(v3.value0)), new Cons(pure110(new Right(new ListVal(v3.value1))), v)))(v2["value1"][4]);
             }
             ;
-            throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 93, column 13 - line 95, column 91): " + [v3.constructor.name]);
+            throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 94, column 13 - line 96, column 91): " + [v3.constructor.name]);
           });
         }
         ;
@@ -40740,28 +40620,34 @@
     };
   };
   var interpereter = function(dterm) {
-    var v = $$eval(Nil.value)(dterm);
-    if (v instanceof Left) {
-      if (v.value0 instanceof HoleError) {
+    var res = realCatchException(Left.create)(Right.create)(function(v) {
+      return $$eval(Nil.value)(dterm);
+    });
+    if (res instanceof Right && res.value0 instanceof Left) {
+      if (res.value0.value0 instanceof HoleError) {
         return "Error: hole";
       }
       ;
-      if (v.value0 instanceof BoundaryError) {
+      if (res.value0.value0 instanceof BoundaryError) {
         return "Error: type boundary";
       }
       ;
-      if (v.value0 instanceof FreeVarError) {
+      if (res.value0.value0 instanceof FreeVarError) {
         return "Error: unbound variable";
       }
       ;
-      throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 131, column 19 - line 134, column 50): " + [v.value0.constructor.name]);
+      throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 134, column 27 - line 137, column 50): " + [res.value0.value0.constructor.name]);
     }
     ;
-    if (v instanceof Right) {
-      return printValue(v.value0);
+    if (res instanceof Right && res.value0 instanceof Right) {
+      return printValue(res.value0.value0);
     }
     ;
-    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 130, column 22 - line 135, column 32): " + [v.constructor.name]);
+    if (res instanceof Left) {
+      return "Error: infinite loop";
+    }
+    ;
+    throw new Error("Failed pattern match at Language.Pantograph.Specific.CurryingInterpereter (line 133, column 5 - line 139, column 41): " + [res.constructor.name]);
   };
 
   // output/CSS.String/index.js
@@ -40921,7 +40807,7 @@
   };
 
   // output/CSS.Property/index.js
-  var map48 = /* @__PURE__ */ map(functorArray);
+  var map49 = /* @__PURE__ */ map(functorArray);
   var second2 = /* @__PURE__ */ second(strongFn);
   var append19 = /* @__PURE__ */ append(semigroupArray);
   var lookup15 = /* @__PURE__ */ lookup(foldableArray)(eqString);
@@ -40965,13 +40851,13 @@
         }
         ;
         if (v instanceof Plain && v1 instanceof Prefixed) {
-          return new Prefixed(map48(second2(function(v2) {
+          return new Prefixed(map49(second2(function(v2) {
             return v.value0 + v2;
           }))(v1.value0));
         }
         ;
         if (v instanceof Prefixed && v1 instanceof Plain) {
-          return new Prefixed(map48(second2(function(v2) {
+          return new Prefixed(map49(second2(function(v2) {
             return v1.value0 + v2;
           }))(v.value0));
         }
@@ -41046,7 +40932,7 @@
         var $145 = intercalate11(fromString1(", "));
         return function($146) {
           return $145(function(v) {
-            return map48(value16)(v);
+            return map49(value16)(v);
           }($146));
         };
       }()
@@ -41223,7 +41109,7 @@
   };
 
   // output/CSS.Stylesheet/index.js
-  var map118 = /* @__PURE__ */ map(/* @__PURE__ */ functorWriterT(functorIdentity));
+  var map120 = /* @__PURE__ */ map(/* @__PURE__ */ functorWriterT(functorIdentity));
   var apply5 = /* @__PURE__ */ apply(/* @__PURE__ */ applyWriterT(semigroupArray)(applyIdentity));
   var bind21 = /* @__PURE__ */ bind(/* @__PURE__ */ bindWriterT(semigroupArray)(bindIdentity));
   var Property2 = /* @__PURE__ */ function() {
@@ -41262,7 +41148,7 @@
   var functorStyleM = {
     map: function(f) {
       return function(v) {
-        return map118(f)(v);
+        return map120(f)(v);
       };
     }
   };
@@ -41392,7 +41278,7 @@
   };
 
   // output/CSS.Render/index.js
-  var map49 = /* @__PURE__ */ map(functorArray);
+  var map50 = /* @__PURE__ */ map(functorArray);
   var lookup16 = /* @__PURE__ */ lookup(foldableArray)(eqString);
   var collect$prime = function(v) {
     return function(v1) {
@@ -41401,19 +41287,19 @@
       }
       ;
       if (v instanceof Prefixed && v1 instanceof Plain) {
-        return map49(function(v3) {
+        return map50(function(v3) {
           return new Right(new Tuple(v3.value0 + v3.value1, v1.value0));
         })(v.value0);
       }
       ;
       if (v instanceof Plain && v1 instanceof Prefixed) {
-        return map49(function(v2) {
+        return map50(function(v2) {
           return new Right(new Tuple(v.value0, v2.value0 + v2.value1));
         })(v1.value0);
       }
       ;
       if (v instanceof Prefixed && v1 instanceof Prefixed) {
-        return map49(function(v2) {
+        return map50(function(v2) {
           return maybe(new Left(v2.value0 + v2.value1))(function() {
             var $213 = Tuple.create(v2.value0 + v2.value1);
             return function($214) {
@@ -41434,7 +41320,7 @@
 
   // output/Halogen.HTML.CSS/index.js
   var bind23 = /* @__PURE__ */ bind(bindArray);
-  var fromFoldable18 = /* @__PURE__ */ fromFoldable2(foldableArray);
+  var fromFoldable19 = /* @__PURE__ */ fromFoldable2(foldableArray);
   var style3 = /* @__PURE__ */ function() {
     var toString3 = function() {
       var $13 = joinWith("; ");
@@ -41459,7 +41345,7 @@
       var properties = bind23(mapMaybe(property)(rs))(function($16) {
         return rights(collect2($16));
       });
-      return fromFoldable18(properties);
+      return fromFoldable19(properties);
     };
     var $17 = attr2("style");
     return function($18) {
@@ -41522,7 +41408,7 @@
   // output/Halogen.Component/index.js
   var voidLeft3 = /* @__PURE__ */ voidLeft(functorHalogenM);
   var traverse_3 = /* @__PURE__ */ traverse_(applicativeHalogenM)(foldableMaybe);
-  var map50 = /* @__PURE__ */ map(functorHalogenM);
+  var map51 = /* @__PURE__ */ map(functorHalogenM);
   var pure20 = /* @__PURE__ */ pure(applicativeHalogenM);
   var lookup17 = /* @__PURE__ */ lookup9();
   var pop3 = /* @__PURE__ */ pop2();
@@ -41569,7 +41455,7 @@
       ;
       if (v instanceof Query) {
         return unCoyoneda(function(g) {
-          var $45 = map50(maybe(v.value1(unit))(g));
+          var $45 = map51(maybe(v.value1(unit))(g));
           return function($46) {
             return $45(args.handleQuery($46));
           };
@@ -41892,7 +41778,7 @@
   var append110 = /* @__PURE__ */ append(semigroupArray);
   var sub1 = /* @__PURE__ */ sub(/* @__PURE__ */ ringRatio(ordInt)(euclideanRingInt));
   var foldl10 = /* @__PURE__ */ foldl(foldableArray);
-  var map57 = /* @__PURE__ */ map(functorArray);
+  var map58 = /* @__PURE__ */ map(functorArray);
   var eqRatio2 = /* @__PURE__ */ eqRatio(eqInt);
   var eq9 = /* @__PURE__ */ eq(eqRatio2);
   var genericEqArgument2 = /* @__PURE__ */ genericEqArgument(eqInt);
@@ -42245,7 +42131,7 @@
                 }
                 ;
                 if (scope2 instanceof Word) {
-                  return foldl10(matchStr$prime(Char.value))(nextAcc(Start.value))(map57(singleton10)(toCodePointArray(pat)));
+                  return foldl10(matchStr$prime(Char.value))(nextAcc(Start.value))(map58(singleton10)(toCodePointArray(pat)));
                 }
                 ;
                 if (scope2 instanceof Char) {
@@ -42509,7 +42395,7 @@
   var unwrap11 = /* @__PURE__ */ unwrap();
   var get5 = /* @__PURE__ */ get2(monadStateHalogenM);
   var pure111 = /* @__PURE__ */ pure(applicativeHalogenM);
-  var map58 = /* @__PURE__ */ map(functorHookM);
+  var map59 = /* @__PURE__ */ map(functorHookM);
   var unless2 = /* @__PURE__ */ unless(applicativeHalogenM);
   var bind111 = /* @__PURE__ */ bind(freeBind);
   var discard32 = /* @__PURE__ */ discard7(freeBind);
@@ -42519,7 +42405,7 @@
   var pure32 = /* @__PURE__ */ pure(applicativeHookM);
   var not1 = /* @__PURE__ */ not(/* @__PURE__ */ heytingAlgebraFunction(/* @__PURE__ */ heytingAlgebraFunction(heytingAlgebraBoolean)));
   var applySecond2 = /* @__PURE__ */ applySecond(applyHookM);
-  var bimap4 = /* @__PURE__ */ bimap(bifunctorTuple);
+  var bimap5 = /* @__PURE__ */ bimap(bifunctorTuple);
   var unsafeSetCell = function(index5) {
     return function(a2) {
       return function(array) {
@@ -42599,7 +42485,7 @@
               ;
               if (v2.queryFn instanceof Just) {
                 return _evalHookM(executeHooksAndEffects(v1.stateRef)(Step3.value))(unCoyoneda(function(g) {
-                  var $218 = map58(maybe(v.value1(unit))(g));
+                  var $218 = map59(maybe(v.value1(unit))(g));
                   var $219 = fromQueryFn(v2.queryFn.value0);
                   return function($220) {
                     return $218($219($220));
@@ -43035,7 +42921,7 @@
               ;
               return pure26(unsafePerformEffect(function __do2() {
                 var v12 = read(stateRef)();
-                var v2 = bimap4(fromMemoValues)(fromMemoValue)(unsafeGetCell(v12.memoCells.index)(v12.memoCells.queue));
+                var v2 = bimap5(fromMemoValues)(fromMemoValue)(unsafeGetCell(v12.memoCells.index)(v12.memoCells.queue));
                 var newMemos = fromMemoValues(v.value0);
                 var m = {
                   eq: newMemos.eq,
@@ -43264,7 +43150,7 @@
   // output/Language.Pantograph.Generic.Rendering.Buffer/index.js
   var mod4 = /* @__PURE__ */ mod(euclideanRingInt);
   var pure28 = /* @__PURE__ */ pure(applicativeEither);
-  var map59 = /* @__PURE__ */ map(functorArray);
+  var map60 = /* @__PURE__ */ map(functorArray);
   var lessThan2 = /* @__PURE__ */ lessThan(/* @__PURE__ */ ordRatio(ordInt)(euclideanRingInt));
   var compare9 = /* @__PURE__ */ compare(ordFuzzyStr);
   var append11 = /* @__PURE__ */ append(semigroupArray);
@@ -43272,9 +43158,9 @@
   var discard9 = /* @__PURE__ */ discard(discardUnit)(bindHookM);
   var pure112 = /* @__PURE__ */ pure(applicativeHookM);
   var bind27 = /* @__PURE__ */ bind(bindHookM);
-  var map119 = /* @__PURE__ */ map(functorHookM);
+  var map121 = /* @__PURE__ */ map(functorHookM);
   var $$void12 = /* @__PURE__ */ $$void(functorHookM);
-  var map213 = /* @__PURE__ */ map(functorMaybe);
+  var map214 = /* @__PURE__ */ map(functorMaybe);
   var mapFlipped7 = /* @__PURE__ */ mapFlipped(functorMaybe);
   var liftEffect3 = /* @__PURE__ */ liftEffect(/* @__PURE__ */ monadEffectHookM(monadEffectAff));
   var on7 = /* @__PURE__ */ on2();
@@ -43331,7 +43217,7 @@
         ;
         if (v.mb_oldString instanceof Nothing) {
           var sortedMatchingEdits = function() {
-            var $176 = map59(snd);
+            var $176 = map60(snd);
             var $177 = sortBy(function(v1) {
               return function(v2) {
                 return compare9(v1.value0)(v2.value0);
@@ -43351,11 +43237,11 @@
             return function($179) {
               return $176($177($178($179)));
             };
-          }()(map59(function(v1) {
-            return new Tuple(matchStr(false)(v.bufferString)(v1.edit.label), v1);
+          }()(map60(function(v1) {
+            return new Tuple(matchStr(true)(v.bufferString)(v1.edit.label), v1);
           })(input3.edits));
           var extraEdits = input3.extraEdits(v.bufferString);
-          var extraEditsAndPreviews = map59(function(edit) {
+          var extraEditsAndPreviews = map60(function(edit) {
             return {
               edit,
               lazy_preview: defer2(function(v1) {
@@ -43445,7 +43331,7 @@
           };
           var get8 = get4(v.value1);
           var modify7 = function(f) {
-            return bind27(map119(extractBufferPreState1)(get8))(function(st) {
+            return bind27(map121(extractBufferPreState1)(get8))(function(st) {
               var st$prime = f(st);
               return put3(st$prime);
             });
@@ -43488,7 +43374,7 @@
                 bufferFocus: f(st.bufferFocus)
               };
             }))(function(st) {
-              return setPreview(map213(force)(mapFlipped7(st.focussedEdit)(function(v1) {
+              return setPreview(map214(force)(mapFlipped7(st.focussedEdit)(function(v1) {
                 return v1.lazy_preview;
               })));
             });
@@ -43730,7 +43616,7 @@
   });
 
   // output/Language.Pantograph.Generic.Rendering.Rendering/index.js
-  var fromFoldable19 = /* @__PURE__ */ fromFoldable(foldableSet);
+  var fromFoldable20 = /* @__PURE__ */ fromFoldable(foldableSet);
   var insert13 = /* @__PURE__ */ insert4(ordString);
   var zipDowns5 = /* @__PURE__ */ zipDowns(zippableZipper);
   var mapFlipped8 = /* @__PURE__ */ mapFlipped(functorArray);
@@ -43757,7 +43643,7 @@
   var show11 = /* @__PURE__ */ show(showInt);
   var mapFlipped13 = /* @__PURE__ */ mapFlipped(functorPath);
   var show16 = /* @__PURE__ */ show(showString);
-  var map60 = /* @__PURE__ */ map(functorArray);
+  var map61 = /* @__PURE__ */ map(functorArray);
   var applyCssClasses = function(classes2) {
     return function(html2) {
       var $106 = isEmpty3(classes2);
@@ -43765,7 +43651,7 @@
         return html2;
       }
       ;
-      return div3([classNames(fromFoldable19(insert13("node")(classes2)))])([html2]);
+      return div3([classNames(fromFoldable20(insert13("node")(classes2)))])([html2]);
     };
   };
   var renderPreviewDerivTooth = function(dictIsRuleLabel) {
@@ -44159,7 +44045,7 @@
                 }
                 ;
                 return [];
-              }())(map60(renderSSTerm(dictIsRuleLabel)(locs))(term.value1));
+              }())(map61(renderSSTerm(dictIsRuleLabel)(locs))(term.value1));
               return concat(mapFlipped8(locs.spec.arrangeDerivTermSubs(unit)()({
                 mb_parent: Nothing.value,
                 renCtx,
@@ -44219,7 +44105,7 @@
   var pure31 = /* @__PURE__ */ pure(applicativeMaybe);
   var pure113 = /* @__PURE__ */ pure(applicativeArray);
   var identity22 = /* @__PURE__ */ identity(categoryFn);
-  var map61 = /* @__PURE__ */ map(functorArray);
+  var map65 = /* @__PURE__ */ map(functorArray);
   var ReplaceMatchMd = /* @__PURE__ */ function() {
     function ReplaceMatchMd2(value0, value16) {
       this.value0 = value0;
@@ -44321,7 +44207,7 @@
             });
             var v = function($44) {
               return head(catMaybes($44));
-            }(map61(flip(tryMatchMd)(str))(matches2));
+            }(map65(flip(tryMatchMd)(str))(matches2));
             if (v instanceof Nothing) {
               var v1 = uncons3(str);
               if (v1 instanceof Nothing) {
@@ -44361,8 +44247,11 @@
   }();
 
   // output/Tutorial.CurriedTutorial.Common/index.js
+  var pure33 = /* @__PURE__ */ pure(applicativeArray);
+  var bimap6 = /* @__PURE__ */ bimap(bifunctorHTML);
+  var renderDerivTerm2 = /* @__PURE__ */ renderDerivTerm(isRuleLabelPreSortLabelRu);
   var decodeSerializedZipper22 = /* @__PURE__ */ decodeSerializedZipper2(isRuleLabelPreSortLabelRu);
-  var map65 = /* @__PURE__ */ map(functorArray);
+  var map66 = /* @__PURE__ */ map(functorArray);
   var deserializePath2 = /* @__PURE__ */ deserializePath(isRuleLabelPreSortLabelRu);
   var discard11 = /* @__PURE__ */ discard(discardUnit)(bindStyleM);
   var fromString10 = /* @__PURE__ */ fromString3(isStringKey);
@@ -44375,6 +44264,20 @@
     ;
     return "";
   }();
+  var renderProgram = function(program) {
+    return div3([classNames(["program"])])(pure33(bimap6($$const(unit))($$const(unit))(renderDerivTerm2(trivialEditorLocals(editorSpec))(false)(false)(new Zipper(Nil.value, decodeSerializedZipper22(editorSpec.clipboardSort)(program)))(function() {
+      var v = defaultRenderingContext("TEST");
+      return {
+        indentationLevel: v.indentationLevel,
+        isCursor: v.isCursor,
+        isInteractive: false,
+        isInlined: v.isInlined,
+        metavarNumbers: v.metavarNumbers,
+        cssClasses: v.cssClasses,
+        pathIdPrefix: v.pathIdPrefix
+      };
+    }()))));
+  };
   var prog = function(str) {
     return decodeSerializedZipper22(editorSpec.clipboardSort)(str);
   };
@@ -44385,7 +44288,7 @@
           var program = prog(progString);
           return {
             program,
-            paths: map65(deserializePath2(program))(paths),
+            paths: map66(deserializePath2(program))(paths),
             instructions: force(instructions)
           };
         });
@@ -44433,7 +44336,7 @@
   var lessons = [/* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fib"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpLessEq"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
     return div_([h1_([text("Introduction")]), p_(parseMd("\n          This tutorial is an introduction to \u266FPantograph, a structure editor.\n          Although the code looks like text, it actually isn't.\n\n          \u266Fbr\u266Fbr\n\n          Just like a text editor, you can navigate in Pantograph using a cursor.\n          Unlike a text editor, the cursor goes around entire expressions.\n          \n          \u266Ftask\u27E6Hover over the program to reveal its structure.\u27E7\n          \u266Ftask\u27E6Click to place the cursor.\u27E7\n\n          \u266Fbr\n          \n          Then, click \u266Fbutton\u27E6Next Lesson\u27E7 to move on.\n          "))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fib"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpLessEq"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
-    return div_([h1_([text("Holes")]), p_(parseMd('\n          Here is the same program, but with a couple of the terms removed.\n          Two of the numbers from the program have been deleted, leaving holes in their place.\n          \u266Fbr\u266Fbr\n          A \u266Fbold\u27E6hole\u27E7 is a placeholder term, displayed as \u266FdataTyHole\u27E6T\u27E7, where \u266Fcode\u27E6T\u27E7 is the type of the hole.\n          \u266Fbr\u266Fbr\n          To \u266Fbold\u27E6fill\u27E7  in a hole,\n          move the cursor to the \u266Fcode\u27E6\u25A1\u27E7 inside the hole,\n          then write the value to fill,\n          and finally press "Tab".\n          \n          \u266Ftask\u27E6Fill each hole.\u27E7\n\n          As you type, \u266FPantograph will list all the possible terms of the right type to fit in the hole.\n          '))]);
+    return div_([h1_([text("Holes")]), p_(parseMd('\n          Here is the same program, but with a couple of the terms removed.\n          Two of the numbers from the program have been deleted, leaving holes in their places.\n          \u266Fbr\u266Fbr\n          A \u266Fbold\u27E6hole\u27E7 is a placeholder term, displayed as \u266FdataTyHole\u27E6T\u27E7, where \u266Fcode\u27E6T\u27E7 is the type of the hole.\n          \u266Fbr\u266Fbr\n          To \u266Fbold\u27E6fill\u27E7  in a hole,\n          move the cursor to the \u266Fcode\u27E6\u25A1\u27E7 inside the hole,\n          then write the value to fill,\n          and finally press "Tab".\n          \n          \u266Ftask\u27E6Fill each hole.\u27E7\n\n          As you type, \u266FPantograph will list all the possible terms of the right type to fit in the hole.\n          '))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["double"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["result"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[100],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
     return div_([h1_([text("Insertion")]), p_(parseMd('\n          In Pantograph, you can also wrap forms around existing expressions in the program.\n          You will wrap a call to \u266Fcode\u27E6double\u27E7 around \u266Fcode\u27E6100\u27E7\n\n          \u266Ftask\u27E6Click on "100"\u27E7\n\n          \u266Ftask\u27E6Type "double" and press Tab.\u27E7\n          '))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
@@ -44441,7 +44344,9 @@
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[7],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
     return div_([h1_([text("Deletion")]), p_(parseMd('\n        You can delete a term with "Delete" or "Backspace".\n        \u266Fbr\u266Fbr\n        Using deletion and filling holes,\n        \u266Ftask\u27E6Edit each "task" to match each "given"\u27E7\n        '))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
-    return div_([h1_([text("Practice")]), p_(parseMd("\n          So far, you have learned how to:\n          ")), ul_([li_(parseMd(" \u266Fbold\u27E6Fill in a hole\u27E7: write the value in the hole ")), li_(parseMd(" \u266Fbold\u27E6Wrap a form around a term\u27E7: write the value at the term ")), li_(parseMd(' \u266Fbold\u27E6Delete a term\u27E7: press "Delete/Backspace" ')), li_(parseMd(" \u266Fbold\u27E6Name a variable\u27E7: Input the variable's name "))]), p_(parseMd('\n          Using your knowledge so far, write the function \u266Fcode\u27E6plus\u27E7, which takes two inputs and uses "+" to add them together, from scratch.\n          \u266Fbr\u266Fbr\n          ')), p_(parseMd('\n          \u266Ftask\u27E6Write the function "plus".\u27E7\n          '))]);
+    return div_([h1_([text("Practice")]), p_(parseMd("\n          So far, you have learned how to:\n          ")), ul_([li_(parseMd(" \u266Fbold\u27E6Fill in a hole\u27E7: write the value in the hole ")), li_(parseMd(" \u266Fbold\u27E6Wrap a form around a term\u27E7: write the value at the term ")), li_(parseMd(' \u266Fbold\u27E6Delete a term\u27E7: press "Delete/Backspace" '))]), p_(parseMd("Also,")), ul_([li_(parseMd(" \u266Fbold\u27E6Name a variable\u27E7: Input the variable's name "))]), p_(parseMd('\n          Using your knowledge so far, write the function \u266Fcode\u27E6plus\u27E7, which takes two inputs and uses "+" to add them together, from scratch.\n          \u266Fbr\u266Fbr\n          ')), p_(parseMd('\n          \u266Ftask\u27E6Write the function "plus".\u27E7\n          ')), renderProgram('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["plus"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["y"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')]);
+  })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
+    return div_([h1_([text("Using Pantograph Effectively")]), p_(parseMd("\n          You can write terms very quickly in pantograph using some simple shortcuts.\n          Write the plus function a second time, but this time:\n          ")), ul_([li_(parseMd('Use "Spacebar" instead of "Tab"/"Enter" to submit forms. This brings your cursor to the next hole.')), li_(parseMd('Skip over type annotations: press "Spacebar" to skip to the next hole, and let Pantograph fill in the types as you input the terms.'))]), p_(parseMd("\n\n          \u266Fbr\u266Fbr\n          (For reference:)\n          ")), renderProgram('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["plus"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["y"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}'), p_(parseMd('\n          \u266Ftask\u27E6Write the function "plus".\u27E7\n          '))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["double"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["square"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpTimes"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["triple"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpTimes"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["square_or_triple"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["b"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
     return div_([h1_([text("Introducing Selections")]), p_(parseMd("\n          So far you've been editing with only the \u266Fbold\u27E6cursor\u27E7.\n          \n          \u266Fbr\u266Fbr\n\n          In \u266FPantograph you can also make a \u266Fbold\u27E6selection\u27E7 between two terms by clicking and dragging the mouse from one term to the other.\n          This selects the area \u266Fbold\u27E6inside one term, but outside the other\u27E7.\n\n          \u266Fbr\u266Fbr\n\n          Try making some selections to get a feel for it. In the next lessons, we will explore selections in detail.\n          "))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
@@ -44452,30 +44357,43 @@
     return div_([h1_([text("Rearranging Function Calls")]), p_(parseMd(selectionsWarning + `
           You will use a selection to rearrange the function calls on the last line from
           \u266Fbr
-          \u266Fcode\u27E6square_or_triple (double 10) true\u27E7 to \u266Fbr
-          \u266Fcode\u27E6double (square_or_triple 10 true)\u27E7
+          \u266Fcode\u27E6(square_or_triple (double 10) true)\u27E7 to \u266Fbr
+          \u266Fcode\u27E6(double (square_or_triple 10 true))\u27E7
 
           \u266Fbr \u266Fbr
 
           To do this, first note that to place your cursor on a function application, you click on the parenthesis around the
           function call.
 
-          \u266Ftask\u27E6Select the "square_or_triple" function call: drag from the "(" to the left of "double" to the "10".\u27E7
+          \u266Ftask\u27E6Select the "double" function call: drag from the "(" in "(double" to the "10".\u27E7
           
           \u266Ftask\u27E6Cut (ctrl+x).\u27E7
           \u266Ftask\u27E6Paste onto the "(" in "(square_or_triple".\u27E7
 
           \u266Fbr \u266Fbr
 
-          \u266Fbold\u27E6Bonus:\u27E7 try moving the \u266Fcode\u27E6square_or_triple\u27E7 call. Notice that you can make a selection that wouldn't be possible in a text editor!
+          \u266Fbold\u27E6Bonus:\u27E7 try rearranging the function calls on the last line back to be \u266Fcode\u27E6(square_or_triple (double 10) true)\u27E7 by making a certain selection starting from the "(" in "(square_or_triple" and then copying and pasting. 
+          Notice that this selection wouldn't be possible in a text editor!
+          `))]);
+  })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1000],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1000],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[100],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task "],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[100],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
+    return div_([h1_([text("Cut and Paste Practice")]), p_(parseMd(`
+
+          For each task, make a single cut and paste.
+          Some of the tasks require you to cut and paste a term, and others a selection.
+
+          \u266Fbr \u266Fbr
+
+          (Don't worry about filling in the holes)
+
+          \u266Ftask\u27E6Edit each "task" to match each "given"\u27E7
           `))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["average"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["y"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["z"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpDivide"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["result"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[20],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["scaled_result"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpTimes"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
-    return div_([h1_([text("Partial Function Calls")]), p_(parseMd(selectionsWarning + '\n          The gray circles between function call arguments are "handles" that let you select sequences of arguments.\n\n          Delete the last argument of the call \u266Fcode\u27E6(average 1 4 20)\u27E7.\n          \n          \u266Ftask\u27E6Select the last argument: drag from the gray circle right before "20" to the ")" right after it.\u27E7\n          \u266Ftask\u27E6Delete.\u27E7\n\n          \u266Fcode\u27E6average\u27E7 is now only called with its first two arguments.\n          As a result, \u266FPantograph automatically updated the type of \u266Fcode\u27E6result\u27E7 to be \u266Fcode\u27E6Int \u2192 Int\u27E7 \n          and added a hole for the missing argument in \u266Fcode\u27E610 * (result { \u25A1 : Int })\u27E7.\n\n          \u266Fbr\u266Fbr\n\n          Now, delete both remaining arguments of the call \u266Fcode\u27E6(average 1 4)\u27E7.\n          \u266Ftask\u27E6Select both arguments: drag from the gray circle right before "1" to the ")" right after "4".\u27E7\n          \u266Ftask\u27E6Delete.\u27E7\n          '))]);
+    return div_([h1_([text("Partial Function Calls")]), p_(parseMd(selectionsWarning + '\n          The gray circles between function call arguments are "handles" that let you select sequences of arguments.\n\n          Delete the last argument of the call \u266Fcode\u27E6(average 1 4 20)\u27E7:\n          \n          \u266Ftask\u27E6Select the last argument: drag from the gray circle right before "20" to the ")" right after it.\u27E7\n          \u266Ftask\u27E6Delete.\u27E7\n\n          \u266Fcode\u27E6average\u27E7 is now only called with its first two arguments.\n          As a result, \u266FPantograph automatically updated the type of \u266Fcode\u27E6result\u27E7 to be \u266Fcode\u27E6Int \u2192 Int\u27E7 \n          and added a hole for the missing argument in \u266Fcode\u27E610 * (result { \u25A1 : Int })\u27E7.\n\n          \u266Fbr\u266Fbr\n\n          Now, delete both remaining arguments of the call \u266Fcode\u27E6(average 1 4)\u27E7.\n          \u266Ftask\u27E6Select both arguments: drag from the gray circle right before "1" to the ")" right after "4".\u27E7\n          \u266Ftask\u27E6Delete.\u27E7\n\n          \u266Fbr\u266Fbr\n\n          You can insert applications by typing "(". Re-insert two of these partial applications:\n          \u266Ftask\u27E6Place your cursor on "average" and query "("\u27E7\n          '))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["average"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["y"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["z"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpDivide"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["result"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[20],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["scaled_result"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpTimes"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[10],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
     return div_([h1_([text("Rearranging Function Inputs")]), p_(parseMd(selectionsWarning + `
           Selections can be used to rearrage a function's arguments.
 
-          You will switch the order of inputs \u266Fcode\u27E6x\u27E7 and \u266Fcode\u27E6y\u27E7 in the definition of \u266Fcode\u27E6average\u27E7.
+          You will switch the order of inputs \u266Fcode\u27E6x\u27E7 and \u266Fcode\u27E6y\u27E7 in the definition of \u266Fcode\u27E6average\u27E7:
 
           \u266Ftask\u27E6Select the "x" input: drag from the "fun" in "fun x" to the "fun" in "fun y".\u27E7
           \u266Ftask\u27E6Cut.\u27E7
@@ -44539,7 +44457,9 @@
           When you delete a selection, \u266FPantograph updates the program around the ouside the selection to respect the
           type of the new term now in that place.
           `))]);
-  })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["map"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
+  })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":[""],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":[""],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":[""],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["given"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["task"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
+    return div_([h1_([text("Paying attention to hole types")]), p_(parseMd('\n          In Pantograph, \u266Fbold\u27E6filling in a hole\u27E7 keeps the type, while \u266Fbold\u27E6wrapping around a hole\u27E7 changes the type.\n\n          \u266Fbr\u266Fbr\n\n          For each task/given pair, can you spot the difference between the two tasks?\n          \u266Fbr\u266Fbr\n          The difference is in the \u266Fbold\u27E6types\u27E7.\n          With that in mind, using only one insert each:\n\n          \u266Ftask\u27E6Edit each "task" to match each "given"\u27E7\n          '))]);
+  })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["map"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
     return div_([h1_([text("Exercise: map")]), p_(parseMd("\n          Implement \u266Fcode\u27E6map\u27E7, a function that applies a function to each element of a list.\n\n          \u266Fbr\u266Fbr\n\n          Example behavior: \u266Fcode\u27E6map (fun x => (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))\u27E7\n\n          \u266Fbr\u266Fbr\n\n          Type \u266Fcode\u27E6match\u27E7 to make a match expression that matches on a list.\n          "))]);
   })), /* @__PURE__ */ makeLesson('{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}')([])(/* @__PURE__ */ defer2(function(v) {
     return div_(append111([h1_([text("End of tutorial")]), p_(parseMd("\n          You now know the basics of editing with \u266FPantograph!\n          If you have extra time, feel free to experiment on your own.\n          "))])(editActions));
@@ -44942,10 +44862,10 @@
   var key6 = /* @__PURE__ */ key(valValue);
   var value1 = /* @__PURE__ */ value12(/* @__PURE__ */ valList(valValue));
   var append21 = /* @__PURE__ */ append(semigroupArray);
-  var map66 = /* @__PURE__ */ map(functorArray);
+  var map67 = /* @__PURE__ */ map(functorArray);
   var value22 = /* @__PURE__ */ value12(valString);
   var oneOf3 = /* @__PURE__ */ oneOf2(alternativeArray);
-  var map120 = /* @__PURE__ */ map(/* @__PURE__ */ functorNonEmpty(functorArray));
+  var map123 = /* @__PURE__ */ map(/* @__PURE__ */ functorNonEmpty(functorArray));
   var valGenericFontFamily = {
     value: function(v) {
       return v;
@@ -44956,9 +44876,9 @@
   var fontSize = /* @__PURE__ */ key(valSize)(/* @__PURE__ */ fromString18("font-size"));
   var fontFamily = function(a2) {
     return function(b2) {
-      return key6(fromString18("font-family"))(value1(append21(map66(function($47) {
+      return key6(fromString18("font-family"))(value1(append21(map67(function($47) {
         return value22(quote($47));
-      })(a2))(oneOf3(map120(value32)(b2)))));
+      })(a2))(oneOf3(map123(value32)(b2)))));
     };
   };
   var color = /* @__PURE__ */ key(valColor)(/* @__PURE__ */ fromString18("color"));
@@ -44976,10 +44896,10 @@
   var liftEffect4 = /* @__PURE__ */ liftEffect(monadEffectAff);
   var bindFlipped5 = /* @__PURE__ */ bindFlipped(bindEffect);
   var composeKleisliFlipped3 = /* @__PURE__ */ composeKleisliFlipped(bindEffect);
-  var pure33 = /* @__PURE__ */ pure(applicativeAff);
+  var pure34 = /* @__PURE__ */ pure(applicativeAff);
   var bindFlipped1 = /* @__PURE__ */ bindFlipped(bindMaybe);
   var pure114 = /* @__PURE__ */ pure(applicativeEffect);
-  var map67 = /* @__PURE__ */ map(functorEffect);
+  var map68 = /* @__PURE__ */ map(functorEffect);
   var discard12 = /* @__PURE__ */ discard(discardUnit);
   var throwError5 = /* @__PURE__ */ throwError(monadThrowAff);
   var selectElement = function(query4) {
@@ -44989,7 +44909,7 @@
         return $16(toParentNode($17));
       };
     }())(document))(windowImpl)))(function(mel) {
-      return pure33(bindFlipped1(fromElement)(mel));
+      return pure34(bindFlipped1(fromElement)(mel));
     });
   };
   var runHalogenAff = /* @__PURE__ */ runAff_(/* @__PURE__ */ either(throwException)(/* @__PURE__ */ $$const(/* @__PURE__ */ pure114(unit))));
@@ -44997,7 +44917,7 @@
     return function __do2() {
       var rs = bindFlipped5(readyState)(bindFlipped5(document)(windowImpl))();
       if (rs instanceof Loading) {
-        var et = map67(toEventTarget2)(windowImpl)();
+        var et = map68(toEventTarget2)(windowImpl)();
         var listener = eventListener(function(v) {
           return callback(new Right(unit));
         })();
@@ -45011,7 +44931,7 @@
   });
   var awaitBody = /* @__PURE__ */ discard12(bindAff)(awaitLoad)(function() {
     return bind29(selectElement("body"))(function(body2) {
-      return maybe(throwError5(error("Could not find body")))(pure33)(body2);
+      return maybe(throwError5(error("Could not find body")))(pure34)(body2);
     });
   });
 
@@ -45109,12 +45029,12 @@
   var traverse_22 = /* @__PURE__ */ traverse_12(foldableList);
   var fork4 = /* @__PURE__ */ fork3(monadForkAff);
   var parSequence_2 = /* @__PURE__ */ parSequence_(parallelAff)(foldableList);
-  var pure34 = /* @__PURE__ */ pure(applicativeAff);
-  var map68 = /* @__PURE__ */ map(functorCoyoneda);
+  var pure35 = /* @__PURE__ */ pure(applicativeAff);
+  var map69 = /* @__PURE__ */ map(functorCoyoneda);
   var parallel2 = /* @__PURE__ */ parallel(parallelAff);
-  var map121 = /* @__PURE__ */ map(functorAff);
+  var map124 = /* @__PURE__ */ map(functorAff);
   var sequential2 = /* @__PURE__ */ sequential(parallelAff);
-  var map214 = /* @__PURE__ */ map(functorMaybe);
+  var map215 = /* @__PURE__ */ map(functorMaybe);
   var insert14 = /* @__PURE__ */ insert3(ordSubscriptionId);
   var retractFreeAp3 = /* @__PURE__ */ retractFreeAp(applicativeParAff);
   var $$delete5 = /* @__PURE__ */ $$delete2(ordForkId);
@@ -45159,7 +45079,7 @@
           return bind112(liftEffect5(read(lchs)))(function(v) {
             return discard14(traverse_22(fork4)(v.finalizers))(function() {
               return discard14(parSequence_2(v.initializers))(function() {
-                return pure34(result);
+                return pure35(result);
               });
             });
           });
@@ -45184,7 +45104,7 @@
     return function(ref3) {
       return function(q2) {
         return bind112(liftEffect5(read(ref3)))(function(v) {
-          return evalM(render2)(ref3)(v["component"]["eval"](new Query(map68(Just.create)(liftCoyoneda(q2)), $$const(Nothing.value))));
+          return evalM(render2)(ref3)(v["component"]["eval"](new Query(map69(Just.create)(liftCoyoneda(q2)), $$const(Nothing.value))));
         });
       };
     };
@@ -45203,7 +45123,7 @@
                     })(dsx);
                   }));
                 };
-                return map121(v2.value2)(sequential2(v2.value0(applicativeParAff)(evalChild)(v1.children)));
+                return map124(v2.value2)(sequential2(v2.value0(applicativeParAff)(evalChild)(v1.children)));
               })(cqb);
             });
           };
@@ -45214,7 +45134,7 @@
               return bind112(liftEffect5(read(ref3)))(function(v2) {
                 var v3 = v1.value0(v2.state);
                 if (unsafeRefEq(v2.state)(v3.value1)) {
-                  return pure34(v3.value0);
+                  return pure35(v3.value0);
                 }
                 ;
                 if (otherwise) {
@@ -45237,7 +45157,7 @@
                     lifecycleHandlers: v2.lifecycleHandlers
                   })(ref3)))(function() {
                     return discard14(handleLifecycle(v2.lifecycleHandlers)(render2(v2.lifecycleHandlers)(ref3)))(function() {
-                      return pure34(v3.value0);
+                      return pure35(v3.value0);
                     });
                   });
                 }
@@ -45252,8 +45172,8 @@
                   return handleAff(evalF(render2)(ref3)(new Action(act)));
                 })))(function(finalize) {
                   return bind112(liftEffect5(read(ref3)))(function(v2) {
-                    return discard14(liftEffect5(modify_(map214(insert14(sid)(finalize)))(v2.subscriptions)))(function() {
-                      return pure34(v1.value1(sid));
+                    return discard14(liftEffect5(modify_(map215(insert14(sid)(finalize)))(v2.subscriptions)))(function() {
+                      return pure35(v1.value1(sid));
                     });
                   });
                 });
@@ -45262,7 +45182,7 @@
             ;
             if (v1 instanceof Unsubscribe) {
               return discard14(liftEffect5(unsubscribe4(v1.value0)(ref3)))(function() {
-                return pure34(v1.value1);
+                return pure35(v1.value1);
               });
             }
             ;
@@ -45278,7 +45198,7 @@
               return bind112(liftEffect5(read(ref3)))(function(v2) {
                 return bind112(liftEffect5(read(v2.handlerRef)))(function(handler3) {
                   return discard14(queueOrRun(v2.pendingOuts)(handler3(v1.value0)))(function() {
-                    return pure34(v1.value1);
+                    return pure35(v1.value1);
                   });
                 });
               });
@@ -45302,7 +45222,7 @@
                       return write(true)(doneRef)();
                     }))(evalM(render2)(ref3)(v1.value0))))(function(fiber) {
                       return discard14(liftEffect5(unlessM2(read(doneRef))(modify_(insert15(fid)(fiber))(v2.forks))))(function() {
-                        return pure34(v1.value1(fid));
+                        return pure35(v1.value1(fid));
                       });
                     });
                   });
@@ -45314,7 +45234,7 @@
               return bind112(liftEffect5(read(ref3)))(function(v2) {
                 return bind112(liftEffect5(read(v2.forks)))(function(forkMap) {
                   return discard14(traverse_32(joinFiber)(lookup19(v1.value0)(forkMap)))(function() {
-                    return pure34(v1.value1);
+                    return pure35(v1.value1);
                   });
                 });
               });
@@ -45324,7 +45244,7 @@
               return bind112(liftEffect5(read(ref3)))(function(v2) {
                 return bind112(liftEffect5(read(v2.forks)))(function(forkMap) {
                   return discard14(traverse_32(killFiber(error("Cancelled")))(lookup19(v1.value0)(forkMap)))(function() {
-                    return pure34(v1.value1);
+                    return pure35(v1.value1);
                   });
                 });
               });
@@ -45332,7 +45252,7 @@
             ;
             if (v1 instanceof GetRef) {
               return bind112(liftEffect5(read(ref3)))(function(v2) {
-                return pure34(v1.value1(lookup22(v1.value0)(v2.refs)));
+                return pure35(v1.value1(lookup22(v1.value0)(v2.refs)));
               });
             }
             ;
@@ -45393,8 +45313,8 @@
   var discard22 = /* @__PURE__ */ discard15(bindAff);
   var parSequence_3 = /* @__PURE__ */ parSequence_(parallelAff)(foldableList);
   var liftEffect6 = /* @__PURE__ */ liftEffect(monadEffectAff);
-  var pure35 = /* @__PURE__ */ pure(applicativeEffect);
-  var map69 = /* @__PURE__ */ map(functorEffect);
+  var pure36 = /* @__PURE__ */ pure(applicativeEffect);
+  var map70 = /* @__PURE__ */ map(functorEffect);
   var pure115 = /* @__PURE__ */ pure(applicativeAff);
   var when5 = /* @__PURE__ */ when(applicativeEffect);
   var renderStateX2 = /* @__PURE__ */ renderStateX(functorEffect);
@@ -45492,7 +45412,7 @@
               return function(childrenOutRef) {
                 return unComponentSlot(function(slot5) {
                   return function __do2() {
-                    var childrenIn = map69(slot5.pop)(read(childrenInRef))();
+                    var childrenIn = map70(slot5.pop)(read(childrenInRef))();
                     var $$var2 = function() {
                       if (childrenIn instanceof Just) {
                         write(childrenIn.value0.value1)(childrenInRef)();
@@ -45522,7 +45442,7 @@
                       ;
                       throw new Error("Failed pattern match at Halogen.Aff.Driver (line 213, column 14 - line 222, column 98): " + [childrenIn.constructor.name]);
                     }();
-                    var isDuplicate = map69(function($68) {
+                    var isDuplicate = map70(function($68) {
                       return isJust(slot5.get($68));
                     })(read(childrenOutRef))();
                     when5(isDuplicate)(warn("Halogen: Duplicate slot address was detected during rendering, unexpected results may occur"))();
@@ -45533,7 +45453,7 @@
                       }
                       ;
                       if (v instanceof Just) {
-                        return pure35(renderSpec2.renderChild(v.value0));
+                        return pure36(renderSpec2.renderChild(v.value0));
                       }
                       ;
                       throw new Error("Failed pattern match at Halogen.Aff.Driver (line 227, column 37 - line 229, column 50): " + [v.constructor.name]);
@@ -45548,7 +45468,7 @@
           return function($$var2) {
             return function __do2() {
               var v = read($$var2)();
-              var shouldProcessHandlers = map69(isNothing)(read(v.pendingHandlers))();
+              var shouldProcessHandlers = map70(isNothing)(read(v.pendingHandlers))();
               when5(shouldProcessHandlers)(write(new Just(Nil.value))(v.pendingHandlers))();
               write(empty10)(v.childrenOut)();
               write(v.children)(v.childrenIn)();
@@ -45684,7 +45604,7 @@
                 };
               }())(i2)(component2))();
               return unDriverStateX(function(st) {
-                return pure35({
+                return pure36({
                   query: evalDriver(disposed)(st.selfRef),
                   messages: sio.emitter,
                   dispose: dispose(disposed)(lchs)(dsx)
@@ -45741,15 +45661,15 @@
   }
 
   // output/Web.DOM.Node/index.js
-  var map70 = /* @__PURE__ */ map(functorEffect);
+  var map71 = /* @__PURE__ */ map(functorEffect);
   var parentNode2 = /* @__PURE__ */ function() {
-    var $6 = map70(toMaybe);
+    var $6 = map71(toMaybe);
     return function($7) {
       return $6(_parentNode($7));
     };
   }();
   var nextSibling = /* @__PURE__ */ function() {
-    var $15 = map70(toMaybe);
+    var $15 = map71(toMaybe);
     return function($16) {
       return $15(_nextSibling($16));
     };
@@ -45771,7 +45691,7 @@
     };
   };
   var $$void14 = /* @__PURE__ */ $$void(functorEffect);
-  var pure36 = /* @__PURE__ */ pure(applicativeEffect);
+  var pure37 = /* @__PURE__ */ pure(applicativeEffect);
   var traverse_6 = /* @__PURE__ */ traverse_(applicativeEffect)(foldableMaybe);
   var unwrap12 = /* @__PURE__ */ unwrap();
   var when6 = /* @__PURE__ */ when(applicativeEffect);
@@ -45779,7 +45699,7 @@
   var identity23 = /* @__PURE__ */ identity(categoryFn);
   var bind114 = /* @__PURE__ */ bind(bindAff);
   var liftEffect7 = /* @__PURE__ */ liftEffect(monadEffectAff);
-  var map71 = /* @__PURE__ */ map(functorEffect);
+  var map73 = /* @__PURE__ */ map(functorEffect);
   var bindFlipped8 = /* @__PURE__ */ bindFlipped(bindEffect);
   var substInParent = function(v) {
     return function(v1) {
@@ -45792,7 +45712,7 @@
           return $$void14(appendChild(v)(v2.value0));
         }
         ;
-        return pure36(unit);
+        return pure37(unit);
       };
     };
   };
@@ -45927,7 +45847,7 @@
   var runUI2 = function(component2) {
     return function(i2) {
       return function(element4) {
-        return bind114(liftEffect7(map71(toDocument)(bindFlipped8(document)(windowImpl))))(function(document2) {
+        return bind114(liftEffect7(map73(toDocument)(bindFlipped8(document)(windowImpl))))(function(document2) {
           return runUI(renderSpec(document2)(element4))(component2)(i2);
         });
       };
@@ -45953,7 +45873,7 @@
   };
 
   // output/Language.Pantograph.Generic.ZipperMovement/index.js
-  var map73 = /* @__PURE__ */ map(functorMaybe);
+  var map74 = /* @__PURE__ */ map(functorMaybe);
   var on9 = /* @__PURE__ */ on2();
   var on15 = /* @__PURE__ */ on9({
     reflectSymbol: function() {
@@ -46003,7 +45923,7 @@
     return new Right(v);
   };
   var moveZipperp = function(dir2) {
-    var $54 = map73(normalizeZipperp);
+    var $54 = map74(normalizeZipperp);
     var $55 = on15(_next)(function(v) {
       return zipNext2(0);
     })(on26(_prev)(function(v) {
@@ -46066,7 +45986,9 @@
   };
 
   // output/Language.Pantograph.UserStudy.Programs/index.js
-  var program_strings = ['{ "values": [ { "values": [ { "values": [], "tag": "TermHole" }, [ [ { "values": [ "gamma" ], "tag": "RuleMetaVar" }, { "values": [ { "values": [ { "values": [ { "values": [], "tag": "CtxNilSort" } ], "tag": "SInj" } ], "tag": "MInj" }, [] ], "tag": "Expr" } ], [ { "values": [ "type" ], "tag": "RuleMetaVar" }, { "values": [ { "values": [ { "values": [ "type", 913 ], "tag": "MetaVar" } ], "tag": "MV" }, [] ], "tag": "Expr" } ] ] ], "tag": "DerivLabel" }, [ { "values": [ { "values": [ { "values": [], "tag": "TypeHole" }, [ [ { "values": [ "type" ], "tag": "RuleMetaVar" }, { "values": [ { "values": [ { "values": [ "type", 913 ], "tag": "MetaVar" } ], "tag": "MV" }, [] ], "tag": "Expr" } ] ] ], "tag": "DerivLabel" }, [] ], "tag": "Expr" } ] ], "tag": "Expr" }', '{ "values": [ { "values": [ { "values": [], "tag": "TermHole" }, [ [ { "values": [ "gamma" ], "tag": "RuleMetaVar" }, { "values": [ { "values": [ { "values": [ { "values": [], "tag": "CtxNilSort" } ], "tag": "SInj" } ], "tag": "MInj" }, [] ], "tag": "Expr" } ], [ { "values": [ "type" ], "tag": "RuleMetaVar" }, { "values": [ { "values": [ { "values": [ "type", 913 ], "tag": "MetaVar" } ], "tag": "MV" }, [] ], "tag": "Expr" } ] ] ], "tag": "DerivLabel" }, [ { "values": [ { "values": [ { "values": [], "tag": "TypeHole" }, [ [ { "values": [ "type" ], "tag": "RuleMetaVar" }, { "values": [ { "values": [ { "values": [ "type", 913 ], "tag": "MetaVar" } ], "tag": "MV" }, [] ], "tag": "Expr" } ] ] ], "tag": "DerivLabel" }, [] ], "tag": "Expr" } ] ], "tag": "Expr" }', '{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["deMorgansLaw"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["p"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["q"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpOr"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}', '{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["isPrime"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["helper"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[7],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[8],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}', '{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["isPrime"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["helper"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[7],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[8],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}', '{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["reverse"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}', '{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["filter"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}', '{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fold"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["ls"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TypeHole"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["h"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["t"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["sum"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}', '{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["sum"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["l"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["h"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["t"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}'];
+  var program_strings = /* @__PURE__ */ function() {
+    return fromFoldable4(ordString)(foldableArray)([new Tuple("transcribe1", Nothing.value), new Tuple("transcribe2", Nothing.value), new Tuple("deMorgan", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["deMorgansLaw"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["p"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["q"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpOr"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("collatz", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["collatz"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpDivide"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpTimes"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("isPrime", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["isPrime"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["helper"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMinus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[7],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstNot"}],"tag":"ConstantRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[8],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("reverse", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["reverse"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("filter", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["filter"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("filterWithIndex", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["filter"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["cond"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["l"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["h"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["t"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"If"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["b"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstFalse"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("sumViaFold", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fold"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["ls"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["h"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["t"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["sum"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("sumFromViaFold", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fold"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["ls"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["h"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["t"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["sum"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["y"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPlus"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("allEvenViaFold", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fold"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["l"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["h"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["t"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["isEven"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["allEven"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"TermHole"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("allViaFold", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fold"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["n"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["l"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListMatchRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["h"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Right","value":{"values":["t"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["isEven"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["allEven"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ListRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["b"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["i"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"ConstTrue"}],"tag":"ConstantRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[0],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"ConsRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"NilRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}')), new Tuple("associativity", new Just('{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["f"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["y"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpMod"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpPow"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Let"}},[{"values":[{"tag":"Right","value":{"values":["fAssociativity"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"ArrowRule"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Bool"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["x"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["y"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Lam"}},[{"values":[{"tag":"Right","value":{"values":["z"],"tag":"DataString"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"Int"}],"tag":"DataTypeRule"}},[]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"EqualsRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Suc"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[1],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[2],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[3],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[4],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[5],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[7],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[{"values":[],"tag":"OpAnd"}],"tag":"InfixRule"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[6],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[7],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[8],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"Newline"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"App"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Var"}},[{"values":[{"tag":"Left","value":{"values":[],"tag":"Zero"}},[]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[7],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[8],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"},{"values":[{"tag":"Left","value":{"values":[],"tag":"IntegerLiteral"}},[{"values":[{"tag":"Right","value":{"values":[9],"tag":"DataInt"}},[]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}]],"tag":"Expr"}'))]);
+  }();
 
   // output/Log/foreign.js
   var _log = (tag) => (x) => (k) => {
@@ -46093,20 +46015,20 @@
   }();
   var logM = function(dictMonad) {
     var discard110 = discard16(dictMonad.Bind1());
-    var pure40 = pure(dictMonad.Applicative0());
+    var pure41 = pure(dictMonad.Applicative0());
     if (_logging) {
       return function(tag) {
         return function(x) {
-          return discard110(pure40(unit))(function() {
+          return discard110(pure41(unit))(function() {
             return log4(tag)(x)(function(v) {
-              return pure40(unit);
+              return pure41(unit);
             });
           });
         };
       };
     }
     ;
-    return $$const($$const(pure40(unit)));
+    return $$const($$const(pure41(unit)));
   };
 
   // output/Web.UIEvent.KeyboardEvent/foreign.js
@@ -46143,9 +46065,10 @@
     };
   };
   var show17 = /* @__PURE__ */ show(showInt);
-  var pure37 = /* @__PURE__ */ pure(applicativeEffect);
+  var pure38 = /* @__PURE__ */ pure(applicativeEffect);
   var mempty4 = /* @__PURE__ */ mempty(monoidPath);
   var bind31 = /* @__PURE__ */ bind(bindEffect);
+  var lookup20 = /* @__PURE__ */ lookup3(ordString);
   var pure116 = /* @__PURE__ */ pure(applicativeList);
   var monadEffectHookM2 = /* @__PURE__ */ monadEffectHookM(monadEffectAff);
   var liftEffect8 = /* @__PURE__ */ liftEffect(monadEffectHookM2);
@@ -46173,12 +46096,12 @@
       return "down";
     }
   });
-  var map74 = /* @__PURE__ */ map(functorExpr);
-  var map123 = /* @__PURE__ */ map(functorPath2);
-  var map215 = /* @__PURE__ */ map(functorZipper);
+  var map75 = /* @__PURE__ */ map(functorExpr);
+  var map125 = /* @__PURE__ */ map(functorPath2);
+  var map216 = /* @__PURE__ */ map(functorZipper);
   var monadStateT4 = /* @__PURE__ */ monadStateT(monadIdentity);
   var bind210 = /* @__PURE__ */ bind(/* @__PURE__ */ bindExceptT(monadStateT4));
-  var pure38 = /* @__PURE__ */ pure(/* @__PURE__ */ applicativeExceptT(monadStateT4));
+  var pure39 = /* @__PURE__ */ pure(/* @__PURE__ */ applicativeExceptT(monadStateT4));
   var rightIsSymbol2 = {
     reflectSymbol: function() {
       return "right";
@@ -46228,7 +46151,7 @@
     }
   })(showNumber))(showNumber))(showNumber))(showNumber))(showNumber))(showNumber))(showNumber))(showNumber)));
   var eq14 = /* @__PURE__ */ eq(/* @__PURE__ */ eqMaybe(eqBoolean));
-  var map310 = /* @__PURE__ */ map(functorMaybe);
+  var map311 = /* @__PURE__ */ map(functorMaybe);
   var reversePath5 = /* @__PURE__ */ reversePath();
   var mempty13 = /* @__PURE__ */ mempty(monoidList);
   var identity24 = /* @__PURE__ */ identity(categoryFn);
@@ -46318,12 +46241,12 @@
     var pretty52 = pretty(prettyExpr(isExprLabelMeta3));
     var pretty62 = pretty(prettyDerivLabel(IsExprLabel0)(dictIsRuleLabel.Pretty5()));
     var serializePath2 = serializePath(dictIsRuleLabel);
-    var encodeJson3 = encodeJson(encodeJsonZipper(encodeJsonDerivLabel(dictIsRuleLabel.EncodeJson6())(dictIsRuleLabel.EncodeJson7())));
+    var printSerializedDerivZipper22 = printSerializedDerivZipper2(dictIsRuleLabel);
     var unzipper2 = unzipper(isExprLabelDerivLabel2);
     var step5 = step4(dictIsRuleLabel);
     var stateToDerivTerm2 = stateToDerivTerm(dictIsRuleLabel);
     var renderPath2 = renderPath(dictIsRuleLabel);
-    var renderDerivTerm2 = renderDerivTerm(dictIsRuleLabel);
+    var renderDerivTerm3 = renderDerivTerm(dictIsRuleLabel);
     var renderSSTerm2 = renderSSTerm(dictIsRuleLabel);
     return function(_unit) {
       var editorIdPrefixNum = editorPrefix.get(unit);
@@ -46332,34 +46255,21 @@
       return component(function(tokens) {
         return function(spec) {
           var initState = unsafePerformEffect(function() {
-            var $$default2 = pure37(new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(new Zipper(mempty4, spec.dterm)))));
+            var $$default2 = pure38(new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(new Zipper(mempty4, spec.dterm)))));
             return function __do2() {
               var param2 = get_url_search_param("UserStudyProgramIndex")();
-              var $261 = $$null3(param2);
-              if ($261) {
+              var $256 = $$null3(param2);
+              if ($256) {
                 return $$default2();
               }
               ;
-              var v1 = fromString(param2);
-              if (v1 instanceof Nothing) {
-                return $$default2();
+              var v1 = lookup20(param2)(program_strings);
+              if (v1 instanceof Just && v1.value0 instanceof Just) {
+                var dterm = decodeSerializedZipper23(spec.clipboardSort)(v1.value0.value0);
+                return new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(new Zipper(mempty4, dterm))));
               }
               ;
-              if (v1 instanceof Just) {
-                var v2 = index(program_strings)(v1.value0);
-                if (v2 instanceof Nothing) {
-                  return $$default2();
-                }
-                ;
-                if (v2 instanceof Just) {
-                  var dterm = decodeSerializedZipper23(spec.clipboardSort)(v2.value0);
-                  return new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(new Zipper(mempty4, dterm))));
-                }
-                ;
-                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 110, column 13 - line 114, column 116): " + [v2.constructor.name]);
-              }
-              ;
-              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 107, column 9 - line 114, column 116): " + [v1.constructor.name]);
+              return $$default2();
             };
           }());
           return bind24(useState(initState))(function(v1) {
@@ -46389,17 +46299,17 @@
                               }
                               ;
                               if (history2.value0 instanceof CursorState && (history2.value0.value0.mode instanceof BufferCursorMode && true)) {
-                                return $lazy_popHistory(533);
+                                return $lazy_popHistory(531);
                               }
                               ;
                               return pure210(new Just(history2.value0));
                             });
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 519, column 7 - line 534, column 32): " + [history2.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 517, column 7 - line 532, column 32): " + [history2.constructor.name]);
                         });
                       });
-                      var popHistory = $lazy_popHistory(516);
+                      var popHistory = $lazy_popHistory(514);
                       var normalizeZipperpToState = function(zipperp) {
                         if (zipperp instanceof Left) {
                           return new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(zipperp.value0)));
@@ -46411,14 +46321,14 @@
                           });
                         }
                         ;
-                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 417, column 39 - line 419, column 53): " + [zipperp.constructor.name]);
+                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 415, column 39 - line 417, column 53): " + [zipperp.constructor.name]);
                       };
                       var getState = get4(v1.value1);
                       var getFacade = liftEffect8(read(v4.value1));
                       var getElementIdByHoleyDerivPath = function() {
-                        var $531 = fromHoleyDerivPathToElementId2(pathIdPrefix);
-                        return function($532) {
-                          return pure210($531($532));
+                        var $525 = fromHoleyDerivPathToElementId2(pathIdPrefix);
+                        return function($526) {
+                          return pure210($525($526));
                         };
                       }();
                       var getElementByHoleyDerivPath = function(hdzipper) {
@@ -46435,7 +46345,7 @@
                                 return pure210(v7.value0);
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 147, column 109 - line 151, column 31): " + [v7.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 145, column 109 - line 149, column 31): " + [v7.constructor.name]);
                             });
                           });
                         });
@@ -46454,15 +46364,15 @@
                                 });
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 172, column 9 - line 176, column 58): " + [mb_hdpath_new.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 170, column 9 - line 174, column 58): " + [mb_hdpath_new.constructor.name]);
                             }();
                             if (mb_hdpath_old instanceof Nothing) {
                               return update2;
                             }
                             ;
                             if (mb_hdpath_old instanceof Just) {
-                              var $288 = eq24(new Just(mb_hdpath_old.value0))(mb_hdpath_new);
-                              if ($288) {
+                              var $282 = eq24(new Just(mb_hdpath_old.value0))(mb_hdpath_new);
+                              if ($282) {
                                 return pure210(unit);
                               }
                               ;
@@ -46473,7 +46383,7 @@
                               });
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 156, column 7 - line 169, column 19): " + [mb_hdpath_old.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 154, column 7 - line 167, column 19): " + [mb_hdpath_old.constructor.name]);
                           };
                         };
                       };
@@ -46507,7 +46417,7 @@
                             return pure210(unit);
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 234, column 7 - line 243, column 20): " + [st.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 232, column 7 - line 241, column 20): " + [st.constructor.name]);
                         }())(function() {
                           return discard17(liftEffect8(write(st)(v4.value1)))(function() {
                             return liftEffect8(write(true)(v2.value1));
@@ -46537,7 +46447,7 @@
                           return setHighlightElement(Nothing.value);
                         }
                         ;
-                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 201, column 7 - line 212, column 38): " + [currentFacade.constructor.name]);
+                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 199, column 7 - line 210, column 38): " + [currentFacade.constructor.name]);
                       });
                       var setFacade = function(st) {
                         return discard17(function() {
@@ -46593,7 +46503,7 @@
                               }));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 426, column 9 - line 431, column 88): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 424, column 9 - line 429, column 88): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SelectState) {
@@ -46612,7 +46522,7 @@
                               }));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 433, column 9 - line 437, column 88): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 431, column 9 - line 435, column 88): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof TopState) {
@@ -46645,17 +46555,17 @@
                                 }));
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 444, column 26 - line 447, column 90): " + [v8.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 442, column 26 - line 445, column 90): " + [v8.constructor.name]);
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 442, column 9 - line 447, column 90): " + [mb_select.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 440, column 9 - line 445, column 90): " + [mb_select.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SmallStepState) {
                             return pure210(unit);
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 421, column 36 - line 448, column 36): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 419, column 36 - line 446, column 36): " + [v7.constructor.name]);
                         });
                       };
                       var moveToNextHole = bind115(getFacade)(function(v7) {
@@ -46675,7 +46585,7 @@
                             return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 341, column 11 - line 343, column 93): " + [v8.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 339, column 11 - line 341, column 93): " + [v8.constructor.name]);
                         }
                         ;
                         return pure210(unit);
@@ -46697,15 +46607,15 @@
                             return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 349, column 11 - line 351, column 93): " + [v8.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 347, column 11 - line 349, column 93): " + [v8.constructor.name]);
                         }
                         ;
                         return pure210(unit);
                       });
                       var onMouseDown2 = function(hdzipper) {
                         return function(event) {
-                          var $341 = isValidCursor2(spec.isValidCursorSort)(hdzipper);
-                          if ($341) {
+                          var $335 = isValidCursor2(spec.isValidCursorSort)(hdzipper);
+                          if ($335) {
                             return discard17(liftEffect8(stopPropagation(toEvent(event))))(function() {
                               return setFacade(new CursorState(cursorFromHoleyDerivZipper(hdzipper)));
                             });
@@ -46719,8 +46629,8 @@
                           var stopprop = liftEffect8(stopPropagation(toEvent(event)));
                           var checkValidity10 = function(dzipperp) {
                             var v7 = derivZipperpSorts2(dzipperp);
-                            var $343 = isValidSelect2(spec)(dzipperp);
-                            if ($343) {
+                            var $337 = isValidSelect2(spec)(dzipperp);
+                            if ($337) {
                               return discard17(stopprop)(function() {
                                 return setFacade(new SelectState({
                                   dzipperp
@@ -46731,8 +46641,8 @@
                             return pure210(unit);
                           };
                           var dzipper = hdzipperDerivZipper2(hdzipper);
-                          var $346 = (buttons(event) & 1) !== 0;
-                          if ($346) {
+                          var $340 = (buttons(event) & 1) !== 0;
+                          if ($340) {
                             return discard17(bind115(getFacade)(function(v7) {
                               if (v7 instanceof CursorState) {
                                 var v8 = zipperpFromTo2(hdzipperDerivZipper2(v7.value0.hdzipper))(dzipper);
@@ -46744,7 +46654,7 @@
                                   return checkValidity10(v8.value0);
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 857, column 13 - line 859, column 54): " + [v8.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 855, column 13 - line 857, column 54): " + [v8.constructor.name]);
                               }
                               ;
                               if (v7 instanceof SelectState) {
@@ -46766,10 +46676,10 @@
                                     });
                                   }
                                   ;
-                                  throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 871, column 17 - line 875, column 110): " + [v9.constructor.name]);
+                                  throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 869, column 17 - line 873, column 110): " + [v9.constructor.name]);
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 864, column 13 - line 875, column 110): " + [v8.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 862, column 13 - line 873, column 110): " + [v8.constructor.name]);
                               }
                               ;
                               if (v7 instanceof TopState) {
@@ -46780,14 +46690,14 @@
                                 return pure210(unit);
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 855, column 23 - line 877, column 40): " + [v7.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 853, column 23 - line 875, column 40): " + [v7.constructor.name]);
                             }))(function() {
                               return setHighlightElement(Nothing.value);
                             });
                           }
                           ;
-                          var $359 = isValidCursor2(spec.isValidCursorSort)(hdzipper);
-                          if ($359) {
+                          var $353 = isValidCursor2(spec.isValidCursorSort)(hdzipper);
+                          if ($353) {
                             return discard17(stopprop)(function() {
                               return setHighlightElement(new Just(hdzipperHoleyDerivPath(hdzipper)));
                             });
@@ -46846,7 +46756,7 @@
                       var genAndCopyClipTerm = function(dterm) {
                         var generalizingChange = spec.generalizeDerivation(derivTermSort3(dterm));
                         var generalizedDTerm = assertJustExpr2(stepRepeatedly2(Nothing.value)(wrapBoundary3(Down.value)(generalizingChange)(termToSSTerm(dterm)))(spec.stepRules));
-                        var forgottenDTerm = map74(forgetDerivLabelSorts2(spec.forgetSorts))(generalizedDTerm);
+                        var forgottenDTerm = map75(forgetDerivLabelSorts2(spec.forgetSorts))(generalizedDTerm);
                         var unifyingSub$prime = fromJust$prime("shouldn't fail if term typechecks")(inferF2(forgottenDTerm));
                         var expectedClipSort = spec.clipboardSort(derivTermSort3(forgottenDTerm));
                         var forgottenTopSort = subMetaExprPartially3(unifyingSub$prime)(derivTermSort3(forgottenDTerm));
@@ -46857,7 +46767,7 @@
                       var genAndCopyClipPath = function(dpath) {
                         var generalizingChange = spec.generalizeDerivation(nonemptyUpPathTopSort2(dpath));
                         var v7 = ssTermToChangedPath2(stepRepeatedly2(Nothing.value)(wrapBoundary3(Down.value)(generalizingChange)(wrapPath(dpath)(new Expr(new Marker(0), []))))(spec.stepRules));
-                        var forgottenDPath = map123(forgetDerivLabelSorts2(spec.forgetSorts))(v7.value1.value0);
+                        var forgottenDPath = map125(forgetDerivLabelSorts2(spec.forgetSorts))(v7.value1.value0);
                         var unifyingSub$prime = fromJust$prime("shouldn't fail if term typechecks")(inferPathF2(nonemptyPathInnerSort2(forgottenDPath))(forgottenDPath));
                         var expectedClipSort = spec.clipboardSort(nonemptyUpPathTopSort2(forgottenDPath));
                         var forgottenTopSort = subMetaExprPartially3(unifyingSub$prime)(nonemptyUpPathTopSort2(forgottenDPath));
@@ -46867,12 +46777,12 @@
                       };
                       var finalizeSmallstep = function(ssterm) {
                         var preFinal = termToZipper2(stepRepeatedly2(Nothing.value)(ssterm)(spec.stepRules));
-                        var forgottenFinal = map215(forgetDerivLabelSorts2(spec.forgetSorts))(preFinal);
+                        var forgottenFinal = map216(forgetDerivLabelSorts2(spec.forgetSorts))(preFinal);
                         var forgottenFinalSort = derivZipperTopSort2(forgottenFinal);
                         var expectedProgSort = spec.clipboardSort(forgottenFinalSort);
                         var unifyingSub = fst(fromJust$prime("fss")(runUnifyMonad2(bind210(inferZipperFImpl2(forgottenFinal))(function() {
                           return bind210(unifyFImpl2(expectedProgSort)(forgottenFinalSort))(function() {
-                            return pure38(unit);
+                            return pure39(unit);
                           });
                         }))));
                         var $$final = subDerivZipper2(unifyingSub)(forgottenFinal);
@@ -46892,7 +46802,7 @@
                           return bind115(getCursorState("handleAction"))(function(cursor3) {
                             var up = hdzipperDerivPath(cursor3.hdzipper);
                             var dterm = hdzipperDerivTerm2(cursor3.hdzipper);
-                            var ssterm = setupSSTermFromWrapAction2(v7.value0.cursorGoesInside)(map123(subDerivLabel2(v7.value0.sub))(up))(v7.value0.topChange)(v7.value0.dpath)(v7.value0.botChange)(map74(subDerivLabel2(v7.value0.sub))(dterm));
+                            var ssterm = setupSSTermFromWrapAction2(v7.value0.cursorGoesInside)(map125(subDerivLabel2(v7.value0.sub))(up))(v7.value0.topChange)(v7.value0.dpath)(v7.value0.botChange)(map75(subDerivLabel2(v7.value0.sub))(dterm));
                             return doSmallstep(ssterm);
                           });
                         }
@@ -46915,7 +46825,7 @@
                           });
                         }
                         ;
-                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 295, column 20 - line 335, column 27): " + [v7.constructor.name]);
+                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 293, column 20 - line 333, column 27): " + [v7.constructor.name]);
                       };
                       var handleBufferOutput = function(v7) {
                         if (v7 instanceof ActionOutput) {
@@ -46928,7 +46838,7 @@
                           });
                         }
                         ;
-                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 810, column 26 - line 814, column 83): " + [v7.constructor.name]);
+                        throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 808, column 26 - line 812, column 83): " + [v7.constructor.name]);
                       };
                       var deleteTermAtCursor = function(restOfProg) {
                         return function(dterm) {
@@ -46945,7 +46855,7 @@
                             });
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 505, column 9 - line 514, column 36): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 503, column 9 - line 512, column 36): " + [v7.constructor.name]);
                         };
                       };
                       var computeCursorMovement = function(dir2) {
@@ -46969,7 +46879,7 @@
                               return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 394, column 11 - line 396, column 93): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 392, column 11 - line 394, column 93): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SelectState) {
@@ -46990,14 +46900,14 @@
                               return setFacade(new CursorState(cursorFromHoleyDerivZipper(v8.value0)));
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 412, column 11 - line 414, column 93): " + [v8.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 410, column 11 - line 412, column 93): " + [v8.constructor.name]);
                           }
                           ;
                           if (v7 instanceof SmallStepState) {
                             return pure210(unit);
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 391, column 21 - line 415, column 38): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 389, column 21 - line 413, column 38): " + [v7.constructor.name]);
                         });
                       };
                       var moveCursorVertically = function(verticalOrHorizontal) {
@@ -47015,8 +46925,8 @@
                                 return function(hdzipper) {
                                   return function(check) {
                                     return bind115(getPos(hdzipper))(function(newPos) {
-                                      var $399 = check(newPos);
-                                      if ($399) {
+                                      var $393 = check(newPos);
+                                      if ($393) {
                                         return pure210(hdzipper);
                                       }
                                       ;
@@ -47029,7 +46939,7 @@
                                         return goUntil(dir2)(v8.value0)(check);
                                       }
                                       ;
-                                      throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 366, column 30 - line 368, column 78): " + [v8.constructor.name]);
+                                      throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 364, column 30 - line 366, column 78): " + [v8.constructor.name]);
                                     });
                                   };
                                 };
@@ -47053,8 +46963,8 @@
                                       return newpos.left + 4 >= startRect.left || newpos.top > rect1.top + 4;
                                     }))(function(pos2) {
                                       return bind115(getPos(pos2))(function(rect2) {
-                                        var $403 = rect2.top > rect1.top + 4;
-                                        if ($403) {
+                                        var $397 = rect2.top > rect1.top + 4;
+                                        if ($397) {
                                           var v8 = computeCursorMovement(prevDir)(pos2);
                                           if (v8 instanceof Nothing) {
                                             return pure210(pos2);
@@ -47064,7 +46974,7 @@
                                             return pure210(v8.value0);
                                           }
                                           ;
-                                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 379, column 30 - line 381, column 45): " + [v8.constructor.name]);
+                                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 377, column 30 - line 379, column 45): " + [v8.constructor.name]);
                                         }
                                         ;
                                         return pure210(pos2);
@@ -47097,8 +47007,8 @@
                         var cmdKey = ctrlKey3 || metaKey3;
                         return bind115(getFacade)(function(v7) {
                           if (v7 instanceof CursorState && v7.value0.mode instanceof BufferCursorMode) {
-                            var $410 = key8 === "Tab" || (key8 === "Enter" || key8 === " ");
-                            if ($410) {
+                            var $404 = key8 === "Tab" || (key8 === "Enter" || key8 === " ");
+                            if ($404) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return discard17(tell1(tokens.slotToken)(bufferSlot)(unit)(SubmitBufferQuery.create))(function() {
                                   return when7(key8 === " ")(moveToNextHole);
@@ -47106,15 +47016,15 @@
                               });
                             }
                             ;
-                            var $411 = key8 === "Escape";
-                            if ($411) {
+                            var $405 = key8 === "Escape";
+                            if ($405) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return setBufferEnabled(false)(Nothing.value);
                               });
                             }
                             ;
-                            var $412 = isJust(readVerticalDir(key8));
-                            if ($412) {
+                            var $406 = isJust(readVerticalDir(key8));
+                            if ($406) {
                               return assert(just("handleKeyboardEvent")(readVerticalDir(key8)))(function() {
                                 return function(dir2) {
                                   return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
@@ -47130,16 +47040,16 @@
                           if (v7 instanceof CursorState && v7.value0.mode instanceof NavigationCursorMode) {
                             var path = hdzipperDerivPath(v7.value0.hdzipper);
                             var dterm = hdzipperDerivTerm2(v7.value0.hdzipper);
-                            var $415 = isJust(spec.keyAction(key8)(derivTermSort3(dterm)));
-                            if ($415) {
+                            var $409 = isJust(spec.keyAction(key8)(derivTermSort3(dterm)));
+                            if ($409) {
                               return discard17(setState(v7))(function() {
                                 var action2 = fromJust6(spec.keyAction(key8)(derivTermSort3(dterm)));
                                 return handleAction(action2);
                               });
                             }
                             ;
-                            var $416 = cmdKey && key8 === "z";
-                            if ($416) {
+                            var $410 = cmdKey && key8 === "z";
+                            if ($410) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return bind115(popHistory)(function(v82) {
                                   return bind115(popHistory)(function(v9) {
@@ -47151,19 +47061,19 @@
                                       return setState(v9.value0);
                                     }
                                     ;
-                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 592, column 49 - line 594, column 39): " + [v9.constructor.name]);
+                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 590, column 49 - line 592, column 39): " + [v9.constructor.name]);
                                   });
                                 });
                               });
                             }
                             ;
-                            var $419 = cmdKey && key8 === "c";
-                            if ($419) {
+                            var $413 = cmdKey && key8 === "c";
+                            if ($413) {
                               return genAndCopyClipTerm(dterm);
                             }
                             ;
-                            var $420 = cmdKey && key8 === "x";
-                            if ($420) {
+                            var $414 = cmdKey && key8 === "x";
+                            if ($414) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return discard17(genAndCopyClipTerm(dterm))(function() {
                                   return deleteTermAtCursor(path)(dterm);
@@ -47171,8 +47081,8 @@
                               });
                             }
                             ;
-                            var $421 = cmdKey && key8 === "v";
-                            if ($421) {
+                            var $415 = cmdKey && key8 === "v";
+                            if ($415) {
                               return bind115(liftEffect8(read(v5.value1)))(function(v82) {
                                 if (v82 instanceof Nothing) {
                                   return pure210(unit);
@@ -47199,7 +47109,7 @@
                                       return pure210(unit);
                                     }
                                     ;
-                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 622, column 17 - line 639, column 34): " + [v11.constructor.name]);
+                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 620, column 17 - line 637, column 34): " + [v11.constructor.name]);
                                   });
                                 }
                                 ;
@@ -47212,8 +47122,8 @@
                                       var unifiedDTerm = subDerivTerm3(v10.value0.value1)(v9.value1);
                                       var unifiedPath = subDerivPath2(v10.value0.value1)(path);
                                       return bind115(function() {
-                                        var $440 = hdzIsHolePosition2(v7.value0.hdzipper);
-                                        if ($440) {
+                                        var $434 = hdzIsHolePosition2(v7.value0.hdzipper);
+                                        if ($434) {
                                           return pure210(unit);
                                         }
                                         ;
@@ -47228,16 +47138,16 @@
                                       return pure210(unit);
                                     }
                                     ;
-                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 649, column 17 - line 666, column 34): " + [v10.constructor.name]);
+                                    throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 647, column 17 - line 664, column 34): " + [v10.constructor.name]);
                                   });
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 608, column 53 - line 666, column 34): " + [v82.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 606, column 53 - line 664, column 34): " + [v82.constructor.name]);
                               });
                             }
                             ;
-                            var $448 = cmdKey && key8 === "s";
-                            if ($448) {
+                            var $442 = cmdKey && key8 === "s";
+                            if ($442) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return bind115(getBoundingClientRectFromPath(hdzipperHoleyDerivPath(v7.value0.hdzipper)))(function(rect) {
                                   return log5(pretty6("[print sort]" + bullets(["path = " + pretty33(path), "dterm = " + pretty42(dterm), "sort = " + pretty52(derivTermSort3(dterm)), "dlabel = " + pretty62(exprLabel(dterm)), "rect = " + show18(rect), "serialized-path = " + serializePath2(path)])));
@@ -47245,23 +47155,23 @@
                               });
                             }
                             ;
-                            var $449 = cmdKey && key8 === "p";
-                            if ($449) {
+                            var $443 = cmdKey && key8 === "p";
+                            if ($443) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return discard17(function() {
                                   if (shiftKey3) {
-                                    return log5(encode_uri_string(stringify(encodeJson3(hdzipperDerivZipper2(v7.value0.hdzipper)))));
+                                    return log5(encode_uri_string(printSerializedDerivZipper22(hdzipperDerivZipper2(v7.value0.hdzipper))));
                                   }
                                   ;
-                                  return log5(stringify(encodeJson3(hdzipperDerivZipper2(v7.value0.hdzipper))));
+                                  return log5(printSerializedDerivZipper22(hdzipperDerivZipper2(v7.value0.hdzipper)));
                                 }())(function() {
                                   return pure210(unit);
                                 });
                               });
                             }
                             ;
-                            var $451 = isOpenBufferKey(key8);
-                            if ($451) {
+                            var $445 = isOpenBufferKey(key8);
+                            if ($445) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return bind115(function() {
                                   var v82 = hdzipperDerivTerm2(v7.value0.hdzipper);
@@ -47280,22 +47190,22 @@
                               });
                             }
                             ;
-                            var $461 = !cmdKey && eq14(map310(isQueryKey)(keyCodePoint))(new Just(true));
-                            if ($461) {
+                            var $455 = !cmdKey && eq14(map311(isQueryKey)(keyCodePoint))(new Just(true));
+                            if ($455) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return setBufferEnabled(true)(new Just(key8));
                               });
                             }
                             ;
-                            var $462 = key8 === "Backspace" || key8 === "Delete";
-                            if ($462) {
+                            var $456 = key8 === "Backspace" || key8 === "Delete";
+                            if ($456) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return deleteTermAtCursor(path)(dterm);
                               });
                             }
                             ;
-                            var $463 = key8 === "Escape";
-                            if ($463) {
+                            var $457 = key8 === "Escape";
+                            if ($457) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return setFacade(new TopState({
                                   dterm: unzipper2(hdzipperDerivZipper2(v7.value0.hdzipper))
@@ -47303,18 +47213,18 @@
                               });
                             }
                             ;
-                            var $464 = key8 === "ArrowUp";
-                            if ($464) {
+                            var $458 = key8 === "ArrowUp";
+                            if ($458) {
                               return moveCursorVertically(true);
                             }
                             ;
-                            var $465 = key8 === "ArrowDown";
-                            if ($465) {
+                            var $459 = key8 === "ArrowDown";
+                            if ($459) {
                               return moveCursorVertically(false);
                             }
                             ;
-                            var $466 = isJust(readMoveDir(key8));
-                            if ($466) {
+                            var $460 = isJust(readMoveDir(key8));
+                            if ($460) {
                               return assert(just("handleKeyboardEvent")(readMoveDir(key8)))(function() {
                                 return function(dir2) {
                                   return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
@@ -47330,15 +47240,15 @@
                               });
                             }
                             ;
-                            var $468 = shiftKey3 && key8 === "Tab";
-                            if ($468) {
+                            var $462 = shiftKey3 && key8 === "Tab";
+                            if ($462) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return moveToPrevHole;
                               });
                             }
                             ;
-                            var $469 = key8 === " " || key8 === "Tab";
-                            if ($469) {
+                            var $463 = key8 === " " || key8 === "Tab";
+                            if ($463) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return moveToNextHole;
                               });
@@ -47359,36 +47269,36 @@
                                   return v7.value0.dzipperp.value1.value0;
                                 }
                                 ;
-                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 731, column 35 - line 733, column 35): " + [v7.value0.dzipperp.value1.constructor.name]);
+                                throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 729, column 35 - line 731, column 35): " + [v7.value0.dzipperp.value1.constructor.name]);
                               }();
                               var v82 = spec.splitChange(getPathChange22(selection$prime$prime)(spec.forgetSorts));
                               var ssterm = setupSSTermFromWrapAction2(false)(v7.value0.dzipperp.value0)(invert(v82.upChange))(mempty13)(v82.downChange)(v7.value0.dzipperp.value2);
                               return doSmallstep(ssterm);
                             };
-                            var $484 = cmdKey && key8 === "c";
-                            if ($484) {
+                            var $478 = cmdKey && key8 === "c";
+                            if ($478) {
                               return genAndCopyClipPath(either(reversePath5)(identity24)(v7.value0.dzipperp.value1));
                             }
                             ;
-                            var $485 = cmdKey && key8 === "x";
-                            if ($485) {
+                            var $479 = cmdKey && key8 === "x";
+                            if ($479) {
                               return discard17(genAndCopyClipPath(either(reversePath5)(identity24)(v7.value0.dzipperp.value1)))(function() {
                                 return deleteSelection(unit);
                               });
                             }
                             ;
-                            var $486 = key8 === "Escape";
-                            if ($486) {
+                            var $480 = key8 === "Escape";
+                            if ($480) {
                               return setFacade(new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(unzipperp2(v7.value0.dzipperp)))));
                             }
                             ;
-                            var $487 = key8 === "Backspace";
-                            if ($487) {
+                            var $481 = key8 === "Backspace" || key8 === "Delete";
+                            if ($481) {
                               return deleteSelection(unit);
                             }
                             ;
-                            var $488 = isOpenBufferKey(key8);
-                            if ($488) {
+                            var $482 = isOpenBufferKey(key8);
+                            if ($482) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 var cursor3 = cursorFromHoleyDerivZipper(injectHoleyDerivZipper(unzipperp2(v7.value0.dzipperp)));
                                 return discard17(setFacade(new CursorState(cursor3)))(function() {
@@ -47397,8 +47307,8 @@
                               });
                             }
                             ;
-                            var $489 = eq14(map310(isQueryKey)(keyCodePoint))(new Just(true));
-                            if ($489) {
+                            var $483 = eq14(map311(isQueryKey)(keyCodePoint))(new Just(true));
+                            if ($483) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 var cursor3 = cursorFromHoleyDerivZipper(injectHoleyDerivZipper(unzipperp2(v7.value0.dzipperp)));
                                 return discard17(setFacade(new CursorState(cursor3)))(function() {
@@ -47407,8 +47317,8 @@
                               });
                             }
                             ;
-                            var $490 = isJust(readMoveDir(key8));
-                            if ($490) {
+                            var $484 = isJust(readMoveDir(key8));
+                            if ($484) {
                               return assert(just("handleKeyboardEvent")(readMoveDir(key8)))(function() {
                                 return function(dir2) {
                                   return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
@@ -47428,15 +47338,15 @@
                           }
                           ;
                           if (v7 instanceof TopState) {
-                            var $496 = isOpenBufferKey(key8);
-                            if ($496) {
+                            var $490 = isOpenBufferKey(key8);
+                            if ($490) {
                               return discard17(liftEffect8(preventDefault(toEvent2(event))))(function() {
                                 return setFacade(new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(new Zipper(mempty4, v7.value0.dterm)))));
                               });
                             }
                             ;
-                            var $497 = isJust(readMoveDir(key8));
-                            if ($497) {
+                            var $491 = isJust(readMoveDir(key8));
+                            if ($491) {
                               return setFacade(new CursorState(cursorFromHoleyDerivZipper(injectHoleyDerivZipper(new Zipper(mempty4, v7.value0.dterm)))));
                             }
                             ;
@@ -47444,8 +47354,8 @@
                           }
                           ;
                           if (v7 instanceof SmallStepState) {
-                            var $499 = key8 === " ";
-                            if ($499) {
+                            var $493 = key8 === " ";
+                            if ($493) {
                               var v8 = step5(Nothing.value)(v7.value0.ssterm)(spec.stepRules);
                               if (v8 instanceof Nothing) {
                                 return finalizeSmallstep(v7.value0.ssterm);
@@ -47457,11 +47367,11 @@
                                 }));
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 796, column 13 - line 798, column 76): " + [v8.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 794, column 13 - line 796, column 76): " + [v8.constructor.name]);
                             }
                             ;
-                            var $502 = key8 === "Enter";
-                            if ($502) {
+                            var $496 = key8 === "Enter";
+                            if ($496) {
                               var $$final = stepRepeatedly2(Nothing.value)(v7.value0.ssterm)(spec.stepRules);
                               return finalizeSmallstep($$final);
                             }
@@ -47469,7 +47379,7 @@
                             return pure210(unit);
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 557, column 21 - line 803, column 22): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 555, column 21 - line 801, column 22): " + [v7.constructor.name]);
                         });
                       };
                       var locs = {
@@ -47480,9 +47390,9 @@
                       };
                       return discard6(useLifecycleEffect(bind115(liftEffect8(bind31(windowImpl)(document)))(function(doc) {
                         return bind115(subscribe3(eventListener2(keydown)(toEventTarget(doc))(function() {
-                          var $533 = map310(handleKeyboardEvent);
-                          return function($534) {
-                            return $533(fromEvent($534));
+                          var $527 = map311(handleKeyboardEvent);
+                          return function($528) {
+                            return $527(fromEvent($528));
                           };
                         }())))(function(kbdSubId) {
                           return pure210(new Just(unsubscribe3(kbdSubId)));
@@ -47507,7 +47417,7 @@
                             });
                           }
                           ;
-                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 919, column 33 - line 926, column 51): " + [v7.constructor.name]);
+                          throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 917, column 33 - line 924, column 51): " + [v7.constructor.name]);
                         }))(function() {
                           return pure25(div3([classNames(["editor"])])([div3([classNames(["program"]), onMouseLeave(function(event) {
                             return discard17(liftEffect8(stopPropagation(toEvent(event))))(function() {
@@ -47517,14 +47427,14 @@
                             if (v1.value0 instanceof CursorState) {
                               var dzipper = hdzipperDerivZipper2(v1.value0.value0.hdzipper);
                               if (!v1.value0.value0.hdzipper.value1) {
-                                return [renderPath2(locs)(dzipper)(renderDerivTerm2(locs)(true)(false)(dzipper))(defaultRenderingContext(pathIdPrefix))];
+                                return [renderPath2(locs)(dzipper)(renderDerivTerm3(locs)(true)(false)(dzipper))(defaultRenderingContext(pathIdPrefix))];
                               }
                               ;
                               if (v1.value0.value0.hdzipper.value1) {
-                                return [renderPath2(locs)(dzipper)(renderDerivTerm2(locs)(false)(true)(dzipper))(defaultRenderingContext(pathIdPrefix))];
+                                return [renderPath2(locs)(dzipper)(renderDerivTerm3(locs)(false)(true)(dzipper))(defaultRenderingContext(pathIdPrefix))];
                               }
                               ;
-                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 957, column 11 - line 967, column 16): " + [v1.value0.value0.hdzipper.constructor.name]);
+                              throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 955, column 11 - line 965, column 16): " + [v1.value0.value0.hdzipper.constructor.name]);
                             }
                             ;
                             if (v1.value0 instanceof SelectState) {
@@ -47532,14 +47442,14 @@
                             }
                             ;
                             if (v1.value0 instanceof TopState) {
-                              return [renderDerivTerm2(locs)(false)(false)(new Zipper(Nil.value, v1.value0.value0.dterm))(defaultRenderingContext(pathIdPrefix))];
+                              return [renderDerivTerm3(locs)(false)(false)(new Zipper(Nil.value, v1.value0.value0.dterm))(defaultRenderingContext(pathIdPrefix))];
                             }
                             ;
                             if (v1.value0 instanceof SmallStepState) {
                               return [div3([classNames(["smallstep-program"])])([renderSSTerm2(locs)(v1.value0.value0.ssterm)(defaultRenderingContext(pathIdPrefix))])];
                             }
                             ;
-                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 953, column 7 - line 975, column 15): " + [v1.value0.constructor.name]);
+                            throw new Error("Failed pattern match at Language.Pantograph.Generic.Rendering.Editor (line 951, column 7 - line 973, column 15): " + [v1.value0.constructor.name]);
                           }())]));
                         });
                       });
@@ -47576,7 +47486,7 @@
   var discard23 = /* @__PURE__ */ discard18(bindHalogenM);
   var modify_5 = /* @__PURE__ */ modify_2(monadStateHalogenM);
   var request3 = /* @__PURE__ */ request()(editorIsSymbol)(ordUnit);
-  var pure39 = /* @__PURE__ */ pure(applicativeHalogenM);
+  var pure40 = /* @__PURE__ */ pure(applicativeHalogenM);
   var discard33 = /* @__PURE__ */ discard18(bindAff);
   var log6 = /* @__PURE__ */ log3(monadEffectAff);
   var bind116 = /* @__PURE__ */ bind(bindAff);
@@ -47794,7 +47704,7 @@
                   }
                   ;
                   if (mprog instanceof Nothing) {
-                    return pure39(unit);
+                    return pure40(unit);
                   }
                   ;
                   throw new Error("Failed pattern match at Tutorial.EditorTutorial2 (line 176, column 13 - line 180, column 37): " + [mprog.constructor.name]);
