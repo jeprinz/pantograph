@@ -13,6 +13,7 @@ to generate this file without the comments in this block.
 { name = "pantograph"
 , dependencies =
   [ "aff"
+  , "aff-promise"
   , "argonaut"
   , "argonaut-codecs"
   , "argonaut-core"

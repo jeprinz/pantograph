@@ -37,12 +37,13 @@ import Effect.Class (liftEffect)
 import Effect.Class.Console as Console
 import Effect.Ref as Ref
 import Effect.Unsafe (unsafePerformEffect)
+import Halogen (liftAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.Hooks as HK
 import Halogen.Query.Event as HQ
-import Halogen.Utilities (classNames, encode_uri_string, get_url_search_param, setClassName)
+import Halogen.Utilities (classNames, encode_uri_string, get_url_search_param, navigator_clipboard_text, setClassName)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Grammar as Grammar
@@ -682,6 +683,11 @@ editorComponent _unit =
             else
               Console.log $ printSerializedDerivZipper2 $ hdzipperDerivZipper cursor.hdzipper
             pure unit
+          else if cmdKey && key == "l" then do
+            liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event
+            s <- liftAff $ navigator_clipboard_text
+            let dterm' = decodeSerializedZipper2 identity s
+            setState (TopState { dterm: dterm' })
           else if isOpenBufferKey key then do
             -- enter BufferCursorMode or StringCursorMode depending on the dterm
             liftEffect $ Event.preventDefault $ KeyboardEvent.toEvent event

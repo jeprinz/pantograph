@@ -22,9 +22,10 @@
     "build-prod": "spago -x spago.production.dhall build --purs-args \"-o output-prod -g sourcemaps --json-errors\"",
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/pantograph.js",
     "build-tutorial": "npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js && rm -rf docs && cp -r dist docs",
-    "build-standalone": "npx esbuild standalone.js --bundle --outfile=dist/pantograph.js\n",
+    "build-standalone": "npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js\n",
     "test": "npx spago test",
-    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outfile=dist/pantograph.js --servedir=dist"
+    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outfile=dist/pantograph.js --servedir=dist",
+    "publish": "npm run build-standalone && npm run build-tutorial && git add . && git commit -m\"publish\" && git push"
   },
   "repository": {
     "type": "git",

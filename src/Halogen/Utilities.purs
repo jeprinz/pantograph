@@ -1,16 +1,20 @@
 module Halogen.Utilities where
 
 import Prelude
+
 import Bug as Bug
+import Control.Promise (Promise, toAffE)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Effect (Effect)
+import Effect.Aff (Aff)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Hooks as HK
 import Log as Log
+import Partial.Unsafe (unsafeCrashWith)
 import Web.DOM as DOM
 import Web.DOM.DOMTokenList as DOMTokenList
 import Web.DOM.Document as Document
@@ -48,3 +52,8 @@ foreign import fromInputEventToTargetValue :: Event -> Effect String
 foreign import get_url_search_param :: String -> Effect String
 
 foreign import encode_uri_string :: String -> String
+
+foreign import navigator_clipboard_text_ :: Effect (Promise String)
+
+navigator_clipboard_text :: Aff String
+navigator_clipboard_text = toAffE navigator_clipboard_text_
