@@ -18,14 +18,16 @@
     "postinstall": "spago install",
     "clean": "rm -rf node_modules output .spago *.lock .cache",
     "clean-purscript": "rm -rf output .spago .psc-ide-port .psci_modules",
-    "build": "npx spago build --purs-args \"--codegen=sourcemaps,js\"",
+    "test": "npx spago test",
+    "build-old": "npx spago build --purs-args \"--codegen=sourcemaps,js\"",
     "build-prod": "spago -x spago.production.dhall build --purs-args \"-o output-prod -g sourcemaps --json-errors\"",
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/pantograph.js",
-    "build-tutorial": "npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js && rm -rf docs && cp -r dist docs",
-    "build-standalone": "npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js\n",
-    "test": "npx spago test",
-    "serve": "npm run build && esbuild index.js --sourcemap --bundle --outfile=dist/pantograph.js --servedir=dist",
-    "publish": "npm run build-standalone && npm run build-tutorial && git add . && git commit -m\"publish\" && git push"
+    "build-tutorial": "npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js",
+    "build-standalone": "npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js",
+    "build": "npm run build-tutorial && npm run build-standalone",
+    "serve": "npm run build && npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js --servedir=dist",
+    "docs": "npm run build && rm -rf docs && cp -r dist docs",
+    "publish": "npm run docs && git add . && git commit -m\"publish\" && git push"
   },
   "repository": {
     "type": "git",
