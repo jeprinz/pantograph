@@ -1120,7 +1120,7 @@ isNeutralFormWithCursor t = case t of
 
 -- up{t}_(Term G (+ A -> B)) ~~> up{App t ?}_(Term G B)
 wrapApp :: StepRule
-wrapApp (Just ((SSInj (DerivLabel Lam _)) /\ _ /\ _)) _ = Nothing -- Don't wrap an app if the thing above is a Lambda, because instead we want to unwrap the lambda!
+--wrapApp (Just ((SSInj (DerivLabel Lam _)) /\ _ /\ _)) _ = Nothing -- Don't wrap an app if the thing above is a Lambda, because instead we want to unwrap the lambda!
 wrapApp th ssterm =
     Smallstep.makeUpRule
     (TermSort %+- [{-gamma-}cSlot, dPLUS Arrow [{-a-}slot] {-b-}cSlot []])
