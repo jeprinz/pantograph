@@ -168,7 +168,8 @@ lessons =
                 ]
             , HH.p_ $ parseMd """Also,"""
             , HH.ul_
-                [ HH.li_ $ parseMd """ ♯bold⟦Name a variable⟧: Input the variable's name """ ]
+                [ HH.li_ $ parseMd """ ♯bold⟦Name a variable⟧: Input the variable's name """
+                , HH.li_ $ parseMd """ ♯bold⟦Input a λ abstraction⟧: Type "lambda" """ ]
             , HH.p_
                 $ parseMd
                     """
@@ -358,12 +359,12 @@ lessons =
 
           You will switch the order of inputs ♯code⟦x⟧ and ♯code⟦y⟧ in the definition of ♯code⟦average⟧:
 
-          ♯task⟦Select the "x" input: drag from the "fun" in "fun x" to the "fun" in "fun y".⟧
+          ♯task⟦Select the "x" input: drag from the "λ" in "λ x" to the "λ" in "λ y".⟧
           ♯task⟦Cut.⟧
 
           Since ♯code⟦average⟧'s first input was removed, the argument ♯code⟦1⟧ in ♯code⟦(average 1 4 20)⟧ is ♯greyError⟦out-of-place⟧.
 
-          ♯task⟦Move to the "z" argument: click on the "fun" in "fun z".⟧
+          ♯task⟦Move to the "z" argument: click on the "λ" in "λ z".⟧
           ♯task⟦Paste.⟧
 
           Now, fix the out-of-place argument ♯code⟦1⟧ in the ♯code⟦average⟧ call in the body of ♯code⟦result⟧ by cut-pasting it to the right place.
@@ -475,7 +476,7 @@ lessons =
 
           ♯br♯br
 
-          Example behavior: ♯code⟦map (fun x => (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))⟧
+          Example behavior: ♯code⟦map (λ x => (x + 1)) (cons 0 (cons 1 (cons 2 nil))) = (cons 1 (cons 2 (cons 3)))⟧
 
           ♯br♯br
 
