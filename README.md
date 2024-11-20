@@ -14,6 +14,6 @@ Both sorts and derivations are ultimately just trees, where each node has a labe
 
 A definition of a language consists of several pieces.
 First, you need two types which implement the typeclasses IsExprLabel and IsRulelabel.
-These are the labels for sorts and the labels for types respectively.
+These are the labels for sorts and the labels for derivations respectively.
 
 Then, you need to implement an instance of editorSpec, which defines various further functions involving these types.
