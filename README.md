@@ -50,7 +50,7 @@ The implementation in `src/` is organized as follows:
 To cite the Pantograph paper associated with this repository:
 
 ```bibtex
-@article{examplePaper,
+@article{pantograph,
   author = {Prinz J, Blanchette H, Lampropoulos L},
   title = {Pantograph: A Fluid Intrinsically-Typed Structure Editor},
   journal = {POPL},
