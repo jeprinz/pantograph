@@ -1,7 +1,7 @@
 {
   "name": "pantograph",
   "version": "1.0.0",
-  "description": "A typed zipped structure editor.",
+  "description": "A fluid intrinsically-typed structure editor",
   "directories": {
     "test": "test"
   },
@@ -22,8 +22,8 @@
     "build-old": "npx spago build --purs-args \"--codegen=sourcemaps,js\"",
     "build-prod": "spago -x spago.production.dhall build --purs-args \"-o output-prod -g sourcemaps --json-errors\"",
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/pantograph.js",
-    "build-tutorial": "npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js",
-    "build-standalone": "npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js",
+    "build-tutorial": "spago build && npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js",
+    "build-standalone": "spago build && npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js",
     "build": "npm run build-tutorial && npm run build-standalone",
     "serve": "npm run build && npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js --servedir=dist",
     "docs": "npm run build && rm -rf docs && cp -r dist docs",
