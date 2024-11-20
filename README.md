@@ -2,8 +2,8 @@ This is the source code for Pantograph, a structure editor.
 It was written by Jacob Prinz and Henry Blanchette.
 
 Overall, the source code is designed to support a variety of editors, although only one particular editor is implemented.
-the "src/Language/Pantograph/Generic" folder has things that would be relevant to any editor, while the
-"src/Language/Pantograph/Generic" folder has things relevant to particular languages. The only particular language that
+The "src/Language/Pantograph/Generic" folder has things that would be relevant to any editor, while the
+"src/Language/Pantograph/Specific" folder has things relevant to particular languages. The only particular language that
 we ever finished implementing is the one used in Pantograph, at "src/Language/Pantograph/Generic/Currying.purs".
 
 
