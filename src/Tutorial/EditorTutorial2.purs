@@ -89,6 +89,7 @@ makePantographTutorial spec lessons interpereter =
                 HP.style "height: 1.4em; justify-content: space-between"] [
                 HH.div [ classNames ["PantographTitle"] ] [
                     HH.div_ [HH.text "Pantograph"],
+                    HH.div_ [HH.a [HP.style "color:lightblue" , HP.href "https://github.com/jeprinz/pantograph/blob/main/README.md"] [HH.text "[About]"]],
                     HH.div_ [HH.text "|"],
                     -- HH.div_ [HH.text $ "Lesson [" <> show (state.activeLesson + 1) <> " / " <> show (Array.length state.lessonsSolved) <> "]"]
                     HH.div
