@@ -7,6 +7,38 @@ Associated POPL 2025 paper: https://arxiv.org/pdf/2411.16571.
 
 Try it online [here](https://pantographeditor.github.io/Pantograph/).
 
+## What is Pantograph
+
+### Well-grammared programming (zipper editing)
+
+Unlike a traditional code editor in which text is parsed and then typechecked, Pantograph operates directly on a typed syntax tree.
+Users may fill in typed holes to input programs, here by inserting a list `l2`:
+
+![image](https://github.com/user-attachments/assets/581c07c3-50e4-4af5-80a7-ea19f060c9ba)
+
+Many existing structure editors allow the user to fill holes, and manipulate entire terms.
+But how can one edit existing programs? In particular, suppose that the programmer realizes that l2 never contains negative numbers, and decides to
+optimize the expression by moving the execution of the append operation to after the filter.
+
+To make this edit by only manipulating entire terms would be difficult. One could imagine various user interfaces, but generally the manipulation would look like this:
+
+![image](https://github.com/user-attachments/assets/86cc1dc9-1650-4389-b113-7d723fc3a006)
+
+Pantograph makes edits to existing program easier by introducing a notion of a *tree selection*. If a text selection goes between two text cursors, and a tree cursor goes on a subtree,
+then a tree selection goes between two subtrees. It is the area inside one subtree and outside another, also known as a one-hole context.
+Using this notion, the programmer can make the above edit easily:
+
+![image](https://github.com/user-attachments/assets/ff2d9a5c-9f00-46d2-ab71-1ba6659c3612)
+
+Even better, it turns out that nearly all common program edits on functional code have this form:
+
+![image](https://github.com/user-attachments/assets/252ffa54-8ac4-40d2-905b-9e4cc65a06f4)
+
+We call this editing scheme with tree cursors and selection *zipper editing*.
+
+### Well-typed programming
+TODO
+
 ## Development
 
 To develop Pantograph, you need the following command line tools installed:
