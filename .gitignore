@@ -12,3 +12,4 @@
 /.vscode
 /dist/assets/fonts/FireCode-Regular.ttf
 /dist/**/pantograph.js
+.DS_Store

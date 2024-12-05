@@ -1,7 +1,7 @@
 # Pantograph
 
 This is the source code for Pantograph, a structure editor.
-It was written by [Jacob Prinz](https://jeprinz.github.io/) and [Henry Blanchette](https://plum-umd.github.io/people/#_people/henry_blanchette.md).
+It was written by [Jacob Prinz](https://jeprinz.github.io/) and [Henry Blanchette](https://rybl.net).
 
 Associated POPL 2025 paper: https://arxiv.org/pdf/2411.16571.
 
