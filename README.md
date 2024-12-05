@@ -1,6 +1,6 @@
 # Pantograph
 
-<video src="assets/pantograph-example-1.mov" controls>
+![pantograph-example-1](assets/pantograph-example-1.gif)
 
 This is the source code for Pantograph, a structure editor.
 It was written by [Jacob Prinz](https://jeprinz.github.io/) and [Henry Blanchette](https://rybl.net).
