@@ -50,7 +50,35 @@ Even better, it turns out that nearly all common program edits on functional cod
 We call this editing scheme with tree cursors and selection *zipper editing*.
 
 ### Well-typed programming
-TODO
+
+Zipper editing, like the traditional structure editing it extends, preserves the syntactic well-formedness of programs. However, it does not necessarily preserve well-typedness.
+
+Any system that aims to operate on intrinsically typed terms needs to account for how such an edit changes types in the program. To that end, we will introduce a grammar of type diffs, encoding precisely how a type is transformed into a new type after an edit. 
+
+When the user inserts a `λ` expression around the body of map, Pantograph automatically makes the edits necessary to keep the program well typed. The system adds an application to a hole at the two call sites, and alters the type signature.
+
+![image](assets/map-1.png)
+
+Pantograph fully takes into account the intrinsically-typed structure of the program, so it can handle more deeply-nested edits, for example, adding a higher-order argument.
+
+![image](assets/map-2.png)
+
+Of course, it is not always desirable for an editor to fix typing issues automatically. Sometimes, Pantograph leaves errors in the program for the user to fix later. For example, suppose that the user deletes the f parameter from a finished map function.
+
+When the user makes the deletion, it leaves a couple of errors in the program. There is an unbound call to `f`, and an out of place argument at the two call sites to map. While the system could simply replace the former with a hole and remove the latter two from the program, this would likely erase valuable work that the programmer wanted to keep.
+
+To allow such errors to exist in an otherwise well typed program, Pantograph has three final constructions:
+- **free variables** e.g. in the first code example below, the references to `f` after `λ f` is deleted
+- **commented applications** e.g. in the first code example below, the argument `not` which is given to `map` even though `map` only takes 1 argument after `λ f` is deleted
+- **type error boundaries** e.g. in the second code example below, `(f h)` and `not` no longer have the correct type and Pantograph did not have a canonical way to fix it
+
+![image](assets/map-3.png)
+
+![image](assets/map-4.png)
+
+Note that type error boundaries are just another part of the context, so, for instance, you can delete it as a one-hole context such as in the following code example. Performing this edit will force Pantograph to update _the rest_ of the program to respect the inner type of the type error boundary.
+
+![image](assets/map-5.png)
 
 ## Development
 
