@@ -9,6 +9,17 @@ Associated POPL 2025 paper: [Pantograph: A Fluid and Typed Structure Editor](htt
 
 [Try it online](https://pantographeditor.github.io/Pantograph/).
 
+Table of Contents
+- [Pantograph](#pantograph)
+  - [What is Pantograph](#what-is-pantograph)
+    - [Well-grammared programming (zipper editing)](#well-grammared-programming-zipper-editing)
+    - [Well-typed programming](#well-typed-programming)
+  - [Development](#development)
+  - [Design](#design)
+  - [Organization](#organization)
+  - [Citation](#citation)
+
+
 ## What is Pantograph
 
 ### Well-grammared programming (zipper editing)
