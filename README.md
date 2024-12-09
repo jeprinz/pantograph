@@ -129,7 +129,7 @@ To cite the Pantograph paper associated with this repository:
 ```bibtex
 @article{pantograph,
   author = {Prinz J, Blanchette H, Lampropoulos L},
-  title = {Pantograph: A Fluid Intrinsically-Typed Structure Editor},
+  title = {Pantograph: Pantograph: A Fluid and Typed Structure Editor},
   journal = {POPL},
   year = {2025},
   doi = {10.1145/3704864}
