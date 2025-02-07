@@ -7,7 +7,7 @@ It was written by [Jacob Prinz](https://jeprinz.github.io/) and [Henry Blanchett
 
 POPL 2025 paper: [Pantograph: A Fluid and Typed Structure Editor](https://arxiv.org/pdf/2411.16571).
 
-[Watch the Pantograph presentation](https://www.youtube.com/live/Jff0pIbj8PM?t=6092s)
+[Watch the Pantograph presentation](https://www.youtube.com/live/Jff0pIbj8PM?t=6092s).
 
 [Try Pantograph online](https://pantographeditor.github.io/Pantograph/).
 
