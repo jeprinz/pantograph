@@ -55,7 +55,7 @@ We call this editing scheme with tree cursors and selection *zipper editing*.
 
 Zipper editing, like the traditional structure editing it extends, preserves the syntactic well-formedness of programs. However, it does not necessarily preserve well-typedness.
 
-Any system that aims to operate on intrinsically typed terms needs to account for how such an edit changes types in the program. To that end, we will introduce a grammar of type diffs, encoding precisely how a type is transformed into a new type after an edit. 
+Any system that aims to operate on intrinsically typed terms needs to account for how such an edit changes types in the program. In Pantograph, every edit is a typed refactoring operation.
 
 When the user inserts a `λ` expression around the body of map, Pantograph automatically makes the edits necessary to keep the program well typed. The system adds an application to a hole at the two call sites, and alters the type signature.
 
@@ -78,9 +78,12 @@ To allow such errors to exist in an otherwise well typed program, Pantograph has
 
 ![image](assets/map-4.png)
 
-Note that type error boundaries are just another part of the context, so, for instance, you can delete it as a one-hole context such as in the following code example. Performing this edit will force Pantograph to update _the rest_ of the program to respect the inner type of the type error boundary.
+To some extent, type error boundaries are similar to the type errors placed by familiar type checker. But they are actually first-class terms in the program. Below, the user deletes the type error boundary
+with a selection, which tell's Pantograph to update the surrounding program to fit the type inside the error boundary.
 
 ![image](assets/map-5.png)
+
+In the paper, we describe the math behind this typed refactoring system.
 
 ## Development
 
