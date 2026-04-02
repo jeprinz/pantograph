@@ -1,4 +1,4 @@
-module Language.Pantograph.Specific.CustomLanguage where
+module Language.Pantograph.Specific.CustomLanguage (PreSortLabel(..), RuleLabel(..), editorSpec) where
 
 import Language.Pantograph.Generic.Grammar
 import Prelude
@@ -9,11 +9,13 @@ import Data.Argonaut.Decode.Class (class DecodeJson)
 import Data.Argonaut.Decode.Generic (genericDecodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson)
 import Data.Argonaut.Encode.Generic (genericEncodeJson)
+import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
+import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel)
+import Data.Expr (class IsExprLabel, injectExprChange, (%))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
@@ -21,22 +23,30 @@ import Data.Maybe as Maybe
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
+import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
+import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Base
+import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Partial.Unsafe (unsafeCrashWith)
-import Text.Pretty (class Pretty)
+import Text.Pretty (class Pretty, pretty)
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
 --------------------------------------------------------------------------------
 
-data PreSortLabel = Num | Bool
+data PreSortLabel
+  = NumSort
+  | BoolSort
 
 derive instance Generic PreSortLabel _
 instance Show PreSortLabel where
@@ -58,8 +68,8 @@ instance Pretty PreSortLabel where
   pretty = show
 
 instance IsExprLabel PreSortLabel where
-  prettyExprF'_unsafe (Num /\ _) = "Num"
-  prettyExprF'_unsafe (Bool /\ _) = "Bool"
+  prettyExprF'_unsafe (NumSort /\ _) = "Num"
+  prettyExprF'_unsafe (BoolSort /\ _) = "Bool"
 
   expectedKidsCount _ = 0
 
@@ -151,42 +161,95 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
     Hole -> Yes false
     _ -> No
 
-  -- TODO: is this right?
-  defaultDerivTerm' _ = Nothing -- TODO
+  defaultDerivTerm' sort = pure $ Grammar.makeLabel Hole [ "sort" /\ sort ] % []
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of
-  _ -> unsafeCrashWith "TODO"
+  True -> Grammar.makeRule [] \[] ->
+    [] /\ (BoolSort %|-* [])
+  False -> Grammar.makeRule [] \[] ->
+    [] /\ (BoolSort %|-* [])
+  One -> Grammar.makeRule [] \[] ->
+    [] /\ (NumSort %|-* [])
+  Zero -> Grammar.makeRule [] \[] ->
+    [] /\ (NumSort %|-* [])
+  And -> Grammar.makeRule [] \[] ->
+    [ BoolSort %|-* [], BoolSort %|-* [] ] /\ (BoolSort %|-* [])
+  Plus -> Grammar.makeRule [] \[] ->
+    [ NumSort %|-* [], NumSort %|-* [] ] /\ (NumSort %|-* [])
+  Hole -> Grammar.makeRule [ "sort" ] \[ sort ] ->
+    [] /\ sort
+  Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
+    [ sort ] /\ sort
 
 --------------------------------------------------------------------------------
 -- Rendering
 --------------------------------------------------------------------------------
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent, renderTerm } = unsafeCrashWith "TODO"
+arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent, renderTerm } = case rule /\ sort of
+  True /\ _ -> [ Right [ HH.text "True" ] ]
+  False /\ _ -> [ Right [ HH.text "False" ] ]
+  Zero /\ _ -> [ Right [ HH.text "0" ] ]
+  One /\ _ -> [ Right [ HH.text "1" ] ]
+  And /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " && " ], Left (preRenCtx /\ 1) ]
+  Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
+  Hole /\ _ -> [ Right [ HH.text (pretty sort) ] ]
+  Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
+  l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> pretty l
+
+newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
+--newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
+newlineIndentElem n = [ Rendering.newlineElem ] <> Array.replicate n tabElem
+
+tabElem = Rendering.makePuncElem "indent" "    "
 
 --------------------------------------------------------------------------------
 -- Edit
 --------------------------------------------------------------------------------
 
-makeEditFromPath = DefaultEdits.makeEditFromPath (unsafeCrashWith "?forgetSorts") (unsafeCrashWith "?splitChange")
+forgetSorts :: DerivLabel -> Maybe DerivLabel
+forgetSorts = pure
+
+splitChange
+  :: SortChange
+  -> { downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort }
+splitChange c =
+  { cursorSort: rEndpoint c
+  , upChange: injectExprChange $ lEndpoint c
+  , downChange: c
+  }
+
+makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
 editsAtCursor :: Sort -> Array Edit
-editsAtCursor _ = [] -- TODO: auto derive edits from wraps and inserts 
+editsAtCursor sort = Array.mapMaybe identity
+  [ DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
+  , DefaultEdits.makeChangeEditFromTerm ((False %|- empty) % []) "False" sort
+  , DefaultEdits.makeChangeEditFromTerm ((One %|- empty) % []) "One" sort
+  , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
+  , DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
+  , makeEditFromPath (newPathFromRule And 0) "And" sort
+  , makeEditFromPath (newPathFromRule And 1) "And" sort
+  , makeEditFromPath (newPathFromRule Plus 0) "Plus" sort
+  , makeEditFromPath (newPathFromRule Plus 1) "Plus" sort
+  ]
 
 --------------------------------------------------------------------------------
 -- Changes
 --------------------------------------------------------------------------------
 
 isValidCursorSort :: Sort -> Boolean
-isValidCursorSort _ = true -- TODO: is this right?
+isValidCursorSort _ = true
 
 isValidSelectionSorts :: { bottom :: Sort, top :: Sort } -> Boolean
 isValidSelectionSorts { bottom, top } = bottom == top
 
 keyAction :: String -> Sort -> Maybe Action
-keyAction key cursorSort = unsafeCrashWith "TODO"
+keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0)) "newline" cursorSort
+keyAction _key _cursorSort = Nothing
 
+-- TODO: add edits for inserting new variables
 extraQueryEdits :: Sort -> String -> Array Edit
 extraQueryEdits _ _ = []
 
@@ -196,7 +259,7 @@ extraQueryEdits _ _ = []
 
 editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =
-  { dterm: assertI $ just "CustomLanguage" $ Grammar.defaultDerivTerm (Bool %|-* [])
+  { dterm: assertI $ just "CustomLanguage" $ Grammar.defaultDerivTerm (BoolSort %|-* [])
   , editsAtCursor
   , arrangeDerivTermSubs
   , stepRules: empty

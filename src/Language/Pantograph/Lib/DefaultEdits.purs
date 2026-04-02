@@ -39,7 +39,7 @@ import Data.Maybe as Maybe
 import Data.Either (Either(..))
 import Data.Tuple (uncurry)
 
--- Makes edits which around any holes in the given term
+-- Makes edits which wraps around any holes in the given term
 makeWrapEdits :: forall l r. Grammar.IsRuleLabel l r =>
     (Sort l -> Boolean)
     -> ({bottom :: Sort l, top :: Sort l} -> Boolean)

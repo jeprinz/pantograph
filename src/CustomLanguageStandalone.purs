@@ -8,11 +8,11 @@ import Halogen.VDom.Driver as VDomDriver
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.RunnableEditor as RunnableEditor
-import Language.Pantograph.Specific.Currying as Currying
-import Language.Pantograph.Specific.CurryingInterpereter as CurryingInterpereter
+import Language.Pantograph.Specific.CustomLanguage as CustomLanguage
+import Language.Pantograph.Specific.CustomLanguageInterpreter as CustomLanguageInterpreter
 
 main :: Effect Unit
-main = runEditorForLang { spec: Currying.editorSpec, interpreter: CurryingInterpereter.interpereter }
+main = runEditorForLang { spec: CustomLanguage.editorSpec, interpreter: CustomLanguageInterpreter.interpereter }
 
 runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => { spec :: Base.EditorSpec l r, interpreter :: Grammar.DerivTerm l r -> String } -> Effect Unit
 runEditorForLang { spec, interpreter } =
