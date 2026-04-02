@@ -24,6 +24,7 @@
     "bundle": "npm run build-prod && purs-backend-es bundle-app --main Main --minify --no-build --to dist/pantograph.js",
     "build-tutorial": "spago build && npx esbuild tutorial.js --bundle --outfile=dist/pantograph.js",
     "build-standalone": "spago build && npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js",
+    "build-custom-language-standalone": "spago build && npx esbuild custom-language-standalone.js --bundle --outfile=dist/custom-language-standalone/pantograph.js",
     "build": "npm run build-tutorial && npm run build-standalone",
     "serve": "npm run build && npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js --servedir=dist",
     "docs": "npm run build && rm -rf docs && cp -r dist docs",
