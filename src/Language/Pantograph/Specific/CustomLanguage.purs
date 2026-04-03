@@ -194,7 +194,7 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   One /\ _ -> [ Right [ HH.text "1" ] ]
   And /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " && " ], Left (preRenCtx /\ 1) ]
   Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
-  Hole /\ _ -> [ Right [ HH.text (pretty sort) ] ]
+  Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
   l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> pretty l
 
@@ -267,10 +267,10 @@ editorSpec =
   , isValidSelectionSorts
   , keyAction
   , extraQueryEdits
-  , splitChange: \_ -> unsafeCrashWith "TODO"
+  , splitChange
   , editsAtHoleInterior: \_ -> []
-  , onDelete: \cursorSort -> ChangeAlgebra.inject cursorSort
-  , generalizeDerivation: \other -> ChangeAlgebra.inject other
+  , onDelete: ChangeAlgebra.inject
+  , generalizeDerivation: ChangeAlgebra.inject
   , specializeDerivation: \clipboard _cursor -> ChangeAlgebra.inject clipboard
   , forgetSorts: \_ -> Maybe.Nothing
   , clipboardSort: \s -> s
