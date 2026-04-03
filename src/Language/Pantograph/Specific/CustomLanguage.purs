@@ -272,6 +272,6 @@ editorSpec =
   , onDelete: ChangeAlgebra.inject
   , generalizeDerivation: ChangeAlgebra.inject
   , specializeDerivation: \clipboard _cursor -> ChangeAlgebra.inject clipboard
-  , forgetSorts: \_ -> Maybe.Nothing
+  , forgetSorts
   , clipboardSort: \s -> s
   }
