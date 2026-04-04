@@ -15,7 +15,7 @@ import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, injectExprChange, (%))
+import Data.Expr (class IsExprLabel, injectExprChange, (%), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
@@ -121,6 +121,8 @@ data RuleLabel
   | Plus
   | Hole
   | Newline
+  | BoolVar
+  | NumVar
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -181,6 +183,10 @@ language = TotalMap.makeTotalMap case _ of
     [] /\ sort
   Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
     [ sort ] /\ sort
+  BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
+    [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
+  NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
+    [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
 
 --------------------------------------------------------------------------------
 -- Rendering
@@ -196,6 +202,8 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
   Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
+  -- BoolVar /\ (MInj (Grammar.SInj VarSort) % [ MInj (Grammar.DataLabel (DataString str)) ]) -> [ pure [HH.div [] []] ] -- TODO
+  -- NumVar /\ _ -> [] -- TODO
   l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> pretty l
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
@@ -228,7 +236,6 @@ editsAtCursor sort = Array.mapMaybe identity
   , DefaultEdits.makeChangeEditFromTerm ((False %|- empty) % []) "False" sort
   , DefaultEdits.makeChangeEditFromTerm ((One %|- empty) % []) "One" sort
   , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
-  , DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
   , makeEditFromPath (newPathFromRule And 0) "And" sort
   , makeEditFromPath (newPathFromRule And 1) "And" sort
   , makeEditFromPath (newPathFromRule Plus 0) "Plus" sort
