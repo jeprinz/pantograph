@@ -96,12 +96,21 @@ pnpm install
 pnpm build
 ```
 
-To serve the web application:
+There are a few different ways of running Pantograph.
+
+To run the tutorial that is available online [here](https://pantographeditor.github.io/Pantograph/), run
+
 ```sh
-pnpm serve
+pnpm run server-tutorial
 ```
 
-## Design
+To run a standalone version of Pantograph, run
+
+```sh
+pnpm run serve-standalone
+```
+
+## Design and Defining a new Language
 
 This implementation is designed to be language-generic.
 The `Language.Pantograph.Generic.*` modules implement the mechanics of a Pantograph editor given an editor specification.
@@ -109,12 +118,27 @@ The `Language.Pantograph.Generic.*` modules implement the mechanics of a Pantogr
 Additionally, `l` and `r` must instantiate `Language.Pantograph.Generic.Grammar.IsRuleLabel l r`.
 
 One complete specific editor is given in the codebase, and can be found in `Language.Pantograph.Specific.Currying`.
-The editor implemented here is the same as the one demonstrated in the Pantograph paper, used in the Pantograph paper's user study, and available in the runnable artifact (and hosted online at `jeprinz.github.com/pantograph`).
+The editor implemented here is the same as the one demonstrated in the Pantograph paper, used in the Pantograph paper's user study, and available in the runnable artifact (and hosted online at `http://jeprinz.github.com/pantograph`).
 This is a good place to start in order to understand how to define a new editor.
 Other related editor fragments can be found among the other `Language.Pantograph.Specific.*` modules.
 
 The general paradigm behind how languages are implemented is described in Section 5 of the paper.
 A language consists of a set of _sorts_ (which are encoded trees of _sort labels_; see `Language.Pantograph.Generic.Grammar.Sort`), which are essentially the possible judgements, while a program is a derivation (which are encoded as trees of _derivation labels_, which are pairs of a _derivation rule label_ and a _rule variable substitution_; see `Language.Pantograph.Generic.Grammar.DerivTerm`) of a sort.
+
+To run Pantograph with your new language, you'll need to define your own script to build and serve it. See the script "serve-custom-language-standalone" in `package.json` for reference.
+
+### A Simple Example Language
+
+We've implemented a template to make it easier to implement a custom language in Pantograph.
+Go to `Language.Pantograph.Specific.CustomLanguage.purs`.
+It has implemented a simple calculator language an an example, with comments to explain which parts you would need to modify to implement your own language.
+It should be somewhat easy to implement grammar editing for your language, but implementing typed editing would be more involved.
+
+To build and run Pantograph with this example language:
+
+```sh
+pnpm run serve-custom-language-standalone
+```
 
 ## Organization
 
@@ -140,9 +164,4 @@ To cite the Pantograph paper associated with this repository:
   doi = {10.1145/3704864}
 }
 ```
-## Custom Languages
 
-We've implemented a template to make it easier to implement a custom language in Pantograph.
-Go to `Language.Pantograph.Specific.CustomLanguage.purs`.
-It has implemented a simple calculator language an an example, with comments to explain which parts you would need to modify to implement your own language.
-It should be somewhat easy to implement grammar editing for your language, but implementing typed editing would be more involved.

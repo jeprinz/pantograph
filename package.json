@@ -26,7 +26,9 @@
     "build-standalone": "spago build && npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js",
     "build-custom-language-standalone": "spago build && npx esbuild custom-language-standalone.js --bundle --outfile=dist/custom-language-standalone/pantograph.js",
     "build": "npm run build-tutorial && npm run build-standalone",
-    "serve": "npm run build && npx esbuild standalone.js --bundle --outfile=dist/standalone/pantograph.js --servedir=dist",
+    "serve-tutorial": "npm run build-tutorial && npx http-server dist",
+    "serve-standalone": "npm run build && npx http-server dist/standalone",
+    "serve-custom-language-standalone": "npm run build && npx http-server dist/custom-language-standalone",
     "docs": "npm run build && rm -rf docs && cp -r dist docs",
     "publish": "npm run docs && git add . && git commit -m\"publish\" && git push"
   },
