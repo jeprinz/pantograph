@@ -223,6 +223,10 @@ language = TotalMap.makeTotalMap case _ of
     [] /\ sort
   Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
     [ sort ] /\ sort
+  BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
+    [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
+  NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
+    [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
 
 --------------------------------------------------------------------------------
 -- Rendering
