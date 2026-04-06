@@ -204,8 +204,8 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
   Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
-  BoolVar /\ (MInj (Grammar.SInj BoolSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ pure [ HH.span [ HP.classes [ HH.ClassName "variable" ] ] [ HH.text name ] ] ]
-  NumVar /\ (MInj (Grammar.SInj NumSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ pure [ HH.span [ HP.classes [ HH.ClassName "variable" ] ] [ HH.text name ] ] ]
+  BoolVar /\ (MInj (Grammar.SInj BoolSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ Left (preRenCtx /\ 0) ]
+  NumVar /\ (MInj (Grammar.SInj NumSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ Left (preRenCtx /\ 0) ]
   l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> pretty l
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
