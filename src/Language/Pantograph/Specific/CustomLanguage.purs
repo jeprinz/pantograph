@@ -61,7 +61,7 @@ you can write expressions like "True && ((x + y) == z)"
 
 We call `Bool` and `Num` sorts. We think of expressions as typing derivations, and so refer to things like `+` as a derivation rule.
 
-To tell pantograph how to work with this language, you need to define:
+To modify this template and tell pantograph how to work with your own language, you need to define:
 - the sorts (in this case, `Bool` and `Num`)
 - the derivation rules (e.g., `&&`, `true`, `==`)
 - which sorts are inputs and output by which rules
@@ -297,7 +297,7 @@ editsAtCursor sort = Array.mapMaybe identity
   , DefaultEdits.makeChangeEditFromTerm ((One %|- empty) % []) "One" sort
   , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
   , DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
-  , DefaultEdits.makeChangeEditFromTerm ((Equals %|- empty) % [(Hole %|- empty) % [], (Hole %|- empty) % []]) "True" sort
+  , DefaultEdits.makeChangeEditFromTerm ((Equals %|- empty) % [(Hole %|- empty) % [], (Hole %|- empty) % []]) "==" sort
   , makeEditFromPath (newPathFromRule And 0) "&&" sort
   , makeEditFromPath (newPathFromRule And 1) "&&" sort
   , makeEditFromPath (newPathFromRule Plus 0) "+" sort
