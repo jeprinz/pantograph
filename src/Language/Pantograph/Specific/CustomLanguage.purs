@@ -309,6 +309,8 @@ editsAtCursor sort = Array.mapMaybe identity
 --------------------------------------------------------------------------------
 
 isValidCursorSort :: Sort -> Boolean
+isValidCursorSort (MInj (TypeOfLabel _) % _) = false
+isValidCursorSort (MInj (DataLabel _) % _) = false
 isValidCursorSort _ = true
 
 isValidSelectionSorts :: { bottom :: Sort, top :: Sort } -> Boolean
