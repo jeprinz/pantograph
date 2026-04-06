@@ -15,7 +15,7 @@ import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, injectExprChange, (%), (%*))
+import Data.Expr (class IsExprLabel, injectExprChange, (%))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
@@ -40,10 +40,41 @@ import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, pretty)
 
+
+--------------------------------------------------------------------------------
+{-
+This file is a template for making a custom language with pantograph.
+An editor for the language in this file can be compiled with `npm run build-custom-language-standalone`
+
+Due to a combination of bad design on our part and purescript not having modules, there is some stupid boilerplate in this file.
+Instead of reading everything, go to the comments that say "LOOK HERE".
+
+This template defines a simple calculator language, with the following grammar:
+
+Bool := Bool && Bool | true | false | Num == Num
+Num := x | Num + Num
+
+you can write expressions like "True && ((x + y) == z)"
+
+We call `Bool` and `Num` sorts. We think of expressions as typing derivations, and so refer to things like `+` as a derivation rule.
+
+To tell pantograph how to work with this language, you need to define:
+- the sorts (in this case, `Bool` and `Num`)
+- the derivation rules (e.g., `&&`, `true`, `==`)
+- which sorts are inputs and output by which rules
+- how to display each rule
+- which edits are available to the user
+
+
+-}
+--------------------------------------------------------------------------------
+
+
 --------------------------------------------------------------------------------
 -- PreSortLabel
 --------------------------------------------------------------------------------
 
+-- LOOK HERE: define the sorts here.
 data PreSortLabel
   = NumSort
   | BoolSort
@@ -67,6 +98,7 @@ instance DecodeJson PreSortLabel where
 instance Pretty PreSortLabel where
   pretty = show
 
+-- LOOK HERE: for debugging purposes, define how each sort is printed as a string
 instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (NumSort /\ _) = "Num"
   prettyExprF'_unsafe (BoolSort /\ _) = "Bool"
@@ -111,7 +143,7 @@ type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
 -- RuleLabel
 --------------------------------------------------------------------------------
 
--- | Naming convention: <title>_<output sort>
+-- LOOK HERE: define the derivation rules. These are the different constructions in your grammar.
 data RuleLabel
   = True
   | False
@@ -165,6 +197,12 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
 
   defaultDerivTerm' sort = pure $ Grammar.makeLabel Hole [ "sort" /\ sort ] % []
 
+-- LOOK HERE: for each derivation rule, define which sorts it inputs and outputs.
+-- for example, the `==` operator inputs two numbers and outputs a boolean, so its
+-- rule has two NumSorts in the list of the left, and a BoolSort on the right.
+-- to make your own, follow the examples here of our insane notation
+-- (the reason for this notation is that it can support typing rules that depend on metavariables,
+-- which is used for typed editing as in the main pantograph language)
 language :: Language
 language = TotalMap.makeTotalMap case _ of
   True -> Grammar.makeRule [] \[] ->
@@ -183,15 +221,23 @@ language = TotalMap.makeTotalMap case _ of
     [] /\ sort
   Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
     [ sort ] /\ sort
-  BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
-    [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
-  NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
-    [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
+  -- BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
+  --   [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
+  -- NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
+  --   [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
+  _ -> unsafeCrashWith "something"
 
 --------------------------------------------------------------------------------
 -- Rendering
 --------------------------------------------------------------------------------
 
+-- LOOK HERE: this function defines how to display each derivation rule.
+-- it uses the Halogen purescript library, which is a DSL for HTML.
+-- But you can probably get away with not learning Halogen and just copying from these examples.
+-- For each rule, it outputs a list of elements, which either `Right [some halogen here]` or `Left (preRenCtx /\ index)`
+-- the Left elements correspond to children of the expression.
+-- For example, the `+` operator has three elements in it's list: the first is the left child expression, the second is text for
+-- "+", and the third is the right child expression.
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent, renderTerm } = case rule /\ sort of
   True /\ _ -> [ Right [ HH.text "True" ] ]
@@ -230,12 +276,17 @@ splitChange c =
 
 makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
+-- LOOK HERE: this defines which edits are possible for the user to make.
+-- in Pantograph, there are two kinds of edits: filling terms in a hole, and wrapping one-hole contexts around the cursor.
+-- for each constructor that you want to be able to be filled in a hole, copy the examples for "makeChangeEditFromTerm"
+-- for each constructor that you want to be able to be wrapped around the cursor, copy the example for "makeEditFromPath"
 editsAtCursor :: Sort -> Array Edit
 editsAtCursor sort = Array.mapMaybe identity
   [ DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
   , DefaultEdits.makeChangeEditFromTerm ((False %|- empty) % []) "False" sort
   , DefaultEdits.makeChangeEditFromTerm ((One %|- empty) % []) "One" sort
   , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
+  , DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
   , makeEditFromPath (newPathFromRule And 0) "And" sort
   , makeEditFromPath (newPathFromRule And 1) "And" sort
   , makeEditFromPath (newPathFromRule Plus 0) "Plus" sort

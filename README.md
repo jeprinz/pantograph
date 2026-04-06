@@ -140,3 +140,9 @@ To cite the Pantograph paper associated with this repository:
   doi = {10.1145/3704864}
 }
 ```
+## Custom Languages
+
+We've implemented a template to make it easier to implement a custom language in Pantograph.
+Go to `Language.Pantograph.Specific.CustomLanguage.purs`.
+It has implemented a simple calculator language an an example, with comments to explain which parts you would need to modify to implement your own language.
+It should be somewhat easy to implement grammar editing for your language, but implementing typed editing would be more involved.
