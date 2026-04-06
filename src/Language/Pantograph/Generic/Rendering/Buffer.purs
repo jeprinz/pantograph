@@ -93,7 +93,9 @@ computeEdits input {bufferString, mb_oldString} =
       in
       let extraEdits = input.extraEdits bufferString in
       let extraEditsAndPreviews = map (\edit -> {edit, lazy_preview: defer (\_ -> FillEditPreview (HH.text bufferString))}) extraEdits in
-      extraEditsAndPreviews <> sortedMatchingEdits
+      -- HENRY: I switched the order of these so that in languages without context/typing constraints, the variable insertion query isn't presented above primitive queries
+      -- extraEditsAndPreviews <> sortedMatchingEdits
+      sortedMatchingEdits <> extraEditsAndPreviews
 
 computeNormalBufferFocus {bufferFocus, edits} = 
   bufferFocus `mod` Array.length edits

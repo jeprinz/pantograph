@@ -1,8 +1,8 @@
 module Language.Pantograph.Specific.CustomLanguage (PreSortLabel(..), RuleLabel(..), editorSpec) where
 
-import Language.Pantograph.Generic.Grammar
 import Prelude
 
+import Bug (bug)
 import Bug.Assertion (assertI, just)
 import Control.Plus (empty)
 import Data.Argonaut.Decode.Class (class DecodeJson)
@@ -15,22 +15,23 @@ import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, injectExprChange, (%))
+import Data.Expr (class IsExprLabel, Meta(..), injectExprChange, matchExprImpl, (%), (%$), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..))
-import Data.Maybe as Maybe
+import Data.Maybe (Maybe(..), fromMaybe', isJust)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
+import Data.Unfoldable (fromMaybe)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
+import Language.Pantograph.Generic.Grammar (IsHoleRule(..), SortData(..), SortLabel(..), SortType(..), makeLabel, sor, (%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Base
@@ -39,6 +40,7 @@ import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, pretty)
+import Util as Util
 
 
 --------------------------------------------------------------------------------
@@ -221,11 +223,6 @@ language = TotalMap.makeTotalMap case _ of
     [] /\ sort
   Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
     [ sort ] /\ sort
-  -- BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
-  --   [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
-  -- NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
-  --   [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
-  _ -> unsafeCrashWith "something"
 
 --------------------------------------------------------------------------------
 -- Rendering
@@ -248,8 +245,8 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
   Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
-  -- BoolVar /\ (MInj (Grammar.SInj VarSort) % [ MInj (Grammar.DataLabel (DataString str)) ]) -> [ pure [HH.div [] []] ] -- TODO
-  -- NumVar /\ _ -> [] -- TODO
+  BoolVar /\ (MInj (Grammar.SInj BoolSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ pure [ HH.span [ HP.classes [ HH.ClassName "variable" ] ] [ HH.text name ] ] ]
+  NumVar /\ (MInj (Grammar.SInj NumSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ pure [ HH.span [ HP.classes [ HH.ClassName "variable" ] ] [ HH.text name ] ] ]
   l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> pretty l
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
@@ -307,9 +304,24 @@ keyAction :: String -> Sort -> Maybe Action
 keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0)) "newline" cursorSort
 keyAction _key _cursorSort = Nothing
 
--- TODO: add edits for inserting new variables
 extraQueryEdits :: Sort -> String -> Array Edit
+extraQueryEdits cursorSort query | isJust $ matchExprImpl cursorSort (sor BoolSort %$ []) = fromMaybe $ makeVarEdit cursorSort query BoolVar
+extraQueryEdits cursorSort query | isJust $ matchExprImpl cursorSort (sor NumSort %$ []) = fromMaybe $ makeVarEdit cursorSort query NumVar
 extraQueryEdits _ _ = []
+
+makeVarEdit :: Sort -> String -> RuleLabel -> Maybe Edit
+makeVarEdit sort name rl =
+  let
+    varSort = MInj (Grammar.DataLabel (DataString name)) % []
+  in
+    DefaultEdits.makeSubEditFromTerm
+      ( makeLabel rl [ "x" /\ varSort ] %
+          [ Grammar.defaultDerivTerm (Grammar.TypeOfLabel SortString %* [ varSort ])
+              # Util.fromJust' "defaultDerivTerm always works for a `TypeOfLabel SortString`"
+          ]
+      )
+      name
+      sort
 
 --------------------------------------------------------------------------------
 -- EditorSpec
