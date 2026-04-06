@@ -2,10 +2,8 @@ module Language.Pantograph.Specific.CustomLanguage (PreSortLabel(..), RuleLabel(
 
 import Prelude
 
-import Bug (bug)
 import Bug.Assertion (assertI, just)
 import Control.Plus (empty)
-import Data.Argonaut ((.!=))
 import Data.Argonaut.Decode.Class (class DecodeJson)
 import Data.Argonaut.Decode.Generic (genericDecodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson)
@@ -16,10 +14,10 @@ import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, Meta(..), injectExprChange, matchExprImpl, (%), (%$), (%*))
+import Data.Expr (class IsExprLabel, Meta(..), matchExprImpl, (%), (%$), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..), fromMaybe', isJust)
+import Data.Maybe (Maybe(..), isJust)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
@@ -29,7 +27,7 @@ import Data.Unfoldable (fromMaybe)
 import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
+import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
@@ -41,7 +39,6 @@ import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Partial.Unsafe (unsafeCrashWith)
-import Test.QuickCheck.Laws (E(..))
 import Text.Pretty (class Pretty, pretty)
 import Util as Util
 

@@ -45,7 +45,6 @@ to generate this file without the comments in this block.
   , "ordered-collections"
   , "partial"
   , "prelude"
-  , "quickcheck-laws"
   , "rationals"
   , "record"
   , "refs"
