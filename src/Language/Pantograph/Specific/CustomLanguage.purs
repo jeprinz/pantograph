@@ -279,9 +279,9 @@ splitChange
   :: SortChange
   -> { downChange :: SortChange, upChange :: SortChange, cursorSort :: Sort }
 splitChange c =
-  { cursorSort: rEndpoint c
-  , upChange: injectExprChange $ lEndpoint c
-  , downChange: c
+  { cursorSort: lEndpoint c
+  , upChange: c
+  , downChange: ChangeAlgebra.inject (lEndpoint c)
   }
 
 makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
