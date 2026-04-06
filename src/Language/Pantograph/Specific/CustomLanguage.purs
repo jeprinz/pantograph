@@ -42,7 +42,6 @@ import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, pretty)
 import Util as Util
 
-
 --------------------------------------------------------------------------------
 {-
 This file is a template for making a custom language with pantograph.
@@ -51,8 +50,8 @@ This will output into dist/custom-language-standalone. Open index.html in your b
 
 This template defines a simple calculator language, with the following grammar:
 
-Bool := Bool && Bool | true | false | Num == Num
-Num := x | Num + Num
+Bool := <variable> | Bool && Bool | true | false | Num == Num
+Num := <variable> | Num + Num
 
 you can write expressions like "True && ((x + y) == z)"
 
@@ -66,11 +65,10 @@ To modify this template and tell pantograph how to work with your own language, 
 - which edits are available to the user
 
 
-Due to a combination of bad design on our part and purescript not having modules, there is some stupid boilerplate in this file.
+Due to a combination of bad design on our part and purescript not having modules, there is some verbose boilerplate in this file.
 Instead of reading everything, go to the comments that say "LOOK HERE".
 -}
 --------------------------------------------------------------------------------
-
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -147,17 +145,17 @@ type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
 
 -- LOOK HERE: define the derivation rules. These are the different constructions in your grammar.
 data RuleLabel
-  = True
-  | False
-  | One
-  | Zero
-  | And
-  | Plus
-  | Hole
-  | Equals
-  | BoolVar
-  | NumVar
-  | Newline
+  = True -- true
+  | False -- false
+  | One -- 1
+  | Zero -- 0
+  | And -- Bool && Bool
+  | Plus -- Num + Num
+  | Hole -- ?
+  | Equals -- Num == Num
+  | BoolVar -- variable of sort Bool
+  | NumVar -- variable of sort Num
+  | Newline -- newline construction for formatting (can have any sort)
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -208,27 +206,54 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
 -- which is used for typed editing as in the main pantograph language)
 language :: Language
 language = TotalMap.makeTotalMap case _ of
+  -- true : Bool
   True -> Grammar.makeRule [] \[] ->
     [] /\ (BoolSort %|-* [])
+  -- false : Bool
   False -> Grammar.makeRule [] \[] ->
     [] /\ (BoolSort %|-* [])
+  -- 1 : Num
   One -> Grammar.makeRule [] \[] ->
     [] /\ (NumSort %|-* [])
+  -- 0 : Num
   Zero -> Grammar.makeRule [] \[] ->
     [] /\ (NumSort %|-* [])
+  -- Bool && Bool : Bool
   And -> Grammar.makeRule [] \[] ->
     [ BoolSort %|-* [], BoolSort %|-* [] ] /\ (BoolSort %|-* [])
+  -- Num + Num : Num
   Plus -> Grammar.makeRule [] \[] ->
     [ NumSort %|-* [], NumSort %|-* [] ] /\ (NumSort %|-* [])
+  -- Num == Num : Bool
   Equals -> Grammar.makeRule [] \[] ->
     [ NumSort %|-* [], NumSort %|-* [] ] /\ (BoolSort %|-* [])
+  -- <variable> : Bool
   BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
     [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
+  -- <variable> : Num
   NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
     [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
+  --
   -- you probably want these last two for any language:
+  --
+  -- ? : any sort
   Hole -> Grammar.makeRule [ "sort" ] \[ sort ] ->
     [] /\ sort
+  -- The "newline" construct can wrap around something of any sort, and then the newline-wrapped construction has the same sort
+  -- For example, the program
+  --
+  -- ```
+  -- 1 +
+  --   1
+  -- ```
+  --
+  -- is encoded as the AST
+  --
+  -- ```
+  -- Plus One (Newline One)
+  -- ```
+  --
+  -- Note I'm just using pseudocode to write out these examples, since the actual Pantograph encodings are much more verbose.
   Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
     [ sort ] /\ sort
 
@@ -250,7 +275,7 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   Zero /\ _ -> [ Right [ HH.text "0" ] ]
   One /\ _ -> [ Right [ HH.text "1" ] ]
   And /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " && " ], Left (preRenCtx /\ 1) ]
-  Plus /\ _ -> [ Right [HH.text "("], Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1), Right [HH.text ")"]]
+  Plus /\ _ -> [ Right [ HH.text "(" ], Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1), Right [ HH.text ")" ] ]
   Equals /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " == " ], Left (preRenCtx /\ 1) ]
   Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
@@ -294,7 +319,7 @@ editsAtCursor sort = Array.mapMaybe identity
   , DefaultEdits.makeChangeEditFromTerm ((One %|- empty) % []) "One" sort
   , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
   , DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
-  , DefaultEdits.makeChangeEditFromTerm ((Equals %|- empty) % [(Hole %|- empty) % [], (Hole %|- empty) % []]) "==" sort
+  , DefaultEdits.makeChangeEditFromTerm ((Equals %|- empty) % [ (Hole %|- empty) % [], (Hole %|- empty) % [] ]) "==" sort
   , makeEditFromPath (newPathFromRule And 0) "&&" sort
   , makeEditFromPath (newPathFromRule And 1) "&&" sort
   , makeEditFromPath (newPathFromRule Plus 0) "+" sort
