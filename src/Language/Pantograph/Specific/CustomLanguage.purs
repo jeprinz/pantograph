@@ -5,6 +5,7 @@ import Prelude
 import Bug (bug)
 import Bug.Assertion (assertI, just)
 import Control.Plus (empty)
+import Data.Argonaut ((.!=))
 import Data.Argonaut.Decode.Class (class DecodeJson)
 import Data.Argonaut.Decode.Generic (genericDecodeJson)
 import Data.Argonaut.Encode.Class (class EncodeJson)
@@ -40,6 +41,7 @@ import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
 import Partial.Unsafe (unsafeCrashWith)
+import Test.QuickCheck.Laws (E(..))
 import Text.Pretty (class Pretty, pretty)
 import Util as Util
 
@@ -47,10 +49,8 @@ import Util as Util
 --------------------------------------------------------------------------------
 {-
 This file is a template for making a custom language with pantograph.
-An editor for the language in this file can be compiled with `npm run build-custom-language-standalone`
-
-Due to a combination of bad design on our part and purescript not having modules, there is some stupid boilerplate in this file.
-Instead of reading everything, go to the comments that say "LOOK HERE".
+An editor for the language in this file can be compiled with `npm run build-custom-language-standalone`.
+This will output into dist/custom-language-standalone. Open index.html in your browser to view it.
 
 This template defines a simple calculator language, with the following grammar:
 
@@ -69,6 +69,8 @@ To tell pantograph how to work with this language, you need to define:
 - which edits are available to the user
 
 
+Due to a combination of bad design on our part and purescript not having modules, there is some stupid boilerplate in this file.
+Instead of reading everything, go to the comments that say "LOOK HERE".
 -}
 --------------------------------------------------------------------------------
 
@@ -155,9 +157,10 @@ data RuleLabel
   | And
   | Plus
   | Hole
-  | Newline
+  | Equals
   | BoolVar
   | NumVar
+  | Newline
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -220,14 +223,17 @@ language = TotalMap.makeTotalMap case _ of
     [ BoolSort %|-* [], BoolSort %|-* [] ] /\ (BoolSort %|-* [])
   Plus -> Grammar.makeRule [] \[] ->
     [ NumSort %|-* [], NumSort %|-* [] ] /\ (NumSort %|-* [])
-  Hole -> Grammar.makeRule [ "sort" ] \[ sort ] ->
-    [] /\ sort
-  Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
-    [ sort ] /\ sort
+  Equals -> Grammar.makeRule [] \[] ->
+    [ NumSort %|-* [], NumSort %|-* [] ] /\ (BoolSort %|-* [])
   BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
     [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
   NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
     [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
+  -- you probably want these last two for any language:
+  Hole -> Grammar.makeRule [ "sort" ] \[ sort ] ->
+    [] /\ sort
+  Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
+    [ sort ] /\ sort
 
 --------------------------------------------------------------------------------
 -- Rendering
@@ -248,6 +254,7 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   One /\ _ -> [ Right [ HH.text "1" ] ]
   And /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " && " ], Left (preRenCtx /\ 1) ]
   Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
+  Equals /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " == " ], Left (preRenCtx /\ 1) ]
   Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
   BoolVar /\ (MInj (Grammar.SInj BoolSort) % []) -> [ Left (preRenCtx /\ 0) ]
@@ -290,10 +297,13 @@ editsAtCursor sort = Array.mapMaybe identity
   , DefaultEdits.makeChangeEditFromTerm ((One %|- empty) % []) "One" sort
   , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
   , DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
-  , makeEditFromPath (newPathFromRule And 0) "And" sort
-  , makeEditFromPath (newPathFromRule And 1) "And" sort
-  , makeEditFromPath (newPathFromRule Plus 0) "Plus" sort
-  , makeEditFromPath (newPathFromRule Plus 1) "Plus" sort
+  , DefaultEdits.makeChangeEditFromTerm ((Equals %|- empty) % [(Hole %|- empty) % [], (Hole %|- empty) % []]) "True" sort
+  , makeEditFromPath (newPathFromRule And 0) "&&" sort
+  , makeEditFromPath (newPathFromRule And 1) "&&" sort
+  , makeEditFromPath (newPathFromRule Plus 0) "+" sort
+  , makeEditFromPath (newPathFromRule Plus 1) "+" sort
+  , makeEditFromPath (newPathFromRule Equals 0) "==" sort
+  , makeEditFromPath (newPathFromRule Equals 1) "==" sort
   ]
 
 --------------------------------------------------------------------------------
