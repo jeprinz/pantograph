@@ -253,7 +253,7 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   Zero /\ _ -> [ Right [ HH.text "0" ] ]
   One /\ _ -> [ Right [ HH.text "1" ] ]
   And /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " && " ], Left (preRenCtx /\ 1) ]
-  Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
+  Plus /\ _ -> [ Right [HH.text "("], Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1), Right [HH.text ")"]]
   Equals /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " == " ], Left (preRenCtx /\ 1) ]
   Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
@@ -302,8 +302,6 @@ editsAtCursor sort = Array.mapMaybe identity
   , makeEditFromPath (newPathFromRule And 1) "&&" sort
   , makeEditFromPath (newPathFromRule Plus 0) "+" sort
   , makeEditFromPath (newPathFromRule Plus 1) "+" sort
-  , makeEditFromPath (newPathFromRule Equals 0) "==" sort
-  , makeEditFromPath (newPathFromRule Equals 1) "==" sort
   ]
 
 --------------------------------------------------------------------------------
