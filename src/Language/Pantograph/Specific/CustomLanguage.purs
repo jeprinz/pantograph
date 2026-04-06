@@ -25,6 +25,7 @@ import Data.TotalMap as TotalMap
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
 import Data.Unfoldable (fromMaybe)
+import Halogen.HTML (HTML)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
@@ -249,14 +250,15 @@ arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_paren
   Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
   Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
   Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
-  BoolVar /\ (MInj (Grammar.SInj BoolSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ pure [ HH.span [ HP.classes [ HH.ClassName "variable" ] ] [ HH.text name ] ] ]
-  NumVar /\ (MInj (Grammar.SInj NumSort) % [ MInj (Grammar.DataLabel (DataString name)) % [] ]) -> [ pure [ HH.span [ HP.classes [ HH.ClassName "variable" ] ] [ HH.text name ] ] ]
-  l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> pretty l
+  BoolVar /\ (MInj (Grammar.SInj BoolSort) % []) -> [ Left (preRenCtx /\ 0) ]
+  NumVar /\ (MInj (Grammar.SInj NumSort) % []) -> [ Left (preRenCtx /\ 0) ]
+  l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> show l
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
 --newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
 newlineIndentElem n = [ Rendering.newlineElem ] <> Array.replicate n tabElem
 
+tabElem :: forall w i. HTML w i
 tabElem = Rendering.makePuncElem "indent" "    "
 
 --------------------------------------------------------------------------------
