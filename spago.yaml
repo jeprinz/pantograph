@@ -1,0 +1,58 @@
+package:
+  name: pantograph
+  dependencies:
+    - aff
+    - aff-promise
+    - argonaut
+    - argonaut-codecs
+    - argonaut-core
+    - argonaut-generic
+    - arrays
+    - bifunctors
+    - console
+    - const
+    - control
+    - css
+    - debug
+    - effect
+    - either
+    - enums
+    - exceptions
+    - foldable-traversable
+    - functors
+    - fuzzy
+    - halogen
+    - halogen-css
+    - halogen-hooks
+    - identity
+    - integers
+    - lazy
+    - lists
+    - maybe
+    - newtype
+    - nonempty
+    - ordered-collections
+    - partial
+    - prelude
+    - rationals
+    - record
+    - refs
+    - strings
+    - transformers
+    - tuples
+    - unfoldable
+    - unicode
+    - unsafe-coerce
+    - uuid
+    - variant
+    - web-dom
+    - web-events
+    - web-html
+    - web-uievents
+  test:
+    main: Test.Main
+    dependencies: []
+workspace:
+  packageSet:
+    registry: 76.0.0
+  extraPackages: {}
