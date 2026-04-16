@@ -1,5 +1,10 @@
 packages:
-- .
+  - .
+ignoredBuiltDependencies:
+  - cpu-features
+  - ssh2
 
 onlyBuiltDependencies:
-- purescript
+  - esbuild
+  - purescript
+  - spago
