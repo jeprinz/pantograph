@@ -15,16 +15,17 @@ import Data.Either (Either(..))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
 import Data.Eq.Generic (genericEq)
-import Data.Expr (class IsExprLabel, injectExprChange, (%), (%*))
+import Data.Expr (class IsExprLabel, Meta(..), MetaVar(..), injectExprChange, matchExprImpl, (%), (%$), (%*))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..))
-import Data.Maybe as Maybe
+import Data.Map as Map
+import Data.Maybe (Maybe(..), isJust)
 import Data.Ord.Generic (genericCompare)
 import Data.Show.Generic (genericShow)
 import Data.TotalMap as TotalMap
 import Data.Tuple (fst)
 import Data.Tuple.Nested ((/\))
+import Data.Unfoldable as Unfoldable
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
@@ -37,16 +38,22 @@ import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
-import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, pretty)
+import Util as Util
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
 --------------------------------------------------------------------------------
 
 data PreSortLabel
-  = NumSort
-  | BoolSort
+  = LangSL
+  | RuleSL
+  | PropSL
+  | PuncSL
+  | HypListSL
+  | HypSL
+  | RuleListSL
+  | NameSL
 
 derive instance Generic PreSortLabel _
 instance Show PreSortLabel where
@@ -68,8 +75,13 @@ instance Pretty PreSortLabel where
   pretty = show
 
 instance IsExprLabel PreSortLabel where
-  prettyExprF'_unsafe (NumSort /\ _) = "Num"
-  prettyExprF'_unsafe (BoolSort /\ _) = "Bool"
+  prettyExprF'_unsafe (LangSL /\ _) = "Lang"
+  prettyExprF'_unsafe (RuleSL /\ _) = "Rule"
+  prettyExprF'_unsafe (PropSL /\ _) = "Prop"
+  prettyExprF'_unsafe (PuncSL /\ _) = "Punc"
+  prettyExprF'_unsafe (HypListSL /\ _) = "HypList"
+  prettyExprF'_unsafe (HypSL /\ _) = "Hyp"
+  prettyExprF'_unsafe (RuleListSL /\ _) = "RuleList"
 
   expectedKidsCount _ = 0
 
@@ -113,16 +125,27 @@ type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
 
 -- | Naming convention: <title>_<output sort>
 data RuleLabel
-  = True
-  | False
-  | One
-  | Zero
-  | And
-  | Plus
-  | Hole
-  | Newline
-  | BoolVar
-  | NumVar
+  = LangRL -- String -> RuleList -> Lang
+  -- 
+  | RuleRL -- String -> PropList -> Prop -> Rule
+  --
+  | PropHypRL -- Prop -> Hyp
+  | PuncHypRL -- Punc -> Hyp
+  -- 
+  | PropRL -- String -> Prop
+  --
+  | PuncRL -- String -> Prop
+  -- 
+  | NilRuleListRL -- RuleList
+  | ConsRuleListRL -- Rule -> RuleList -> RuleList
+  -- 
+  | NilHypListRL -- HypList
+  | ConsHypListRL -- Hyp -> HypList -> HypList
+  -- 
+  | HoleRL -- any
+  | NewlineRL -- any
+  --
+  | NameRL -- String -> Name
 
 derive instance Generic RuleLabel _
 derive instance Eq RuleLabel
@@ -160,56 +183,134 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
   language = language
 
   isHoleRuleTotalMap = TotalMap.makeTotalMap case _ of
-    Hole -> Yes false
+    HoleRL -> Yes false
     _ -> No
 
-  defaultDerivTerm' sort = pure $ Grammar.makeLabel Hole [ "sort" /\ sort ] % []
+  defaultDerivTerm' sort = pure $ Grammar.makeLabel HoleRL [ "sort" /\ sort ] % []
 
 language :: Language
 language = TotalMap.makeTotalMap case _ of
-  True -> Grammar.makeRule [] \[] ->
-    [] /\ (BoolSort %|-* [])
-  False -> Grammar.makeRule [] \[] ->
-    [] /\ (BoolSort %|-* [])
-  One -> Grammar.makeRule [] \[] ->
-    [] /\ (NumSort %|-* [])
-  Zero -> Grammar.makeRule [] \[] ->
-    [] /\ (NumSort %|-* [])
-  And -> Grammar.makeRule [] \[] ->
-    [ BoolSort %|-* [], BoolSort %|-* [] ] /\ (BoolSort %|-* [])
-  Plus -> Grammar.makeRule [] \[] ->
-    [ NumSort %|-* [], NumSort %|-* [] ] /\ (NumSort %|-* [])
-  Hole -> Grammar.makeRule [ "sort" ] \[ sort ] ->
-    [] /\ sort
-  Newline -> Grammar.makeRule [ "sort" ] \[ sort ] ->
-    [ sort ] /\ sort
-  BoolVar -> Grammar.makeRule [ "x" ] \[ x ] ->
-    [ TypeOfLabel SortString %* [ x ] ] /\ (BoolSort %|-* [])
-  NumVar -> Grammar.makeRule [ "x" ] \[ x ] ->
-    [ TypeOfLabel SortString %* [ x ] ] /\ (NumSort %|-* [])
+
+  -- LangSL
+
+  LangRL -> Grammar.makeRule [] \[] ->
+    [ NameSL %|-* []
+    , RuleListSL %|-* [] ] 
+    /\ --------------------------------
+    ( LangSL %|-* [] )
+
+  -- RuleSL
+
+  RuleRL -> Grammar.makeRule [] \[] ->
+    [ NameSL %|-* []
+    , HypListSL %|-* []
+    , PropSL %|-* []
+    ]
+    /\ --------------------------------
+    ( RuleSL %|-* [] )
+    
+  -- PropSL
+
+  PropRL -> Grammar.makeRule [] \[] -> 
+    [ NameSL %|-* [] ]
+    /\ --------------------------------
+    ( PropSL %|-* [] )
+    
+  -- PuncSL
+
+  PuncRL -> Grammar.makeRule [] \[] -> 
+    [ NameSL %|-* [] ]
+    /\ --------------------------------
+    ( PuncSL %|-* [] )
+
+  -- HypSL
+
+  PropHypRL -> Grammar.makeRule [] \[] -> 
+    [ PropSL %|-* [] ] 
+    /\ --------------------------------
+    ( HypSL %|-* [] )
+  
+  PuncHypRL -> Grammar.makeRule [] \[] -> 
+    [ PuncSL %|-* [] ] 
+    /\  --------------------------------
+    ( HypSL %|-* [] )
+
+  -- HypListSL
+
+  NilHypListRL -> Grammar.makeRule [] \[] ->
+    [] 
+    /\ --------------------------------
+    ( HypListSL %|-* [] )
+
+  ConsHypListRL -> Grammar.makeRule [] \[] ->
+    [ HypSL %|-* []
+    , HypListSL %|-* [] ]
+    /\ --------------------------------
+    ( HypListSL %|-* [] )
+
+  -- RuleListSL
+
+  NilRuleListRL -> Grammar.makeRule [] \[] ->
+    [] 
+    /\ --------------------------------
+    ( RuleListSL %|-* [] )
+
+  ConsRuleListRL -> Grammar.makeRule [] \[] ->
+    [ RuleSL %|-* []
+    , RuleListSL %|-* [] ]
+    /\ --------------------------------
+    ( RuleListSL %|-* [] )
+
+  --
+
+  HoleRL -> Grammar.makeRule ["sort"] \[sort] ->
+    [] 
+    /\ --------------------------------
+    ( sort )
+
+  NewlineRL -> Grammar.makeRule ["sort"] \[sort] ->
+    [ sort ] 
+    /\ --------------------------------
+    ( sort )
+
+  NameRL -> Grammar.makeRule ["name"] \[name] ->
+    [ TypeOfLabel SortString %* [name] ]
+    /\ --------------------------------
+    ( NameSL %|-* [] )
+  
 
 --------------------------------------------------------------------------------
 -- Rendering
 --------------------------------------------------------------------------------
 
+keyword :: forall w i . String -> HH.HTML w i
+keyword label = HH.span [HP.classes [HH.ClassName "keyword"]] [HH.text label]
+
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
-arrangeDerivTermSubs _ { renCtx: preRenCtx, rule, sort, sigma, dzipper, mb_parent, renderTerm } = case rule /\ sort of
-  True /\ _ -> [ Right [ HH.text "True" ] ]
-  False /\ _ -> [ Right [ HH.text "False" ] ]
-  Zero /\ _ -> [ Right [ HH.text "0" ] ]
-  One /\ _ -> [ Right [ HH.text "1" ] ]
-  And /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " && " ], Left (preRenCtx /\ 1) ]
-  Plus /\ _ -> [ Left (preRenCtx /\ 0), Right [ HH.text " + " ], Left (preRenCtx /\ 1) ]
-  Hole /\ _ -> [ pure [ Rendering.lbraceElem ], Right [ HH.text (pretty sort) ], pure [ Rendering.rbraceElem ] ]
-  Newline /\ _ -> [ pure [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ], pure (newlineIndentElem preRenCtx.indentationLevel), Left (preRenCtx /\ 0) ]
-  -- BoolVar /\ (MInj (Grammar.SInj VarSort) % [ MInj (Grammar.DataLabel (DataString str)) ]) -> [ pure [HH.div [] []] ] -- TODO
-  -- NumVar /\ _ -> [] -- TODO
-  l -> unsafeCrashWith $ "arrangeDerivTermSubs didn't handle RuleLabel: " <> pretty l
+arrangeDerivTermSubs _ { renCtx, rule, sort, sigma, dzipper, mb_parent, renderTerm } = case rule /\ sort of
+  LangRL /\ _ -> [ Right [keyword "Language"], Left (renCtx /\ 0), Right [Rendering.colonElem], Left (renCtx /\ 1) ]
+  RuleRL /\ _ -> [ Right [keyword "Rule"], Left (renCtx /\ 0), Right [Rendering.colonElem], Left (renCtx /\ 1), Right [keyword "->"], Left (renCtx /\ 2) ]
+  PropHypRL /\ _ -> [ Right [Rendering.lparenElem], Right [keyword "PropHyp"], Left (renCtx /\ 0), Right [Rendering.rparenElem] ]
+  PuncHypRL /\ _ -> [ Right [Rendering.lparenElem], Right [keyword "PuncHyp"], Left (renCtx /\ 0), Right [Rendering.rparenElem] ]
+  PropRL /\ _ -> [ Right [Rendering.lparenElem], Right [keyword "Prop"], Left (renCtx /\ 0), Right [Rendering.rparenElem] ]
+  PuncRL /\ _ -> [ Right [Rendering.lparenElem], Right [keyword "Punc"], Left (renCtx /\ 0), Right [Rendering.rparenElem] ]
+  NilRuleListRL /\ _ -> [ Right [keyword "[]"] ]
+  ConsRuleListRL /\ _ -> [ Left (renCtx /\ 0), Right [Rendering.commaElem], Left (renCtx /\ 1) ]
+  NilHypListRL /\ _ -> [ Right [keyword "[]"] ]
+  ConsHypListRL /\ _ -> [ Left (renCtx /\ 0), Right [Rendering.commaElem], Left (renCtx /\ 1) ]
+  HoleRL /\ _ -> [ Right [Rendering.lbraceElem], Right [HH.text (pretty sort)], Right [Rendering.rbraceElem] ]
+  NameRL /\ _ -> [ Right [Rendering.lbracketElem], Left (renCtx /\ 0), Right [Rendering.rbracketElem] ]
+  NewlineRL /\ _ -> 
+    [ Right [ HH.div [ HP.classes [ HH.ClassName "newline-symbol" ] ] [ HH.text " ↪" ] ]
+    , Right (newlineIndentElem renCtx.indentationLevel), Left (renCtx /\ 0) 
+    ]
+  -- BoolVar /\ (MInj (Grammar.SInj VarSort) % [ MInj (Grammar.DataLabel (DataString str)) ]) -> [ Right [HH.div [] []] ] -- TODO
 
 newlineIndentElem :: forall t1 t2. Int -> Array (HH.HTML t1 t2)
 --newlineIndentElem n = [Rendering.fillRightSpace, Rendering.newlineElem] <> Array.replicate n tabElem
 newlineIndentElem n = [ Rendering.newlineElem ] <> Array.replicate n tabElem
 
+tabElem :: forall w i. HH.HTML w i
 tabElem = Rendering.makePuncElem "indent" "    "
 
 --------------------------------------------------------------------------------
@@ -232,15 +333,34 @@ makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
 editsAtCursor :: Sort -> Array Edit
 editsAtCursor sort = Array.mapMaybe identity
-  [ DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
-  , DefaultEdits.makeChangeEditFromTerm ((False %|- empty) % []) "False" sort
-  , DefaultEdits.makeChangeEditFromTerm ((One %|- empty) % []) "One" sort
-  , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
-  , makeEditFromPath (newPathFromRule And 0) "And" sort
-  , makeEditFromPath (newPathFromRule And 1) "And" sort
-  , makeEditFromPath (newPathFromRule Plus 0) "Plus" sort
-  , makeEditFromPath (newPathFromRule Plus 1) "Plus" sort
+  [
+  -- Lang
+    DefaultEdits.makeChangeEditFromTerm ((LangRL %|- empty) % [ emptyNameDerivTerm, holeDerivTerm (RuleListSL %|-* []) ]) "Lang" sort
+  -- Rule
+  , DefaultEdits.makeChangeEditFromTerm ((RuleRL %|- empty) % [ emptyNameDerivTerm, holeDerivTerm (HypListSL %|-* []), holeDerivTerm (PropSL %|-* []) ]) "Rule" sort
+  -- Prop
+  , DefaultEdits.makeChangeEditFromTerm ((PropRL %|- empty) % [ emptyNameDerivTerm ]) "Prop" sort
+  -- Punc
+  , DefaultEdits.makeChangeEditFromTerm ((PuncRL %|- empty) % [ emptyNameDerivTerm ]) "Punc" sort
+  -- Hyp
+  , DefaultEdits.makeChangeEditFromTerm ((PropHypRL %|- empty) % [ holeDerivTerm (PropSL %|-* []) ]) "Prop" sort
+  , DefaultEdits.makeChangeEditFromTerm ((PuncHypRL %|- empty) % [ holeDerivTerm (PuncSL %|-* []) ]) "Punc" sort
+  -- HypList
+  , DefaultEdits.makeChangeEditFromTerm ((NilHypListRL %|- empty) % []) "Nil" sort
+  , DefaultEdits.makeChangeEditFromTerm ((ConsHypListRL %|- empty) % [ holeDerivTerm (HypSL %|-* []), holeDerivTerm (HypListSL %|-* []) ]) "Cons" sort
+  -- RuleList
+  , DefaultEdits.makeChangeEditFromTerm ((NilRuleListRL %|- empty) % []) "Nil" sort
+  , DefaultEdits.makeChangeEditFromTerm ((ConsRuleListRL %|- empty) % [ holeDerivTerm (RuleSL %|-* []), holeDerivTerm (RuleListSL %|-* []) ]) "Cons" sort
   ]
+
+holeDerivTerm :: Sort -> DerivTerm
+holeDerivTerm sort = (HoleRL %|- (Map.fromFoldable [RuleMetaVar "sort" /\ sort])) % []
+
+emptyNameDerivTerm :: DerivTerm 
+emptyNameDerivTerm = (NameRL %|- (Map.fromFoldable [RuleMetaVar "name" /\ (DataLabel (DataString "")) %* []]) % [emptyStringDerivTerm])
+
+emptyStringDerivTerm :: DerivTerm
+emptyStringDerivTerm = DerivLiteral (DataString "") % []
 
 --------------------------------------------------------------------------------
 -- Changes
@@ -253,12 +373,27 @@ isValidSelectionSorts :: { bottom :: Sort, top :: Sort } -> Boolean
 isValidSelectionSorts { bottom, top } = bottom == top
 
 keyAction :: String -> Sort -> Maybe Action
-keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0)) "newline" cursorSort
+keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule NewlineRL 0)) "newline" cursorSort
 keyAction _key _cursorSort = Nothing
 
--- TODO: add edits for inserting new variables
 extraQueryEdits :: Sort -> String -> Array Edit
+extraQueryEdits cursorSort query | isJust $ matchExprImpl cursorSort (sor NameSL %$ []) = Unfoldable.fromMaybe $ makeVarEdit cursorSort query NameRL
 extraQueryEdits _ _ = []
+
+makeVarEdit :: Sort -> String -> RuleLabel -> Maybe Edit
+makeVarEdit sort name rl =
+  let
+    varSort = MInj (Grammar.DataLabel (DataString name)) % []
+  in
+    DefaultEdits.makeSubEditFromTerm
+      ( makeLabel rl [ "x" /\ varSort ] %
+          [ Grammar.defaultDerivTerm (Grammar.TypeOfLabel SortString %* [ varSort ])
+              # Util.fromJust' "defaultDerivTerm always works for a `TypeOfLabel SortString`"
+          ]
+      )
+      name
+      sort
+
 
 --------------------------------------------------------------------------------
 -- EditorSpec
@@ -266,7 +401,7 @@ extraQueryEdits _ _ = []
 
 editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =
-  { dterm: assertI $ just "CustomLanguage" $ Grammar.defaultDerivTerm (BoolSort %|-* [])
+  { dterm: assertI $ just "Square" $ Grammar.defaultDerivTerm (LangSL %|-* [])
   , editsAtCursor
   , arrangeDerivTermSubs
   , stepRules: empty
