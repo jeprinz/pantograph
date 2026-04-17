@@ -1,12 +1,11 @@
 module Language.Pantograph.Generic.Rendering.Base where
 
-import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Grammar
 import Prelude
 import Type.Direction
 
-import Bug.Assertion (Assertion(..), assert, just)
-import Data.TotalMap as TotalMap
+import Bug as Bug
+import Bug.Assertion (Assertion(..), assert, assertI, just)
 import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Bounded.Generic (genericBottom, genericTop)
@@ -16,21 +15,28 @@ import Data.Either (Either(..))
 import Data.Either.Nested (type (\/))
 import Data.Enum (class Enum)
 import Data.Enum.Generic (genericPred, genericSucc)
-import Data.Expr (class ReflectPathDir)
+import Data.Expr (class ReflectPathDir, (%), (%<))
 import Data.Expr as Expr
 import Data.Generic.Rep (class Generic)
 import Data.Lazy (Lazy)
 import Data.List (List)
+import Data.List as List
 import Data.List.Zip as ZipList
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Maybe as Maybe
+import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.String as String
+import Data.String.CodePoints (CodePoint)
+import Data.TotalMap as TotalMap
+import Data.Traversable (sequence)
+import Data.Tuple (snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Variant (case_, on)
 import Data.Zippable (class Zippable)
 import Data.Zippable as Zippable
+import Debug (trace)
 import Effect.Aff (Aff, throwError)
 import Effect.Ref as Ref
 import Halogen as H
@@ -41,13 +47,69 @@ import Language.Pantograph.Generic.Unification (Sub)
 import Text.Pretty (class Pretty, pretty)
 import Text.Pretty as P
 import Type.Proxy (Proxy(..))
-import Web.UIEvent.MouseEvent as MouseEvent
-import Debug (trace)
+import Util (fromJust')
 import Util as Util
-import Data.Tuple (snd)
-import Data.Set as Set
-import Data.String.CodePoints (CodePoint)
-import Bug as Bug
+import Web.UIEvent.MouseEvent as MouseEvent
+
+--------------------------------------------------------------------------------
+-- Edit, Action
+--------------------------------------------------------------------------------
+
+type Edit l r =
+  { label :: String
+  , action :: (Either String (Lazy (Action l r))) -- The String is an error message if the edit isn't possible
+  }
+
+data Action l r
+  -- = SetCursorAction (Lazy (DerivZipper l r))
+  -- | SetSSTermAction (Lazy (SSTerm l r))
+  = FillAction {sub :: Sub (SortLabel l), dterm :: DerivTerm l r}
+  | ReplaceAction {topChange :: SortChange l, dterm :: DerivTerm l r}
+  | WrapAction {topChange :: SortChange l, dpath :: DerivPath Up l r, botChange :: SortChange l,
+        sub :: Sub (SortLabel l), cursorGoesInside :: Boolean}
+  | ReceiveAction (EditorInput l r)
+
+type EditorInput l r = { spec :: EditorSpec l r, enabled :: Boolean }
+
+newTermFromRule :: forall l r. IsRuleLabel l r => r -> DerivTerm l r
+newTermFromRule r = do
+    let Rule mvars hyps' _con = TotalMap.lookup r language
+    let sigma = freshenRuleMetaVars mvars
+    let hyps = Expr.subMetaExprPartially sigma <$> hyps'
+    let term1 = DerivLabel r sigma % (map (fromJust' "yes" <<< defaultDerivTerm) hyps)
+    let sub = fromJust' "ntfr" $ infer term1
+    subDerivTerm sub term1
+
+newPathFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivPath Up l r /\ Sort l
+newPathFromRule r kidIx = do
+  let tooth /\ sub = newToothFromRule r kidIx
+  Expr.Path (List.singleton tooth) /\ sub
+
+newToothFromRule :: forall l r. IsRuleLabel l r => r -> Int -> DerivTooth l r /\ Sort l
+newToothFromRule r kidIx = do
+  let Rule mvars hyps' _con = TotalMap.lookup r language
+  let sigma = freshenRuleMetaVars mvars
+  let hyps = Expr.subMetaExprPartially sigma <$> hyps'
+
+  -- `hypSort` is the sort of what should got at position `kidIx`
+  let hypSortPath /\ hypSort = assertI $ just "newPathFromRule.hpySortPath" $
+        ZipList.zipAt kidIx (List.fromFoldable hyps)
+
+  -- Each kid of the tooth is a default deriv
+  let defaultHypDerivPath :: _ (DerivTerm l r)
+      defaultHypDerivPath = assertI $ just "newPathFromRule.defaultHypDerivPath" $
+        sequence (defaultDerivTerm <$> hypSortPath)
+
+  -- Some of the children might have more specialized types, so we need to unify by calling infer. (e.g. in lambda, we call defaultDerivTerm on sort (Name ?x), but we actually get something of sort (Name ""))
+  let tooth = (DerivLabel r sigma %< defaultHypDerivPath)
+  let path1 = Expr.Path (List.singleton tooth)
+  let sub = fromJust' "path didn't typecheck in newPathFromRule" $ inferPath (freshMetaVarSort "pathInside") path1
+  let toothSubbed = subDerivTooth sub tooth
+  toothSubbed /\ Expr.subMetaExprPartially sub  hypSort
+
+--------------------------------------------------------------------------------
+-- EditorHTML
+--------------------------------------------------------------------------------
 
 type EditorHTML l r = 
   HH.ComponentHTML 

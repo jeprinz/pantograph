@@ -1,6 +1,5 @@
 module Language.Pantograph.Generic.Rendering.Buffer where
 
-import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Rendering.Base
 import Prelude

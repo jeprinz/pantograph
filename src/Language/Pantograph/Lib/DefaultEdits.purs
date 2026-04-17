@@ -33,7 +33,6 @@ import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
-import Language.Pantograph.Generic.Edit as Edit
 import Type.Direction as Dir
 import Data.Maybe as Maybe
 import Data.Either (Either(..))
@@ -46,7 +45,7 @@ makeWrapEdits :: forall l r. Grammar.IsRuleLabel l r =>
     -> (DerivLabel l r -> Maybe (DerivLabel l r))
     -> Base.SplitChangeType l
     -> String
-    -> Grammar.Sort l -> Grammar.DerivTerm l r -> List.List (Edit.Edit l r)
+    -> Grammar.Sort l -> Grammar.DerivTerm l r -> List.List (Base.Edit l r)
 makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange name cursorSort dterm =
 --    let getPaths dzipper =
 --            case Base.moveHDZUntil Dir.nextDir (\hdz -> Base.isValidCursor isValidCursorSort hdz && Base.hdzIsHolePosition hdz) (Base.HoleyDerivZipper dzipper false) of
@@ -76,7 +75,7 @@ makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange na
 
 -- Makes an edit that inserts a path, and propagates the context change downwards and type change upwards
 makeEditFromPath :: forall l r. Grammar.IsRuleLabel l r => (DerivLabel l r -> Maybe (DerivLabel l r)) -> Base.SplitChangeType l
-    -> Grammar.DerivPath Up l r /\ Grammar.Sort l -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
+    -> Grammar.DerivPath Up l r /\ Grammar.Sort l -> String -> Grammar.Sort l -> Maybe (Base.Edit l r)
 makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorSort = do
     action <- makeActionFromPath false forgetSorts splitChange path name cursorSort
     pure $ { label : name
@@ -85,7 +84,7 @@ makeEditFromPath forgetSorts splitChange (path /\ bottomOfPathSort) name cursorS
 
 makeActionFromPath :: forall l r. Grammar.IsRuleLabel l r =>
     Boolean -> (DerivLabel l r -> Maybe (DerivLabel l r)) -> Base.SplitChangeType l
-    -> Grammar.DerivPath Up l r -> String -> Grammar.Sort l -> Maybe (Edit.Action l r)
+    -> Grammar.DerivPath Up l r -> String -> Grammar.Sort l -> Maybe (Base.Action l r)
 makeActionFromPath cursorGoesInside forgetSorts splitChange path name cursorSort = do
     let change = Smallstep.getPathChange2 path forgetSorts
     let {upChange: preTopChange, cursorSort: preCursorSort, downChange: preBotChange} = splitChange change
@@ -93,7 +92,7 @@ makeActionFromPath cursorGoesInside forgetSorts splitChange path name cursorSort
     let topChange = ChangeAlgebra.subSomeMetaChange sub preTopChange
     let botChange = ChangeAlgebra.subSomeMetaChange sub (ChangeAlgebra.invert preBotChange)
     let pathSubbed = subDerivPath sub path
-    pure $ Edit.WrapAction {
+    pure $ Base.WrapAction {
         topChange
         , dpath : pathSubbed -- DerivPath Up l r
         , botChange
@@ -101,22 +100,22 @@ makeActionFromPath cursorGoesInside forgetSorts splitChange path name cursorSort
         , cursorGoesInside
     }
 
-makeSubEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
+makeSubEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Base.Edit l r)
 makeSubEditFromTerm dterm name cursorSort = do
     _ /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
     pure $ { label : name
-    , action : pure $ defer \_ -> Edit.FillAction
+    , action : pure $ defer \_ -> Base.FillAction
         {
             sub
             , dterm : Grammar.subDerivTerm sub dterm
         }
     }
 
-makeChangeEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Edit.Edit l r)
+makeChangeEditFromTerm :: forall l r. Grammar.IsRuleLabel l r => Grammar.DerivTerm l r -> String -> Grammar.Sort l -> Maybe (Base.Edit l r)
 makeChangeEditFromTerm dterm name cursorSort = do
     newCursorSort /\ sub <- unify (Grammar.derivTermSort dterm) cursorSort
     pure $ { label : name
-    , action : pure $ defer \_ -> Edit.ReplaceAction
+    , action : pure $ defer \_ -> Base.ReplaceAction
         {
             topChange: ChangeAlgebra.diff cursorSort newCursorSort
             , dterm : Grammar.subDerivTerm sub dterm

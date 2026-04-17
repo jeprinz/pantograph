@@ -29,8 +29,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
-import Language.Pantograph.Generic.Edit (newPathFromRule)
-import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar (IsHoleRule(..), SortData(..), SortLabel(..), SortType(..), makeLabel, sor, (%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
@@ -128,8 +126,8 @@ type Query = Base.Query
 type Output = Base.Output PreSortLabel RuleLabel
 type HoleyDerivZipper = Base.HoleyDerivZipper PreSortLabel RuleLabel
 
-type Edit = Edit.Edit PreSortLabel RuleLabel
-type Action = Edit.Action PreSortLabel RuleLabel
+type Edit = Base.Edit PreSortLabel RuleLabel
+type Action = Base.Action PreSortLabel RuleLabel
 
 -- SmallStep
 type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
@@ -363,11 +361,11 @@ editsAtCursor sort = Array.mapMaybe identity
   -- HypList
   , DefaultEdits.makeChangeEditFromTerm ((NilHypListRL %|- empty) % []) "Nil" sort
   -- , DefaultEdits.makeChangeEditFromTerm ((ConsHypListRL %|- empty) % [ holeDerivTerm (HypSL %|-* []), holeDerivTerm (HypListSL %|-* []) ]) "Cons" sort
-  , makeEditFromPath (newPathFromRule ConsHypListRL 1) "Cons" sort
+  , makeEditFromPath (Base.newPathFromRule ConsHypListRL 1) "Cons" sort
   -- RuleList
   , DefaultEdits.makeChangeEditFromTerm ((NilRuleListRL %|- empty) % []) "Nil" sort
   -- , DefaultEdits.makeChangeEditFromTerm ((ConsRuleListRL %|- empty) % [ holeDerivTerm (RuleSL %|-* []), holeDerivTerm (RuleListSL %|-* []) ]) "Cons" sort
-  , makeEditFromPath (newPathFromRule ConsRuleListRL 1) "Cons" sort
+  , makeEditFromPath (Base.newPathFromRule ConsRuleListRL 1) "Cons" sort
   ]
 
 holeDerivTerm :: Sort -> DerivTerm
@@ -399,7 +397,7 @@ isValidSelectionSorts :: { bottom :: Sort, top :: Sort } -> Boolean
 isValidSelectionSorts { bottom, top } = bottom == top
 
 keyAction :: String -> Sort -> Maybe Action
-keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule NewlineRL 0)) "newline" cursorSort
+keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (Base.newPathFromRule NewlineRL 0)) "newline" cursorSort
 keyAction _key _cursorSort = Nothing
 
 extraQueryEdits :: Sort -> String -> Array Edit

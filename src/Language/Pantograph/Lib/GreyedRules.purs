@@ -27,7 +27,6 @@ import Data.Foldable (foldl)
 import Hole (hole)
 import Bug as Bug
 import Language.Pantograph.Generic.Rendering.Base as Base
-import Language.Pantograph.Generic.Edit as Edit
 import Debug (trace, traceM)
 import Text.Pretty (pretty)
 import Data.MultiMap (MultiMap)
@@ -111,7 +110,7 @@ createGreyedRules index regularRuleLabel maybeGreyRuleLabel splitChange forgetSo
 --                    traceM ("here in grey down, kid is: " <> pretty kid <> " and c is: " <> pretty c <> " and upChange is: " <> pretty upChange)
                     sortSub1 /\ chSub1 <- getChangeMatches c upChange
 --                    traceM "got here["
-                    let (Tooth dl _) /\ _ = Edit.newToothFromRule regularRuleLabel index
+                    let (Tooth dl _) /\ _ = Base.newToothFromRule regularRuleLabel index
                     let freshSub = Util.fromJust (derivLabelSub dl)
                     chSub <- MultiMap.toMap chSub1
                     sortSub <- MultiMap.toMap sortSub1

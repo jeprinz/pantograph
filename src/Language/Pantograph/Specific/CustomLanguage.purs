@@ -29,8 +29,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
-import Language.Pantograph.Generic.Edit (newPathFromRule)
-import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar (IsHoleRule(..), SortData(..), SortLabel(..), SortType(..), makeLabel, sor, (%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
@@ -133,8 +131,8 @@ type Query = Base.Query
 type Output = Base.Output PreSortLabel RuleLabel
 type HoleyDerivZipper = Base.HoleyDerivZipper PreSortLabel RuleLabel
 
-type Edit = Edit.Edit PreSortLabel RuleLabel
-type Action = Edit.Action PreSortLabel RuleLabel
+type Edit = Base.Edit PreSortLabel RuleLabel
+type Action = Base.Action PreSortLabel RuleLabel
 
 -- SmallStep
 type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
@@ -320,10 +318,10 @@ editsAtCursor sort = Array.mapMaybe identity
   , DefaultEdits.makeChangeEditFromTerm ((Zero %|- empty) % []) "Zero" sort
   , DefaultEdits.makeChangeEditFromTerm ((True %|- empty) % []) "True" sort
   , DefaultEdits.makeChangeEditFromTerm ((Equals %|- empty) % [ (Hole %|- empty) % [], (Hole %|- empty) % [] ]) "==" sort
-  , makeEditFromPath (newPathFromRule And 0) "&&" sort
-  , makeEditFromPath (newPathFromRule And 1) "&&" sort
-  , makeEditFromPath (newPathFromRule Plus 0) "+" sort
-  , makeEditFromPath (newPathFromRule Plus 1) "+" sort
+  , makeEditFromPath (Base.newPathFromRule And 0) "&&" sort
+  , makeEditFromPath (Base.newPathFromRule And 1) "&&" sort
+  , makeEditFromPath (Base.newPathFromRule Plus 0) "+" sort
+  , makeEditFromPath (Base.newPathFromRule Plus 1) "+" sort
   ]
 
 --------------------------------------------------------------------------------
@@ -339,7 +337,7 @@ isValidSelectionSorts :: { bottom :: Sort, top :: Sort } -> Boolean
 isValidSelectionSorts { bottom, top } = bottom == top
 
 keyAction :: String -> Sort -> Maybe Action
-keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0)) "newline" cursorSort
+keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (Base.newPathFromRule Newline 0)) "newline" cursorSort
 keyAction _key _cursorSort = Nothing
 
 extraQueryEdits :: Sort -> String -> Array Edit

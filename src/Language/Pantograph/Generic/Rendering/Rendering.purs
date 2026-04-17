@@ -1,6 +1,5 @@
 module Language.Pantograph.Generic.Rendering.Rendering where
 
-import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Rendering.Base
 import Language.Pantograph.Generic.Rendering.Elements
@@ -32,7 +31,7 @@ import Language.Pantograph.Generic.Rendering.Buffer (bufferComponent)
 import Language.Pantograph.Generic.Rendering.Preview (previewComponent)
 import Language.Pantograph.Generic.Smallstep (SSTerm, StepExprLabel(..))
 import Language.Pantograph.Generic.Smallstep as SmallStep
-import Partial.Unsafe (unsafePartial)
+import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 import Text.Pretty (pretty)
 import Type.Direction (Up, leftDir, rightDir)
 import Util (fromJust')
@@ -220,6 +219,7 @@ renderPreview locs hdzipper edit = defer \_ ->
               FillAction {dterm} -> FillEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm)
               ReplaceAction {dterm} -> ReplaceEditPreview $ renderPreviewDerivTerm locs (Expr.Zipper (hdzipperDerivPath hdzipper) dterm)
               WrapAction {dpath} -> WrapEditPreview $ renderPreviewDerivPath locs (hdzipperDerivPath hdzipper) dpath (hdzipperDerivTerm hdzipper)
+              ReceiveAction input -> unsafeCrashWith "TODO"
 
 renderPreviewDerivPath :: forall l r. IsRuleLabel l r =>
   EditorLocals l r ->

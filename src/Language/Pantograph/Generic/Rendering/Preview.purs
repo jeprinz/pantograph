@@ -1,6 +1,5 @@
 module Language.Pantograph.Generic.Rendering.Preview where
 
-import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Rendering.Base
 import Prelude
 

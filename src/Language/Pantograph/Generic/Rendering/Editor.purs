@@ -1,12 +1,12 @@
 module Language.Pantograph.Generic.Rendering.Editor where
 
-import Language.Pantograph.Generic.Edit
 import Language.Pantograph.Generic.Grammar
 import Language.Pantograph.Generic.Rendering.Base
 import Prelude
 
 import Bug (bug)
 import Bug.Assertion (assert, just)
+import Control.Monad.State (put)
 import Control.Monad.Trans.Class (lift)
 import Data.Argonaut (encodeJson)
 import Data.Argonaut as Argonaut
@@ -56,6 +56,7 @@ import Language.Pantograph.Generic.ZipperMovement (moveZipperpUntil)
 import Language.Pantograph.Generic.ZipperMovement (normalizeZipperp)
 import Language.Pantograph.UserStudy.Programs as UserStudyPrograms
 import Log (log, logM)
+import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (bullets, pretty)
 import Text.Pretty as P
 import Type.Direction (Up, _down, _next, leftDir, readMoveDir, readVerticalDir, rightDir, nextDir, prevDir, MoveDir)
@@ -81,14 +82,14 @@ data EditorQuery l r a
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
-  Unit -> H.Component (EditorQuery l r) (EditorSpec l r) Unit Aff
+  Unit -> H.Component (EditorQuery l r) (EditorInput l r) Unit Aff
 editorComponent _unit =
   let editorIdPrefixNum = editorPrefix.get unit in -- Because we are using HTML ids to identify elements of the editor in the DOM, we need a unique prefix for each editor component so the ids don't clash with one another. Yes, its stupid.
   let _ = editorPrefix.set (editorIdPrefixNum + 1) in
   let pathIdPrefix = "Editor" <> show editorIdPrefixNum <> "-" in
   -- let pathIdPrefix = "TEST" in
-  HK.component \tokens spec -> HK.do
-
+  HK.component \tokens { spec, enabled } -> HK.do
+ 
     ------------------------------------------------------------------------------
     -- initialize state and refs
     ------------------------------------------------------------------------------
@@ -332,6 +333,8 @@ editorComponent _unit =
                 dterm
 
           doSmallstep ssterm
+        
+        ReceiveAction _input -> pure unit
 
       moveToNextHole = do
         getFacade >>= case _ of
@@ -539,8 +542,11 @@ editorComponent _unit =
       -- handle keyboard event
       ------------------------------------------------------------------------------
 
+      requireEnabled :: HK.HookM Aff Unit -> HK.HookM Aff Unit
+      requireEnabled ma = if enabled then ma else pure unit
+
       handleKeyboardEvent :: KeyboardEvent.KeyboardEvent -> HK.HookM Aff Unit
-      handleKeyboardEvent event = do
+      handleKeyboardEvent event = requireEnabled do
         -- Console.log $ "[event.key] " <> KeyboardEvent.key event
         let 
           key = KeyboardEvent.key event

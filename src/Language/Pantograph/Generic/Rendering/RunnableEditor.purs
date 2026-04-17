@@ -4,6 +4,7 @@ import Prelude
 
 import CSS as CSS
 import CSS.Font as CSSFont
+import Control.Monad.State (get, put)
 import Data.Expr (Expr)
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty as NonEmpty
@@ -25,31 +26,48 @@ type Slots l r
 
 _editorSlot = Proxy :: Proxy "editor"
 
-data Action
+data Action l r output
   = RunProgram
+  | Receive (Input l r output)
 
 type Interpreter l r output = Grammar.DerivTerm l r -> String /\ output
+
+type Input l r output =
+  { spec :: Base.EditorSpec l r
+  , interpreter :: Interpreter l r output
+  , enabled :: Boolean 
+  }
+
+type State l r output = 
+  { spec :: Base.EditorSpec l r
+  , interpreter :: Expr (Grammar.DerivLabel l r) -> String /\ output
+  , output :: String
+  , enabled :: Boolean
+  }
 
 component ::
   forall l r query output.
   Grammar.IsRuleLabel l r =>
-  H.Component query { spec :: Base.EditorSpec l r, interpreter :: Interpreter l r output } output Aff
+  H.Component query (Input l r output) output Aff
 component = H.mkComponent { initialState, render, eval }
   where
-  initialState :: { spec :: Base.EditorSpec l r, interpreter :: Interpreter l r output } -> { spec :: Base.EditorSpec l r, interpreter :: Expr (Grammar.DerivLabel l r) -> String /\ output, output :: String }
+  initialState :: Input l r output -> State l r output
   initialState input =
     { spec: input.spec
     , interpreter: input.interpreter
     , output: ""
+    , enabled: input.enabled
     }
 
   eval =
     H.mkEval
       H.defaultEval
-        { handleAction = handleAction }
+        { handleAction = handleAction
+        , receive = Just <<< Receive }
 
   handleAction = case _ of
     RunProgram -> do
+      state <- get
       mprog <- H.request _editorSlot unit Editor.GetProgram
       state <- H.get
       case mprog of
@@ -59,6 +77,8 @@ component = H.mkComponent { initialState, render, eval }
           H.raise output
           H.modify_ _ { output = outputString }
         Nothing -> pure unit
+    
+    Receive input -> put $ initialState input
 
   render state =
     HH.div
@@ -93,5 +113,5 @@ component = H.mkComponent { initialState, render, eval }
           [ HCSS.style do
               (let s = 1.0 # CSS.em in CSS.padding s s s s)
           ]
-          [ HH.slot_ _editorSlot unit (Editor.editorComponent unit) state.spec ]
+          [ HH.slot_ _editorSlot unit (Editor.editorComponent unit) { spec: state.spec, enabled: state.enabled } ]
       ]

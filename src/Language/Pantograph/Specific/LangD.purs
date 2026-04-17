@@ -29,8 +29,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
-import Language.Pantograph.Generic.Edit (newPathFromRule)
-import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar (IsHoleRule(..), SortData(..), SortLabel(..), SortType(..), makeLabel, sor, (%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
@@ -105,8 +103,8 @@ type Query = Base.Query
 type Output = Base.Output PreSortLabel RuleLabel
 type HoleyDerivZipper = Base.HoleyDerivZipper PreSortLabel RuleLabel
 
-type Edit = Edit.Edit PreSortLabel RuleLabel
-type Action = Edit.Action PreSortLabel RuleLabel
+type Edit = Base.Edit PreSortLabel RuleLabel
+type Action = Base.Action PreSortLabel RuleLabel
 
 -- SmallStep
 type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
@@ -189,7 +187,14 @@ instance Grammar.IsRuleLabel PreSortLabel RuleLabel where
 language :: Language
 language = TotalMap.makeTotalMapFromFoldable_unsafe $
   [
-    Tuple HoleRL $ Grammar.makeRule ["sort"] \[sort] -> Tuple
+    Tuple ConRL $ Grammar.makeRule [] \[] -> Tuple
+      [ NameSL %|-* []
+      , SortSL %|-* [DataLabel (DataString "Sort") %* []]
+      , SortSL %|-* [DataLabel (DataString "Sort") %* []] ]
+      --------------------------------
+      ( SortSL %|-* [DataLabel (DataString "Sort") %* []] )
+
+  , Tuple HoleRL $ Grammar.makeRule ["sort"] \[sort] -> Tuple
       [] 
       --------------------------------
       ( sort )
@@ -214,7 +219,7 @@ keyword label = HH.span [HP.classes [HH.ClassName "keyword"]] [HH.text label]
 
 arrangeDerivTermSubs :: Unit -> Base.ArrangeDerivTermSubs PreSortLabel RuleLabel
 arrangeDerivTermSubs _ { renCtx, rule, sort, sigma, dzipper, mb_parent, renderTerm } = case rule /\ sort of
-  ConRL /\ _ -> [ Right [HH.text "Con"] ]
+  ConRL /\ _ -> [ Right [Rendering.lparenElem], Left (renCtx /\ 0), Left (renCtx /\ 1), Left (renCtx /\ 2), Right [Rendering.rparenElem] ]
   HoleRL /\ _ -> [ Right [Rendering.lbraceElem], Right [HH.text (pretty sort)], Right [Rendering.rbraceElem] ]
   NameRL /\ _ -> [ Right [Rendering.lbracketElem], Left (renCtx /\ 0), Right [Rendering.rbracketElem] ]
   NewlineRL /\ _ -> 
@@ -249,6 +254,7 @@ makeEditFromPath = DefaultEdits.makeEditFromPath forgetSorts splitChange
 
 editsAtCursor :: Sort -> Array Edit
 editsAtCursor sort = Array.mapMaybe identity
+  -- TODO
   []
 
 holeDerivTerm :: Sort -> DerivTerm
@@ -274,7 +280,7 @@ isValidSelectionSorts :: { bottom :: Sort, top :: Sort } -> Boolean
 isValidSelectionSorts { bottom, top } = bottom == top
 
 keyAction :: String -> Sort -> Maybe Action
-keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule NewlineRL 0)) "newline" cursorSort
+keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (Base.newPathFromRule NewlineRL 0)) "newline" cursorSort
 keyAction _key _cursorSort = Nothing
 
 extraQueryEdits :: Sort -> String -> Array Edit
@@ -295,14 +301,13 @@ makeNameEdit sort name rl =
       name
       sort
 
-
 --------------------------------------------------------------------------------
 -- EditorSpec
 --------------------------------------------------------------------------------
 
 editorSpec :: LangD -> EditorSpec PreSortLabel RuleLabel
 editorSpec lang@(LangD langName langRules) =
-  { dterm: assertI $ just "LangD" $ Grammar.defaultDerivTerm (SortSL %|-* [])
+  { dterm: assertI $ just "LangD" $ Grammar.defaultDerivTerm (SortSL %|-* [DataLabel (DataString "Sort") %* []])
   , editsAtCursor
   , arrangeDerivTermSubs
   , stepRules: empty
@@ -316,5 +321,5 @@ editorSpec lang@(LangD langName langRules) =
   , generalizeDerivation: ChangeAlgebra.inject
   , specializeDerivation: \clipboard _cursor -> ChangeAlgebra.inject clipboard
   , forgetSorts
-  , clipboardSort: \s -> s
+  , clipboardSort: identity
   }

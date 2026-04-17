@@ -47,8 +47,6 @@ import Halogen.Utilities (classNames)
 import Hole (hole)
 import Language.Pantograph.Generic.ChangeAlgebra (rEndpoint, lEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
-import Language.Pantograph.Generic.Edit (newPathFromRule, newTermFromRule)
-import Language.Pantograph.Generic.Edit as Edit
 import Language.Pantograph.Generic.Grammar ((%|-), (%|-*), sor, csor, nameSort)
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
@@ -181,8 +179,8 @@ type Query = Base.Query
 type Output = Base.Output PreSortLabel RuleLabel
 type HoleyDerivZipper = Base.HoleyDerivZipper PreSortLabel RuleLabel
 
-type Edit = Edit.Edit PreSortLabel RuleLabel
-type Action = Edit.Action PreSortLabel RuleLabel
+type Edit = Base.Edit PreSortLabel RuleLabel
+type Action = Base.Action PreSortLabel RuleLabel
 
 -- SmallStep
 type StepRule = Smallstep.StepRule PreSortLabel RuleLabel
@@ -804,7 +802,7 @@ getVarEdits sort =
                     let maybeAction = do
                             let ref /\ ty = wrapInRef index
                             application /\ sub <- maximallyApplied cursorCtx cursorTy ty ref
-                            pure $ defer \_ -> Edit.FillAction {
+                            pure $ defer \_ -> Base.FillAction {
                                 sub , dterm: application
                             }
                     in {
@@ -830,7 +828,7 @@ getWrapInAppEdit name cursorSort dterm =
                     let ty' = subMetaExprPartially sub ty
                     let dterm' = subDerivTerm sub dterm
                     application /\ sub2 <- maximallyApplied cursorCtx' cursorTy' ty' dterm'
-                    pure $ defer \_ -> Edit.FillAction {
+                    pure $ defer \_ -> Base.FillAction {
                             sub: Unification.composeSub sub sub2
                             , dterm: application
                         }
@@ -906,62 +904,62 @@ isTermSort _ = false
 editsAtHoleInterior :: Sort -> Array Edit
 editsAtHoleInterior cursorSort = (Array.fromFoldable (getVarEdits cursorSort))
     <> Array.mapMaybe identity ([
-        DefaultEdits.makeSubEditFromTerm (newTermFromRule If) "if" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Lam) "lambda" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule Let) "let" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule App) "(" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule NilRule) "nil" cursorSort
-        , getWrapInAppEdit "cons" cursorSort (newTermFromRule ConsRule)
-        , getWrapInAppEdit "head" cursorSort (newTermFromRule HeadRule)
-        , getWrapInAppEdit "tail" cursorSort (newTermFromRule TailRule)
-        , getWrapInAppEdit "index" cursorSort (newTermFromRule IndexRule)
-        , getWrapInAppEdit "length" cursorSort (newTermFromRule LengthRule)
-        , getWrapInAppEdit "append" cursorSort (newTermFromRule AppendRule)
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule ListMatchRule) "match" cursorSort
-        , DefaultEdits.makeSubEditFromTerm (newTermFromRule EqualsRule) "==" cursorSort
+        DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule If) "if" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule Lam) "lambda" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule Let) "let" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule App) "(" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule NilRule) "nil" cursorSort
+        , getWrapInAppEdit "cons" cursorSort (Base.newTermFromRule ConsRule)
+        , getWrapInAppEdit "head" cursorSort (Base.newTermFromRule HeadRule)
+        , getWrapInAppEdit "tail" cursorSort (Base.newTermFromRule TailRule)
+        , getWrapInAppEdit "index" cursorSort (Base.newTermFromRule IndexRule)
+        , getWrapInAppEdit "length" cursorSort (Base.newTermFromRule LengthRule)
+        , getWrapInAppEdit "append" cursorSort (Base.newTermFromRule AppendRule)
+        , DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule ListMatchRule) "match" cursorSort
+        , DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule EqualsRule) "==" cursorSort
     ] <> ((Util.allPossible :: Array Constant) <#>
-        (\constant -> getWrapInAppEdit (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))
+        (\constant -> getWrapInAppEdit (constantName constant) cursorSort (Base.newTermFromRule (ConstantRule constant))))
        <> ((Util.allPossible :: Array InfixOperator) <#>
-        (\op -> DefaultEdits.makeSubEditFromTerm (newTermFromRule (InfixRule op)) (infixName op) cursorSort))
+        (\op -> DefaultEdits.makeSubEditFromTerm (Base.newTermFromRule (InfixRule op)) (infixName op) cursorSort))
     )
 
 editsAtCursor :: Sort -> Array Edit
 editsAtCursor cursorSort = Array.mapMaybe identity (
     [
-    DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Int)) "Int" cursorSort
-    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
---    , DefaultEdits.makeChangeEditFromTerm (newTermFromRule ListRule) "List" cursorSort
-    , makeEditFromPath (newPathFromRule ListRule 0) "List" cursorSort ])
-    <> (Array.drop 1 $ Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (newTermFromRule ArrowRule))
+    DefaultEdits.makeChangeEditFromTerm (Base.newTermFromRule (DataTypeRule Int)) "Int" cursorSort
+    , DefaultEdits.makeChangeEditFromTerm (Base.newTermFromRule (DataTypeRule Bool)) "Bool" cursorSort
+--    , DefaultEdits.makeChangeEditFromTerm (Base.newTermFromRule ListRule) "List" cursorSort
+    , makeEditFromPath (Base.newPathFromRule ListRule 0) "List" cursorSort ])
+    <> (Array.drop 1 $ Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "->" cursorSort (Base.newTermFromRule ArrowRule))
     <> if not (isTermSort cursorSort) then [] else
-    Array.mapMaybe identity ([ makeEditFromPath (newPathFromRule Lam 2) "lambda" cursorSort
-    , makeEditFromPath (newPathFromRule Let 3) "let" cursorSort
-    , makeEditFromPath (newPathFromRule Let 2) "let" cursorSort -- also allow wrapping around definition
-    , makeEditFromPath (newPathFromRule App 0) "(" cursorSort
---    , makeEditFromPath (newPathFromRule Comment 1) "comment" cursorSort
---    , makeEditFromPath (newPathFromRule ErrorCall 0) "error" cursorSort
+    Array.mapMaybe identity ([ makeEditFromPath (Base.newPathFromRule Lam 2) "lambda" cursorSort
+    , makeEditFromPath (Base.newPathFromRule Let 3) "let" cursorSort
+    , makeEditFromPath (Base.newPathFromRule Let 2) "let" cursorSort -- also allow wrapping around definition
+    , makeEditFromPath (Base.newPathFromRule App 0) "(" cursorSort
+--    , makeEditFromPath (Base.newPathFromRule Comment 1) "comment" cursorSort
+--    , makeEditFromPath (Base.newPathFromRule ErrorCall 0) "error" cursorSort
 
---    , makeEditFromPath (newPathFromRule App 0) "appLeft" cursorSort
---    , makeEditFromPath (newPathFromRule ArrowRule 1) "->" cursorSort
+--    , makeEditFromPath (Base.newPathFromRule App 0) "appLeft" cursorSort
+--    , makeEditFromPath (Base.newPathFromRule ArrowRule 1) "->" cursorSort
     ]) <> (Array.concat ((Util.allPossible :: Array InfixOperator) <#>
         (\op -> Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange
-            (infixName op) cursorSort (newTermFromRule (InfixRule op)))))
+            (infixName op) cursorSort (Base.newTermFromRule (InfixRule op)))))
     <> Array.fromFoldable (getVarWraps cursorSort)
-    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (newTermFromRule ConsRule))
-    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "head" cursorSort (newTermFromRule HeadRule))
-    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "tail" cursorSort (newTermFromRule TailRule))
-    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "index" cursorSort (newTermFromRule IndexRule))
-    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "length" cursorSort (newTermFromRule LengthRule))
-    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "append" cursorSort (newTermFromRule AppendRule))
-    <> (Array.fromFoldable $ getAppliedWrapEdits "match" cursorSort (newTermFromRule ListMatchRule))
-    -- <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (newTermFromRule If))
-    <> (Array.catMaybes [makeEditFromPath (newPathFromRule If 1) "if" cursorSort])
-    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (newTermFromRule EqualsRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "cons" cursorSort (Base.newTermFromRule ConsRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "head" cursorSort (Base.newTermFromRule HeadRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "tail" cursorSort (Base.newTermFromRule TailRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "index" cursorSort (Base.newTermFromRule IndexRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "length" cursorSort (Base.newTermFromRule LengthRule))
+    <> (Array.reverse $ Array.fromFoldable $ getAppliedWrapEdits "append" cursorSort (Base.newTermFromRule AppendRule))
+    <> (Array.fromFoldable $ getAppliedWrapEdits "match" cursorSort (Base.newTermFromRule ListMatchRule))
+    -- <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "if" cursorSort (Base.newTermFromRule If))
+    <> (Array.catMaybes [makeEditFromPath (Base.newPathFromRule If 1) "if" cursorSort])
+    <> (Array.fromFoldable $ DefaultEdits.makeWrapEdits isValidCursorSort isValidSelectionSorts forgetSorts splitChange "==" cursorSort (Base.newTermFromRule EqualsRule))
     <> (Array.concat ((Util.allPossible :: Array Constant) <#>
-        (\constant -> Array.fromFoldable (getAppliedWrapEdits (constantName constant) cursorSort (newTermFromRule (ConstantRule constant))))))
+        (\constant -> Array.fromFoldable (getAppliedWrapEdits (constantName constant) cursorSort (Base.newTermFromRule (ConstantRule constant))))))
 
 
---    [fromJust $ makeEditFromPath (newPathFromRule Lam 1)] -- [makeEditFromPath (newPathFromRule Lam 1)] -- Edit.defaultEditsAtCursor
+--    [fromJust $ makeEditFromPath (Base.newPathFromRule Lam 1)] -- [makeEditFromPath (Base.newPathFromRule Lam 1)] -- Base.defaultEditsAtCursor
 --------------------------------------------------------------------------------
 -- StepRules
 --------------------------------------------------------------------------------
@@ -1536,7 +1534,7 @@ isValidSelectionSorts _ = false
 keyAction :: String -> Sort -> Maybe Action
 keyAction _ (MInj (Grammar.TypeOfLabel _) % [_]) = Nothing -- Don't have newlines in literals!
 keyAction "Enter" cursorSort =
-        DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (newPathFromRule Newline 0))"newline" cursorSort
+        DefaultEdits.makeActionFromPath true forgetSorts splitChange (fst (Base.newPathFromRule Newline 0))"newline" cursorSort
 keyAction _ _ = Nothing
 
 extraQueryEdits :: Sort -> String -> Array Edit
@@ -1556,7 +1554,7 @@ extraQueryEdits _ _ = []
 
 editorSpec :: EditorSpec PreSortLabel RuleLabel
 editorSpec =
-  { dterm: assertI $ just "SULC dterm" $
+  { dterm: assertI $ just "Currying.dterm" $
       Grammar.defaultDerivTerm (TermSort %|-* [startCtx, fromMetaVar (freshMetaVar "tyhole")])
   , splitChange
   , editsAtCursor

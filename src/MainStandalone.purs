@@ -21,4 +21,4 @@ runEditorForLang { spec, interpreter } =
   HA.runHalogenAff do
     Console.log "[main]"
     body <- HA.awaitBody
-    VDomDriver.runUI RunnableEditor.component { spec, interpreter } body
+    VDomDriver.runUI RunnableEditor.component { spec, interpreter, enabled: true } body

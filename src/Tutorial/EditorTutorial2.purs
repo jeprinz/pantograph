@@ -132,7 +132,7 @@ makePantographTutorial spec lessons interpereter =
             , HH.div [ classNames ["horizontal-container", "fill-space"], HP.style "height: calc(100vh - 3em - 2px);" ] [
                 HH.main [ classNames ["fill-space", "padded"], HP.style "overflow: auto"] [
                     HH.div_
-                      [HH.slot _editorSlot unit editorComponent spec EditorOutput]
+                      [HH.slot _editorSlot unit editorComponent { spec, enabled: true } EditorOutput]
                 ]
 --                , HH.div [ classNames ["resize-handle--x"] ] []
                 , HH.div [ classNames ["vertical-bar", "resize-handle--x"], HP.attr (AttrName "data-target") "aside"] []
