@@ -75,9 +75,9 @@ import Web.UIEvent.MouseEvent as MouseEvent
 editorPrefix :: Util.Stateful Int
 editorPrefix = Util.stateful 0
 
-data EditorQuery l r a =
-    SetProgram (DerivTerm l r) (Array (HoleyDerivPath l r)) a
-    | GetProgram (DerivTerm l r -> a)
+data EditorQuery l r a
+  = SetProgram (DerivTerm l r) (Array (HoleyDerivPath l r)) a
+  | GetProgram (DerivTerm l r -> a)
 
 editorComponent :: forall q l r.
   IsRuleLabel l r =>
