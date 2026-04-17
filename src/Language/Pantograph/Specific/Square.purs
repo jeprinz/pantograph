@@ -349,10 +349,12 @@ editsAtCursor sort = Array.mapMaybe identity
   , DefaultEdits.makeChangeEditFromTerm ((PuncHypRL %|- empty) % [ holeDerivTerm (PuncSL %|-* []) ]) "Punc" sort
   -- HypList
   , DefaultEdits.makeChangeEditFromTerm ((NilHypListRL %|- empty) % []) "Nil" sort
-  , DefaultEdits.makeChangeEditFromTerm ((ConsHypListRL %|- empty) % [ holeDerivTerm (HypSL %|-* []), holeDerivTerm (HypListSL %|-* []) ]) "Cons" sort
+  -- , DefaultEdits.makeChangeEditFromTerm ((ConsHypListRL %|- empty) % [ holeDerivTerm (HypSL %|-* []), holeDerivTerm (HypListSL %|-* []) ]) "Cons" sort
+  , makeEditFromPath (newPathFromRule ConsHypListRL 1) "Cons" sort
   -- RuleList
   , DefaultEdits.makeChangeEditFromTerm ((NilRuleListRL %|- empty) % []) "Nil" sort
-  , DefaultEdits.makeChangeEditFromTerm ((ConsRuleListRL %|- empty) % [ holeDerivTerm (RuleSL %|-* []), holeDerivTerm (RuleListSL %|-* []) ]) "Cons" sort
+  -- , DefaultEdits.makeChangeEditFromTerm ((ConsRuleListRL %|- empty) % [ holeDerivTerm (RuleSL %|-* []), holeDerivTerm (RuleListSL %|-* []) ]) "Cons" sort
+  , makeEditFromPath (newPathFromRule ConsRuleListRL 1) "Cons" sort
   ]
 
 holeDerivTerm :: Sort -> DerivTerm
