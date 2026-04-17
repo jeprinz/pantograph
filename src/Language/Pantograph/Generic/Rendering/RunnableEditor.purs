@@ -67,7 +67,6 @@ component = H.mkComponent { initialState, render, eval }
 
   handleAction = case _ of
     RunProgram -> do
-      state <- get
       mprog <- H.request _editorSlot unit Editor.GetProgram
       state <- H.get
       case mprog of

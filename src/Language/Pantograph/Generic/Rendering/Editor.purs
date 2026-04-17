@@ -89,6 +89,7 @@ editorComponent _unit =
   let pathIdPrefix = "Editor" <> show editorIdPrefixNum <> "-" in
   -- let pathIdPrefix = "TEST" in
   HK.component \tokens { spec, enabled } -> HK.do
+    let _ = unsafePerformEffect $ Console.log $ "enabled = " <> show enabled
  
     ------------------------------------------------------------------------------
     -- initialize state and refs

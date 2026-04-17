@@ -13,6 +13,7 @@ import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
+import Halogen.HTML.Events as HE
 import Halogen.VDom.Driver as VDomDriver
 import Language.Pantograph.Generic.Rendering.RunnableEditor as RunnableEditor
 import Language.Pantograph.Specific.LangD as LangD
@@ -28,7 +29,7 @@ main = HA.runHalogenAff do
 
 data Action
   = SetLang Square.LangD
-  | ToggleFocus
+  | ToggleGrammarFocus
 
 -- TODO: add button that toggles focus (the enabled value) between grammar and object
 containerComponent :: forall query input output. H.Component query input output Aff
@@ -47,8 +48,8 @@ containerComponent = H.mkComponent { initialState, render, eval }
           -- TODO: check validity of lang
           -- has at least one rule
           modify_ \state -> state { lang = lang, objectSlotId = state.objectSlotId + 1 }
-        ToggleFocus -> do
-          modify_ \state -> state { focusGrammar = not state.focusGrammar, grammarSlotId = state.grammarSlotId + 1, objectSlotId = state.objectSlotId + 1 }
+        ToggleGrammarFocus -> do
+          modify_ \state -> state { focusGrammar = not state.focusGrammar, objectSlotId = state.objectSlotId + 1 }
     }
 
   render state =
@@ -64,7 +65,7 @@ containerComponent = H.mkComponent { initialState, render, eval }
               CSS.flexShrink 0.0
               CSS.flexBasis CSS.auto
           ]
-          []
+          [ HH.button [ HE.onClick $ const ToggleGrammarFocus ] [ HH.text if state.focusGrammar then "Focused on Grammar" else "Focused on Object" ] ]
       , HH.div
           [ HCSS.style do
               CSS.flexGrow 1.0
