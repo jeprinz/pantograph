@@ -38,6 +38,7 @@ import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
+import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, pretty)
 import Util as Util
 
@@ -82,6 +83,7 @@ instance IsExprLabel PreSortLabel where
   prettyExprF'_unsafe (HypListSL /\ _) = "HypList"
   prettyExprF'_unsafe (HypSL /\ _) = "Hyp"
   prettyExprF'_unsafe (RuleListSL /\ _) = "RuleList"
+  prettyExprF'_unsafe (NameSL /\ _) = "Name"
 
   expectedKidsCount _ = 0
 
@@ -367,7 +369,16 @@ emptyStringDerivTerm = DerivLiteral (DataString "") % []
 --------------------------------------------------------------------------------
 
 isValidCursorSort :: Sort -> Boolean
-isValidCursorSort _ = true
+isValidCursorSort (MInj (SInj LangSL) % _) = true
+isValidCursorSort (MInj (SInj RuleSL) % _) = true
+isValidCursorSort (MInj (SInj PropSL) % _) = true
+isValidCursorSort (MInj (SInj PuncSL) % _) = true
+isValidCursorSort (MInj (SInj HypSL) % _) = true
+isValidCursorSort (MInj (SInj HypListSL) % _) = true
+isValidCursorSort (MInj (SInj RuleListSL) % _) = true
+isValidCursorSort (MInj (SInj NameSL) % _) = true
+isValidCursorSort (MInj (TypeOfLabel _) % _) = false
+isValidCursorSort _ = false
 
 isValidSelectionSorts :: { bottom :: Sort, top :: Sort } -> Boolean
 isValidSelectionSorts { bottom, top } = bottom == top
@@ -377,16 +388,16 @@ keyAction "Enter" cursorSort = DefaultEdits.makeActionFromPath true forgetSorts 
 keyAction _key _cursorSort = Nothing
 
 extraQueryEdits :: Sort -> String -> Array Edit
-extraQueryEdits cursorSort query | isJust $ matchExprImpl cursorSort (sor NameSL %$ []) = Unfoldable.fromMaybe $ makeVarEdit cursorSort query NameRL
+extraQueryEdits cursorSort query | isJust $ matchExprImpl cursorSort (sor NameSL %$ []) = Unfoldable.fromMaybe $ makeNameEdit cursorSort query NameRL
 extraQueryEdits _ _ = []
 
-makeVarEdit :: Sort -> String -> RuleLabel -> Maybe Edit
-makeVarEdit sort name rl =
+makeNameEdit :: Sort -> String -> RuleLabel -> Maybe Edit
+makeNameEdit sort name rl =
   let
     varSort = MInj (Grammar.DataLabel (DataString name)) % []
   in
     DefaultEdits.makeSubEditFromTerm
-      ( makeLabel rl [ "x" /\ varSort ] %
+      ( makeLabel rl [ "name" /\ varSort ] %
           [ Grammar.defaultDerivTerm (Grammar.TypeOfLabel SortString %* [ varSort ])
               # Util.fromJust' "defaultDerivTerm always works for a `TypeOfLabel SortString`"
           ]
