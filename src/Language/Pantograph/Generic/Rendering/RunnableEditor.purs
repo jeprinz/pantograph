@@ -64,6 +64,8 @@ component = H.mkComponent { initialState, render, eval }
     HH.div
       [ do
           HCSS.style do
+            CSS.flexGrow 1.0
+            CSS.flexShrink 1.0
             CSS.display CSS.flex
             CSS.flexDirection CSS.column
       ]
