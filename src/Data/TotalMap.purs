@@ -1,6 +1,7 @@
 module Data.TotalMap
   ( TotalMap
   , makeTotalMap
+  , makeTotalMapFromFoldable_unsafe
   , lookup
   , update
   , mapWithKey
@@ -18,7 +19,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Newtype as Newtype
 import Data.Traversable (class Traversable)
-import Data.Tuple.Nested ((/\))
+import Data.Tuple.Nested (type (/\), (/\))
 import Partial.Unsafe (unsafePartial)
 import Text.Pretty (quotes)
 
@@ -33,6 +34,9 @@ over = \f (TotalMap m) -> unsafePartial $ f m
 
 makeTotalMap :: forall k v. Enum k => Bounded k => (k -> v) -> TotalMap k v
 makeTotalMap f = TotalMap $ Map.fromFoldable $ ((enumFromTo bottom top <#> \k -> k /\ f k) :: Array _)
+
+makeTotalMapFromFoldable_unsafe :: forall k v f. Ord k => Foldable f => f (k /\ v) -> TotalMap k v
+makeTotalMapFromFoldable_unsafe xs = TotalMap $ Map.fromFoldable xs
 
 hasKey :: forall k v. Ord k => Show k => String -> k -> Map.Map k v -> Assertion v
 hasKey source k m = Assertion

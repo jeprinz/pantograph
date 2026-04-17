@@ -51,7 +51,10 @@ The knowledge of if a rule is a hole rule is used for two things:
 -}
 data IsHoleRule = Yes {-Has inner hole-}Boolean | No
 
-class (Expr.IsExprLabel l, Eq r, Enum r, Bounded r, Show r, Pretty r,
+-- NOTE: It turns out that Enum r and Bounded r are not required. In order to
+-- construct an _unsafe_ TotalMap for the language derivation ruleset, use
+-- TotalMap.makeTotalMapFromFoldable_unsafe
+class (Expr.IsExprLabel l, Eq r, Ord r, {- Enum r, Bounded r, -} Show r, Pretty r,
     EncodeJson l, EncodeJson r, DecodeJson l, DecodeJson r) <= IsRuleLabel l r | r -> l where
   prettyExprF'_unsafe_RuleLabel :: Partial => r /\ Array String -> String
   language :: Language l r

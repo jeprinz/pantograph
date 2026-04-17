@@ -1,6 +1,8 @@
 module CustomLanguageStandalone where
 
 import Prelude
+
+import Data.Tuple.Nested (type (/\))
 import Effect (Effect)
 import Effect.Class.Console as Console
 import Halogen.Aff as HA
@@ -14,7 +16,7 @@ import Language.Pantograph.Specific.CustomLanguageInterpreter as CustomLanguageI
 main :: Effect Unit
 main = runEditorForLang { spec: CustomLanguage.editorSpec, interpreter: CustomLanguageInterpreter.interpereter }
 
-runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => { spec :: Base.EditorSpec l r, interpreter :: Grammar.DerivTerm l r -> String } -> Effect Unit
+runEditorForLang :: forall l r. Grammar.IsRuleLabel l r => { spec :: Base.EditorSpec l r, interpreter :: Grammar.DerivTerm l r -> String /\ Unit } -> Effect Unit
 runEditorForLang { spec, interpreter } =
   HA.runHalogenAff do
     Console.log "[main]"

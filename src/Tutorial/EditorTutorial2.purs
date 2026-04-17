@@ -57,7 +57,7 @@ data PantographLessonAction = EditorOutput Unit | Initialize | ResetLesson | Pre
 makePantographTutorial :: forall l r query input output. Grammar.IsRuleLabel l r =>
     Base.EditorSpec l r
     -> Array (Lazy (Lesson l r))
-    -> (Grammar.DerivTerm l r -> String)
+    -> (Grammar.DerivTerm l r -> String /\ output)
     -> H.Component query input output Aff
 makePantographTutorial spec lessons interpereter =
 --    let paths = defer \_ -> force markedPaths <#> \path -> (Base.HoleyDerivPath path false) in
@@ -175,13 +175,14 @@ makePantographTutorial spec lessons interpereter =
             mprog <- H.request _editorSlot unit (Editor.GetProgram)
             state <- H.get
             case mprog of
-                Just prog ->
-                    H.modify_ \state ->
-                        state {output = interpereter prog}
+                Just prog -> do
+                    let outputString /\ output = interpereter prog
+                    H.raise output
+                    H.modify_ _ { output = outputString }
                 Nothing -> pure unit
 
-runTutorial :: forall l r. Grammar.IsRuleLabel l r => Base.EditorSpec l r
-    -> Array (Lazy (Lesson l r)) -> (Grammar.DerivTerm l r -> String) -> Effect Unit
+runTutorial :: forall l r output. Grammar.IsRuleLabel l r => Base.EditorSpec l r
+    -> Array (Lazy (Lesson l r)) -> (Grammar.DerivTerm l r -> String /\ output) -> Effect Unit
 runTutorial spec lessons interpereter = HA.runHalogenAff do
   Console.log "[runTutorial]"
   body <- HA.awaitBody

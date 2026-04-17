@@ -127,13 +127,13 @@ printValue val = case val of
     ListVal x -> List.foldr (\x xs -> "(cons " <> (printValue x) <> " " <> xs <> ")") "nil" x
     FunVal _ -> "<function>"
 
-interpereter :: Grammar.DerivTerm PreSortLabel RuleLabel -> String
+interpereter :: Grammar.DerivTerm PreSortLabel RuleLabel -> String /\ Unit
 interpereter dterm =
     let res = realCatchException Left Right (\_ -> eval Nil dterm) in
     case res of
     Right (Left error) -> case error of
-        HoleError -> "Error: hole"
-        BoundaryError -> "Error: type boundary"
-        FreeVarError -> "Error: unbound variable"
-    Right (Right res) -> printValue res
-    Left error -> "Error: infinite loop"
+        HoleError -> "Error: hole" /\ unit
+        BoundaryError -> "Error: type boundary" /\ unit
+        FreeVarError -> "Error: unbound variable" /\ unit
+    Right (Right res) -> printValue res /\ unit
+    Left error -> "Error: infinite loop" /\ unit

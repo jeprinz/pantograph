@@ -1,6 +1,5 @@
-module Language.Pantograph.Specific.Square (PreSortLabel(..), RuleLabel(..), editorSpec) where
+module Language.Pantograph.Specific.Square where
 
-import Language.Pantograph.Generic.Grammar
 import Prelude
 
 import Bug.Assertion (assertI, just)
@@ -32,15 +31,29 @@ import Language.Pantograph.Generic.ChangeAlgebra (lEndpoint, rEndpoint)
 import Language.Pantograph.Generic.ChangeAlgebra as ChangeAlgebra
 import Language.Pantograph.Generic.Edit (newPathFromRule)
 import Language.Pantograph.Generic.Edit as Edit
+import Language.Pantograph.Generic.Grammar (IsHoleRule(..), SortData(..), SortLabel(..), SortType(..), makeLabel, sor, (%|-), (%|-*))
 import Language.Pantograph.Generic.Grammar as Grammar
 import Language.Pantograph.Generic.Rendering.Base (EditorSpec)
 import Language.Pantograph.Generic.Rendering.Base as Base
 import Language.Pantograph.Generic.Rendering.Elements as Rendering
 import Language.Pantograph.Generic.Smallstep as Smallstep
 import Language.Pantograph.Lib.DefaultEdits as DefaultEdits
-import Partial.Unsafe (unsafeCrashWith)
 import Text.Pretty (class Pretty, pretty)
 import Util as Util
+
+--------------------------------------------------------------------------------
+-- Common
+--------------------------------------------------------------------------------
+
+data LangD = LangD String (Array RuleD )
+
+data RuleD = RuleD String (Array HypD) PropD
+
+data HypD = PropHypD PropD | PuncHypD PuncD 
+
+data PropD = PropD String 
+
+data PuncD = PuncD String
 
 --------------------------------------------------------------------------------
 -- PreSortLabel
@@ -364,7 +377,7 @@ emptyNameDerivTerm :: DerivTerm
 emptyNameDerivTerm = (NameRL %|- (Map.fromFoldable [RuleMetaVar "name" /\ (DataLabel (DataString "")) %* []]) % [emptyStringDerivTerm])
 
 emptyStringDerivTerm :: DerivTerm
-emptyStringDerivTerm = DerivLiteral (DataString "") % []
+emptyStringDerivTerm = Grammar.DerivLiteral (DataString "") % []
 
 --------------------------------------------------------------------------------
 -- Changes

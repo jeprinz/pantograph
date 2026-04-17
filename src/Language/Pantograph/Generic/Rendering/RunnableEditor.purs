@@ -7,8 +7,10 @@ import CSS.Font as CSSFont
 import Data.Expr (Expr)
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty as NonEmpty
+import Data.Tuple.Nested (type (/\), (/\))
 import Effect.Aff (Aff)
 import Halogen as H
+import Halogen.HTML (PlainHTML)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS as HCSS
 import Halogen.HTML.Events as HE
@@ -26,13 +28,15 @@ _editorSlot = Proxy :: Proxy "editor"
 data Action
   = RunProgram
 
+type Interpreter l r output = Grammar.DerivTerm l r -> String /\ output
+
 component ::
   forall l r query output.
   Grammar.IsRuleLabel l r =>
-  H.Component query { spec :: Base.EditorSpec l r, interpreter :: Grammar.DerivTerm l r -> String } output Aff
+  H.Component query { spec :: Base.EditorSpec l r, interpreter :: Interpreter l r output } output Aff
 component = H.mkComponent { initialState, render, eval }
   where
-  initialState :: { spec :: Base.EditorSpec l r, interpreter :: Grammar.DerivTerm l r -> String } -> { spec :: Base.EditorSpec l r, interpreter :: Expr (Grammar.DerivLabel l r) -> String, output :: String }
+  initialState :: { spec :: Base.EditorSpec l r, interpreter :: Interpreter l r output } -> { spec :: Base.EditorSpec l r, interpreter :: Expr (Grammar.DerivLabel l r) -> String /\ output, output :: String }
   initialState input =
     { spec: input.spec
     , interpreter: input.interpreter
@@ -49,7 +53,11 @@ component = H.mkComponent { initialState, render, eval }
       mprog <- H.request _editorSlot unit Editor.GetProgram
       state <- H.get
       case mprog of
-        Just prog -> H.modify_ _ { output = state.interpreter prog }
+        
+        Just prog -> do 
+          let outputString /\ output = state.interpreter prog
+          H.raise output
+          H.modify_ _ { output = outputString }
         Nothing -> pure unit
 
   render state =
